@@ -47,4 +47,3 @@ jobs:
         run: python -m build
       - name: Inspect distributions
         run: python -m zipfile --list dist/*.whl
-

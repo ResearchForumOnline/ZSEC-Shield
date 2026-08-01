@@ -185,4 +185,3 @@ separate lint/build job. No publishing workflow is included.
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
-

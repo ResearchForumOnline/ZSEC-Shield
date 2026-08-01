@@ -19,4 +19,3 @@ Security invariants for this project:
 
 The MVP is alpha software. Test it on disposable data before relying on its recovery
 workflow.
-

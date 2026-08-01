@@ -46,4 +46,3 @@ A `copy_only` entry means a verified recovery copy exists but the original was n
 removed. Resolve directory permissions or file locks and rescan before any new action.
 A `restored` entry retains its content object by design. There is no automatic expiry
 or deletion in this MVP; storage retention is an operator policy decision.
-

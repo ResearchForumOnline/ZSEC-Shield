@@ -54,4 +54,3 @@ from becoming a remote command language. Valid rules can only compare an already
 computed SHA-256 or search for a bounded literal byte sequence. They cannot execute
 code or initiate side effects. Every use re-verifies the installed feed and its
 rollback record. Any inconsistency disables all feed-derived rules.
-

@@ -17,4 +17,3 @@ python -m build
 Add regression tests for Windows, macOS, and Linux behavior where relevant. Do not
 commit malware samples, the contiguous EICAR test string, secrets, private keys,
 runtime state, quarantine objects, or host reports.
-

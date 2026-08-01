@@ -87,4 +87,3 @@ bytes with Ed25519, then publish the envelope over HTTPS. Rotate keys by distrib
 a reviewed public-key ring before signing with the new key. Mark a compromised key
 `revoked` locally; do not rely on a feed signed by the compromised key to revoke
 itself.
-

@@ -70,4 +70,3 @@ python_version = "3.11"
 strict = true
 warn_unused_ignores = true
 packages = ["zsec_shield"]
-

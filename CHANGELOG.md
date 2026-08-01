@@ -12,4 +12,3 @@ Initial cross-platform MVP:
 - structured JSON reports, CLI exit codes, tests, packaging, and CI.
 
 This release does not provide complete antivirus or kernel real-time protection.
-
