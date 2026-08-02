@@ -1,13 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 - 2026-08-02
 
-Store-readiness packaging:
+Native packaging repair:
 
-- added inspectable PyInstaller one-directory builds for Windows, macOS, and Linux;
-- added native manifests, per-file and per-archive SHA-256 metadata, and license notices;
-- added executable smoke tests and a version-gated GitHub Actions release matrix;
-- release automation creates a draft for human review and performs no publisher signing.
+- added a checksum-pinned CPython license fallback for macOS and Linux runners whose
+  Python installation does not expose a root license file;
+- included the fallback in source distributions and added regression coverage for
+  fallback selection and bundle inclusion.
 
 ## 0.1.0 - 2026-08-01
 
@@ -19,5 +19,9 @@ Initial cross-platform MVP:
 - strict Ed25519-signed, data-only feeds with expiry and rollback protection;
 - read-only Windows, macOS, and Linux inventory adapters;
 - structured JSON reports, CLI exit codes, tests, packaging, and CI.
+- inspectable PyInstaller one-directory builds for Windows, macOS, and Linux;
+- native manifests, per-file and per-archive SHA-256 metadata, and license notices;
+- executable smoke tests and a version-gated GitHub Actions release matrix;
+- draft-only release automation with no publisher signing.
 
 This release does not provide complete antivirus or kernel real-time protection.

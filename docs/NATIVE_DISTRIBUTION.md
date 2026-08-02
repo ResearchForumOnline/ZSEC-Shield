@@ -16,7 +16,9 @@ rules require an operator-supplied Ed25519 public-key ring.
   policy, and per-file hashes;
 - `native-manifest.schema.json` for machine validation;
 - project license, security policy, operating documentation, and third-party notices;
-- license texts discovered for the bundled interpreter and components.
+- license texts for the bundled interpreter and components. The build prefers the
+  target Python installation's license and uses the checksum-pinned CPython 3.11
+  license stored in `packaging/licenses` when a runner does not expose that file.
 
 Windows builds are ZIP files. macOS and Linux builds are `tar.gz` files so executable
 permissions and any internal symbolic links are preserved.

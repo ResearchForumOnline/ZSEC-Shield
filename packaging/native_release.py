@@ -16,6 +16,7 @@ import tarfile
 import tempfile
 import tomllib
 import zipfile
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,8 @@ VERSION_PATTERN = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*
 SOURCE_VERSION_PATTERN = re.compile(r'^__version__\s*=\s*"([^"]+)"$', re.MULTILINE)
 REVISION_PATTERN = re.compile(r"^[0-9a-f]{7,64}$")
 MAX_LICENSE_BYTES = 2 * 1024 * 1024
+VENDORED_PYTHON_LICENSE = PROJECT_ROOT / "packaging" / "licenses" / "CPython-3.11-LICENSE.txt"
+VENDORED_PYTHON_LICENSE_SHA256 = "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
 
 DOCUMENTS: tuple[tuple[Path, str], ...] = (
     (PROJECT_ROOT / "LICENSE", "LICENSE"),
@@ -233,17 +236,34 @@ def _copy_distribution_licenses(
     }
 
 
-def _copy_licenses(bundle_root: Path) -> list[dict[str, Any]]:
-    licenses_root = bundle_root / "LICENSES"
-    licenses_root.mkdir(parents=True, exist_ok=True)
-    python_candidates = (
+def _runtime_python_license_candidates() -> tuple[Path, ...]:
+    return (
         Path(sys.base_prefix) / "LICENSE.txt",
         Path(sys.base_prefix) / "LICENSE",
         Path(sys.executable).resolve().parent / "LICENSE.txt",
     )
-    python_license = next((path for path in python_candidates if path.is_file()), None)
-    if python_license is None:
-        raise ReleaseError("could not locate the bundled Python interpreter license")
+
+
+def _verified_vendored_python_license() -> Path:
+    if not VENDORED_PYTHON_LICENSE.is_file():
+        raise ReleaseError("the vendored CPython license fallback is missing")
+    if sha256_file(VENDORED_PYTHON_LICENSE) != VENDORED_PYTHON_LICENSE_SHA256:
+        raise ReleaseError("the vendored CPython license fallback failed its SHA-256 check")
+    return VENDORED_PYTHON_LICENSE
+
+
+def _resolve_python_license(candidates: Iterable[Path] | None = None) -> Path:
+    vendored_license = _verified_vendored_python_license()
+    runtime_candidates = (
+        _runtime_python_license_candidates() if candidates is None else tuple(candidates)
+    )
+    return next((path for path in runtime_candidates if path.is_file()), vendored_license)
+
+
+def _copy_licenses(bundle_root: Path) -> list[dict[str, Any]]:
+    licenses_root = bundle_root / "LICENSES"
+    licenses_root.mkdir(parents=True, exist_ok=True)
+    python_license = _resolve_python_license()
     python_target = licenses_root / "Python" / "LICENSE.txt"
     python_target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(python_license, python_target)
