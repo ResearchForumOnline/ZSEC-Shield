@@ -178,6 +178,8 @@ def _command_check(args: argparse.Namespace) -> int:
             completed_at=result.completed_at,
             findings=len(result.findings),
             issues=len(result.issues),
+            files_hashed=result.stats.files_hashed,
+            bytes_hashed=result.stats.bytes_hashed,
             outcome=outcome,
         )
     except OSError as exc:
@@ -306,14 +308,18 @@ def _command_status(args: argparse.Namespace) -> int:
     )
     definitions = f"built-in:{__version__};feed:{feed_label}"[:80]
     result = {
-        "schema": "zsec.shield.status.v1",
-        "contract_version": 1,
+        "schema": "zsec.shield.status.v2",
+        "contract_version": 2,
         "version": __version__,
         "generated_at": format_utc(),
         "platform": platform_name,
         "definitions": definitions,
         "last_scan": last_scan["completed_at"] if last_scan else None,
         "findings": last_scan["findings"] if last_scan else 0,
+        "last_scan_outcome": last_scan["outcome"] if last_scan else None,
+        "last_scan_errors": last_scan["issues"] if last_scan else 0,
+        "last_scan_files_hashed": last_scan["files_hashed"] if last_scan else None,
+        "last_scan_bytes_hashed": last_scan["bytes_hashed"] if last_scan else None,
         "last_scan_diagnostic": {"available": last_scan is not None, "error": last_scan_error},
         "quarantine_count": len(entries),
         "scanner_mode": "on-demand",

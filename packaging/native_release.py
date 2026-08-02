@@ -440,8 +440,25 @@ def _smoke_test(executable: Path, state_dir: Path, version: str) -> None:
         timeout=30,
     )
     status = json.loads(status_result.stdout)
+    required_status_fields = {
+        "schema",
+        "contract_version",
+        "last_scan_outcome",
+        "last_scan_errors",
+        "last_scan_files_hashed",
+        "last_scan_bytes_hashed",
+        "last_scan_diagnostic",
+    }
     if (
-        status.get("schema") != "zsec.shield.status.v1"
+        not required_status_fields.issubset(status)
+        or status.get("schema") != "zsec.shield.status.v2"
+        or status.get("contract_version") != 2
+        or status.get("last_scan_outcome") is not None
+        or type(status.get("last_scan_errors")) is not int
+        or status.get("last_scan_errors") != 0
+        or status.get("last_scan_files_hashed") is not None
+        or status.get("last_scan_bytes_hashed") is not None
+        or status.get("last_scan_diagnostic") != {"available": False, "error": None}
         or status.get("scanner_mode") != "on-demand"
         or status.get("real_time_protection") is not False
     ):

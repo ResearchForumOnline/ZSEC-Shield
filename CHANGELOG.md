@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2 - 2026-08-02
+
+Status evidence repair:
+
+- introduced status contract v2 with persisted last-scan outcome, error, file, and byte counts;
+- made incomplete scans remain explicitly incomplete after status refresh;
+- retained exact v1 summaries without inventing missing file or byte evidence;
+- added strict outcome/counter validation, nonexistent-path regressions, and native smoke tests.
 ## 0.1.1 - 2026-08-02
 
 Native packaging repair:
