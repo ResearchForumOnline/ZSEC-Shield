@@ -28,15 +28,15 @@ release = load_release_module()
 
 class NativePackagingTests(unittest.TestCase):
     def test_source_version_and_pyinstaller_pin_are_explicit(self) -> None:
-        self.assertEqual("0.1.1", release.project_version())
+        self.assertEqual("0.1.2", release.project_version())
         self.assertEqual("6.21.0", release.expected_pyinstaller_version())
 
     def test_release_tag_must_exactly_match_source_version(self) -> None:
-        self.assertEqual("0.1.1", release.verify_release_tag("v0.1.1"))
+        self.assertEqual("0.1.2", release.verify_release_tag("v0.1.2"))
         with self.assertRaises(release.ReleaseError):
             release.verify_release_tag("v0.1.0")
         with self.assertRaises(release.ReleaseError):
-            release.verify_release_tag("preview-0.1.1")
+            release.verify_release_tag("preview-0.1.2")
 
     def test_python_license_uses_checksum_pinned_vendored_fallback(self) -> None:
         with TemporaryDirectory() as temporary:
@@ -95,8 +95,8 @@ class NativePackagingTests(unittest.TestCase):
     def test_combined_checksums_include_only_distribution_archives(self) -> None:
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
-            (root / "zsec-shield-0.1.1-windows-x86_64.zip").write_bytes(b"native")
-            (root / "zsec_shield-0.1.1-py3-none-any.whl").write_bytes(b"wheel")
+            (root / "zsec-shield-0.1.2-windows-x86_64.zip").write_bytes(b"native")
+            (root / "zsec_shield-0.1.2-py3-none-any.whl").write_bytes(b"wheel")
             (root / "ignored.sha256").write_text("old", encoding="utf-8")
             (root / "notes.txt").write_text("notes", encoding="utf-8")
             output = root / "SHA256SUMS.txt"

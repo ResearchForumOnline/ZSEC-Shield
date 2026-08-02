@@ -88,7 +88,8 @@ python packaging/native_release.py build
 ```
 
 PyInstaller is not a cross-compiler. The build smoke-tests `--version` and the stable
-`status --json` bridge contract before creating anything under `dist/native`.
+`status --json` [bridge contract](docs/STATUS_CONTRACT.md) before creating anything
+under `dist/native`.
 
 ## Quick start
 
@@ -110,6 +111,8 @@ Inspect status and read-only inventory:
 zsec-shield status --json
 zsec-shield inventory --json
 ```
+
+Desktop integrations must follow the [fail-closed status contract](docs/STATUS_CONTRACT.md).
 
 The `scan` command is an alias for `check`.
 

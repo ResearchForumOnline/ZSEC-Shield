@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zsec-shield"
-version = "0.1.1"
+version = "0.1.2"
 description = "Deterministic, on-demand file scanning and signed security-rule feeds"
 readme = "README.md"
 requires-python = ">=3.11"

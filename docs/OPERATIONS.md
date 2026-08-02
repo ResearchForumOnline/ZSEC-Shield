@@ -12,6 +12,11 @@
    a new destination, and compare SHA-256.
 6. Pin a reviewed Ed25519 public key before testing feed update.
 
+When integrating `status --json`, apply the
+[desktop status bridge contract](STATUS_CONTRACT.md). A ready state requires the exact
+successful no-match outcome plus zero findings and zero errors. Never infer success
+from a timestamp and zero findings alone; incomplete and legacy scan states fail closed.
+
 ## Permissions
 
 Run with the least privilege that can read the intended paths. Do not elevate merely
