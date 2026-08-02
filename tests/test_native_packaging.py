@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -145,6 +146,20 @@ class NativePackagingTests(unittest.TestCase):
         self.assertIn("--draft", content)
         self.assertNotIn("pull_request_target", content)
         self.assertNotIn("codesign", content.casefold())
+
+    def test_release_workflow_pins_actions_and_attests_release_assets(self) -> None:
+        content = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(
+            encoding="utf-8"
+        )
+        action_references = re.findall(
+            r"^\s*- uses: [^@\s]+@([^\s#]+)", content, flags=re.MULTILINE
+        )
+        self.assertTrue(action_references)
+        self.assertTrue(all(re.fullmatch(r"[0-9a-f]{40}", ref) for ref in action_references))
+        self.assertIn("actions/attest-build-provenance@", content)
+        self.assertIn("attestations: write", content)
+        self.assertIn("id-token: write", content)
+        self.assertIn('subject-path: "release-assets/*"', content)
 
 
 if __name__ == "__main__":
