@@ -14,6 +14,16 @@ mypy src/zsec_shield
 python -m build
 ```
 
+For native packaging changes, also install the pinned build dependency and exercise
+the build on the current operating system:
+
+```bash
+python -m pip install -e ".[native]"
+ruff check packaging/native_release.py tests/test_native_packaging.py
+mypy packaging/native_release.py
+python packaging/native_release.py build
+```
+
 Add regression tests for Windows, macOS, and Linux behavior where relevant. Do not
 commit malware samples, the contiguous EICAR test string, secrets, private keys,
 runtime state, quarantine objects, or host reports.

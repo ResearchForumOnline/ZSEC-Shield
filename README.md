@@ -63,6 +63,33 @@ python3.11 -m venv .venv
 
 The runtime dependency is `cryptography`, used only for Ed25519 verification.
 
+## Native archives
+
+Versioned GitHub Releases can include self-contained native CLI archives for Windows,
+macOS, and Linux. These use an inspectable PyInstaller one-directory layout, not an
+installer or privileged service. Keep the executable beside its `_internal` directory.
+
+Each archive contains `NATIVE-MANIFEST.json`, per-file SHA-256 values, component and
+license metadata, the empty preview trust store, and operating documentation. Release
+assets include SHA-256 checksum files. See the
+[native distribution guide](docs/NATIVE_DISTRIBUTION.md) before downloading or
+redistributing an archive.
+
+The workflow does not generate signing keys or perform Authenticode, Apple Developer
+ID/notarization, or Linux package signing. A checksum verifies bytes, not publisher
+identity, and unsigned preview builds may trigger platform warnings. Follow local
+security policy; do not bypass operating-system protections merely to run the preview.
+
+Build an archive locally on its target operating system:
+
+```bash
+python -m pip install -e ".[native]"
+python packaging/native_release.py build
+```
+
+PyInstaller is not a cross-compiler. The build smoke-tests `--version` and the stable
+`status --json` bridge contract before creating anything under `dist/native`.
+
 ## Quick start
 
 Scan one file or directory:
@@ -177,10 +204,12 @@ python -m pytest
 ruff check src tests
 mypy src/zsec_shield
 python -m build
+python packaging/native_release.py build
 ```
 
 GitHub Actions tests Python 3.11 and 3.13 on Windows, macOS, and Linux, with a
-separate lint/build job. No publishing workflow is included.
+separate lint/build job. A version tag builds source and native archives, verifies
+their metadata and checksums, and creates a draft GitHub Release for human review.
 
 ## License
 
