@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import ModuleType
+from unittest.mock import patch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = PROJECT_ROOT / "packaging" / "native_release.py"
@@ -27,15 +28,37 @@ release = load_release_module()
 
 class NativePackagingTests(unittest.TestCase):
     def test_source_version_and_pyinstaller_pin_are_explicit(self) -> None:
-        self.assertEqual("0.1.0", release.project_version())
+        self.assertEqual("0.1.1", release.project_version())
         self.assertEqual("6.21.0", release.expected_pyinstaller_version())
 
     def test_release_tag_must_exactly_match_source_version(self) -> None:
-        self.assertEqual("0.1.0", release.verify_release_tag("v0.1.0"))
+        self.assertEqual("0.1.1", release.verify_release_tag("v0.1.1"))
         with self.assertRaises(release.ReleaseError):
-            release.verify_release_tag("v0.1.1")
+            release.verify_release_tag("v0.1.0")
         with self.assertRaises(release.ReleaseError):
-            release.verify_release_tag("preview-0.1.0")
+            release.verify_release_tag("preview-0.1.1")
+
+    def test_python_license_uses_checksum_pinned_vendored_fallback(self) -> None:
+        with TemporaryDirectory() as temporary:
+            missing = Path(temporary) / "missing-license"
+            source = release._resolve_python_license((missing,))
+        self.assertEqual(release.VENDORED_PYTHON_LICENSE, source)
+        self.assertEqual(
+            release.VENDORED_PYTHON_LICENSE_SHA256,
+            release.sha256_file(source),
+        )
+
+    def test_vendored_python_license_is_copied_into_bundle(self) -> None:
+        with TemporaryDirectory() as temporary:
+            bundle_root = Path(temporary)
+            with (
+                patch.object(release, "_runtime_python_license_candidates", return_value=()),
+                patch.object(release, "NOTICE_DISTRIBUTIONS", ()),
+            ):
+                components = release._copy_licenses(bundle_root)
+            copied = bundle_root / "LICENSES" / "Python" / "LICENSE.txt"
+            self.assertEqual(release.VENDORED_PYTHON_LICENSE.read_bytes(), copied.read_bytes())
+        self.assertEqual(["LICENSES/Python/LICENSE.txt"], components[0]["license_files"])
 
     def test_source_provenance_is_available_without_global_git_configuration(self) -> None:
         self.assertRegex(release._source_revision(), r"^[0-9a-f]{40}$")
@@ -72,8 +95,8 @@ class NativePackagingTests(unittest.TestCase):
     def test_combined_checksums_include_only_distribution_archives(self) -> None:
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
-            (root / "zsec-shield-0.1.0-windows-x86_64.zip").write_bytes(b"native")
-            (root / "zsec_shield-0.1.0-py3-none-any.whl").write_bytes(b"wheel")
+            (root / "zsec-shield-0.1.1-windows-x86_64.zip").write_bytes(b"native")
+            (root / "zsec_shield-0.1.1-py3-none-any.whl").write_bytes(b"wheel")
             (root / "ignored.sha256").write_text("old", encoding="utf-8")
             (root / "notes.txt").write_text("notes", encoding="utf-8")
             output = root / "SHA256SUMS.txt"
@@ -106,6 +129,7 @@ class NativePackagingTests(unittest.TestCase):
         content = (PROJECT_ROOT / "MANIFEST.in").read_text(encoding="utf-8")
         self.assertIn("recursive-include docs *.md", content)
         self.assertIn("recursive-include packaging *.json *.md *.py *.spec", content)
+        self.assertIn("include packaging/licenses/CPython-3.11-LICENSE.txt", content)
         self.assertIn("include SECURITY.md", content)
         self.assertNotIn("dist/", content)
         self.assertNotIn("build/", content)
