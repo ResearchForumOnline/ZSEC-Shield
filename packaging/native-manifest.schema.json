@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talktoai.org/zsec/schemas/native-distribution-v1.json",
+  "title": "ZSEC Shield native distribution manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "product",
+    "version",
+    "target",
+    "build",
+    "runtime_policy",
+    "entrypoint",
+    "layout",
+    "components",
+    "files"
+  ],
+  "properties": {
+    "schema": { "const": "zsec.shield.native-distribution.v1" },
+    "product": { "const": "ZSEC Shield" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "architecture"],
+      "properties": {
+        "os": { "enum": ["windows", "macos", "linux"] },
+        "architecture": { "enum": ["x86_64", "arm64"] }
+      }
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "built_at",
+        "python_version",
+        "pyinstaller_version",
+        "source_revision",
+        "source_tree_state",
+        "publisher_code_signing"
+      ],
+      "properties": {
+        "built_at": { "type": "string", "format": "date-time" },
+        "python_version": { "type": "string" },
+        "pyinstaller_version": { "type": "string" },
+        "source_revision": { "type": ["string", "null"] },
+        "source_tree_state": { "enum": ["clean", "modified", "unknown"] },
+        "publisher_code_signing": { "const": "not-performed-by-this-build" }
+      }
+    },
+    "runtime_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scanner_mode",
+        "real_time_protection",
+        "telemetry",
+        "bundled_trust_keys"
+      ],
+      "properties": {
+        "scanner_mode": { "const": "on-demand" },
+        "real_time_protection": { "const": false },
+        "telemetry": { "const": false },
+        "bundled_trust_keys": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "entrypoint": { "type": "string" },
+    "layout": { "const": "pyinstaller-onedir" },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "version", "role", "license_files"],
+        "properties": {
+          "name": { "type": "string" },
+          "version": { "type": "string" },
+          "role": { "type": "string" },
+          "license_files": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "type"],
+        "properties": {
+          "path": { "type": "string" },
+          "type": { "enum": ["file", "symlink"] },
+          "size": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "target": { "type": "string" }
+        }
+      }
+    }
+  }
+}

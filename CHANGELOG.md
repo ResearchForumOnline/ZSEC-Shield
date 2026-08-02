@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+Store-readiness packaging:
+
+- added inspectable PyInstaller one-directory builds for Windows, macOS, and Linux;
+- added native manifests, per-file and per-archive SHA-256 metadata, and license notices;
+- added executable smoke tests and a version-gated GitHub Actions release matrix;
+- release automation creates a draft for human review and performs no publisher signing.
+
 ## 0.1.0 - 2026-08-01
 
 Initial cross-platform MVP:

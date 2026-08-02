@@ -36,6 +36,7 @@ dev = [
   "pytest-cov>=5",
   "ruff>=0.6",
 ]
+native = ["pyinstaller==6.21.0"]
 
 [project.scripts]
 zsec-shield = "zsec_shield.cli:entrypoint"
@@ -44,6 +45,8 @@ zsec-shield = "zsec_shield.cli:entrypoint"
 Homepage = "https://talktoai.org/zsec/"
 Repository = "https://github.com/ResearchForumOnline/ZSEC-Shield"
 Issues = "https://github.com/ResearchForumOnline/ZSEC-Shield/issues"
+Releases = "https://github.com/ResearchForumOnline/ZSEC-Shield/releases"
+Security = "https://github.com/ResearchForumOnline/ZSEC-Shield/security/policy"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

@@ -1,0 +1,137 @@
+name: Native release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zsec-shield-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install validation dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Verify tag matches package version
+        if: github.ref_type == 'tag'
+        run: python packaging/native_release.py verify-tag
+      - name: Test
+        run: python -m pytest
+      - name: Lint
+        run: ruff check src tests packaging/native_release.py
+      - name: Type check
+        run: mypy src/zsec_shield packaging/native_release.py
+
+  source-distributions:
+    needs: validate
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install build frontend
+        run: python -m pip install build
+      - name: Build wheel and source archive
+        run: python -m build
+      - name: Write source-distribution checksums
+        run: >-
+          python packaging/native_release.py checksums dist
+          --output dist/SHA256SUMS-python.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-distributions
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/SHA256SUMS-python.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  native-distributions:
+    needs: validate
+    name: Native / ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows-x86_64
+            runner: windows-2022
+          - target: macos-native
+            runner: macos-14
+          - target: linux-x86_64
+            runner: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install native build dependencies
+        run: python -m pip install -e ".[native]"
+      - name: Build and smoke-test native archive
+        run: python packaging/native_release.py build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: native-${{ matrix.target }}
+          path: dist/native/*
+          if-no-files-found: error
+          retention-days: 14
+
+  draft-release:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: [source-distributions, native-distributions]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - uses: actions/download-artifact@v7
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Create combined checksums
+        run: >-
+          python packaging/native_release.py checksums release-assets
+          --output release-assets/SHA256SUMS.txt
+      - name: Create draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" release-assets/*
+          --draft --verify-tag --generate-notes
+          --title "ZSEC Shield $GITHUB_REF_NAME"
