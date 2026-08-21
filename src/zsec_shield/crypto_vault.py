@@ -227,13 +227,25 @@ def _input_blob(value: bytes) -> tuple[_DataBlob, ctypes.Array[ctypes.c_char]]:
     return blob, buffer
 
 
+def _windows_library(name: str) -> Any:
+    loader = getattr(ctypes, "windll", None)
+    if loader is None:
+        raise QuarantineError("Windows cryptography libraries are unavailable")
+    return getattr(loader, name)
+
+
+def _last_windows_error() -> int:
+    getter = getattr(ctypes, "get_last_error", None)
+    return int(getter()) if getter is not None else 0
+
+
 def _dpapi_protect(value: bytes) -> bytes:
     if os.name != "nt":
         raise QuarantineError("DPAPI is available only on Windows")
     input_blob, input_buffer = _input_blob(value)
     entropy_blob, entropy_buffer = _input_blob(DPAPI_ENTROPY)
     output_blob = _DataBlob()
-    crypt32 = ctypes.windll.crypt32
+    crypt32 = _windows_library("crypt32")
     success = crypt32.CryptProtectData(
         ctypes.byref(input_blob),
         "Zero Security device root",
@@ -245,7 +257,7 @@ def _dpapi_protect(value: bytes) -> bytes:
     )
     del input_buffer, entropy_buffer
     if not success:
-        error = ctypes.get_last_error()
+        error = _last_windows_error()
         raise QuarantineError(f"DPAPI protection failed with Windows error {error}")
     return _take_output_blob(output_blob)
 
@@ -257,7 +269,7 @@ def _dpapi_unprotect(value: bytes) -> bytes:
     entropy_blob, entropy_buffer = _input_blob(DPAPI_ENTROPY)
     output_blob = _DataBlob()
     description = ctypes.c_wchar_p()
-    crypt32 = ctypes.windll.crypt32
+    crypt32 = _windows_library("crypt32")
     success = crypt32.CryptUnprotectData(
         ctypes.byref(input_blob),
         ctypes.byref(description),
@@ -269,16 +281,16 @@ def _dpapi_unprotect(value: bytes) -> bytes:
     )
     del input_buffer, entropy_buffer
     if not success:
-        raise QuarantineError(f"DPAPI unseal failed with Windows error {ctypes.get_last_error()}")
+        raise QuarantineError(f"DPAPI unseal failed with Windows error {_last_windows_error()}")
     try:
         return _take_output_blob(output_blob)
     finally:
         if description:
-            ctypes.windll.kernel32.LocalFree(description)
+            _windows_library("kernel32").LocalFree(description)
 
 
 def _take_output_blob(blob: _DataBlob) -> bytes:
     try:
         return ctypes.string_at(blob.pbData, blob.cbData)
     finally:
-        ctypes.windll.kernel32.LocalFree(blob.pbData)
+        _windows_library("kernel32").LocalFree(blob.pbData)
