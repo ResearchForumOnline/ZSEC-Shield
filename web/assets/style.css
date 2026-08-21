@@ -515,7 +515,7 @@ code[data-linux-sha] {
   background-color: #101a2d;
   background-image:
     linear-gradient(145deg, rgb(7 16 31 / 15%), rgb(7 16 31 / 80%)),
-    url("./zero-security-hero.png"),
+    url("./zsec-family-hero-v2.png"),
     radial-gradient(circle at 68% 24%, rgb(19 107 255 / 55%), transparent 18rem),
     linear-gradient(145deg, #172a4d, #07101f 72%);
   background-position: center;
@@ -527,7 +527,7 @@ code[data-linux-sha] {
 .product-browser .hero-art {
   background-image:
     linear-gradient(145deg, rgb(7 16 31 / 10%), rgb(7 16 31 / 72%)),
-    url("./zero-browser-hero.png"),
+    url("./zsec-family-hero-v2.png"),
     radial-gradient(circle at 68% 24%, rgb(103 84 232 / 62%), transparent 18rem),
     linear-gradient(145deg, #2b245b, #07101f 72%);
 }

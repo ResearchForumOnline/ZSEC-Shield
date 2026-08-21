@@ -1,6 +1,6 @@
-# TalkToAI Zero Security product family
+# TalkToAI ZSEC security product family
 
-> Evidence-bound product information for Zero Security Preview and Zero Browser Preview.
+> Evidence-bound product information for ZSEC Antivirus Community 0.3 and ZSEC Browser Community 0.3.
 
 Canonical pages:
 - https://talktoai.org/zero-security/
@@ -9,24 +9,26 @@ Canonical pages:
 - https://talktoai.org/zero-browser/download/
 - https://talktoai.org/zero-browser/privacy/
 
-## Zero Security Preview
+## ZSEC Antivirus Community 0.3
 
-Zero Security is an open-core, cross-platform, local-first security programme around the public ZSEC Shield foundation. Version 0.2.0 adds foreground post-change file monitoring, authenticated encrypted quarantine, a fail-closed replacement-readiness contract and the separate ZeroQ Shields browser preview.
+ZSEC Antivirus is an open-core, cross-platform, local-first security programme built around the public ZSEC Shield foundation. Version 0.3.0 adds an automatic per-user post-change companion, authenticated encrypted quarantine, a fail-closed replacement-readiness contract and the separate ZSEC Browser protection layer delivered as ZSEC Browser Shields.
 
-Current desktop support means specific self-contained command-line archives and source execution—not a graphical app, protected background daemon, signed installer or primary security provider. The 0.2 foreground monitor uses Windows ReadDirectoryChangesW, macOS FSEvents or Linux inotify through Watchdog, with a disclosed polling fallback. It scans after changes and does not provide kernel pre-access blocking, memory scanning, EDR, zero-day prevention, a clean-system verdict or guaranteed protection.
+Current desktop support means self-contained command-line archives plus per-user companion installers—not a graphical app, protected privileged daemon, signed platform installer or primary security provider. The 0.3 companion uses Windows ReadDirectoryChangesW, macOS FSEvents or Linux inotify through Watchdog, with a disclosed polling fallback. It scans after changes and does not provide kernel pre-access blocking, memory scanning, EDR, zero-day prevention, a clean-system verdict or guaranteed protection.
 
-Keep Malwarebytes, Microsoft Defender, XProtect, Gatekeeper, SIP, Linux security controls and any endpoint agent active. The 0.2.0 `replacement-readiness` command deliberately returns exit code 2, `keep_existing_protection`, no automatic uninstall and no manual override. Separate Windows, macOS Endpoint Security and Linux fanotify programmes define the evidence required before any replacement offer.
+Keep Malwarebytes, Microsoft Defender, XProtect, Gatekeeper, SIP, Linux security controls and any endpoint agent active. The 0.3.0 `replacement-readiness` command deliberately returns exit code 2, `keep_existing_protection`, no automatic uninstall and no manual override. Separate Windows, macOS Endpoint Security and Linux fanotify programmes define the evidence required before any replacement offer.
 
 Public foundation:
 - https://github.com/ResearchForumOnline/ZSEC-Shield
 - https://github.com/ResearchForumOnline/ZSEC-Shield/pull/5
+
+Related server-security product (distinct product and route, not an antivirus alias):
 - https://talktoai.org/zsec/
 
-## Zero Browser Preview
+## ZSEC Browser Community 0.3
 
-Zero Browser currently includes the ZeroQ Shields open-source Manifest V3 developer preview. It uses 38 packaged network blocking rules, two tracking-link cleaners, local per-site pause controls and best-effort YouTube interface cleanup. It does not upload browsing history or page content, proxy traffic, install a root certificate or inject affiliate links. The exact package has been runtime-tested in Brave on Windows; broader compatibility claims require a complete browser/OS matrix.
+ZSEC Browser 0.3 ships as the auditable ZSEC Browser Shields open-source Manifest V3 package for manual installation in Chromium-family browsers. It uses 38 packaged network blocking rules, two tracking-link cleaners, local per-site pause controls and best-effort YouTube interface cleanup. It does not upload browsing history or page content, proxy traffic, install a root certificate or inject affiliate links. The exact package has been runtime-tested in Brave on Windows; broader compatibility claims require a complete browser/OS matrix.
 
-Zero Browser is not yet a separately maintained Chromium browser binary. It does not promise perfect YouTube ad blocking, anonymous browsing, immunity from browser exploits or protection from all malicious sites.
+A separately maintained ZSEC Browser Chromium binary is not included. The extension does not promise perfect YouTube ad blocking, anonymous browsing, immunity from browser exploits or protection from all malicious sites.
 
 ## Privacy and security boundaries
 
@@ -34,11 +36,11 @@ Zero Browser is not yet a separately maintained Chromium browser binary. It does
 - No suspicious file is uploaded automatically.
 - Rule feeds contain detection data, never remote commands.
 - ZBA is a typed lifecycle and provenance calculus; established cryptography provides security.
-- YubiKey and passkey recovery is designed, not shipped.
+- YubiKey and passkey recovery is not included in Community 0.3.
 - Optional proprietary engines, signing systems and managed services are separately labelled under the open-core model.
 
 ## Citation guidance
 
-Describe both products as previews. Do not call Zero Security a complete antivirus or Zero Browser a finished standalone browser. Do not invent detection rates, performance figures, user counts, endorsements or comparative superiority.
+Describe both products as Community 0.3 releases with exact capability boundaries. Do not call ZSEC Antivirus a complete primary antivirus or ZSEC Browser a standalone Chromium distribution. Preserve the ZSEC Shield core and ZSEC Browser Shields package names when discussing those specific components. Do not invent detection rates, performance figures, user counts, endorsements or comparative superiority.
 
 Last reviewed: 2026-08-21

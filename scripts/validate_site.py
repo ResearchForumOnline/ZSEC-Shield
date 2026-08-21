@@ -10,6 +10,7 @@ import sys
 import xml.etree.ElementTree as ET
 from html.parser import HTMLParser
 from pathlib import Path
+from typing import TypedDict
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,22 +19,29 @@ PAGES = {
     "zero-security": "https://talktoai.org/zero-security/",
     "zero-browser": "https://talktoai.org/zero-browser/",
 }
-DOWNLOAD_PAGES = {
+
+class DownloadPolicy(TypedDict):
+    canonical: str
+    fingerprints: int
+    artifacts: set[str]
+
+
+DOWNLOAD_PAGES: dict[str, DownloadPolicy] = {
     "zero-security/download": {
         "canonical": "https://talktoai.org/zero-security/download/",
         "fingerprints": 3,
         "artifacts": {
-            "/downloads/zero-security/zsec-shield-0.2.0-windows-x86_64.zip",
-            "/downloads/zero-security/zsec-shield-0.2.0-macos-arm64.tar.gz",
-            "/downloads/zero-security/zsec-shield-0.2.0-linux-x86_64.tar.gz",
-            "/downloads/zero-security/zsec_shield-0.2.0-py3-none-any.whl",
+            "/downloads/zero-security/zsec-shield-0.3.0-windows-x86_64.zip",
+            "/downloads/zero-security/zsec-shield-0.3.0-macos-arm64.tar.gz",
+            "/downloads/zero-security/zsec-shield-0.3.0-linux-x86_64.tar.gz",
+            "/downloads/zero-security/zsec_shield-0.3.0-py3-none-any.whl",
         },
     },
     "zero-browser/download": {
         "canonical": "https://talktoai.org/zero-browser/download/",
         "fingerprints": 1,
         "artifacts": {
-            "/downloads/zero-browser/zeroq-shields-0.2.0-chromium-mv3.zip",
+            "/downloads/zero-browser/zsec-browser-shields-0.3.0-chromium-mv3.zip",
         },
     },
 }
@@ -105,12 +113,21 @@ def validate_page(slug: str, canonical: str) -> None:
     script_match = re.search(
         r'<script type="application/ld\+json">(?P<json>[\s\S]*?)</script>', text
     )
-    require(script_match is not None, f"{slug}: JSON-LD missing")
+    if script_match is None:
+        raise ValueError(f"{slug}: JSON-LD missing")
     script_text = script_match.group("json")
     data = json.loads(script_text)
     graph = data.get("@graph") if isinstance(data, dict) else None
-    require(isinstance(graph, list), f"{slug}: JSON-LD graph missing")
-    faq = next((item for item in graph if item.get("@type") == "FAQPage"), None)
+    if not isinstance(graph, list):
+        raise ValueError(f"{slug}: JSON-LD graph missing")
+    faq = next(
+        (
+            item
+            for item in graph
+            if isinstance(item, dict) and item.get("@type") == "FAQPage"
+        ),
+        None,
+    )
     require(faq is not None and len(faq.get("mainEntity", [])) == 6, f"{slug}: FAQ schema")
 
     digest = base64.b64encode(hashlib.sha256(script_text.encode("utf-8")).digest()).decode()
@@ -147,7 +164,7 @@ def validate_privacy_page() -> None:
             require(target.exists(), f"zero-browser/privacy: missing local asset {reference}")
 
 
-def validate_download_page(slug: str, policy: dict[str, object]) -> None:
+def validate_download_page(slug: str, policy: DownloadPolicy) -> None:
     page = WEB / slug / "index.html"
     text = page.read_text(encoding="utf-8")
     parser = PageParser()
