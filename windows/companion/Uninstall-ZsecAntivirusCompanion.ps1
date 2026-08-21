@@ -56,7 +56,10 @@ function Stop-OwnedHeartbeatProcess {
     if ($null -eq $process) {
         return $false
     }
-    $updatedAt = [DateTimeOffset]::Parse([string]$health.updated_at).ToUniversalTime()
+    # ConvertFrom-Json returns a string in Windows PowerShell and a DateTime in
+    # PowerShell 7. Cast either representation directly so process ownership
+    # validation cannot become locale-dependent.
+    $updatedAt = ([DateTimeOffset]$health.updated_at).ToUniversalTime()
     $maximumAge = [double]$health.heartbeat_seconds * 3.0 + 15.0
     $age = ([DateTimeOffset]::UtcNow - $updatedAt).TotalSeconds
     if ($age -lt -5.0 -or $age -gt $maximumAge) {

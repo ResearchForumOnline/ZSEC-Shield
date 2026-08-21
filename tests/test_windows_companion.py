@@ -105,6 +105,14 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn("Remove-Item -LiteralPath $installRoot -Recurse", content)
         self.assertIn('(Join-Path $state "feed")', content)
         self.assertIn('(Join-Path $state "quarantine")', content)
+        self.assertIn(
+            '$updatedAt = ([DateTimeOffset]$health.updated_at).ToUniversalTime()',
+            content,
+        )
+        self.assertNotIn(
+            '[DateTimeOffset]::Parse([string]$health.updated_at)',
+            content,
+        )
         self.assertNotIn("Win32_Product", content)
         self.assertNotIn("msiexec", content.casefold())
         self.assertNotIn("Remove-Item -LiteralPath $RunKeyPath", content)
