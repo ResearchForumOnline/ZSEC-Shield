@@ -67,7 +67,7 @@
             <a class="button" href="#downloads">Choose your platform <span aria-hidden="true">↓</span></a>
             <a class="button button-secondary" href="#protect">See the protection command</a>
           </div>
-          <p class="microcopy"><strong>Install boundary:</strong> these unsigned website evaluation packages are built from draft pull request #5 and detect after filesystem changes rather than at the kernel access boundary. The newer Windows graphical client is source/local-evidence only at immutable revision <code>394d97b</code>; its public native download remains gated by publisher signing and release qualification. Verify exact SHA-256 values and keep Malwarebytes, Microsoft Defender or native platform controls active.</p>
+          <p class="microcopy"><strong>Install boundary:</strong> these are unsigned evaluation packages from draft branches and detect after filesystem changes rather than at the kernel access boundary. The Windows graphical 0.3.1 evaluation is built from immutable revision <code>a40c484</code>; it is not publisher-signed, independently efficacy-tested or qualified as a primary antivirus. Verify exact SHA-256 values and keep Malwarebytes, Microsoft Defender or native platform controls active.</p>
         </div>
 
         <div class="hero-art" role="img" aria-label="ZSEC Antivirus foreground protection status panel">
@@ -100,14 +100,16 @@
     <section class="section section-muted" id="windows-desktop" aria-labelledby="windows-desktop-title">
       <div class="container">
         <div class="section-head">
-          <div><p class="section-label">Windows graphical client</p><h2 id="windows-desktop-title">A full local dashboard, with public distribution still gated.</h2></div>
-          <p>The installed Community 0.3 client exposes overview, scans, automatic monitoring, encrypted quarantine, signed feeds, reports, evidence-backed health, security/YubiKey status, replacement blockers and settings in one interface.</p>
+          <div><p class="section-label">Windows graphical client</p><h2 id="windows-desktop-title">A full local dashboard with an inspectable evaluation package.</h2></div>
+          <p>The Community 0.3.1 client exposes overview, scans, automatic monitoring, encrypted quarantine, signed feeds, reports, evidence-backed health, security/YubiKey status, replacement blockers and settings in one interface.</p>
         </div>
         <div class="split">
-          <article class="panel panel-positive"><h3>Implemented and locally accepted</h3><ul><li>Modern dark protection centre with persistent navigation, rounded evidence cards, animated operation status and reduced-motion support.</li><li>Separate packaged scanner engine with strict JSON contracts and no command shell.</li><li>Manifest hash verification, versioned per-user install, Desktop and Start-menu shortcuts.</li><li>Existing Malwarebytes and Windows Security state preserved during install and test.</li></ul></article>
-          <article class="panel panel-private"><h3>Public native release remains gated</h3><ul><li>No publisher Authenticode signature or trusted timestamp.</li><li>No protected service, kernel pre-access mediation or Windows Security provider registration.</li><li>No independently validated efficacy or false-positive benchmark.</li><li>No automatic removal of an existing antivirus provider.</li></ul></article>
+          <article class="panel panel-positive"><h3>Implemented and runtime accepted</h3><ul><li>Modern dark protection centre with persistent navigation, rounded evidence cards, animated operation status and reduced-motion support.</li><li>Path-free bounded exact-rule worker with independent broker SHA-256 verification and fail-closed protocol outcomes.</li><li>Manifest/per-file hash verification, versioned per-user install, Desktop and Start-menu shortcuts.</li><li>Existing Malwarebytes and Windows Security state preserved during install and test.</li></ul></article>
+          <article class="panel panel-private"><h3>Primary-provider release remains gated</h3><ul><li>No publisher Authenticode signature or trusted timestamp.</li><li>The exact-rule worker is same-user process separation, not an AppContainer hostile-parser sandbox.</li><li>No protected service, kernel pre-access mediation or Windows Security provider registration.</li><li>No independently validated efficacy or false-positive benchmark and no provider removal path.</li></ul></article>
         </div>
-        <p><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/394d97b028fde09a4f35edc6b746236fc33dd908/apps/windows-ui">Inspect the immutable Windows GUI source</a> and <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/394d97b028fde09a4f35edc6b746236fc33dd908/windows/desktop">the hash-verifying desktop installer scripts</a>.</p>
+        <div class="cta-actions"><a class="button" href="/downloads/zero-security/zsec-antivirus-desktop-0.3.1-windows-x86_64.zip" download>Download Windows desktop 0.3.1 <span aria-hidden="true">↓</span></a><a class="button button-secondary" href="/downloads/zero-security/zsec-antivirus-desktop-0.3.1-windows-x86_64.zip.sha256" download>Checksum</a></div>
+        <p><strong>SHA-256:</strong> <code>4844fb829daaca0313c0a6e97845c5bf63c11f9434272dec4603bc7bfb0cb70b</code></p>
+        <p><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/a40c4845ae2f37796355fd584bfe2dfbf2df3947/apps/windows-ui">Inspect the immutable Windows GUI source</a>, <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/blob/a40c4845ae2f37796355fd584bfe2dfbf2df3947/docs/EXACT_RULE_WORKER.md">the exact worker boundary</a> and <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/a40c4845ae2f37796355fd584bfe2dfbf2df3947/windows/desktop">the hash-verifying installer scripts</a>.</p>
       </div>
     </section>
 
@@ -213,7 +215,7 @@
       <div><p class="footer-title">Download</p><ul class="footer-links"><li><a href="#downloads">Platform packages</a></li><li><a href="#install">Verification and install</a></li><li><a href="#protect">Protection command</a></li></ul></div>
       <div><p class="footer-title">Project</p><ul class="footer-links"><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/2e46d12c345e853282af97214b35b3c3badaea86">Immutable 0.3 source</a></li><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield">GitHub repository</a></li><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/security/policy">Report a vulnerability</a></li><li><a href="../../zero-browser/">ZSEC Browser</a></li></ul></div>
     </div>
-    <div class="container footer-bottom"><p>© 2026 TalkToAI. ZSEC Antivirus Community 0.3.</p><p>Last reviewed <time datetime="2026-08-21">21 August 2026</time>.</p></div>
+    <div class="container footer-bottom"><p>© 2026 TalkToAI. ZSEC Antivirus Community 0.3.</p><p>Last reviewed <time datetime="2026-08-22">22 August 2026</time>.</p></div>
   </footer>
 </body>
 </html>
