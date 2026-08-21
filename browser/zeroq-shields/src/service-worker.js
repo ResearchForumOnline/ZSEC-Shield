@@ -6,6 +6,7 @@ import {
   normalizeSettings,
   pauseRuleIds
 } from "./policy.js";
+import { buildHighRiskRulesForSettings, highRiskRuleIds } from "./high-risk-browsing.js";
 
 const HEALTH_KEY = "runtimeHealth";
 const RULESET_IDS = Object.freeze(["privacy_rules", "link_cleanup"]);
@@ -47,8 +48,11 @@ async function writeSettings(settings) {
       disableRulesetIds: normalized.protectionEnabled ? [] : [...RULESET_IDS]
     });
     await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: pauseRuleIds(),
-      addRules: buildPauseRules(normalized.pausedSites)
+      removeRuleIds: [...pauseRuleIds(), ...highRiskRuleIds()],
+      addRules: [
+        ...buildPauseRules(normalized.protectionEnabled ? normalized.pausedSites : []),
+        ...buildHighRiskRulesForSettings(normalized)
+      ]
     });
     await updateBadge(normalized);
     await recordRuntimeHealth(true);
@@ -59,10 +63,11 @@ async function writeSettings(settings) {
 }
 
 async function updateBadge(settings) {
-  const text = settings.protectionEnabled ? "ON" : "OFF";
+  const highRiskActive = settings.protectionEnabled && settings.highRiskMode;
+  const text = highRiskActive ? "HIGH" : settings.protectionEnabled ? "ON" : "OFF";
   await chrome.action.setBadgeText({ text });
   await chrome.action.setBadgeBackgroundColor({
-    color: settings.protectionEnabled ? "#00a77a" : "#68727d"
+    color: highRiskActive ? "#b54708" : settings.protectionEnabled ? "#00a77a" : "#68727d"
   });
 }
 
@@ -108,6 +113,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     if (message.type === "setYoutubeCleanup") {
       settings.youtubeCleanup = message.enabled === true;
+      return { ok: true, settings: await writeSettings(settings) };
+    }
+    if (message.type === "setHighRiskMode") {
+      settings.highRiskMode = message.enabled === true;
       return { ok: true, settings: await writeSettings(settings) };
     }
     if (message.type === "setSitePaused") {

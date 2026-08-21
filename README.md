@@ -92,14 +92,24 @@ used the `ZME1` name.
 The open-source extension lives in
 [`browser/zeroq-shields`](browser/zeroq-shields). It provides 38 packaged local
 network blockers, two tracking-link cleaners, a per-site pause switch, and
-best-effort YouTube skip/nuisance cleanup. It has no analytics endpoint, remote
-code, TLS interception, replacement ads, or affiliate rewriting.
+best-effort YouTube skip/nuisance cleanup. Community 0.4 also adds an optional
+High-Risk Browsing profile: two fixed local rules block top-level plaintext HTTP
+navigation and third-party scripts, subframes, objects, and WebSockets. It is off
+by default, may materially break sites, and is exposure reduction rather than
+spyware detection or zero-day immunity. The extension has no analytics endpoint,
+remote code, TLS interception, replacement ads, or affiliate rewriting.
 
 ```powershell
 cd browser\zeroq-shields
 npm test
 npm run validate
+npm run test:runtime
 ```
+
+The runtime test uses an isolated temporary Chromium profile and local-only test
+servers; it never opens the normal user profile. See the
+[bounded mercenary-spyware defence analysis](docs/MERCENARY_SPYWARE_DEFENCE.md)
+for the exact enforced decision points and non-claims.
 
 The extension is a working protection layer, not a separately maintained Chromium binary.
 The canonical product pages are

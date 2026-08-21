@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "ZSEC Browser Shields",
   "short_name": "ZSEC Shields",
-  "version": "0.3.0",
-  "description": "Local ad and tracker filtering, tracking-link cleanup, per-site controls and best-effort YouTube assistance.",
+  "version": "0.4.0",
+  "description": "Local filtering, link cleanup, per-site controls and an opt-in high-risk browsing profile.",
   "minimum_chrome_version": "120",
   "permissions": [
     "activeTab",

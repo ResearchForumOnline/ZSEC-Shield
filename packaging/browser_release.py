@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 EXTENSION = ROOT / "browser" / "zeroq-shields"
 INCLUDE = (
+    "MERCENARY_SPYWARE_DEFENCE.md",
     "manifest.json",
     "PRIVACY.md",
     "README.md",
@@ -23,10 +24,17 @@ INCLUDE = (
     "rules/link-cleaning.json",
     "rules/privacy.json",
     "src/policy.js",
+    "src/high-risk-browsing.js",
     "src/service-worker.js",
     "src/youtube-cleanup.js",
 )
 ZIP_TIMESTAMP = (2026, 1, 1, 0, 0, 0)
+
+
+def release_input(name: str) -> Path:
+    if name == "MERCENARY_SPYWARE_DEFENCE.md":
+        return ROOT / "docs" / name
+    return EXTENSION / name
 
 
 def sha256(path: Path) -> str:
@@ -48,7 +56,14 @@ def source_revision() -> tuple[str | None, bool | None]:
         ).stdout.strip()
         dirty = bool(
             subprocess.run(
-                ["git", "status", "--porcelain", "--", "browser/zeroq-shields"],
+                [
+                    "git",
+                    "status",
+                    "--porcelain",
+                    "--",
+                    "browser/zeroq-shields",
+                    "docs/MERCENARY_SPYWARE_DEFENCE.md",
+                ],
                 cwd=ROOT,
                 check=True,
                 capture_output=True,
@@ -66,7 +81,7 @@ def build(output_dir: Path) -> tuple[Path, Path, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     archive = output_dir / f"zsec-browser-shields-{version}-chromium-mv3.zip"
 
-    missing = [name for name in INCLUDE if not (EXTENSION / name).is_file()]
+    missing = [name for name in INCLUDE if not release_input(name).is_file()]
     if missing:
         raise FileNotFoundError(f"extension release inputs missing: {', '.join(missing)}")
 
@@ -75,7 +90,7 @@ def build(output_dir: Path) -> tuple[Path, Path, Path]:
             info = zipfile.ZipInfo(name, ZIP_TIMESTAMP)
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o100644 << 16
-            bundle.writestr(info, (EXTENSION / name).read_bytes(), compresslevel=9)
+            bundle.writestr(info, release_input(name).read_bytes(), compresslevel=9)
 
     digest = sha256(archive)
     checksum = archive.with_suffix(archive.suffix + ".sha256")

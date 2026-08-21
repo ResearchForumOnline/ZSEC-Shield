@@ -1,5 +1,6 @@
 export const DEFAULT_SETTINGS = Object.freeze({
   protectionEnabled: true,
+  highRiskMode: false,
   youtubeCleanup: true,
   pausedSites: []
 });
@@ -47,6 +48,7 @@ export function normalizeSettings(value) {
     : [];
   return {
     protectionEnabled: source.protectionEnabled !== false,
+    highRiskMode: source.highRiskMode === true,
     youtubeCleanup: source.youtubeCleanup !== false,
     pausedSites: pausedSites.slice(0, 200)
   };

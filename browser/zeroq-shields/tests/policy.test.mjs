@@ -19,14 +19,20 @@ test("domains and URLs are normalized without accepting privileged schemes", () 
 test("settings reject malformed domains and deduplicate pauses", () => {
   const settings = normalizeSettings({
     protectionEnabled: false,
+    highRiskMode: true,
     youtubeCleanup: true,
     pausedSites: ["B.example", "b.example", "invalid", "a.example"]
   });
   assert.deepEqual(settings, {
     protectionEnabled: false,
+    highRiskMode: true,
     youtubeCleanup: true,
     pausedSites: ["a.example", "b.example"]
   });
+});
+
+test("high-risk mode defaults off", () => {
+  assert.equal(normalizeSettings({}).highRiskMode, false);
 });
 
 test("pause rules are bounded, deterministic allow rules", () => {
