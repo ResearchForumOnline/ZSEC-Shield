@@ -5,20 +5,24 @@
 Canonical pages:
 - https://talktoai.org/zero-security/
 - https://talktoai.org/zero-browser/
+- https://talktoai.org/zero-browser/privacy/
 
 ## Zero Security Preview
 
-Zero Security is an open-core, full Windows antivirus programme in active development around the public ZSEC Shield foundation. The current public preview provides deterministic on-demand SHA-256 and exact-byte checks, signed data-only rule verification, structured reports and automatic authenticated encrypted quarantine.
+Zero Security is an open-core, cross-platform, local-first on-demand security programme around the public ZSEC Shield foundation. The public v0.1.2 prerelease is the earlier scanner/feed/status release. Version 0.2.0 is an unreleased development candidate in draft pull request 5; it adds authenticated encrypted quarantine, the ZeroQ Shields preview and a fail-closed replacement-readiness contract.
 
-Zero Security is not yet a registered replacement antivirus. It does not yet claim real-time filesystem protection, memory scanning, EDR, zero-day prevention, a clean-system verdict or guaranteed protection. The currently registered antivirus should remain active until the full Windows integration, signing, efficacy, Microsoft onboarding and cutover gates pass.
+Current desktop support means specific self-contained command-line archives and source execution—not a graphical app, background daemon, signed installer or primary security provider. Zero Security does not yet claim real-time filesystem protection, memory scanning, EDR, zero-day prevention, a clean-system verdict or guaranteed protection on Windows, macOS or Linux.
+
+Keep Malwarebytes, Microsoft Defender, XProtect, Gatekeeper, SIP, Linux security controls and any endpoint agent active. The 0.2.0 `replacement-readiness` command deliberately returns exit code 2, `keep_existing_protection`, no automatic uninstall and no manual override. Separate Windows, macOS Endpoint Security and Linux fanotify programmes define the evidence required before any replacement offer.
 
 Public foundation:
 - https://github.com/ResearchForumOnline/ZSEC-Shield
+- https://github.com/ResearchForumOnline/ZSEC-Shield/pull/5
 - https://talktoai.org/zsec/
 
 ## Zero Browser Preview
 
-Zero Browser currently means an open-source Manifest V3 privacy and security extension preview. It uses local declarative ad and tracker rules and best-effort interface cleanup. It does not upload browsing history or page content, proxy traffic, install a root certificate or inject affiliate links.
+Zero Browser currently means the unreleased ZeroQ Shields open-source Manifest V3 privacy-extension preview in draft pull request 5. It uses 16 packaged local ad and tracker rules and best-effort interface cleanup. It does not upload browsing history or page content, proxy traffic, install a root certificate or inject affiliate links. Real Chrome, Edge and Brave compatibility claims require a browser runtime matrix that has not yet been completed.
 
 Zero Browser is not yet a separately maintained Chromium browser binary. It does not promise perfect YouTube ad blocking, anonymous browsing, immunity from browser exploits or protection from all malicious sites.
 

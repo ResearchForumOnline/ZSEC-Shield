@@ -7,7 +7,7 @@ gates; it does not claim real-time antivirus certification.
 
 | Product | Current role | Does not currently claim |
 | --- | --- | --- |
-| Zero Security | Product umbrella and full replacement-antivirus programme | Replacement protection in the current preview build |
+| Zero Security | Cross-platform desktop security umbrella and on-demand preview | Background or replacement protection on any platform |
 | ZSEC Shield | Deterministic, on-demand scanner and encrypted quarantine core | Kernel interception, memory scanning, EDR, or zero-day prevention |
 | Zero Browser | Chromium privacy/security extension preview | A separately maintained Chromium binary or complete ad blocking on every site |
 
@@ -17,6 +17,9 @@ Ordinary quarantine protection is automatic:
 
 1. A random device root key is created once.
 2. On Windows it is sealed with CurrentUser DPAPI before being written to disk.
+   The current macOS/Linux filesystem-key profile is explicitly preview-only;
+   production requires a Keychain-backed macOS profile and an approved,
+   recoverable Linux key-custody profile.
 3. Every quarantined object receives a fresh random AES-256 content key.
 4. The content key is wrapped with a key derived from the device root and a
    per-entry salt.
@@ -52,13 +55,22 @@ Unprivileged, bounded scanner workers
     +-- encrypted quarantine
 ```
 
-The public preview stays on demand and coexists with the currently registered
-antivirus. The destination is a genuine replacement product, not a permanent
-companion: a Microsoft-supported FltMgr minifilter, protected user-mode service,
-x86/x64 AMSI providers, ELAM, approved Windows Security/MVI onboarding, signed
-drivers, compatibility testing, staged updates, rollback drills, and independent
-efficacy evidence. The executable programme and cutover gates are defined in
-`FULL_ANTIVIRUS_PROGRAM.md`.
+The public preview stays on demand and coexists with current protection. Shared
+scanner, evidence, feed, quarantine-envelope, updater-policy, and UI concepts sit
+above three separately released enforcement planes:
+
+| Platform | Enforcement plane | Native trust and delivery plane |
+| --- | --- | --- |
+| Windows | Thin FltMgr minifilter, protected broker/workers, x86/x64 AMSI and ELAM | Authenticode/Microsoft driver signing, approved Windows Security/MVI integration |
+| macOS | Deadline-safe Endpoint Security system extension plus sandboxed XPC workers | Apple entitlement, user/MDM consent, Keychain, Developer ID, Hardened Runtime and notarization |
+| Linux | Minimal fanotify broker, unprivileged daemon/workers and explicit mount coverage | systemd plus SELinux/AppArmor confinement and signed distro-scoped DEB/RPM repositories |
+
+None of these enforcement planes ships in the current CLI preview. Their
+executable and cutover gates are defined in
+`FULL_ANTIVIRUS_PROGRAM.md`, `MACOS_DESKTOP_PROGRAM.md`, and
+`LINUX_DESKTOP_PROGRAM.md`. The shared
+`replacement-readiness` contract remains non-successful until the exact platform
+candidate passes its programme and common release gates.
 
 ## Browser layers
 

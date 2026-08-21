@@ -7,24 +7,54 @@ import {
   pauseRuleIds
 } from "./policy.js";
 
+const HEALTH_KEY = "runtimeHealth";
+
+async function readRuntimeHealth() {
+  const stored = await chrome.storage.local.get(HEALTH_KEY);
+  const health = stored[HEALTH_KEY];
+  return health && typeof health === "object" ? health : { ok: true, error: null };
+}
+
+async function recordRuntimeHealth(ok, error = null) {
+  const health = {
+    ok,
+    error: ok ? null : "Local filtering initialization failed",
+    recordedAt: new Date().toISOString()
+  };
+  await chrome.storage.local.set({ [HEALTH_KEY]: health });
+  if (!ok) {
+    await Promise.allSettled([
+      chrome.action.setBadgeText({ text: "!" }),
+      chrome.action.setBadgeBackgroundColor({ color: "#b42318" })
+    ]);
+  }
+  if (error) throw error;
+  return health;
+}
+
 async function readSettings() {
   const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);
   return normalizeSettings(stored);
 }
 
 async function writeSettings(settings) {
-  const normalized = normalizeSettings(settings);
-  await chrome.storage.local.set(normalized);
-  await chrome.declarativeNetRequest.updateEnabledRulesets({
-    enableRulesetIds: normalized.protectionEnabled ? ["privacy_rules"] : [],
-    disableRulesetIds: normalized.protectionEnabled ? [] : ["privacy_rules"]
-  });
-  await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: pauseRuleIds(),
-    addRules: buildPauseRules(normalized.pausedSites)
-  });
-  await updateBadge(normalized);
-  return normalized;
+  try {
+    const normalized = normalizeSettings(settings);
+    await chrome.storage.local.set(normalized);
+    await chrome.declarativeNetRequest.updateEnabledRulesets({
+      enableRulesetIds: normalized.protectionEnabled ? ["privacy_rules"] : [],
+      disableRulesetIds: normalized.protectionEnabled ? [] : ["privacy_rules"]
+    });
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: pauseRuleIds(),
+      addRules: buildPauseRules(normalized.pausedSites)
+    });
+    await updateBadge(normalized);
+    await recordRuntimeHealth(true);
+    return normalized;
+  } catch (error) {
+    return recordRuntimeHealth(false, error);
+  }
 }
 
 async function updateBadge(settings) {
@@ -35,12 +65,24 @@ async function updateBadge(settings) {
   });
 }
 
+async function initialiseRules() {
+  try {
+    await writeSettings(await readSettings());
+  } catch (error) {
+    try {
+      await recordRuntimeHealth(false);
+    } catch (healthError) {
+      console.error("ZeroQ runtime health could not be persisted", healthError, error);
+    }
+  }
+}
+
 chrome.runtime.onInstalled.addListener(() => {
-  readSettings().then(writeSettings).catch(() => undefined);
+  void initialiseRules();
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  readSettings().then(writeSettings).catch(() => undefined);
+  void initialiseRules();
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -54,6 +96,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return {
         ok: true,
         settings,
+        health: await readRuntimeHealth(),
         domain,
         sitePaused: domain ? settings.pausedSites.includes(domain) : false
       };

@@ -3,7 +3,7 @@
   "name": "ZeroQ Shields Preview",
   "short_name": "ZeroQ Shields",
   "version": "0.1.0",
-  "description": "Local ad, tracker, nuisance and best-effort YouTube protection from Zero Browser.",
+  "description": "Local ad and tracker rule filtering with best-effort YouTube cleanup; not full browser security.",
   "minimum_chrome_version": "120",
   "permissions": [
     "activeTab",

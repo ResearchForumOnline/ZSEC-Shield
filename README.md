@@ -2,7 +2,8 @@
 
 ![Zero Security launch artwork](assets/brand/zero-security-hero.png)
 
-**Zero Security is being engineered as a proper replacement Windows antivirus.**
+**Zero Security is a cross-platform on-demand security preview and an engineering
+programme for proper supported Windows, macOS, and Linux antivirus editions.**
 This repository contains its already working, auditable ZSEC Shield engine and
 the next production foundations: signed data-only protection feeds, automatic
 authenticated encrypted quarantine, ZBA-bound provenance, and the ZeroQ Shields
@@ -13,13 +14,15 @@ It hashes regular files with SHA-256, applies exact byte and digest rules, verif
 Ed25519-signed data-only rule feeds, produces structured JSON, and can move an
 explicitly selected match into recoverable encrypted quarantine.
 
-The current tagged build is still an on-demand preview, not yet a registered
-replacement antivirus. It has no production minifilter, AMSI provider, ELAM
-driver, protected service, approved Windows Security registration, or independent
-efficacy certification. Those are explicit engineering and release gates, not
-features claimed by a mock dashboard. See the
-[full antivirus programme](docs/FULL_ANTIVIRUS_PROGRAM.md) and
-[Windows safety boundary](windows/README.md).
+The current tagged build is still an on-demand preview, not a replacement
+antivirus on any platform. It has no Windows minifilter/AMSI/ELAM stack, macOS
+Endpoint Security system extension, Linux fanotify broker, production
+platform-keychain profile, publisher-signed installer, or independent efficacy
+certification. Those are explicit engineering and release gates, not features
+claimed by a mock dashboard. See the [Windows programme](docs/FULL_ANTIVIRUS_PROGRAM.md),
+[macOS programme](docs/MACOS_DESKTOP_PROGRAM.md),
+[Linux programme](docs/LINUX_DESKTOP_PROGRAM.md), and machine-readable
+[replacement-readiness contract](docs/REPLACEMENT_READINESS.md).
 
 ## What is real now, and what comes next
 
@@ -28,14 +31,14 @@ features claimed by a mock dashboard. See the
 | Scan engine | Streaming SHA-256, exact byte/digest rules, EICAR wiring test, deterministic JSON | Sandboxed PE/script/document/archive engines, locked malware and cleanware evaluation |
 | Quarantine | Per-object AES-256-GCM, automatic Windows DPAPI key sealing, authenticated ZBA metadata, tamper-fail restore | Windows service key isolation, TPM/CNG root, crash and recovery certification |
 | Updates | Strict Ed25519 signed data-only feed with expiry and rollback checks | Authenticode plus threshold TUF metadata, staged binary/rule/driver rollback |
-| Real time | Not installed or claimed | Microsoft-assigned FltMgr minifilter, bounded service verdicts, HLK/HVCI/Verifier |
-| Scripts/boot | Not installed or claimed | x86/x64 AMSI providers, ELAM, protected antimalware service |
-| Windows status | Read-only inventory | Approved WSC/MVI onboarding and independently verified active/current state |
+| Real time | Not installed or claimed | Windows FltMgr/AMSI/ELAM; macOS Endpoint Security; Linux fanotify—with platform-specific deadline and failure tests |
+| Platform trust | Read-only inventory | Windows WSC/MVI; Apple entitlement, Developer ID and notarization; signed DEB/RPM repositories and enforced Linux service confinement |
 | Browser | Testable MV3 ZeroQ Shields extension | Maintained Chromium build, upstream security cadence, signed updater and browser regression fleet |
 
-Your existing antivirus should remain active while these gates are developed and
-tested in disposable VMs. No placeholder driver, always-clean AMSI provider, or
-fake Security Center registration belongs on a real machine.
+Your existing antivirus and native operating-system protections should remain
+active while these gates are developed in isolated environments and tested on
+dedicated pilot hardware. No placeholder driver/provider, fake registration,
+unsigned privileged package, or security-control bypass belongs on a real machine.
 
 ## Security boundaries
 
@@ -48,7 +51,8 @@ fake Security Center registration belongs on a real machine.
 - Quarantine is disabled unless `--quarantine` is present.
 - New quarantine objects use a fresh random AES-256 key, AES-GCM authentication,
   an automatically DPAPI-sealed device root on Windows, and a MAC over operational
-  metadata. No routine password prompt is required.
+  metadata. The macOS and Linux filesystem-key fallback remains a preview and is
+  not production platform key protection. No routine password prompt is required.
 - Restore never overwrites an existing destination, and the verified recovery
   object is retained after restore.
 - Feed signatures, schemas, timestamps, key status, sequence numbers, and payload
@@ -96,15 +100,19 @@ The canonical product pages are
 
 ## Platform scope
 
-The scanning core uses Python and standard filesystem calls on:
+The same public scanner, feed, evidence, and encrypted-container core runs on all
+three desktop families. Production enforcement and key custody must use each
+operating system's supported security architecture:
 
-- Windows 10 and 11;
-- currently supported macOS releases;
-- mainstream Linux distributions.
+| Desktop | Current public build | Production programme—not shipped |
+| --- | --- | --- |
+| Windows 10/11 | On-demand scanner, read-only inventory, DPAPI-backed preview quarantine | FltMgr minifilter, protected service, x86/x64 AMSI, ELAM, approved WSC/MVI integration |
+| macOS | On-demand scanner and read-only inventory; filesystem key root is preview-only | Universal 2 app, Endpoint Security system extension, Keychain root, Developer ID, Hardened Runtime and notarization |
+| Linux | On-demand scanner and read-only inventory; filesystem key root is preview-only | Narrow distro/kernel matrix, fanotify broker, confined daemon/workers, signed DEB/RPM packages and repositories |
 
-Inventory adapters are read-only. They identify basic OS and runtime context but do
-not claim that patches, Microsoft Defender, XProtect, package databases, or security
-controls are healthy.
+Inventory adapters identify only basic OS/runtime context. They do not claim that
+patches, Microsoft Defender, XProtect, Gatekeeper, SIP, packages, SELinux,
+AppArmor, or another antivirus are healthy.
 
 ## Install for evaluation
 
@@ -123,8 +131,11 @@ On macOS or Linux:
 python3.11 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
 .venv/bin/python -m pip install -e .
-.venv/bin/zsec-shield --version
+.venv/bin/zero-security --version
 ```
+
+`zero-security` is the product command. `zsec-shield` remains a compatible alias
+for existing scripts.
 
 The runtime dependency is `cryptography`, used for Ed25519 verification,
 AES-256-GCM quarantine, and HKDF key separation.
@@ -153,9 +164,9 @@ python -m pip install -e ".[native]"
 python packaging/native_release.py build
 ```
 
-PyInstaller is not a cross-compiler. The build smoke-tests `--version` and the stable
-`status --json` [bridge contract](docs/STATUS_CONTRACT.md) before creating anything
-under `dist/native`.
+PyInstaller is not a cross-compiler. The build smoke-tests `--version`, the stable
+`status --json` [bridge contract](docs/STATUS_CONTRACT.md), and the intentionally
+non-successful replacement guard before creating anything under `dist/native`.
 
 ## Quick start
 
@@ -177,6 +188,19 @@ Inspect status and read-only inventory:
 zsec-shield status --json
 zsec-shield inventory --json
 ```
+
+Prove that the preview must keep the current antivirus active:
+
+```bash
+zero-security replacement-readiness --json
+zero-security replacement-readiness --platform windows --json
+zero-security replacement-readiness --platform macos --json
+zero-security replacement-readiness --platform linux --json
+```
+
+The guard returns `eligible_for_primary_replacement: false`, disables automatic
+and manual overrides, and exits `2` on the current release. It does not uninstall,
+disable, reconfigure, or add exclusions to any protection product.
 
 Desktop integrations must follow the [fail-closed status contract](docs/STATUS_CONTRACT.md).
 
@@ -263,7 +287,7 @@ The state root is excluded automatically when it lies beneath a requested scan r
 | --- | --- |
 | `0` | Scan completed with no configured rule match, or diagnostic/update command succeeded. |
 | `1` | One or more configured rules matched and the scan otherwise completed. |
-| `2` | Incomplete/failed operation: unreadable or changing file, invalid feed, unsafe restore, or other operational error. |
+| `2` | Incomplete/blocked operation: unreadable or changing file, invalid feed, unsafe restore, or replacement not authorized. |
 | `130` | Interrupted by the operator. |
 
 A `0` is deliberately phrased as “no configured rule matches,” never “clean.”

@@ -39,6 +39,11 @@ DOCUMENTS: tuple[tuple[Path, str], ...] = (
     (PROJECT_ROOT / "docs" / "FEED_FORMAT.md", "FEED_FORMAT.md"),
     (PROJECT_ROOT / "docs" / "OPERATIONS.md", "OPERATIONS.md"),
     (PROJECT_ROOT / "docs" / "NATIVE_DISTRIBUTION.md", "NATIVE_DISTRIBUTION.md"),
+    (PROJECT_ROOT / "docs" / "PLATFORM_SUPPORT.md", "PLATFORM_SUPPORT.md"),
+    (PROJECT_ROOT / "docs" / "REPLACEMENT_READINESS.md", "REPLACEMENT_READINESS.md"),
+    (PROJECT_ROOT / "docs" / "FULL_ANTIVIRUS_PROGRAM.md", "WINDOWS_PROGRAM.md"),
+    (PROJECT_ROOT / "docs" / "MACOS_DESKTOP_PROGRAM.md", "MACOS_PROGRAM.md"),
+    (PROJECT_ROOT / "docs" / "LINUX_DESKTOP_PROGRAM.md", "LINUX_PROGRAM.md"),
     (PROJECT_ROOT / "packaging" / "THIRD_PARTY_NOTICES.md", "THIRD_PARTY_NOTICES.md"),
     (SCHEMA_PATH, "native-manifest.schema.json"),
 )
@@ -463,6 +468,29 @@ def _smoke_test(executable: Path, state_dir: Path, version: str) -> None:
         or status.get("real_time_protection") is not False
     ):
         raise ReleaseError("frozen executable status contract smoke test failed")
+
+    readiness_result = subprocess.run(
+        [str(executable), "replacement-readiness", "--json"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    try:
+        readiness = json.loads(readiness_result.stdout)
+    except json.JSONDecodeError as exc:
+        raise ReleaseError(
+            "frozen executable readiness output is not valid JSON"
+        ) from exc
+    if (
+        readiness_result.returncode != 2
+        or readiness.get("schema") != "zero.security.replacement-readiness.v1"
+        or readiness.get("decision") != "keep_existing_protection"
+        or readiness.get("eligible_for_primary_replacement") is not False
+        or readiness.get("existing_provider_must_remain_active") is not True
+        or readiness.get("automatic_uninstall_available") is not False
+    ):
+        raise ReleaseError("frozen executable replacement guard smoke test failed")
 
 
 def _create_archive(bundle_root: Path, archive: Path, target_os: str) -> None:

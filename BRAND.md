@@ -2,8 +2,11 @@
 
 ## Product names
 
-- **Zero Security** is the Windows antivirus programme and product family.
+- **Zero Security** is the cross-platform desktop security product family.
 - **ZSEC Shield** remains the current scanner/core lineage.
+- **Zero Security for Windows** is the future primary-antivirus programme.
+- **Zero Security for macOS** and **Zero Security for Linux** are separately
+  gated desktop programmes, not capabilities claimed by the current CLI.
 - **Zero Browser** is the browser product.
 - **ZeroQ Shields** is the reusable blocking and privacy engine.
 - **Zero Qbrowser** is a working codename, not the public canonical name.
@@ -29,9 +32,10 @@ by tracing third-party browser or antivirus branding.
 
 ## Public voice
 
-Calm, precise, and evidence-led. Prefer “protected locally,” “authenticated
-encrypted vault,” “best-effort ad protection,” and “full antivirus programme in
-development.” Avoid “unhackable,” “military grade,” “quantum encryption,”
+Calm, precise, and evidence-led. Prefer “processed locally,” “authenticated
+encrypted vault,” “best-effort ad filtering,” and “on-demand security preview.”
+Reserve “antivirus” for a platform candidate whose exact evidence gates passed.
+Avoid “unhackable,” “military grade,” “quantum encryption,”
 “blocks everything,” or unsupported comparison claims.
 
 ## Image-generation provenance

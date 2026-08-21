@@ -9,6 +9,11 @@ startup entry. It remains an on-demand scanner and has no telemetry or real-time
 filesystem interception. The bundled feed keyring is empty in this preview, so feed
 rules require an operator-supplied Ed25519 public-key ring.
 
+Exact released OS/architecture coverage, key-protection status, and safe-preview
+instructions are maintained in the [platform support matrix](PLATFORM_SUPPORT.md).
+An archive described as “native” contains a self-contained platform CLI; it is not
+a native graphical desktop application or operating-system security provider.
+
 ## Archive contents
 
 - `zsec-shield` or `zsec-shield.exe` and its `_internal` runtime directory;
@@ -54,6 +59,15 @@ Smoke-test the extracted executable with a disposable state directory:
 ```bash
 zsec-shield --version
 zsec-shield --state-dir ./temporary-state status --json
+zsec-shield replacement-readiness --json
 ```
 
-The build script performs both checks before creating the archive.
+The build script performs the version and status checks, then requires the
+replacement-readiness command to return exit `2` with
+`decision: keep_existing_protection`. That deliberate non-success is a packaging
+invariant for the preview, not a failed build. The readiness check does not create
+the disposable state directory or change installed protection.
+
+Python/wheel installation also exposes the `zero-security` product alias in the
+0.2.0 development candidate. Native archives retain the `zsec-shield` executable
+name for compatibility.

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- reserved version 0.2.0 for this materially new, unreleased feature set rather
+  than reusing the already-published 0.1.2 version;
+- added the fail-closed `zero-security replacement-readiness` contract for
+  Windows, macOS, and Linux; the preview always keeps existing protection active;
+- specified separate production-grade macOS Endpoint Security and Linux
+  fanotify desktop programmes with platform signing, key custody, coexistence,
+  rollback, efficacy, and support gates;
+- added a canonical Zero Browser privacy page and deterministic site validation;
 - established Zero Security as the full replacement-antivirus programme while
   preserving the current ZSEC Shield preview boundary;
 - encrypted all new quarantine objects with per-object AES-256-GCM keys and an

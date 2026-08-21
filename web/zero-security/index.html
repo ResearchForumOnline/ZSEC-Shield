@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Zero Security for Windows | Local-First PC Protection</title>
-  <meta name="description" content="Zero Security is a full Windows antivirus programme in development, with an auditable scanner, signed rules and automatic encrypted quarantine in preview.">
+  <title>Zero Security for Windows, macOS &amp; Linux | Preview</title>
+  <meta name="description" content="Zero Security Preview is a local-first on-demand security companion for Windows, macOS and Linux, with deterministic scanning and signed rules.">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#07101f">
@@ -18,16 +18,16 @@
   <meta property="og:locale" content="en_GB">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://talktoai.org/zero-security/">
-  <meta property="og:title" content="Zero Security for Windows | Local-First PC Protection">
-  <meta property="og:description" content="A full replacement-antivirus programme in active development, with a working auditable scanner, signed data-only rules and automatic encrypted quarantine preview.">
+  <meta property="og:title" content="Zero Security for Windows, macOS &amp; Linux | Preview">
+  <meta property="og:description" content="A cross-platform, local-first command-line security preview with deterministic checks, signed data-only rules and authenticated encrypted quarantine in development.">
   <meta property="og:image" content="https://talktoai.org/assets/zero-security-og.png">
   <meta property="og:image:width" content="1536">
   <meta property="og:image:height" content="1024">
   <meta property="og:image:alt" content="Zero Security Preview product interface concept">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Zero Security for Windows | Local-First PC Protection">
-  <meta name="twitter:description" content="The auditable foundation of a full Windows antivirus: local checks, signed data-only rules and automatic encrypted quarantine.">
+  <meta name="twitter:title" content="Zero Security for Windows, macOS &amp; Linux | Preview">
+  <meta name="twitter:description" content="Cross-platform local file checks and signed data-only rules. Current build: on-demand CLI preview, not a primary antivirus.">
   <meta name="twitter:image" content="https://talktoai.org/assets/zero-security-og.png">
   <meta name="twitter:image:alt" content="Zero Security Preview product interface concept">
 
@@ -39,8 +39,8 @@
         "@type": "WebPage",
         "@id": "https://talktoai.org/zero-security/#webpage",
         "url": "https://talktoai.org/zero-security/",
-        "name": "Zero Security for Windows | Local-First PC Protection",
-        "description": "Zero Security is a full Windows antivirus programme in active development. Its current preview provides deterministic local checks, signed data-only rules and automatic authenticated encrypted quarantine.",
+        "name": "Zero Security for Windows, macOS & Linux | Preview",
+        "description": "Zero Security Preview is a cross-platform, local-first on-demand security companion. Version 0.2.0 is an unreleased development candidate in draft pull request 5.",
         "inLanguage": "en-GB",
         "dateModified": "2026-08-21",
         "isPartOf": { "@id": "https://talktoai.org/#website" },
@@ -66,13 +66,13 @@
         "name": "Zero Security Preview",
         "url": "https://talktoai.org/zero-security/",
         "applicationCategory": "SecurityApplication",
-        "applicationSubCategory": "Windows antivirus development programme",
-        "operatingSystem": "Windows 10, Windows 11",
-        "softwareVersion": "Implementation preview",
+        "applicationSubCategory": "Cross-platform on-demand security scanner preview",
+        "operatingSystem": ["Windows 10", "Windows 11", "macOS", "Linux"],
+        "softwareVersion": "0.2.0 development candidate",
         "isAccessibleForFree": true,
         "license": "https://www.apache.org/licenses/LICENSE-2.0",
         "publisher": { "@id": "https://talktoai.org/#organization" },
-        "description": "An open-core full Windows antivirus programme in active development. The current preview provides deterministic on-demand checks, signed data-only rule verification and working automatic encrypted quarantine. It is not yet registered as a primary antivirus."
+        "description": "An open-core command-line security preview with deterministic on-demand checks, signed data-only rule verification and authenticated encrypted quarantine in development. It is not a background or primary antivirus on any platform."
       },
       {
         "@type": "BreadcrumbList",
@@ -98,10 +98,10 @@
         "mainEntity": [
           {
             "@type": "Question",
-            "name": "Does Zero Security replace Microsoft Defender or Malwarebytes?",
+            "name": "Does Zero Security replace Microsoft Defender, Malwarebytes or another antivirus?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Not yet. Zero Security is being built as a genuine primary Windows antivirus, but the current public build is an on-demand implementation preview. Keep the antivirus currently registered with Windows active until Zero Security passes real-time integration, signing, compatibility, efficacy, Microsoft onboarding and transactional cutover gates."
+              "text": "No. The current build is an on-demand command-line preview for selected files. Keep Malwarebytes, Microsoft Defender, XProtect, Gatekeeper, SIP, Linux security controls and any endpoint agent active. The fail-closed replacement-readiness command returns a blocked decision until the exact platform release passes signing, integration, efficacy, coexistence and rollback gates."
             }
           },
           {
@@ -162,6 +162,7 @@
         <span class="preview-chip">Preview</span>
       </a>
       <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#platforms">Platforms</a>
         <a href="#how-it-works">How it works</a>
         <a href="#architecture">Architecture</a>
         <a href="#open-core">Open core</a>
@@ -175,14 +176,14 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="container hero-grid">
         <div class="hero-copy">
-          <p class="hero-kicker">Full antivirus programme · working foundation preview</p>
+          <p class="hero-kicker">Windows · macOS · Linux · on-demand preview</p>
           <h1 id="hero-title">Security that explains itself.</h1>
-          <p class="lede">Zero Security is being engineered as a proper local-first Windows antivirus, built on the open ZSEC Shield foundation. The working preview checks selected files on demand, verifies signed data-only rules and automatically encrypts recoverable quarantine objects.</p>
+          <p class="lede">Zero Security is a cross-platform, local-first security programme built on the open ZSEC Shield foundation. The development preview checks selected files on demand, verifies signed data-only rules and can place configured matches into authenticated encrypted quarantine.</p>
           <div class="hero-actions">
-            <a class="button" href="https://github.com/ResearchForumOnline/ZSEC-Shield">Explore the public foundation <span aria-hidden="true">↗</span></a>
+            <a class="button" href="https://github.com/ResearchForumOnline/ZSEC-Shield/pull/5">Review development PR #5 <span aria-hidden="true">↗</span></a>
             <a class="button button-secondary" href="#architecture">See the architecture</a>
           </div>
-          <p class="microcopy"><strong>Clear boundary:</strong> the destination is a genuine replacement antivirus; this current preview is not yet registered for real-time protection and never treats a limited scan as proof that a computer is clean.</p>
+          <p class="microcopy"><strong>Clear boundary:</strong> version 0.2.0 is an unreleased development candidate in draft PR #5. Desktop support currently means specific command-line builds—not a tray app, background provider or primary-antivirus replacement—and a limited scan never proves a computer is clean.</p>
         </div>
 
         <!-- Local launch artwork: ../assets/zero-security-hero.png -->
@@ -230,6 +231,44 @@
         </div>
       </div>
     </aside>
+
+    <section class="section" id="platforms" aria-labelledby="platforms-title">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Exact delivery status</p>
+            <h2 id="platforms-title">One auditable core. Three separately gated desktops.</h2>
+          </div>
+          <p>The public v0.1.2 prerelease contains earlier unsigned command-line archives. The new 0.2.0 feature set is unreleased in draft PR #5. “Native archive” means a self-contained CLI—not a graphical app or background provider.</p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">W</span>
+            <h3>Windows</h3>
+            <p><strong>Public artifact:</strong> x86-64 ZIP CLI. No service, minifilter, AMSI/ELAM provider, Authenticode signature or Windows Security registration. The 0.2.0 development vault uses CurrentUser DPAPI.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">M</span>
+            <h3>macOS</h3>
+            <p><strong>Public artifact:</strong> Apple-silicon tarball CLI. No notarized app, Endpoint Security extension or Full Disk Access requirement. The 0.2.0 filesystem-key fallback is not production Keychain custody.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">L</span>
+            <h3>Linux</h3>
+            <p><strong>Public artifact:</strong> x86-64 tarball CLI. No fanotify broker, background daemon, signed DEB/RPM repository or broad distro promise. The 0.2.0 filesystem-key fallback is preview-only.</p>
+          </article>
+        </div>
+
+        <div class="callout callout-spaced">
+          <span class="callout-mark" aria-hidden="true">!</span>
+          <div>
+            <h3>Replacement is programmatically blocked</h3>
+            <p><code>zero-security replacement-readiness --json</code> returns exit code 2, <code>keep_existing_protection</code> and no override in the 0.2.0 candidate. Keep the existing antivirus and native security controls active; the preview has no uninstall or exclusion automation.</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <section class="section" id="how-it-works" aria-labelledby="how-title">
       <div class="container">
@@ -284,7 +323,7 @@
           <article class="card card-accent">
             <span class="card-icon" aria-hidden="true">01</span>
             <h3>Automatic device root</h3>
-            <p>A random device key is created once. On Windows, the design seals it with CurrentUser DPAPI before it is written to disk.</p>
+            <p>A random device key is created once. Windows uses CurrentUser DPAPI in the preview; the macOS/Linux filesystem-key fallback is explicitly not production key custody.</p>
           </article>
           <article class="card">
             <span class="card-icon" aria-hidden="true">02</span>
@@ -377,7 +416,7 @@
           </div>
           <div class="status-line">
             <div><span class="status-tag planned">Designed, not shipped</span></div>
-            <p>Optional YubiKey/passkey recovery, restricted Windows broker, bounded parser workers and licensed-engine adapters.</p>
+            <p>Optional YubiKey/passkey recovery, platform-specific restricted brokers, bounded parser workers and licensed-engine adapters.</p>
           </div>
           <div class="status-line">
             <div><span class="status-tag not-claimed">Not claimed</span></div>
@@ -448,7 +487,7 @@
               <li>Production signing keys, HSM policy and release credentials.</li>
               <li>Optional managed reputation, sync and fleet services.</li>
               <li>Customer-support systems and private operational data.</li>
-              <li>Future Windows components until their release model is ready.</li>
+              <li>Future privileged Windows, macOS and Linux components until their release model is ready.</li>
             </ul>
           </article>
         </div>
@@ -469,7 +508,7 @@
           <article class="card">
             <span class="card-icon" aria-hidden="true">A</span>
             <h3>Publisher identity</h3>
-            <p>Authenticode-signed Windows binaries, protected signing infrastructure and verifiable release provenance.</p>
+            <p>Authenticode/Microsoft driver signing, Apple Developer ID and notarization, and signed Linux packages/repositories—each backed by protected signing infrastructure and provenance.</p>
           </article>
           <article class="card">
             <span class="card-icon" aria-hidden="true">B</span>
@@ -478,23 +517,23 @@
           </article>
           <article class="card">
             <span class="card-icon" aria-hidden="true">C</span>
-            <h3>Measured efficacy</h3>
-            <p>Dated, reproducible methodology and maintained independent testing for detection and false positives.</p>
+            <h3>macOS integration</h3>
+            <p>Approved Endpoint Security entitlement, system-extension consent, Keychain vault, Universal 2 hardware coverage and Gatekeeper/XProtect coexistence.</p>
           </article>
           <article class="card">
             <span class="card-icon" aria-hidden="true">D</span>
-            <h3>Safe updates</h3>
-            <p>Signed metadata, staged rings, health halts, emergency repair and tested automatic rollback.</p>
+            <h3>Linux integration</h3>
+            <p>Exact distro/kernel/filesystem support, fanotify mediation, confined services, signed native packages and verified package-manager rollback.</p>
           </article>
           <article class="card">
             <span class="card-icon" aria-hidden="true">E</span>
-            <h3>Compatibility</h3>
-            <p>Clean-machine, suspend/resume, low-disk, application and operating-system compatibility matrices.</p>
+            <h3>Measured efficacy</h3>
+            <p>Dated, reproducible methodology plus maintained independent detection, false-positive, performance and compatibility evidence.</p>
           </article>
           <article class="card">
             <span class="card-icon" aria-hidden="true">F</span>
-            <h3>Human response</h3>
-            <p>False-positive appeals, vulnerability intake, incident response and reliable customer support.</p>
+            <h3>Safe operations</h3>
+            <p>Signed staged updates, health halts, tested rollback, false-positive appeals, vulnerability intake, incident response and reliable support.</p>
           </article>
         </div>
       </div>
@@ -506,8 +545,8 @@
         <h2 id="faq-title">Zero Security FAQ</h2>
         <div class="faq-list">
           <details>
-            <summary>Does Zero Security replace Microsoft Defender or Malwarebytes?</summary>
-            <div class="faq-answer"><p>Not yet. Zero Security is being built as a genuine primary Windows antivirus, but the current public build is an on-demand implementation preview. Keep the antivirus currently registered with Windows active until Zero Security passes real-time integration, signing, compatibility, efficacy, Microsoft onboarding and transactional cutover gates.</p></div>
+            <summary>Does Zero Security replace Microsoft Defender, Malwarebytes or another antivirus?</summary>
+            <div class="faq-answer"><p>No. The current build is an on-demand command-line preview for selected files. Keep Malwarebytes, Microsoft Defender, XProtect, Gatekeeper, SIP, Linux security controls and any endpoint agent active. The fail-closed replacement-readiness command returns a blocked decision until the exact platform release passes signing, integration, efficacy, coexistence and rollback gates.</p></div>
           </details>
           <details>
             <summary>Does Zero Security upload my files?</summary>
@@ -555,7 +594,7 @@
           <span class="brand-mark" aria-hidden="true">Z</span>
           <span>Zero Security</span>
         </a>
-        <p>Local-first Windows security research from TalkToAI. Current status: implementation preview, not a complete antivirus product.</p>
+        <p>Local-first Windows, macOS and Linux security research from TalkToAI. Current status: unreleased 0.2.0 command-line development preview, not a complete antivirus product.</p>
       </div>
       <div>
         <p class="footer-title">Product</p>

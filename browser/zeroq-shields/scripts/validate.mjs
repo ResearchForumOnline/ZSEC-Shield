@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
 const rules = JSON.parse(await readFile(join(root, "rules", "privacy.json"), "utf8"));
+const popup = await readFile(join(root, "popup", "index.html"), "utf8");
+const serviceWorker = await readFile(join(root, "src", "service-worker.js"), "utf8");
 
 if (manifest.manifest_version !== 3) throw new Error("Manifest V3 is required");
 if (!manifest.declarative_net_request?.rule_resources?.length) throw new Error("Static ruleset missing");
@@ -12,6 +14,10 @@ if (manifest.permissions.includes("webRequestBlocking")) throw new Error("MV2 bl
 if (new Set(rules.map((rule) => rule.id)).size !== rules.length) throw new Error("Rule IDs must be unique");
 if (rules.some((rule) => rule.action?.type !== "block")) throw new Error("Static rules must be block rules");
 if (rules.some((rule) => rule.condition?.regexFilter)) throw new Error("Regex rules require separate review");
+if (!popup.includes(`${rules.length} bundled filters`)) throw new Error("Popup rule count is stale");
+if (!popup.includes("https://talktoai.org/zero-browser/privacy/")) throw new Error("Privacy URL missing");
+if (!serviceWorker.includes("runtimeHealth")) throw new Error("Runtime health reporting missing");
+if (serviceWorker.includes(".catch(() => undefined)")) throw new Error("Initialization errors are hidden");
 
 const jsFiles = (await readdir(join(root, "src"))).filter((name) => name.endsWith(".js"));
 for (const name of jsFiles) {

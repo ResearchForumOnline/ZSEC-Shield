@@ -30,10 +30,34 @@
     {
       "id": "zero-security-windows-antivirus",
       "path": "windows",
-      "role": "replacement-antivirus programme",
+      "role": "future Windows primary-antivirus programme",
       "license": "Apache-2.0",
       "source_public": true,
       "status": "specified-not-installed"
+    },
+    {
+      "id": "zero-security-macos-desktop",
+      "path": "docs/MACOS_DESKTOP_PROGRAM.md",
+      "role": "future native macOS Endpoint Security desktop programme",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "specified-not-installed"
+    },
+    {
+      "id": "zero-security-linux-desktop",
+      "path": "docs/LINUX_DESKTOP_PROGRAM.md",
+      "role": "future supported Linux fanotify desktop programme",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "specified-not-installed"
+    },
+    {
+      "id": "native-cli-archives",
+      "path": "packaging/native_release.py",
+      "role": "unsigned self-contained platform CLI archives with native manifests",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "working-preview"
     },
     {
       "id": "commercial-protection-services",

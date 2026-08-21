@@ -20,8 +20,9 @@ licensed integrations may be distributed separately under different terms.
   credentials.
 - Managed reputation, encrypted sync, enterprise fleet administration, and
   customer-support systems.
-- Future real-time Windows service/minifilter components until their source,
-  certification, and release model are ready for public review.
+- Future privileged Windows, macOS Endpoint Security, and Linux fanotify/service
+  components until their source, certification, and release model are ready for
+  public review.
 
 Private modules are not described as open source. Minification, compilation, or
 obfuscation may raise reverse-engineering cost, but none is treated as a security

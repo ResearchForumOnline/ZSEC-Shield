@@ -20,6 +20,7 @@ from zsec_shield.inventory import collect_inventory
 from zsec_shield.models import ScanIssue
 from zsec_shield.paths import default_state_dir, resolve_keyring_path
 from zsec_shield.quarantine import list_entries, quarantine_finding, restore_entry
+from zsec_shield.readiness import replacement_readiness
 from zsec_shield.rules import builtin_rules
 from zsec_shield.scanner import DEFAULT_CHUNK_BYTES, DEFAULT_MAX_FILE_BYTES, Scanner, ScannerConfig
 from zsec_shield.status_store import load_last_scan, save_last_scan
@@ -66,8 +67,10 @@ def _add_scan_parser(subparsers: Any, name: str, help_text: str) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    invoked_as = Path(sys.argv[0]).stem.lower()
+    program_name = "zero-security" if invoked_as == "zero-security" else "zsec-shield"
     parser = argparse.ArgumentParser(
-        prog="zsec-shield",
+        prog=program_name,
         description=(
             "Deterministic on-demand scanning; not complete antivirus or real-time protection."
         ),
@@ -96,6 +99,18 @@ def build_parser() -> argparse.ArgumentParser:
     inventory = subparsers.add_parser("inventory", help="collect read-only platform inventory")
     inventory.add_argument("--json", action="store_true")
     inventory.set_defaults(handler=_command_inventory)
+
+    readiness = subparsers.add_parser(
+        "replacement-readiness",
+        help="fail closed unless every primary-antivirus replacement gate is evidenced",
+    )
+    readiness.add_argument(
+        "--platform",
+        choices=("windows", "linux", "macos"),
+        help="inspect a platform programme instead of the detected desktop",
+    )
+    readiness.add_argument("--json", action="store_true")
+    readiness.set_defaults(handler=_command_replacement_readiness)
 
     quarantine = subparsers.add_parser("quarantine", help="list or restore recovery entries")
     quarantine_subparsers = quarantine.add_subparsers(dest="quarantine_command", required=True)
@@ -364,6 +379,23 @@ def _command_inventory(args: argparse.Namespace) -> int:
         for observation in result["observations"]:
             print(f"- {observation}")
     return EXIT_OK
+
+
+def _command_replacement_readiness(args: argparse.Namespace) -> int:
+    result = replacement_readiness(args.platform)
+    if args.json:
+        _emit_json(result)
+    else:
+        print("Zero Security replacement decision: KEEP EXISTING PROTECTION")
+        print(f"Platform programme: {result['platform']}")
+        print("Eligible to replace the current antivirus: no")
+        print(f"Blocking production gates: {result['gate_counts']['not_met']}")
+        for gate in result["blocking_gates"]:
+            print(f"- NOT MET {gate['id']}: {gate['title']}")
+        print(result["next_action"])
+    # This command is intended to guard uninstall and cutover automation. The
+    # preview cannot return success while replacement evidence is incomplete.
+    return EXIT_INCOMPLETE
 
 
 def _command_quarantine_list(args: argparse.Namespace) -> int:

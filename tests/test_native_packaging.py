@@ -29,15 +29,15 @@ release = load_release_module()
 
 class NativePackagingTests(unittest.TestCase):
     def test_source_version_and_pyinstaller_pin_are_explicit(self) -> None:
-        self.assertEqual("0.1.2", release.project_version())
+        self.assertEqual("0.2.0", release.project_version())
         self.assertEqual("6.21.0", release.expected_pyinstaller_version())
 
     def test_release_tag_must_exactly_match_source_version(self) -> None:
-        self.assertEqual("0.1.2", release.verify_release_tag("v0.1.2"))
+        self.assertEqual("0.2.0", release.verify_release_tag("v0.2.0"))
         with self.assertRaises(release.ReleaseError):
             release.verify_release_tag("v0.1.0")
         with self.assertRaises(release.ReleaseError):
-            release.verify_release_tag("preview-0.1.2")
+            release.verify_release_tag("preview-0.2.0")
 
     def test_python_license_uses_checksum_pinned_vendored_fallback(self) -> None:
         with TemporaryDirectory() as temporary:
@@ -125,6 +125,14 @@ class NativePackagingTests(unittest.TestCase):
         self.assertIn("upx=False", content)
         self.assertIn("codesign_identity=None", content)
         self.assertIn("trusted_keys.json", content)
+
+    def test_native_smoke_test_enforces_replacement_guard(self) -> None:
+        content = (PROJECT_ROOT / "packaging" / "native_release.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('\"replacement-readiness\", \"--json\"', content)
+        self.assertIn("readiness_result.returncode != 2", content)
+        self.assertIn('\"keep_existing_protection\"', content)
 
     def test_source_archive_includes_native_rebuild_inputs(self) -> None:
         content = (PROJECT_ROOT / "MANIFEST.in").read_text(encoding="utf-8")

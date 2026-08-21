@@ -18,6 +18,7 @@ PAGES = {
     "zero-security": "https://talktoai.org/zero-security/",
     "zero-browser": "https://talktoai.org/zero-browser/",
 }
+PRIVACY_PAGE = "https://talktoai.org/zero-browser/privacy/"
 
 
 class PageParser(HTMLParser):
@@ -101,19 +102,48 @@ def validate_page(slug: str, canonical: str) -> None:
             require(target.exists(), f"{slug}: missing local asset {reference}")
 
 
+def validate_privacy_page() -> None:
+    page = WEB / "zero-browser" / "privacy" / "index.html"
+    text = page.read_text(encoding="utf-8")
+    parser = PageParser()
+    parser.feed(text)
+    require(parser.h1_count == 1, "zero-browser/privacy: expected exactly one H1")
+    require(parser.canonicals == [PRIVACY_PAGE], "zero-browser/privacy: canonical mismatch")
+    require(len(parser.ids) == len(set(parser.ids)), "zero-browser/privacy: duplicate HTML id")
+    require(len(parser.meta_descriptions) == 1, "zero-browser/privacy: description missing")
+    require(
+        80 <= len(parser.meta_descriptions[0]) <= 180,
+        "zero-browser/privacy: description length",
+    )
+    htaccess = (page.parent / ".htaccess").read_text(encoding="utf-8")
+    require("script-src 'none'" in htaccess, "zero-browser/privacy: script CSP missing")
+    require("frame-ancestors 'none'" in htaccess, "zero-browser/privacy: frame CSP missing")
+    for reference in parser.assets:
+        target = local_asset(page, reference)
+        if target is not None:
+            require(target.exists(), f"zero-browser/privacy: missing local asset {reference}")
+
+
 def main() -> int:
     for slug, canonical in PAGES.items():
         validate_page(slug, canonical)
+    validate_privacy_page()
     sitemap = ET.parse(WEB / "sitemap.xml")
     namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     locations = {node.text for node in sitemap.findall("sm:url/sm:loc", namespace)}
-    require(set(PAGES.values()) <= locations, "product URLs missing from sitemap")
+    require(
+        set(PAGES.values()) | {PRIVACY_PAGE} <= locations,
+        "product or privacy URLs missing from sitemap",
+    )
     robots = (WEB / "robots.txt").read_text(encoding="utf-8")
     require("Sitemap: https://talktoai.org/sitemap.xml" in robots, "robots sitemap missing")
     css = (WEB / "assets" / "style.css").read_text(encoding="utf-8")
     require(css.count("{") == css.count("}"), "CSS braces are unbalanced")
     require(".webp" not in css, "CSS references an unavailable WebP asset")
-    print("Validated two product pages, JSON-LD/CSP hashes, assets, sitemap, robots and CSS.")
+    print(
+        "Validated two product pages, the browser privacy page, JSON-LD/CSP "
+        "hashes, assets, sitemap, robots and CSS."
+    )
     return 0
 
 

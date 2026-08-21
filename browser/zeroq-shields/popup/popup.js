@@ -16,11 +16,20 @@ function showError(error) {
   message.textContent = error instanceof Error ? error.message : "The setting could not be changed.";
 }
 
-function apply(settings, sitePaused = pauseSite.checked) {
+function apply(settings, sitePaused = pauseSite.checked, health = { ok: true }) {
   protection.checked = settings.protectionEnabled;
   youtube.checked = settings.youtubeCleanup;
   pauseSite.checked = sitePaused;
-  status.textContent = settings.protectionEnabled ? "Protection is on" : "Protection is off";
+  const unavailable = health?.ok === false;
+  protection.disabled = unavailable;
+  youtube.disabled = unavailable;
+  pauseSite.disabled = unavailable || !currentDomain;
+  status.textContent = unavailable
+    ? "Filtering state unavailable"
+    : settings.protectionEnabled
+      ? "ZeroQ rules are on"
+      : "ZeroQ rules are off";
+  if (unavailable) message.textContent = health.error || "Extension initialization failed";
 }
 
 async function initialise() {
@@ -28,8 +37,7 @@ async function initialise() {
   const response = await send({ type: "getStatus", url: tab?.url || "" });
   currentDomain = response.domain;
   domainLabel.textContent = currentDomain || "Unavailable on this page";
-  pauseSite.disabled = !currentDomain;
-  apply(response.settings, response.sitePaused);
+  apply(response.settings, response.sitePaused, response.health);
 }
 
 protection.addEventListener("change", async () => {
