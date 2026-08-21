@@ -69,7 +69,7 @@
             <a class="button" href="/downloads/zero-browser/zsec-browser-shields-0.4.0-chromium-mv3.zip" download>Download ZSEC Browser Shields 0.4 <span aria-hidden="true">↓</span></a>
             <a class="button button-secondary" href="#install">Installation steps</a>
           </div>
-          <p class="microcopy"><strong>Distribution boundary:</strong> this unsigned, manually installed website evaluation ZIP is built from draft pull request #5; it is not a browser-Store package or the latest formal GitHub prerelease. Desktop Preview 0.2.3 remains a source/local-evidence build in draft pull request #6 and is not offered as a public native download because the ZSEC executable is not publisher-signed.</p>
+          <p class="microcopy"><strong>Distribution boundary:</strong> this unsigned, manually installed website evaluation ZIP is built from draft pull request #5; it is not a browser-Store package or the latest formal GitHub prerelease. ZSEC Browser Community 0.3.0 is a separate source/local-evidence build at immutable revision <code>9b60c31</code> and is not offered as a public native download because the ZSEC executable is not publisher-signed.</p>
         </div>
 
         <div class="hero-art" role="img" aria-label="ZSEC Browser and ZSEC Browser Shields control panel concept">
@@ -104,13 +104,13 @@
       <div class="container">
         <div class="section-head">
           <div><p class="section-label">Windows development channel</p><h2 id="desktop-preview-title">Windows desktop build: implemented locally, public distribution gated.</h2></div>
-          <p>ZSEC Browser Desktop Preview 0.2.3 provides a branded WebView2 Chromium shell, isolated profile, 81 compiled blocker domains, 21 tracking-parameter cleaners, default-deny permissions and repeatable runtime acceptance tests.</p>
+          <p>ZSEC Browser Community 0.3.0 provides a branded WebView2 Chromium shell, isolated profile, 81 compiled blocker domains, 21 tracking-parameter cleaners, default-deny permissions and repeatable runtime acceptance tests.</p>
         </div>
         <div class="split">
           <article class="panel panel-positive"><h3>Local acceptance boundary</h3><ul><li>Desktop and Start-menu application entries.</li><li>Installer and status checks verify the Microsoft-signed Evergreen WebView2 runtime.</li><li>Exact installed-file hashes and process-boundary status.</li><li>Live tracking cleanup and reviewed tracker-domain block.</li></ul></article>
           <article class="panel panel-private"><h3>Public native download remains blocked</h3><ul><li>No Authenticode signature or trusted timestamp.</li><li>No signed rollback-resistant ZSEC binary updater.</li><li>No independent sandbox/Site Isolation attestation.</li><li>No Windows 11, macOS or Linux release qualification.</li></ul></article>
         </div>
-        <p><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/pull/6">Review the desktop-preview source, tests and release boundary in draft pull request #6.</a> Do not bypass operating-system warnings to run an unsigned developer build.</p>
+        <p><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/9b60c31d246a851a5dc325cf384fb529c2759a07/browser/zsec-desktop-preview">Review the immutable Community 0.3.0 source, tests and release boundary.</a> Do not bypass operating-system warnings to run an unsigned local build.</p>
       </div>
     </section>
 
