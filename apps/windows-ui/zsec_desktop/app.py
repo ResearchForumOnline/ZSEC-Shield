@@ -983,6 +983,7 @@ class ZsecDesktop:
         )
         self.feed_status_label.configure(text=feed_text, foreground=feed_colour)
         detail = f"Definitions: {status['definitions']}"
+        detail += " | worker: bounded out-of-process exact rules"
         if feed.get("expires_at"):
             detail += f" | expires {feed['expires_at']}"
         if feed.get("error"):
@@ -1000,6 +1001,7 @@ class ZsecDesktop:
             "generated_at": status["generated_at"],
             "engine_version": status["version"],
             "scanner_mode": status["scanner_mode"],
+            "content_worker": status["content_worker"],
             "real_time_protection": status["real_time_protection"],
             "last_scan": status["last_scan"],
             "last_scan_outcome": status["last_scan_outcome"],

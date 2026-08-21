@@ -82,6 +82,12 @@ validates the event schema, retains at most 500 visible entries, and marks a
 user-terminated session incomplete. The installed logon companion remains a
 separate reviewed PowerShell path and is not silently installed by this UI.
 
+Current scan commands use the CLI's bounded out-of-process exact-rule worker. The
+broker validates and opens the source, streams a path-free byte sequence, checks
+the returned digest against its own SHA-256 and treats worker/protocol failure as
+incomplete. This same-user process boundary is useful crash and state separation;
+it is not the restricted parser worker or protected orchestrator described below.
+
 ## Production Windows stack
 
 The durable Windows product should use a signed .NET 10 LTS desktop client.

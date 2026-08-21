@@ -37,29 +37,33 @@ be explicit, testable, revocable, and must never export the raw device root.
 ZBA supplies typed lifecycle and provenance semantics. Cryptographic security is
 provided by established primitives and correct key management, not modulo labels.
 
-## Current safe user-mode layers
+## Current Community user-mode layers
 
 ```text
 Unelevated UI
     |
     v
-Restricted local broker/service
+User-scoped CLI broker
+    +-- path/reparse policy and descriptor validation
+    +-- broker-calculated SHA-256
+    +-- signed feed and final result policy
     |
-    +-- authenticated local IPC
     v
-Unprivileged, bounded scanner workers
-    +-- hashing and exact rules
-    +-- Authenticode and metadata
-    +-- bounded archive/document parsing
-    +-- licensed engine adapter (optional)
-    +-- encrypted quarantine
+Bounded out-of-process exact-rule worker
+    +-- path-free content stream
+    +-- exact literal rules and independent digest
+    +-- strict bounded response; failures are incomplete
 ```
 
 The public development preview runs on demand or as an explicit foreground
 post-change watcher and coexists with current protection. The watcher starts its
 observer before a baseline, debounces a bounded event queue, excludes state, runs
 periodic reconciliation, and reports known coverage loss as incomplete. It does
-not mediate access or install persistence. Shared
+not mediate access or install system persistence. The exact-rule child is replaced
+periodically and separates worker crashes/state from the broker, but currently
+runs with the invoking user's authority. It is not a reduced-privilege sandbox,
+does not pass the hostile-parser readiness gate, and contains no PE, archive,
+document or script parser. Shared
 scanner, evidence, feed, quarantine-envelope, updater-policy, and UI concepts sit
 above three separately released enforcement planes:
 

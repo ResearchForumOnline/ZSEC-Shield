@@ -15,6 +15,10 @@ class ScanConfigurationError(ZsecShieldError):
     """A scan option is unsafe or invalid."""
 
 
+class ScanWorkerError(ZsecShieldError):
+    """The bounded hostile-content worker failed or violated its protocol."""
+
+
 class WatchError(ZsecShieldError):
     """Foreground filesystem monitoring could not maintain honest coverage."""
 

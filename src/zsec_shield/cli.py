@@ -287,9 +287,13 @@ def _command_check(args: argparse.Namespace) -> int:
             chunk_bytes=args.chunk_bytes,
             cross_filesystems=args.cross_filesystems,
             excluded_paths=(state_dir,),
+            worker_isolation=True,
         ),
     )
-    result = scanner.scan(args.paths)
+    try:
+        result = scanner.scan(args.paths)
+    finally:
+        scanner.close()
     quarantine_results: list[dict[str, Any]] = []
     if args.quarantine:
         for finding in result.findings:
@@ -345,6 +349,8 @@ def _command_check(args: argparse.Namespace) -> int:
         "outcome": outcome,
         "policy": {
             "scanner_mode": "on-demand",
+            "content_worker": "bounded_out_of_process_exact_rules",
+            "content_worker_reduced_privilege": False,
             "feed_behavior": "data-only rules; no commands or actions are accepted",
             "quarantine_requested": bool(args.quarantine),
             "real_time_protection": False,
@@ -424,6 +430,7 @@ def _command_watch(args: argparse.Namespace) -> int:
             chunk_bytes=args.chunk_bytes,
             cross_filesystems=args.cross_filesystems,
             excluded_paths=(state_dir,),
+            worker_isolation=True,
         ),
     )
     evidence = WatchEvidenceSink(
@@ -472,8 +479,11 @@ def _command_watch(args: argparse.Namespace) -> int:
         on_record=emit,
         health_check=feed_health,
     )
-    with watch_lock(state_dir):
-        summary = watcher.run(duration_seconds=args.duration_seconds)
+    try:
+        with watch_lock(state_dir):
+            summary = watcher.run(duration_seconds=args.duration_seconds)
+    finally:
+        scanner.close()
     report = {
         "schema": "zsec.shield.watch-report.v1",
         "version": __version__,
@@ -484,6 +494,11 @@ def _command_watch(args: argparse.Namespace) -> int:
             "built_in": len(builtin_rules()),
             "verified_feed": len(feed_rules),
             "total": len(scanner.rules),
+        },
+        "content_worker": {
+            "mode": "bounded_out_of_process_exact_rules",
+            "reduced_privilege": False,
+            "hostile_format_parser_gate_met": False,
         },
         "session": summary.to_dict(),
         "limitations": [
@@ -614,6 +629,13 @@ def _command_status(args: argparse.Namespace) -> int:
         "last_scan_diagnostic": {"available": last_scan is not None, "error": last_scan_error},
         "quarantine_count": len(entries),
         "scanner_mode": "on-demand",
+        "content_worker": {
+            "mode": "bounded_out_of_process_exact_rules",
+            "path_disclosure": False,
+            "broker_digest_verification": True,
+            "reduced_privilege": False,
+            "hostile_format_parser_gate_met": False,
+        },
         "real_time_protection": False,
         "state_dir": str(state_dir),
         "built_in_rules": len(builtin_rules()),

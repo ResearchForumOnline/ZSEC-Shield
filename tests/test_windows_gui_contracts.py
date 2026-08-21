@@ -22,6 +22,7 @@ from zsec_desktop.contracts import (  # noqa: E402
     validate_quarantine_list,
     validate_readiness,
     validate_status,
+    validate_watch_event,
 )
 
 
@@ -42,6 +43,13 @@ def valid_status() -> dict[str, object]:
         "last_scan_diagnostic": {"available": True, "error": None},
         "quarantine_count": 0,
         "scanner_mode": "on-demand",
+        "content_worker": {
+            "mode": "bounded_out_of_process_exact_rules",
+            "path_disclosure": False,
+            "broker_digest_verification": True,
+            "reduced_privilege": False,
+            "hostile_format_parser_gate_met": False,
+        },
         "real_time_protection": False,
         "state_dir": r"C:\Users\example\AppData\Local\ZSEC\Shield",
         "built_in_rules": 2,
@@ -101,6 +109,21 @@ def valid_companion() -> dict[str, object]:
             "aggregate_good": True,
         },
     }
+
+
+def test_watch_contract_accepts_metadata_reconciliation_without_overclaiming() -> None:
+    event = {
+        "schema": "zsec.shield.watch-event.v1",
+        "event": "reconciliation_completed",
+        "session_id": str(uuid.uuid4()),
+        "sequence": 2,
+        "policy": {"real_time_protection": False, "pre_access_enforcement": False},
+    }
+    assert validate_watch_event(event)["event"] == "reconciliation_completed"
+
+    event["policy"] = {"real_time_protection": True, "pre_access_enforcement": False}
+    with pytest.raises(ContractError, match="real-time protection"):
+        validate_watch_event(event)
 
 
 def test_status_contract_never_turns_incomplete_or_inconsistent_evidence_green() -> None:

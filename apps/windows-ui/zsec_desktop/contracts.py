@@ -81,6 +81,23 @@ def validate_status(payload: Any) -> dict[str, Any]:
     _string(root.get("platform"), "platform", maximum=80)
     if root.get("scanner_mode") != "on-demand":
         raise ContractError("status scanner_mode is inconsistent with this desktop build")
+    worker = _object(root.get("content_worker"), "content_worker")
+    if worker.get("mode") != "bounded_out_of_process_exact_rules":
+        raise ContractError("status content_worker mode is unsupported")
+    if _bool(worker.get("path_disclosure"), "content_worker.path_disclosure"):
+        raise ContractError("content worker unexpectedly receives a source path")
+    if not _bool(
+        worker.get("broker_digest_verification"),
+        "content_worker.broker_digest_verification",
+    ):
+        raise ContractError("content worker must retain broker digest verification")
+    if _bool(worker.get("reduced_privilege"), "content_worker.reduced_privilege"):
+        raise ContractError("this build cannot assert a reduced-privilege worker")
+    if _bool(
+        worker.get("hostile_format_parser_gate_met"),
+        "content_worker.hostile_format_parser_gate_met",
+    ):
+        raise ContractError("this build cannot assert the hostile-parser gate")
     if _bool(root.get("real_time_protection"), "real_time_protection"):
         raise ContractError("desktop status unexpectedly asserts real-time protection")
     findings = _integer(root.get("findings"), "findings")
@@ -287,6 +304,7 @@ def validate_watch_event(payload: Any) -> dict[str, Any]:
         "session_started",
         "backend_fallback",
         "scan_completed",
+        "reconciliation_completed",
         "health_issue",
         "health_heartbeat",
         "session_completed",
