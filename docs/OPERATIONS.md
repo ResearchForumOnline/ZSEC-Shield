@@ -12,6 +12,28 @@
    a new destination, and compare SHA-256.
 6. Pin a reviewed Ed25519 public key before testing feed update.
 
+## Foreground post-change protection
+
+After the on-demand workflow has been validated, run the automatic file-event
+monitor only as a foreground companion:
+
+```bash
+zero-security watch ./incoming
+```
+
+Keep the existing antivirus and platform protections active. The observer starts
+before a mandatory baseline scan, debounces duplicate events, excludes the state
+and quarantine trees before enqueue, and periodically reconciles the roots. Native
+observer startup may fall back to polling with an explicit event. A backend death,
+queue overflow, root identity change, or feed/trust change ends the session
+incomplete rather than silently claiming continued coverage.
+
+Quarantine remains disabled unless `--quarantine` is supplied. A normal watch
+session is read-only apart from state locks/reports and any routine status/feed
+reads; it does not register a provider, configure exclusions, disable another
+product, or install persistence. See
+[the complete foreground-mode contract](FOREGROUND_WATCH_MODE.md).
+
 When integrating `status --json`, apply the
 [desktop status bridge contract](STATUS_CONTRACT.md). A ready state requires the exact
 successful no-match outcome plus zero findings and zero errors. Never infer success

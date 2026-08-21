@@ -8,6 +8,7 @@ import {
 } from "./policy.js";
 
 const HEALTH_KEY = "runtimeHealth";
+const RULESET_IDS = Object.freeze(["privacy_rules", "link_cleanup"]);
 
 async function readRuntimeHealth() {
   const stored = await chrome.storage.local.get(HEALTH_KEY);
@@ -42,8 +43,8 @@ async function writeSettings(settings) {
     const normalized = normalizeSettings(settings);
     await chrome.storage.local.set(normalized);
     await chrome.declarativeNetRequest.updateEnabledRulesets({
-      enableRulesetIds: normalized.protectionEnabled ? ["privacy_rules"] : [],
-      disableRulesetIds: normalized.protectionEnabled ? [] : ["privacy_rules"]
+      enableRulesetIds: normalized.protectionEnabled ? [...RULESET_IDS] : [],
+      disableRulesetIds: normalized.protectionEnabled ? [] : [...RULESET_IDS]
     });
     await chrome.declarativeNetRequest.updateDynamicRules({
       removeRuleIds: pauseRuleIds(),

@@ -5,9 +5,10 @@ and processor architecture. They use PyInstaller's one-directory layout. Keep th
 executable and its `_internal` directory together.
 
 The archive does not install a service, driver, scheduled task, shell extension, or
-startup entry. It remains an on-demand scanner and has no telemetry or real-time
-filesystem interception. The bundled feed keyring is empty in this preview, so feed
-rules require an operator-supplied Ed25519 public-key ring.
+startup entry. It supports on-demand scanning and an explicit foreground
+post-change `watch` process, with no telemetry, pre-access enforcement, or
+operating-system antivirus registration. The bundled feed keyring is empty in this
+preview, so feed rules require an operator-supplied Ed25519 public-key ring.
 
 Exact released OS/architecture coverage, key-protection status, and safe-preview
 instructions are maintained in the [platform support matrix](PLATFORM_SUPPORT.md).
@@ -58,11 +59,12 @@ Smoke-test the extracted executable with a disposable state directory:
 
 ```bash
 zsec-shield --version
+zsec-shield watch --help
 zsec-shield --state-dir ./temporary-state status --json
 zsec-shield replacement-readiness --json
 ```
 
-The build script performs the version and status checks, then requires the
+The build script performs the version, watch-command, and status checks, then requires the
 replacement-readiness command to return exit `2` with
 `decision: keep_existing_protection`. That deliberate non-success is a packaging
 invariant for the preview, not a failed build. The readiness check does not create
@@ -71,3 +73,10 @@ the disposable state directory or change installed protection.
 Python/wheel installation also exposes the `zero-security` product alias in the
 0.2.0 development candidate. Native archives retain the `zsec-shield` executable
 name for compatibility.
+
+Native manifest v2 lists both `on-demand` and
+`foreground-post-change-protection` modes while fixing
+`pre_access_enforcement`, `background_service`, `real_time_protection`,
+`automatic_quarantine`, and `telemetry` to `false`. It records `watchdog` as a
+licensed runtime component. This capability metadata prevents a self-contained
+CLI archive from being mistaken for an installed primary-antivirus provider.

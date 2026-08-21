@@ -2,17 +2,21 @@
 
 ![Zero Security launch artwork](assets/brand/zero-security-hero.png)
 
-**Zero Security is a cross-platform on-demand security preview and an engineering
-programme for proper supported Windows, macOS, and Linux antivirus editions.**
+**Zero Security is a cross-platform scanning and foreground post-change protection
+preview, plus an engineering programme for proper supported Windows, macOS, and
+Linux antivirus editions.**
 This repository contains its already working, auditable ZSEC Shield engine and
 the next production foundations: signed data-only protection feeds, automatic
 authenticated encrypted quarantine, ZBA-bound provenance, and the ZeroQ Shields
 browser protection preview.
 
-ZSEC Shield is a deterministic, non-AI, on-demand file scanner for Python 3.11+.
-It hashes regular files with SHA-256, applies exact byte and digest rules, verifies
+ZSEC Shield is a deterministic, non-AI file scanner for Python 3.11+. It hashes
+regular files with SHA-256, applies exact byte and digest rules, verifies
 Ed25519-signed data-only rule feeds, produces structured JSON, and can move an
-explicitly selected match into recoverable encrypted quarantine.
+explicitly selected match into recoverable encrypted quarantine. The development
+candidate can also remain in the foreground and automatically scan file create and
+change events, with a disclosed polling fallback, duplicate-event debounce, and
+periodic reconciliation.
 
 The current tagged build is still an on-demand preview, not a replacement
 antivirus on any platform. It has no Windows minifilter/AMSI/ELAM stack, macOS
@@ -31,7 +35,7 @@ claimed by a mock dashboard. See the [Windows programme](docs/FULL_ANTIVIRUS_PRO
 | Scan engine | Streaming SHA-256, exact byte/digest rules, EICAR wiring test, deterministic JSON | Sandboxed PE/script/document/archive engines, locked malware and cleanware evaluation |
 | Quarantine | Per-object AES-256-GCM, automatic Windows DPAPI key sealing, authenticated ZBA metadata, tamper-fail restore | Windows service key isolation, TPM/CNG root, crash and recovery certification |
 | Updates | Strict Ed25519 signed data-only feed with expiry and rollback checks | Authenticode plus threshold TUF metadata, staged binary/rule/driver rollback |
-| Real time | Not installed or claimed | Windows FltMgr/AMSI/ELAM; macOS Endpoint Security; Linux fanotify—with platform-specific deadline and failure tests |
+| Automatic file monitoring | Foreground post-change event scans with baseline, debounce, bounded queue and polling fallback; no pre-access enforcement | Windows FltMgr/AMSI/ELAM; macOS Endpoint Security; Linux fanotify—with platform-specific deadline and failure tests |
 | Platform trust | Read-only inventory | Windows WSC/MVI; Apple entitlement, Developer ID and notarization; signed DEB/RPM repositories and enforced Linux service confinement |
 | Browser | Testable MV3 ZeroQ Shields extension | Maintained Chromium build, upstream security cadence, signed updater and browser regression fleet |
 
@@ -42,8 +46,12 @@ unsigned privileged package, or security-control bypass belongs on a real machin
 
 ## Security boundaries
 
-- Scanning is local and on demand. No AI model, API key, telemetry endpoint, or
-  cloud upload is used.
+- Scanning is local and runs either on demand or as explicit foreground post-change
+  monitoring. No AI model, API key, telemetry endpoint, or cloud upload is used.
+- Foreground protection does not mediate file access, run as a service, register as
+  the operating-system antivirus, or replace existing protection. Queue/backend/
+  trust failures produce an incomplete result, and state/quarantine paths are
+  excluded before events are queued.
 - Symlinks and Windows reparse points are not followed. Special files are skipped.
 - Recursive scans stay on the starting filesystem by default.
 - Files larger than 64 MiB are skipped by default; the limit is explicit and
@@ -82,10 +90,10 @@ used the `ZME1` name.
 ## Zero Browser and ZeroQ Shields
 
 The open-source extension preview lives in
-[`browser/zeroq-shields`](browser/zeroq-shields). It provides packaged local
-ad/tracker rules, a per-site pause switch, and best-effort YouTube skip/nuisance
-cleanup. It has no analytics endpoint, remote code, TLS interception, replacement
-ads, or affiliate rewriting.
+[`browser/zeroq-shields`](browser/zeroq-shields). It provides 38 packaged local
+network blockers, two tracking-link cleaners, a per-site pause switch, and
+best-effort YouTube skip/nuisance cleanup. It has no analytics endpoint, remote
+code, TLS interception, replacement ads, or affiliate rewriting.
 
 ```powershell
 cd browser\zeroq-shields
@@ -96,7 +104,10 @@ npm run validate
 The extension is an early protection layer, not yet a Chromium browser binary.
 The canonical product pages are
 [talktoai.org/zero-security](https://talktoai.org/zero-security/) and
-[talktoai.org/zero-browser](https://talktoai.org/zero-browser/).
+[talktoai.org/zero-browser](https://talktoai.org/zero-browser/). Exact preview
+downloads and install guidance live at
+[Zero Security downloads](https://talktoai.org/zero-security/download/) and
+[ZeroQ Shields installation](https://talktoai.org/zero-browser/download/).
 
 ## Platform scope
 
@@ -106,9 +117,9 @@ operating system's supported security architecture:
 
 | Desktop | Current public build | Production programme—not shipped |
 | --- | --- | --- |
-| Windows 10/11 | On-demand scanner, read-only inventory, DPAPI-backed preview quarantine | FltMgr minifilter, protected service, x86/x64 AMSI, ELAM, approved WSC/MVI integration |
-| macOS | On-demand scanner and read-only inventory; filesystem key root is preview-only | Universal 2 app, Endpoint Security system extension, Keychain root, Developer ID, Hardened Runtime and notarization |
-| Linux | On-demand scanner and read-only inventory; filesystem key root is preview-only | Narrow distro/kernel matrix, fanotify broker, confined daemon/workers, signed DEB/RPM packages and repositories |
+| Windows 10/11 | On-demand scanning, foreground ReadDirectoryChangesW monitoring, read-only inventory and DPAPI-backed preview quarantine | FltMgr minifilter, protected service, x86/x64 AMSI, ELAM, approved WSC/MVI integration |
+| macOS | On-demand scanning, foreground FSEvents monitoring and read-only inventory; filesystem key root is preview-only | Universal 2 app, Endpoint Security system extension, Keychain root, Developer ID, Hardened Runtime and notarization |
+| Linux | On-demand scanning, foreground inotify monitoring and read-only inventory; filesystem key root is preview-only | Narrow distro/kernel matrix, fanotify broker, confined daemon/workers, signed DEB/RPM packages and repositories |
 
 Inventory adapters identify only basic OS/runtime context. They do not claim that
 patches, Microsoft Defender, XProtect, Gatekeeper, SIP, packages, SELinux,
@@ -137,8 +148,9 @@ python3.11 -m venv .venv
 `zero-security` is the product command. `zsec-shield` remains a compatible alias
 for existing scripts.
 
-The runtime dependency is `cryptography`, used for Ed25519 verification,
-AES-256-GCM quarantine, and HKDF key separation.
+The runtime dependencies are `cryptography`, used for Ed25519 verification,
+AES-256-GCM quarantine, and HKDF key separation, plus the pinned `watchdog`
+filesystem-event observer used by foreground post-change protection.
 
 ## Native archives
 
@@ -181,6 +193,28 @@ Scan several roots and save a machine-readable report:
 ```bash
 zsec-shield check ./downloads ./incoming --report ./reports/check.json --json
 ```
+
+Automatically scan new or modified files while the command remains in the
+foreground (quarantine stays off):
+
+```bash
+zero-security watch ./downloads ./incoming
+```
+
+For a bounded session with newline-delimited events and a final atomic report:
+
+```bash
+zero-security watch ./incoming \
+  --duration-seconds 300 \
+  --json-lines \
+  --report ./reports/watch.json
+```
+
+The native backend is attempted first and initial startup may fall back to polling
+with a visible record. Use `--backend native` to require native events or
+`--backend polling` deliberately. This is post-change user-mode monitoring, not
+pre-access real-time enforcement. Keep the existing antivirus active. See the
+[foreground watch contract](docs/FOREGROUND_WATCH_MODE.md).
 
 Inspect status and read-only inventory:
 
@@ -285,10 +319,10 @@ The state root is excluded automatically when it lies beneath a requested scan r
 
 | Code | Meaning |
 | --- | --- |
-| `0` | Scan completed with no configured rule match, or diagnostic/update command succeeded. |
-| `1` | One or more configured rules matched and the scan otherwise completed. |
-| `2` | Incomplete/blocked operation: unreadable or changing file, invalid feed, unsafe restore, or replacement not authorized. |
-| `130` | Interrupted by the operator. |
+| `0` | Scan or bounded watch completed with no configured rule match, or diagnostic/update command succeeded. |
+| `1` | One or more configured rules matched and the scan/watch otherwise completed. |
+| `2` | Incomplete/blocked operation: unreadable or changing file, invalid feed, lost watch coverage, unsafe restore, or replacement not authorized. |
+| `130` | Foreground watch or another operation was interrupted by the operator. |
 
 A `0` is deliberately phrased as “no configured rule matches,” never “clean.”
 

@@ -10,7 +10,7 @@ macOS quarantine-key protection is shipped today.
 
 The current repository remains an open-source, deterministic, local,
 **on-demand** scanner. Until every applicable gate in section 21 passes, public
-copy must say “on-demand security preview,” not “complete antivirus,” “real-time
+copy must say “foreground post-change security preview,” not “complete antivirus,” “real-time
 protection,” “replaces XProtect,” or “stops all malware.”
 
 ## 1. Product outcome and governing principles
@@ -987,7 +987,7 @@ matrix passed; `WAIVED` is not allowed for a mandatory gate.
 
 | Gate | Mandatory evidence | Blocks |
 | --- | --- | --- |
-| G0 Scope/claims | Approved claim matrix showing current on-demand/observe/block capability and every non-goal | Any public release |
+| G0 Scope/claims | Approved claim matrix showing current on-demand/foreground-observe/block capability and every non-goal | Any public release |
 | G1 Platform | Physical-hardware results for macOS 14/15/26, Apple silicon and required Intel; all executables verified Universal 2 | M1+ |
 | G2 Apple entitlement | Production Endpoint Security entitlement and distribution profiles approved for exact Team/bundle IDs | M2+ |
 | G3 Consent | Fresh unmanaged and MDM install tests for extension approval/FDA decline, grant, revoke, reinstall, multi-user, restart | M2+ |

@@ -11,3 +11,4 @@ deploy/
 .venv/
 reports/
 native-release/
+browser/zeroq-shields/_metadata/

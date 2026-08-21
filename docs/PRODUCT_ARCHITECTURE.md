@@ -7,8 +7,8 @@ gates; it does not claim real-time antivirus certification.
 
 | Product | Current role | Does not currently claim |
 | --- | --- | --- |
-| Zero Security | Cross-platform desktop security umbrella and on-demand preview | Background or replacement protection on any platform |
-| ZSEC Shield | Deterministic, on-demand scanner and encrypted quarantine core | Kernel interception, memory scanning, EDR, or zero-day prevention |
+| Zero Security | Cross-platform security umbrella with on-demand and foreground post-change preview modes | Background, pre-access, or replacement protection on any platform |
+| ZSEC Shield | Deterministic scanner, file-event watcher, and encrypted quarantine core | Kernel interception, memory scanning, EDR, or zero-day prevention |
 | Zero Browser | Chromium privacy/security extension preview | A separately maintained Chromium binary or complete ad blocking on every site |
 
 ## Automatic protection model
@@ -55,7 +55,11 @@ Unprivileged, bounded scanner workers
     +-- encrypted quarantine
 ```
 
-The public preview stays on demand and coexists with current protection. Shared
+The public development preview runs on demand or as an explicit foreground
+post-change watcher and coexists with current protection. The watcher starts its
+observer before a baseline, debounces a bounded event queue, excludes state, runs
+periodic reconciliation, and reports known coverage loss as incomplete. It does
+not mediate access or install persistence. Shared
 scanner, evidence, feed, quarantine-envelope, updater-policy, and UI concepts sit
 above three separately released enforcement planes:
 
@@ -65,7 +69,7 @@ above three separately released enforcement planes:
 | macOS | Deadline-safe Endpoint Security system extension plus sandboxed XPC workers | Apple entitlement, user/MDM consent, Keychain, Developer ID, Hardened Runtime and notarization |
 | Linux | Minimal fanotify broker, unprivileged daemon/workers and explicit mount coverage | systemd plus SELinux/AppArmor confinement and signed distro-scoped DEB/RPM repositories |
 
-None of these enforcement planes ships in the current CLI preview. Their
+None of these privileged enforcement planes ships in the current CLI preview. Their
 executable and cutover gates are defined in
 `FULL_ANTIVIRUS_PROGRAM.md`, `MACOS_DESKTOP_PROGRAM.md`, and
 `LINUX_DESKTOP_PROGRAM.md`. The shared

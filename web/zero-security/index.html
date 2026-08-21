@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Zero Security for Windows, macOS &amp; Linux | Preview</title>
-  <meta name="description" content="Zero Security Preview is a local-first on-demand security companion for Windows, macOS and Linux, with deterministic scanning and signed rules.">
+  <title>Zero Security 0.2 | Automatic File Protection Preview</title>
+  <meta name="description" content="Zero Security 0.2 adds automatic post-change file monitoring to a local-first security companion for Windows, macOS and Linux. Download the preview.">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#07101f">
@@ -18,16 +18,16 @@
   <meta property="og:locale" content="en_GB">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://talktoai.org/zero-security/">
-  <meta property="og:title" content="Zero Security for Windows, macOS &amp; Linux | Preview">
-  <meta property="og:description" content="A cross-platform, local-first command-line security preview with deterministic checks, signed data-only rules and authenticated encrypted quarantine in development.">
+  <meta property="og:title" content="Zero Security 0.2 | Automatic File Protection Preview">
+  <meta property="og:description" content="Cross-platform native file-event monitoring, deterministic local checks, signed data-only rules and authenticated encrypted quarantine.">
   <meta property="og:image" content="https://talktoai.org/assets/zero-security-og.png">
   <meta property="og:image:width" content="1536">
   <meta property="og:image:height" content="1024">
   <meta property="og:image:alt" content="Zero Security Preview product interface concept">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Zero Security for Windows, macOS &amp; Linux | Preview">
-  <meta name="twitter:description" content="Cross-platform local file checks and signed data-only rules. Current build: on-demand CLI preview, not a primary antivirus.">
+  <meta name="twitter:title" content="Zero Security 0.2 | Automatic File Protection Preview">
+  <meta name="twitter:description" content="Native file-event monitoring for Windows, macOS and Linux. Useful companion protection; not yet a primary antivirus.">
   <meta name="twitter:image" content="https://talktoai.org/assets/zero-security-og.png">
   <meta name="twitter:image:alt" content="Zero Security Preview product interface concept">
 
@@ -39,8 +39,8 @@
         "@type": "WebPage",
         "@id": "https://talktoai.org/zero-security/#webpage",
         "url": "https://talktoai.org/zero-security/",
-        "name": "Zero Security for Windows, macOS & Linux | Preview",
-        "description": "Zero Security Preview is a cross-platform, local-first on-demand security companion. Version 0.2.0 is an unreleased development candidate in draft pull request 5.",
+        "name": "Zero Security 0.2 | Automatic File Protection Preview",
+        "description": "Zero Security 0.2 is a cross-platform, local-first security companion with foreground post-change file monitoring, deterministic scanning and authenticated encrypted quarantine.",
         "inLanguage": "en-GB",
         "dateModified": "2026-08-21",
         "isPartOf": { "@id": "https://talktoai.org/#website" },
@@ -66,13 +66,13 @@
         "name": "Zero Security Preview",
         "url": "https://talktoai.org/zero-security/",
         "applicationCategory": "SecurityApplication",
-        "applicationSubCategory": "Cross-platform on-demand security scanner preview",
+        "applicationSubCategory": "Cross-platform automatic file-monitoring security preview",
         "operatingSystem": ["Windows 10", "Windows 11", "macOS", "Linux"],
-        "softwareVersion": "0.2.0 development candidate",
+        "softwareVersion": "0.2.0 developer preview",
         "isAccessibleForFree": true,
         "license": "https://www.apache.org/licenses/LICENSE-2.0",
         "publisher": { "@id": "https://talktoai.org/#organization" },
-        "description": "An open-core command-line security preview with deterministic on-demand checks, signed data-only rule verification and authenticated encrypted quarantine in development. It is not a background or primary antivirus on any platform."
+        "description": "An open-core command-line security preview with native post-change file-event monitoring, deterministic checks, signed data-only rule verification and authenticated encrypted quarantine. It is not kernel pre-access protection, a background service or a primary antivirus."
       },
       {
         "@type": "BreadcrumbList",
@@ -101,7 +101,7 @@
             "name": "Does Zero Security replace Microsoft Defender, Malwarebytes or another antivirus?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No. The current build is an on-demand command-line preview for selected files. Keep Malwarebytes, Microsoft Defender, XProtect, Gatekeeper, SIP, Linux security controls and any endpoint agent active. The fail-closed replacement-readiness command returns a blocked decision until the exact platform release passes signing, integration, efficacy, coexistence and rollback gates."
+              "text": "No. Version 0.2 adds useful foreground post-change monitoring, but it does not block access at the kernel boundary or register as a primary provider. Keep Malwarebytes, Microsoft Defender, XProtect, Gatekeeper, SIP, Linux security controls and any endpoint agent active. The fail-closed replacement-readiness command remains blocked until the exact platform release passes signing, integration, efficacy, coexistence and rollback gates."
             }
           },
           {
@@ -159,9 +159,10 @@
         <span class="brand-mark" aria-hidden="true">Z</span>
         <span>TalkToAI</span>
         <span class="brand-product">Zero Security</span>
-        <span class="preview-chip">Preview</span>
+        <span class="preview-chip">0.2 preview</span>
       </a>
       <nav class="nav-links" aria-label="Primary navigation">
+        <a class="nav-priority" href="download/">Download</a>
         <a href="#platforms">Platforms</a>
         <a href="#how-it-works">How it works</a>
         <a href="#architecture">Architecture</a>
@@ -176,14 +177,14 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="container hero-grid">
         <div class="hero-copy">
-          <p class="hero-kicker">Windows · macOS · Linux · on-demand preview</p>
-          <h1 id="hero-title">Security that explains itself.</h1>
-          <p class="lede">Zero Security is a cross-platform, local-first security programme built on the open ZSEC Shield foundation. The development preview checks selected files on demand, verifies signed data-only rules and can place configured matches into authenticated encrypted quarantine.</p>
+          <p class="hero-kicker">Windows · macOS · Linux · automatic post-change monitoring</p>
+          <h1 id="hero-title">Automatic file protection that explains itself.</h1>
+          <p class="lede">Zero Security 0.2 watches the folders you choose, reacts to native operating-system file events, checks changed files locally against deterministic rules and can place configured matches into authenticated encrypted quarantine when you explicitly enable it.</p>
           <div class="hero-actions">
-            <a class="button" href="https://github.com/ResearchForumOnline/ZSEC-Shield/pull/5">Review development PR #5 <span aria-hidden="true">↗</span></a>
-            <a class="button button-secondary" href="#architecture">See the architecture</a>
+            <a class="button" href="download/">Download Zero Security 0.2 <span aria-hidden="true">↓</span></a>
+            <a class="button button-secondary" href="#how-it-works">See what works</a>
           </div>
-          <p class="microcopy"><strong>Clear boundary:</strong> version 0.2.0 is an unreleased development candidate in draft PR #5. Desktop support currently means specific command-line builds—not a tray app, background provider or primary-antivirus replacement—and a limited scan never proves a computer is clean.</p>
+          <p class="microcopy"><strong>Clear boundary:</strong> version 0.2 is an unsigned command-line developer preview. Monitoring runs in the foreground after filesystem changes; it is not kernel pre-access blocking, a protected service or a primary-antivirus replacement, and a limited scan never proves a computer is clean.</p>
         </div>
 
         <!-- Local launch artwork: ../assets/zero-security-hero.png -->
@@ -194,7 +195,7 @@
               <span class="window-dot"></span>
               <span class="window-dot"></span>
               <span class="window-dot"></span>
-              <span class="window-title">Zero Security Preview</span>
+              <span class="window-title">Zero Security 0.2</span>
             </div>
             <div class="window-body">
               <div class="status-row">
@@ -207,7 +208,7 @@
               </div>
               <div class="status-row">
                 <span class="status-name">Protection mode</span>
-                <span class="status-value planned">On-demand preview</span>
+                <span class="status-value">Native post-change watch</span>
               </div>
             </div>
           </div>
@@ -239,24 +240,24 @@
             <p class="section-label">Exact delivery status</p>
             <h2 id="platforms-title">One auditable core. Three separately gated desktops.</h2>
           </div>
-          <p>The public v0.1.2 prerelease contains earlier unsigned command-line archives. The new 0.2.0 feature set is unreleased in draft PR #5. “Native archive” means a self-contained CLI—not a graphical app or background provider.</p>
+          <p>Version 0.2 packages the same auditable core for each desktop and adds foreground post-change monitoring. “Native archive” means a self-contained CLI—not a graphical app, protected background service or primary provider.</p>
         </div>
 
         <div class="feature-grid">
           <article class="card">
             <span class="card-icon" aria-hidden="true">W</span>
             <h3>Windows</h3>
-            <p><strong>Public artifact:</strong> x86-64 ZIP CLI. No service, minifilter, AMSI/ELAM provider, Authenticode signature or Windows Security registration. The 0.2.0 development vault uses CurrentUser DPAPI.</p>
+            <p><strong>0.2 preview:</strong> x86-64 ZIP CLI with ReadDirectoryChangesW monitoring and CurrentUser DPAPI key protection. No service, minifilter, AMSI/ELAM provider, Authenticode signature or Windows Security registration.</p>
           </article>
           <article class="card">
             <span class="card-icon" aria-hidden="true">M</span>
             <h3>macOS</h3>
-            <p><strong>Public artifact:</strong> Apple-silicon tarball CLI. No notarized app, Endpoint Security extension or Full Disk Access requirement. The 0.2.0 filesystem-key fallback is not production Keychain custody.</p>
+            <p><strong>0.2 preview:</strong> native tar archive using FSEvents through the Watchdog observer. No notarized app, Endpoint Security extension or Full Disk Access requirement; filesystem-key fallback is not production Keychain custody.</p>
           </article>
           <article class="card">
             <span class="card-icon" aria-hidden="true">L</span>
             <h3>Linux</h3>
-            <p><strong>Public artifact:</strong> x86-64 tarball CLI. No fanotify broker, background daemon, signed DEB/RPM repository or broad distro promise. The 0.2.0 filesystem-key fallback is preview-only.</p>
+            <p><strong>0.2 preview:</strong> x86-64 tar archive using inotify through the Watchdog observer. No fanotify permission broker, background daemon or signed DEB/RPM repository; filesystem-key fallback is preview-only.</p>
           </article>
         </div>
 
@@ -280,18 +281,18 @@
           <p>Routine cryptographic key handling is designed to happen without password prompts. The preview keeps file selection, quarantine enablement and restore visible because automation should not hide consequential actions.</p>
         </div>
 
-        <div class="step-grid" aria-label="Zero Security on-demand workflow">
+        <div class="step-grid" aria-label="Zero Security automatic post-change workflow">
           <article class="step">
-            <h3>Choose a scope</h3>
-            <p>Select the file or directory you want checked. The scanner does not silently sweep unrelated storage.</p>
+            <h3>Choose watched folders</h3>
+            <p>Start <code>zero-security protect PATH</code> for the directories you want monitored. The native observer starts before the mandatory baseline scan.</p>
           </article>
           <article class="step">
-            <h3>Check deterministically</h3>
-            <p>SHA-256, exact-byte rules and verified signed feed data produce explainable configured matches.</p>
+            <h3>React and reconcile</h3>
+            <p>Create, modify and move-in events are debounced and checked locally; periodic reconciliation reduces missed-event risk.</p>
           </article>
           <article class="step">
             <h3>Protect a match</h3>
-            <p>When quarantine is enabled, the implementation authenticates metadata and encrypts the recovery object before source removal.</p>
+            <p>When <code>--quarantine</code> is explicit, the implementation authenticates metadata and encrypts a verified recovery object before source removal.</p>
           </article>
           <article class="step">
             <h3>Review or restore</h3>
@@ -546,7 +547,7 @@
         <div class="faq-list">
           <details>
             <summary>Does Zero Security replace Microsoft Defender, Malwarebytes or another antivirus?</summary>
-            <div class="faq-answer"><p>No. The current build is an on-demand command-line preview for selected files. Keep Malwarebytes, Microsoft Defender, XProtect, Gatekeeper, SIP, Linux security controls and any endpoint agent active. The fail-closed replacement-readiness command returns a blocked decision until the exact platform release passes signing, integration, efficacy, coexistence and rollback gates.</p></div>
+            <div class="faq-answer"><p>No. Version 0.2 adds useful foreground post-change monitoring, but it does not block access at the kernel boundary or register as a primary provider. Keep Malwarebytes, Microsoft Defender, XProtect, Gatekeeper, SIP, Linux security controls and any endpoint agent active. The fail-closed replacement-readiness command remains blocked until the exact platform release passes signing, integration, efficacy, coexistence and rollback gates.</p></div>
           </details>
           <details>
             <summary>Does Zero Security upload my files?</summary>
@@ -576,11 +577,11 @@
       <div class="container cta-box">
         <div>
           <p class="section-label">Build trust in public</p>
-          <h2 id="cta-title">Start with the code and the boundaries.</h2>
-          <p>Review the current ZSEC Shield foundation, its tests, threat model and signed-feed design. Preview software should be evaluated on disposable data and must not be used to disable operating-system protection.</p>
+          <h2 id="cta-title">Download it. Verify it. Start with a test folder.</h2>
+          <p>The 0.2 preview gives the project a working cross-platform automatic-monitoring layer today. Keep existing antivirus active and evaluate it against non-critical data first.</p>
         </div>
         <div class="cta-actions">
-          <a class="button" href="https://github.com/ResearchForumOnline/ZSEC-Shield">View the source <span aria-hidden="true">↗</span></a>
+          <a class="button" href="download/">Choose your platform <span aria-hidden="true">↓</span></a>
           <a class="button button-secondary" href="../zero-browser/">Meet Zero Browser</a>
         </div>
       </div>
@@ -594,11 +595,12 @@
           <span class="brand-mark" aria-hidden="true">Z</span>
           <span>Zero Security</span>
         </a>
-        <p>Local-first Windows, macOS and Linux security research from TalkToAI. Current status: unreleased 0.2.0 command-line development preview, not a complete antivirus product.</p>
+        <p>Local-first Windows, macOS and Linux security from TalkToAI. Version 0.2 adds foreground automatic file-event monitoring while remaining companion protection.</p>
       </div>
       <div>
         <p class="footer-title">Product</p>
         <ul class="footer-links">
+          <li><a href="download/">Download and install</a></li>
           <li><a href="#how-it-works">How it works</a></li>
           <li><a href="#architecture">Architecture</a></li>
           <li><a href="#privacy">Privacy contract</a></li>

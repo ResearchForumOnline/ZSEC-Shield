@@ -38,6 +38,7 @@ DOCUMENTS: tuple[tuple[Path, str], ...] = (
     (PROJECT_ROOT / "docs" / "THREAT_MODEL.md", "THREAT_MODEL.md"),
     (PROJECT_ROOT / "docs" / "FEED_FORMAT.md", "FEED_FORMAT.md"),
     (PROJECT_ROOT / "docs" / "OPERATIONS.md", "OPERATIONS.md"),
+    (PROJECT_ROOT / "docs" / "FOREGROUND_WATCH_MODE.md", "FOREGROUND_WATCH_MODE.md"),
     (PROJECT_ROOT / "docs" / "NATIVE_DISTRIBUTION.md", "NATIVE_DISTRIBUTION.md"),
     (PROJECT_ROOT / "docs" / "PLATFORM_SUPPORT.md", "PLATFORM_SUPPORT.md"),
     (PROJECT_ROOT / "docs" / "REPLACEMENT_READINESS.md", "REPLACEMENT_READINESS.md"),
@@ -50,6 +51,7 @@ DOCUMENTS: tuple[tuple[Path, str], ...] = (
 
 NOTICE_DISTRIBUTIONS: tuple[tuple[str, str, bool], ...] = (
     ("cryptography", "runtime", True),
+    ("watchdog", "runtime filesystem-event observer", True),
     ("cffi", "runtime dependency", False),
     ("pycparser", "runtime dependency", False),
     ("pyinstaller", "build tool and bundled bootloader", True),
@@ -165,7 +167,7 @@ VSVersionInfo(
         '040904B0',
         [
           StringStruct('CompanyName', 'ZSEC contributors'),
-          StringStruct('FileDescription', 'ZSEC Shield on-demand scanner'),
+          StringStruct('FileDescription', 'ZSEC Shield file scanner'),
           StringStruct('FileVersion', '{dotted}'),
           StringStruct('InternalName', 'zsec-shield'),
           StringStruct('LegalCopyright', 'Licensed under Apache-2.0'),
@@ -395,7 +397,7 @@ def _write_manifest(
     components: list[dict[str, Any]],
 ) -> Path:
     manifest = {
-        "schema": "zsec.shield.native-distribution.v1",
+        "schema": "zsec.shield.native-distribution.v2",
         "product": "ZSEC Shield",
         "version": version,
         "target": {"os": target_os, "architecture": architecture},
@@ -408,8 +410,11 @@ def _write_manifest(
             "publisher_code_signing": "not-performed-by-this-build",
         },
         "runtime_policy": {
-            "scanner_mode": "on-demand",
+            "modes": ["on-demand", "foreground-post-change-protection"],
+            "pre_access_enforcement": False,
+            "background_service": False,
             "real_time_protection": False,
+            "automatic_quarantine": False,
             "telemetry": False,
             "bundled_trust_keys": _bundled_trust_key_count(),
         },
@@ -437,6 +442,17 @@ def _smoke_test(executable: Path, state_dir: Path, version: str) -> None:
     )
     if version_result.stdout.strip() != f"zsec-shield {version}":
         raise ReleaseError("frozen executable returned an unexpected version")
+    watch_help_result = subprocess.run(
+        [str(executable), "watch", "--help"],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    watch_help_tokens = set(watch_help_result.stdout.casefold().split())
+    required_watch_options = {"--backend", "--reconcile-seconds", "--quarantine"}
+    if not required_watch_options.issubset(watch_help_tokens):
+        raise ReleaseError("frozen executable does not expose the bounded watch interface")
     status_result = subprocess.run(
         [str(executable), "--state-dir", str(state_dir), "status", "--json"],
         check=True,

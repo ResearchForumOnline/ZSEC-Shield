@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "ZeroQ Shields Preview",
+  "name": "ZeroQ Shields",
   "short_name": "ZeroQ Shields",
-  "version": "0.1.0",
-  "description": "Local ad and tracker rule filtering with best-effort YouTube cleanup; not full browser security.",
+  "version": "0.2.0",
+  "description": "Local ad and tracker filtering, tracking-link cleanup, per-site controls and best-effort YouTube assistance.",
   "minimum_chrome_version": "120",
   "permissions": [
     "activeTab",
@@ -34,6 +34,11 @@
         "id": "privacy_rules",
         "enabled": true,
         "path": "rules/privacy.json"
+      },
+      {
+        "id": "link_cleanup",
+        "enabled": true,
+        "path": "rules/link-cleaning.json"
       }
     ]
   },

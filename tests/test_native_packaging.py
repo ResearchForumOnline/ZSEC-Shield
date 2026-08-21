@@ -115,8 +115,48 @@ class NativePackagingTests(unittest.TestCase):
         self.assertIn("runtime_policy", schema["required"])
         self.assertIn("source_tree_state", schema["properties"]["build"]["required"])
         policy = schema["properties"]["runtime_policy"]["properties"]
+        self.assertEqual(
+            ["on-demand", "foreground-post-change-protection"], policy["modes"]["const"]
+        )
+        self.assertEqual(False, policy["pre_access_enforcement"]["const"])
+        self.assertEqual(False, policy["background_service"]["const"])
         self.assertEqual(False, policy["real_time_protection"]["const"])
+        self.assertEqual(False, policy["automatic_quarantine"]["const"])
         self.assertEqual(False, policy["telemetry"]["const"])
+
+    def test_manifest_writer_records_post_change_capability_without_primary_claims(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "zsec-shield.exe").write_bytes(b"preview")
+            with (
+                patch.object(release, "_source_revision", return_value="a" * 40),
+                patch.object(release, "_source_tree_state", return_value="modified"),
+            ):
+                path = release._write_manifest(
+                    root,
+                    version="0.2.0",
+                    target_os="windows",
+                    architecture="x86_64",
+                    entrypoint="zsec-shield.exe",
+                    pyinstaller_version="6.21.0",
+                    components=[],
+                )
+            manifest = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual("zsec.shield.native-distribution.v2", manifest["schema"])
+        policy = manifest["runtime_policy"]
+        self.assertEqual(
+            ["on-demand", "foreground-post-change-protection"], policy["modes"]
+        )
+        self.assertFalse(policy["pre_access_enforcement"])
+        self.assertFalse(policy["background_service"])
+        self.assertFalse(policy["real_time_protection"])
+        self.assertFalse(policy["automatic_quarantine"])
+
+    def test_watchdog_runtime_license_is_required_in_native_archive(self) -> None:
+        self.assertIn(
+            ("watchdog", "runtime filesystem-event observer", True),
+            release.NOTICE_DISTRIBUTIONS,
+        )
 
     def test_spec_uses_inspectable_onedir_without_upx_or_signing(self) -> None:
         content = (PROJECT_ROOT / "packaging" / "zsec-shield.spec").read_text(encoding="utf-8")
@@ -133,6 +173,7 @@ class NativePackagingTests(unittest.TestCase):
         self.assertIn('\"replacement-readiness\", \"--json\"', content)
         self.assertIn("readiness_result.returncode != 2", content)
         self.assertIn('\"keep_existing_protection\"', content)
+        self.assertIn('\"watch\", \"--help\"', content)
 
     def test_source_archive_includes_native_rebuild_inputs(self) -> None:
         content = (PROJECT_ROOT / "MANIFEST.in").read_text(encoding="utf-8")

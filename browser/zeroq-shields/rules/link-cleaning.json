@@ -1,0 +1,82 @@
+[
+  {
+    "id": 1001,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "utm_source",
+              "utm_medium",
+              "utm_campaign",
+              "utm_term",
+              "utm_content",
+              "utm_id",
+              "gclid",
+              "dclid",
+              "fbclid",
+              "msclkid",
+              "twclid",
+              "ttclid",
+              "li_fat_id",
+              "mc_cid",
+              "mc_eid",
+              "vero_conv",
+              "vero_id",
+              "oly_anon_id",
+              "oly_enc_id",
+              "_hsenc",
+              "_hsmi"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "|https://",
+      "resourceTypes": ["main_frame"]
+    }
+  },
+  {
+    "id": 1002,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "transform": {
+          "queryTransform": {
+            "removeParams": [
+              "utm_source",
+              "utm_medium",
+              "utm_campaign",
+              "utm_term",
+              "utm_content",
+              "utm_id",
+              "gclid",
+              "dclid",
+              "fbclid",
+              "msclkid",
+              "twclid",
+              "ttclid",
+              "li_fat_id",
+              "mc_cid",
+              "mc_eid",
+              "vero_conv",
+              "vero_id",
+              "oly_anon_id",
+              "oly_enc_id",
+              "_hsenc",
+              "_hsmi"
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
+      "urlFilter": "|http://",
+      "resourceTypes": ["main_frame"]
+    }
+  }
+]

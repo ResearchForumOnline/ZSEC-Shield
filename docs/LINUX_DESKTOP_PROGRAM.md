@@ -2,7 +2,8 @@
 
 Status: production design and release-gate specification, 21 August 2026.
 
-The repository currently provides an on-demand scanner. It does not currently
+The repository currently provides an on-demand scanner and foreground post-change
+inotify monitoring through Watchdog. It does not currently
 provide real-time Linux protection, a privileged daemon, fanotify mediation,
 eBPF monitoring, desktop integration, signed Linux repositories, or independently
 validated Linux malware-detection efficacy. This document defines the evidence

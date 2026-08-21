@@ -35,6 +35,7 @@ h1 { margin: 1px 0 0; font-size: 19px; letter-spacing: -0.02em; }
 .row strong { display: block; font-size: 13px; }
 .row small { display: block; margin-top: 3px; color: #86a19b; font-size: 10px; }
 .row input { accent-color: #18d8a2; width: 17px; height: 17px; }
+.always-on { flex: none !important; border: 1px solid #28584d; border-radius: 999px; color: #74e4c4; padding: 3px 7px; font-size: 9px; font-weight: 850; letter-spacing: .08em; }
 .message { min-height: 16px; margin: 9px 2px 0; color: #f5b95f; font-size: 10px; }
 footer { display: flex; justify-content: space-between; margin-top: 7px; color: #78948d; font-size: 10px; }
 footer a { color: #78dfc4; text-decoration: none; }

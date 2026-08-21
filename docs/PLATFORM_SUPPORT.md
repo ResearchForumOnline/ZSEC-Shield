@@ -2,16 +2,17 @@
 
 Last reviewed: 21 August 2026.
 
-Zero Security currently means a cross-platform **command-line, on-demand
-preview**. It does not mean a graphical desktop application, background service,
-real-time provider, signed installer, or primary-antivirus replacement.
+Zero Security currently means a cross-platform **command-line scanning and
+foreground post-change protection preview**. It does not mean a graphical desktop
+application, background service, pre-access real-time provider, signed installer,
+or primary-antivirus replacement.
 
 ## Release/source distinction
 
 | Surface | Version/status | What it contains |
 | --- | --- | --- |
 | [Latest public GitHub release](https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.1.2) | `0.1.2` prerelease | Earlier on-demand scanner, feed and status implementation plus unsigned native CLI archives |
-| Current development branch | `0.2.0` unreleased candidate | Encrypted ZSV2 quarantine, ZeroQ Shields preview, replacement-readiness guard and the three desktop programmes |
+| Current development branch | `0.2.0` unreleased candidate | Encrypted ZSV2 quarantine, foreground post-change protection, ZeroQ Shields preview, replacement-readiness guard and the three desktop programmes |
 | `main` branch | May lag the draft branch | The canonical public source only after reviewed changes merge |
 
 Do not publish or distribute the current feature set under `0.1.2`; that version
@@ -39,6 +40,12 @@ Source installations may run on other Python 3.11+ combinations, and CI runs the
 Python test suite on GitHub-hosted Windows, macOS, and Linux with Python 3.11 and
 3.13. That is useful core compatibility evidence; it is not a support promise
 for every OS version, CPU, filesystem, desktop, or security configuration.
+
+The development candidate's `watch` command is a foreground process using native
+filesystem notifications with a disclosed polling fallback. It is not present in
+the published `0.1.2` bytes. It performs post-change scans and has
+`pre_access_enforcement: false` and `real_time_protection: false`; the existing
+platform/endpoint provider must remain active.
 
 ## Safe preview use
 

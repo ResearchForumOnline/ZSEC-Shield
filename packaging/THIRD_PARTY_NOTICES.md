@@ -2,8 +2,8 @@
 
 The native archive is assembled with PyInstaller and contains a Python interpreter
 plus the runtime libraries needed by ZSEC Shield. The build script copies available
-license texts for Python, PyInstaller, `cryptography`, and installed transitive
-components into the archive's `LICENSES` directory. Exact component versions and
+license texts for Python, PyInstaller, `cryptography`, `watchdog`, and installed
+transitive components into the archive's `LICENSES` directory. Exact component versions and
 copied license paths are recorded in `NATIVE-MANIFEST.json`.
 
 For Python, the build prefers the target interpreter's own license file. When the

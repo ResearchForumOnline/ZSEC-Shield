@@ -3,6 +3,9 @@
 ## Allowed for the current preview
 
 - Open-source, deterministic, local, on-demand scanner.
+- Foreground post-change protection or automatic file-event monitoring, when
+  immediately qualified as user-mode, post-change, non-primary, and best effort;
+  default detection only, with explicit polling fallback and incomplete failures.
 - Source and self-contained command-line preview coverage on specifically
   identified Windows, macOS, and Linux artifact combinations.
 - Signed data-only rule-feed verification.
@@ -13,7 +16,8 @@
 
 ## Prohibited without additional evidence
 
-- "Complete antivirus", "real-time protection", or replacement of Microsoft
+- "Complete antivirus", unqualified "real-time protection", pre-access blocking,
+  or replacement of Microsoft
   Defender, Malwarebytes, XProtect, another antivirus, or an endpoint agent.
 - "Desktop app" when the delivered product is a command-line archive, or broad
   Windows/macOS/Linux support without an exact OS/architecture/delivery matrix.

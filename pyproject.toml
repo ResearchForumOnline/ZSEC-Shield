@@ -26,7 +26,10 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Topic :: Security",
 ]
-dependencies = ["cryptography>=42,<50"]
+dependencies = [
+  "cryptography>=42,<50",
+  "watchdog==6.0.0",
+]
 
 [project.optional-dependencies]
 dev = [

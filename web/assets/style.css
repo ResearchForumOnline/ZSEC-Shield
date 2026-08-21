@@ -304,6 +304,17 @@ code {
   box-shadow: var(--shadow-sm);
 }
 
+.nav-links .nav-priority {
+  border: 1px solid transparent;
+  background: var(--browser);
+  color: var(--white);
+}
+
+.nav-links .nav-priority:hover {
+  background: var(--browser-strong);
+  color: var(--white);
+}
+
 .hero {
   position: relative;
   overflow: hidden;
@@ -1238,7 +1249,7 @@ code {
 }
 
 @media (max-width: 64rem) {
-  .nav-links a:not(.nav-switch) {
+  .nav-links a:not(.nav-switch):not(.nav-priority) {
     display: none;
   }
 
@@ -1298,6 +1309,15 @@ code {
 
   .nav-links .nav-switch {
     padding-inline: 0.7rem;
+    font-size: 0.78rem;
+  }
+
+  .product-browser .nav-links .nav-switch {
+    display: none;
+  }
+
+  .nav-links .nav-priority {
+    padding-inline: 0.8rem;
     font-size: 0.78rem;
   }
 

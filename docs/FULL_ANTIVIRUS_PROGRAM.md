@@ -1,7 +1,7 @@
 # Zero Security full Windows antivirus programme
 
 Status: target architecture and release programme. This document describes the
-work required to turn the current on-demand preview into a supported replacement
+work required to turn the current on-demand and foreground post-change preview into a supported replacement
 Windows antivirus. It is not evidence that those capabilities exist today.
 
 ## Absolute safety rule

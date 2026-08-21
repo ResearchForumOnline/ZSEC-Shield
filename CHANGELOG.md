@@ -6,6 +6,10 @@
   than reusing the already-published 0.1.2 version;
 - added the fail-closed `zero-security replacement-readiness` contract for
   Windows, macOS, and Linux; the preview always keeps existing protection active;
+- added opt-in foreground post-change protection through `watch`/`protect`, using
+  native filesystem events with a disclosed polling fallback, mandatory baseline,
+  debounce, bounded queue, periodic reconciliation, state exclusion, and explicit
+  incomplete results when known coverage or bound feed trust is lost;
 - specified separate production-grade macOS Endpoint Security and Linux
   fanotify desktop programmes with platform signing, key custody, coexistence,
   rollback, efficacy, and support gates;

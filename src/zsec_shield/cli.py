@@ -1,4 +1,4 @@
-"""Command-line interface for the on-demand ZSEC Shield MVP."""
+"""Command-line interface for ZSEC Shield scanning and post-change watch mode."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from zsec_shield import __version__
-from zsec_shield.errors import QuarantinePartialError, ZsecShieldError
+from zsec_shield.errors import QuarantinePartialError, WatchError, ZsecShieldError
 from zsec_shield.feed import (
     download_feed,
     inspect_feed,
@@ -25,6 +25,7 @@ from zsec_shield.rules import builtin_rules
 from zsec_shield.scanner import DEFAULT_CHUNK_BYTES, DEFAULT_MAX_FILE_BYTES, Scanner, ScannerConfig
 from zsec_shield.status_store import load_last_scan, save_last_scan
 from zsec_shield.util import atomic_write_json, format_utc
+from zsec_shield.watcher import ForegroundProtectionWatcher, WatchConfig, watch_lock
 
 EXIT_OK = 0
 EXIT_FINDINGS = 1
@@ -36,6 +37,16 @@ def _positive_integer(value: str) -> int:
         parsed = int(value)
     except ValueError as exc:
         raise argparse.ArgumentTypeError("must be an integer") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
+
+
+def _positive_float(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a number") from exc
     if parsed <= 0:
         raise argparse.ArgumentTypeError("must be greater than zero")
     return parsed
@@ -66,6 +77,72 @@ def _add_scan_parser(subparsers: Any, name: str, help_text: str) -> None:
     parser.set_defaults(handler=_command_check)
 
 
+def _add_watch_parser(subparsers: Any, name: str, help_text: str) -> None:
+    parser = subparsers.add_parser(name, help=help_text)
+    parser.add_argument("paths", nargs="*", type=Path, default=[Path.cwd()])
+    parser.add_argument(
+        "--backend",
+        choices=("auto", "native", "polling"),
+        default="auto",
+        help="prefer native OS events, require them, or deliberately poll",
+    )
+    parser.add_argument(
+        "--debounce-seconds",
+        type=_positive_float,
+        default=0.75,
+        help="quiet period used to combine duplicate events (default: 0.75)",
+    )
+    parser.add_argument(
+        "--poll-seconds",
+        type=_positive_float,
+        default=1.0,
+        help="polling fallback interval in seconds (default: 1.0)",
+    )
+    parser.add_argument(
+        "--reconcile-seconds",
+        type=_positive_float,
+        default=60.0,
+        help="full rescan interval used to reduce missed-event risk (default: 60)",
+    )
+    parser.add_argument(
+        "--duration-seconds",
+        type=_positive_float,
+        help="stop after this duration; omit to run until interrupted",
+    )
+    parser.add_argument(
+        "--event-queue-size",
+        type=_positive_integer,
+        default=4096,
+        help="bounded raw event queue capacity (default: 4096)",
+    )
+    parser.add_argument(
+        "--max-file-bytes",
+        type=_positive_integer,
+        default=DEFAULT_MAX_FILE_BYTES,
+        help=f"do not inspect files larger than this (default: {DEFAULT_MAX_FILE_BYTES})",
+    )
+    parser.add_argument("--chunk-bytes", type=_positive_integer, default=DEFAULT_CHUNK_BYTES)
+    parser.add_argument(
+        "--cross-filesystems",
+        action="store_true",
+        help="allow watched scans to cross filesystem/device boundaries",
+    )
+    parser.add_argument(
+        "--quarantine",
+        action="store_true",
+        help="explicitly opt in to quarantining configured-rule matches",
+    )
+    parser.add_argument("--report", type=Path, help="write the final session report atomically")
+    parser.add_argument(
+        "--json-lines",
+        "--json",
+        dest="json",
+        action="store_true",
+        help="emit newline-delimited structured watch events",
+    )
+    parser.set_defaults(handler=_command_watch)
+
+
 def build_parser() -> argparse.ArgumentParser:
     invoked_as = Path(sys.argv[0]).stem.lower()
     program_name = "zero-security" if invoked_as == "zero-security" else "zsec-shield"
@@ -83,6 +160,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     _add_scan_parser(subparsers, "check", "scan paths with built-in and verified feed rules")
     _add_scan_parser(subparsers, "scan", "alias for check")
+    _add_watch_parser(
+        subparsers,
+        "watch",
+        "foreground post-change protection; not kernel real-time protection",
+    )
+    _add_watch_parser(
+        subparsers,
+        "protect",
+        "alias for foreground post-change protection; existing antivirus stays active",
+    )
 
     update = subparsers.add_parser("update", help="verify and install a signed data-only rule feed")
     source = update.add_mutually_exclusive_group(required=True)
@@ -265,6 +352,134 @@ def _print_check_summary(report: dict[str, Any], report_path: Path | None) -> No
     if report_path is not None:
         print(f"JSON report: {report_path.expanduser().absolute()}")
     print("Result is rule-limited and on-demand; it is not a declaration that the system is clean.")
+
+
+def _command_watch(args: argparse.Namespace) -> int:
+    state_dir = _state_dir(args)
+    keyring_path = _keyring_path(args, state_dir)
+    feed_status, feed_rules = inspect_feed(state_dir, keyring_path)
+    if feed_status.state == "invalid":
+        raise WatchError(
+            "foreground watch refused to start because the configured feed/trust state is invalid"
+        )
+    initial_feed_identity = (
+        feed_status.state,
+        feed_status.sequence,
+        feed_status.payload_sha256,
+        feed_status.expires_at,
+    )
+
+    scanner = Scanner(
+        builtin_rules() + feed_rules,
+        ScannerConfig(
+            max_file_bytes=args.max_file_bytes,
+            chunk_bytes=args.chunk_bytes,
+            cross_filesystems=args.cross_filesystems,
+            excluded_paths=(state_dir,),
+        ),
+    )
+
+    def feed_health() -> str | None:
+        current, _rules = inspect_feed(state_dir, keyring_path)
+        if current.state == "invalid":
+            return "configured feed/trust state became invalid; watch stopped fail-closed"
+        identity = (current.state, current.sequence, current.payload_sha256, current.expires_at)
+        if identity != initial_feed_identity:
+            return "configured feed changed; restart watch to load and bind the new rules"
+        return None
+
+    def emit(record: dict[str, Any]) -> None:
+        payload = {"version": __version__, **record}
+        if args.json:
+            print(json.dumps(payload, sort_keys=True, ensure_ascii=False), flush=True)
+        else:
+            _print_watch_event(payload)
+
+    watcher = ForegroundProtectionWatcher(
+        scanner,
+        WatchConfig(
+            roots=tuple(args.paths),
+            state_dir=state_dir,
+            backend=args.backend,
+            debounce_seconds=args.debounce_seconds,
+            poll_seconds=args.poll_seconds,
+            reconcile_seconds=args.reconcile_seconds,
+            cross_filesystems=args.cross_filesystems,
+            quarantine=bool(args.quarantine),
+            event_queue_size=args.event_queue_size,
+        ),
+        on_record=emit,
+        health_check=feed_health,
+    )
+    with watch_lock(state_dir):
+        summary = watcher.run(duration_seconds=args.duration_seconds)
+    report = {
+        "schema": "zsec.shield.watch-report.v1",
+        "version": __version__,
+        "generated_at": format_utc(),
+        "command": args.command,
+        "feed": feed_status.to_dict(),
+        "rules": {
+            "built_in": len(builtin_rules()),
+            "verified_feed": len(feed_rules),
+            "total": len(scanner.rules),
+        },
+        "session": summary.to_dict(),
+        "limitations": [
+            "This foreground companion observes filesystem events but does not mediate access.",
+            "It is not a kernel or operating-system primary antivirus provider.",
+            (
+                "Event backends can lose events; reconciliation reduces but cannot "
+                "eliminate that risk."
+            ),
+            "No configured match does not prove that a file or system is clean.",
+            "Keep the existing antivirus and operating-system protections active.",
+        ],
+    }
+    if args.report is not None:
+        atomic_write_json(args.report.expanduser().absolute(), report, mode=0o600)
+    if not args.json:
+        print(
+            "Foreground watch ended: "
+            f"{summary.outcome}; findings {summary.stats.findings}; "
+            f"issues {summary.stats.issues}; backend {summary.backend_active}."
+        )
+        if args.report is not None:
+            print(f"JSON report: {args.report.expanduser().absolute()}")
+    if summary.interrupted:
+        return 130
+    if summary.operational_incomplete:
+        return EXIT_INCOMPLETE
+    return EXIT_FINDINGS if summary.stats.findings else EXIT_OK
+
+
+def _print_watch_event(record: dict[str, Any]) -> None:
+    event = record["event"]
+    if event == "session_started":
+        roots = ", ".join(record["roots"])
+        print(
+            "Zero Security foreground post-change protection started "
+            f"({record['backend_active']}) for {roots}."
+        )
+        print("Keep the existing antivirus active; this mode does not block kernel access.")
+        if record["policy"]["quarantine_requested"]:
+            print("Explicit quarantine opt-in is active for configured-rule matches.")
+        else:
+            print("Quarantine is off; matched files will not be moved.")
+    elif event == "backend_fallback":
+        print(f"WATCH FALLBACK {record['reason']}", file=sys.stderr)
+    elif event == "health_issue":
+        print(f"WATCH INCOMPLETE {record['code']}: {record['message']}", file=sys.stderr)
+    elif event == "scan_completed":
+        scan = record["scan"]
+        for finding in scan["findings"]:
+            names = ", ".join(match["id"] for match in finding["matches"])
+            print(f"MATCH [{finding['severity'].upper()}] {finding['path']} ({names})")
+        for issue in scan["issues"]:
+            print(
+                f"INCOMPLETE {issue['path']}: {issue['code']}: {issue['message']}",
+                file=sys.stderr,
+            )
 
 
 def _command_update(args: argparse.Namespace) -> int:

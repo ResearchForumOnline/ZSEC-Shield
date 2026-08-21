@@ -6,7 +6,7 @@
     {
       "id": "zsec-shield",
       "path": "src/zsec_shield",
-      "role": "deterministic on-demand scanner, signed feed verifier, encrypted quarantine",
+      "role": "deterministic scanner, foreground post-change watcher, signed feed verifier, encrypted quarantine",
       "license": "Apache-2.0",
       "source_public": true,
       "status": "working-preview"
