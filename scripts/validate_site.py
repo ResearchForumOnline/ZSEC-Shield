@@ -18,6 +18,25 @@ PAGES = {
     "zero-security": "https://talktoai.org/zero-security/",
     "zero-browser": "https://talktoai.org/zero-browser/",
 }
+DOWNLOAD_PAGES = {
+    "zero-security/download": {
+        "canonical": "https://talktoai.org/zero-security/download/",
+        "fingerprints": 3,
+        "artifacts": {
+            "/downloads/zero-security/zsec-shield-0.2.0-windows-x86_64.zip",
+            "/downloads/zero-security/zsec-shield-0.2.0-macos-arm64.tar.gz",
+            "/downloads/zero-security/zsec-shield-0.2.0-linux-x86_64.tar.gz",
+            "/downloads/zero-security/zsec_shield-0.2.0-py3-none-any.whl",
+        },
+    },
+    "zero-browser/download": {
+        "canonical": "https://talktoai.org/zero-browser/download/",
+        "fingerprints": 1,
+        "artifacts": {
+            "/downloads/zero-browser/zeroq-shields-0.2.0-chromium-mv3.zip",
+        },
+    },
+}
 PRIVACY_PAGE = "https://talktoai.org/zero-browser/privacy/"
 
 
@@ -63,6 +82,10 @@ def local_asset(page: Path, reference: str) -> Path | None:
             return None
         return WEB / parsed.path.lstrip("/")
     if parsed.scheme:
+        return None
+    if parsed.path.startswith("/downloads/"):
+        # Public release artifacts are built by the gated cross-platform release
+        # workflow and deployed beside, rather than committed beneath, web/.
         return None
     return (page.parent / parsed.path).resolve()
 
@@ -124,16 +147,56 @@ def validate_privacy_page() -> None:
             require(target.exists(), f"zero-browser/privacy: missing local asset {reference}")
 
 
+def validate_download_page(slug: str, policy: dict[str, object]) -> None:
+    page = WEB / slug / "index.html"
+    text = page.read_text(encoding="utf-8")
+    parser = PageParser()
+    parser.feed(text)
+    canonical = str(policy["canonical"])
+    expected_artifacts = set(policy["artifacts"])
+    expected_fingerprints = int(policy["fingerprints"])
+    require(parser.h1_count == 1, f"{slug}: expected exactly one H1")
+    require(parser.canonicals == [canonical], f"{slug}: canonical mismatch")
+    require(len(parser.ids) == len(set(parser.ids)), f"{slug}: duplicate HTML id")
+    require(len(parser.meta_descriptions) == 1, f"{slug}: description missing")
+    require(80 <= len(parser.meta_descriptions[0]) <= 180, f"{slug}: description length")
+    require("<script" not in text.casefold(), f"{slug}: executable script is not permitted")
+    require("PENDING" not in text and "TO-BE-BUILT" not in text, f"{slug}: placeholder")
+    fingerprints = re.findall(
+        r"<code\s+data-[^>]*sha[^>]*>([0-9a-f]{64})</code>", text
+    )
+    require(
+        len(fingerprints) == expected_fingerprints,
+        f"{slug}: expected {expected_fingerprints} exact SHA-256 fingerprints",
+    )
+    require(len(fingerprints) == len(set(fingerprints)), f"{slug}: duplicate fingerprint")
+    references = {urlparse(reference).path for reference in parser.assets}
+    require(expected_artifacts <= references, f"{slug}: required artifact link missing")
+    htaccess = (page.parent / ".htaccess").read_text(encoding="utf-8")
+    require("script-src 'none'" in htaccess, f"{slug}: script CSP missing")
+    require("frame-ancestors 'none'" in htaccess, f"{slug}: frame CSP missing")
+    require("Permissions-Policy" in htaccess, f"{slug}: permissions policy missing")
+    for reference in parser.assets:
+        target = local_asset(page, reference)
+        if target is not None:
+            require(target.exists(), f"{slug}: missing local asset {reference}")
+
+
 def main() -> int:
     for slug, canonical in PAGES.items():
         validate_page(slug, canonical)
+    for slug, policy in DOWNLOAD_PAGES.items():
+        validate_download_page(slug, policy)
     validate_privacy_page()
     sitemap = ET.parse(WEB / "sitemap.xml")
     namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     locations = {node.text for node in sitemap.findall("sm:url/sm:loc", namespace)}
     require(
-        set(PAGES.values()) | {PRIVACY_PAGE} <= locations,
-        "product or privacy URLs missing from sitemap",
+        set(PAGES.values())
+        | {str(policy["canonical"]) for policy in DOWNLOAD_PAGES.values()}
+        | {PRIVACY_PAGE}
+        <= locations,
+        "product, download or privacy URLs missing from sitemap",
     )
     robots = (WEB / "robots.txt").read_text(encoding="utf-8")
     require("Sitemap: https://talktoai.org/sitemap.xml" in robots, "robots sitemap missing")
@@ -141,8 +204,8 @@ def main() -> int:
     require(css.count("{") == css.count("}"), "CSS braces are unbalanced")
     require(".webp" not in css, "CSS references an unavailable WebP asset")
     print(
-        "Validated two product pages, the browser privacy page, JSON-LD/CSP "
-        "hashes, assets, sitemap, robots and CSS."
+        "Validated two product pages, two download pages, browser privacy, "
+        "fingerprints, JSON-LD/CSP hashes, assets, sitemap, robots and CSS."
     )
     return 0
 
