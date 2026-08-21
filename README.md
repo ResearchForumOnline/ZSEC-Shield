@@ -104,9 +104,9 @@ used the `ZME1` name.
 ## ZSEC Browser and ZSEC Browser Shields
 
 The open-source extension lives in
-[`browser/zeroq-shields`](browser/zeroq-shields). It provides 38 packaged local
+[`browser/zeroq-shields`](browser/zeroq-shields). It provides 39 packaged local
 network blockers, two tracking-link cleaners, a per-site pause switch, and
-best-effort YouTube skip/nuisance cleanup. Community 0.4 also adds an optional
+best-effort YouTube skip/nuisance cleanup. Community 0.4.1 also adds an optional
 High-Risk Browsing profile: two fixed local rules block top-level plaintext HTTP
 navigation and third-party scripts, subframes, objects, and WebSockets. It is off
 by default, may materially break sites, and is exposure reduction rather than
@@ -126,13 +126,15 @@ servers; it never opens the normal user profile. See the
 for the exact enforced decision points and non-claims.
 
 The native Windows Community desktop source lives in
-[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.0
-provides a branded window, tabs, address bar, an isolated WebView2 profile,
+[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.1
+provides a modern rounded dark interface, managed tabs and popups, an address
+and search bar, and a separate WebView2 profile,
 default-deny site permissions, certificate-error cancellation, explicit downloads,
-HTTPS upgrading, 81 compiled blocker domains, 21 tracking-parameter cleaners and
-an optional stricter cross-site mode. Its build verifies the pinned Microsoft SDK
-package against the official NuGet SHA-512 and a locked SHA-256; installation
-requires a validly Microsoft-signed Evergreen runtime.
+HTTPS upgrading, Microsoft Balanced tracking prevention, an automatically loaded
+exact-ID Browser Shields 0.4.1 MV3 engine, 21 tracking-parameter cleaners, a
+bounded YouTube UI assist and an optional stricter cross-site mode. Its build
+verifies the pinned Microsoft SDK package against the official NuGet SHA-512 and
+a locked SHA-256; installation requires a validly Microsoft-signed Evergreen runtime.
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\Build-ZsecBrowserPreview.ps1
@@ -142,8 +144,8 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\
 ```
 
 The extension and desktop shell are working Community layers, not a separately
-maintained Chromium distribution. The ZSEC executable is unsigned and no public
-production installer or rollback-resistant ZSEC updater has shipped. Keep the
+maintained Chromium distribution. The direct ZSEC Community executable is unsigned
+and no rollback-resistant ZSEC binary updater has shipped. Keep the
 Microsoft Evergreen runtime and existing browser/operating-system protections
 updated; do not bypass SmartScreen to run an unsigned ZSEC binary.
 

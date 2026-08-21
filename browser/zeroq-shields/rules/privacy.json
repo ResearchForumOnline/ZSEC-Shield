@@ -226,5 +226,11 @@
     "priority": 1,
     "action": { "type": "block" },
     "condition": { "requestDomains": ["stats.wp.com", "pixel.wp.com"], "domainType": "thirdParty", "resourceTypes": ["script", "image", "xmlhttprequest", "ping", "other"] }
+  },
+  {
+    "id": 39,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "urlFilter": "||talktoai.org/zero-browser/runtime-check/blocked.js", "resourceTypes": ["script"] }
   }
 ]

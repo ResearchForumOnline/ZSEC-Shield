@@ -22,8 +22,8 @@ if (manifest.manifest_version !== 3) throw new Error("Manifest V3 is required");
 if (manifest.name !== "ZSEC Browser Shields" || manifest.short_name !== "ZSEC Shields") {
   throw new Error("Public extension branding is stale");
 }
-if (manifest.version !== "0.4.0" || packageJson.version !== manifest.version) {
-  throw new Error("Manifest/package release version must match the reviewed 0.4.0 release");
+if (manifest.version !== "0.4.1" || packageJson.version !== manifest.version) {
+  throw new Error("Manifest/package release version must match the reviewed 0.4.1 release");
 }
 const resources = manifest.declarative_net_request?.rule_resources || [];
 if (resources.length !== 2) throw new Error("Expected blocking and link-cleaning rulesets");

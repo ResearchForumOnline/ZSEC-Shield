@@ -8,7 +8,7 @@ YouTube skip-button and promoted-slot cleanup.
 
 It does not upload browsing history, inject affiliate links, install a root
 certificate, proxy traffic, or download executable rules. Its two static
-rulesets contain 38 local blocking rules and two link-cleaning rules. They are
+rulesets contain 39 local blocking rules and two link-cleaning rules. They are
 deliberately reviewable and testable. ZSEC does not promise to block every ad,
 malicious site or browser exploit.
 

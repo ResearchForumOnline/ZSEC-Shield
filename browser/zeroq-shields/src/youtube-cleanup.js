@@ -1,19 +1,31 @@
 (() => {
   "use strict";
 
+  const host = location.hostname.toLowerCase();
+  if (window.top !== window || (host !== "www.youtube.com" && host !== "m.youtube.com")) return;
+
   const SKIP_SELECTORS = [
     ".ytp-ad-skip-button-modern",
     ".ytp-ad-skip-button",
+    ".ytp-ad-skip-button-slot button",
     ".ytp-skip-ad-button",
+    "button.ytp-skip-ad-button",
     ".ytp-ad-overlay-close-button"
   ];
   const HIDE_SELECTORS = [
+    "#masthead-ad",
+    "#player-ads",
     ".ytp-ad-overlay-container",
+    ".ytp-ad-player-overlay",
+    "ytd-action-companion-ad-renderer",
     "ytd-ad-slot-renderer",
+    "ytd-banner-promo-renderer",
     "ytd-display-ad-renderer",
     "ytd-promoted-video-renderer",
     "ytd-promoted-sparkles-web-renderer",
-    "ytd-in-feed-ad-layout-renderer"
+    "ytd-promoted-sparkles-text-search-renderer",
+    "ytd-in-feed-ad-layout-renderer",
+    "ytd-search-pyv-renderer"
   ];
   let enabled = true;
   let queued = false;
@@ -36,7 +48,10 @@
     installStyle();
     for (const selector of SKIP_SELECTORS) {
       const button = document.querySelector(selector);
-      if (button instanceof HTMLElement && button.offsetParent !== null) button.click();
+      if (button instanceof HTMLElement && button.offsetParent !== null) {
+        button.click();
+        break;
+      }
     }
   }
 
@@ -58,6 +73,8 @@
     else removeStyle();
   });
 
-  new MutationObserver(schedule).observe(document, { childList: true, subtree: true });
+  const observer = new MutationObserver(schedule);
+  observer.observe(document, { childList: true, subtree: true });
   document.addEventListener("yt-navigate-finish", schedule, { passive: true });
+  window.addEventListener("pagehide", () => observer.disconnect(), { once: true });
 })();

@@ -109,7 +109,7 @@ def build(output_dir: Path) -> tuple[Path, Path, Path]:
                 "manifest_version": manifest["manifest_version"],
                 "minimum_chrome_version": manifest["minimum_chrome_version"],
                 "signed_store_package": False,
-                "installation_channel": "unpacked-developer-preview",
+                "installation_channel": "unpacked-community",
                 "source_revision": revision,
                 "source_dirty_at_build": dirty,
             },

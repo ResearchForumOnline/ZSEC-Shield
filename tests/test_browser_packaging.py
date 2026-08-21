@@ -29,14 +29,14 @@ def test_browser_archive_is_complete_deterministic_and_explicitly_unsigned(tmp_p
         assert "MERCENARY_SPYWARE_DEFENCE.md" in bundle.namelist()
         archived_manifest = json.loads(bundle.read("manifest.json"))
         assert archived_manifest["manifest_version"] == 3
-        assert archived_manifest["version"] == "0.4.0"
+        assert archived_manifest["version"] == "0.4.1"
         assert all(info.date_time == (2026, 1, 1, 0, 0, 0) for info in bundle.infolist())
 
     release = json.loads(metadata.read_text(encoding="utf-8"))
     assert release["artifact"] == first.name
     assert first.name.startswith("zsec-browser-shields-")
     assert release["product"] == "ZSEC Browser Shields"
-    assert release["version"] == "0.4.0"
+    assert release["version"] == "0.4.1"
     assert release["sha256"] == digest
     assert release["signed_store_package"] is False
-    assert release["installation_channel"] == "unpacked-developer-preview"
+    assert release["installation_channel"] == "unpacked-community"

@@ -117,7 +117,7 @@ def main() -> int:
         "schema": "zsec.browser.community-release.v1",
         "product": "ZSEC Browser",
         "version": version,
-        "channel": "website-evaluation",
+        "channel": "direct-website-community",
         "platform": "windows-x64",
         "architecture": build_manifest["architecture"],
         "artifact": archive_name,
@@ -138,7 +138,12 @@ def main() -> int:
             "sdk_nuget_sha512_base64": build_manifest["webview2_nuget_sha512_base64"],
         },
         "policy": {
-            "source": "ZSEC Browser Shields 0.4.0 reviewed data rules",
+            "source": (
+                "ZSEC Browser Shields "
+                f"{build_manifest['source_extension_version']} reviewed data rules"
+            ),
+            "extension_version": build_manifest["source_extension_version"],
+            "extension_id": build_manifest["source_extension_id"],
             "tracker_domain_count": build_manifest["tracker_domain_count"],
             "tracking_parameter_count": build_manifest["tracking_parameter_count"],
         },
