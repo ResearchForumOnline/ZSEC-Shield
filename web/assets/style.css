@@ -146,6 +146,14 @@ code {
   font-size: 0.88em;
 }
 
+code[data-artifact-sha],
+code[data-windows-sha],
+code[data-macos-sha],
+code[data-linux-sha] {
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
 ::selection {
   background: rgb(19 107 255 / 20%);
   color: var(--ink-950);
