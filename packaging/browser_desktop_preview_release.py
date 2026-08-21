@@ -1,4 +1,4 @@
-"""Package an exact, deterministic ZSEC Browser desktop developer preview."""
+"""Package an exact, deterministic ZSEC Browser Community desktop build."""
 
 from __future__ import annotations
 
@@ -35,9 +35,9 @@ def main() -> int:
     if build_manifest.get("schema") != "zsec.browser.desktop-preview-build.v2":
         raise ValueError("unexpected ZSEC Browser desktop build manifest")
     if build_manifest.get("standalone_chromium_fork") is not False:
-        raise ValueError("the developer preview must not claim to be a Chromium fork")
+        raise ValueError("the Community build must not claim to be a Chromium fork")
     if build_manifest.get("signed_zsec_binary") is not False:
-        raise ValueError("the local developer preview must remain explicitly unsigned")
+        raise ValueError("the local Community build must remain explicitly unsigned")
 
     expected_files = {
         str(entry["path"]): str(entry["sha256"])
@@ -82,9 +82,9 @@ def main() -> int:
 
     metadata = {
         "schema": "zsec.browser.desktop-preview-release.v1",
-        "product": "ZSEC Browser Desktop Preview",
+        "product": "ZSEC Browser",
         "version": version,
-        "channel": "local-developer-preview",
+        "channel": "local-community-build",
         "platform": "windows-x64",
         "architecture": build_manifest["architecture"],
         "artifact": archive_name,
@@ -112,7 +112,7 @@ def main() -> int:
             "Install-ZsecBrowserPreview.ps1 from PowerShell."
         ),
         "claims_boundary": (
-            "Unsigned local developer preview. Not a maintained Chromium fork, "
+            "Unsigned local Community build. Not a maintained Chromium fork, "
             "not antivirus, and not approved for public production distribution."
         ),
     }

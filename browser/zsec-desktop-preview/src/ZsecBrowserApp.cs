@@ -13,21 +13,21 @@ using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
-[assembly: AssemblyTitle("ZSEC Browser Desktop Preview")]
+[assembly: AssemblyTitle("ZSEC Browser")]
 [assembly: AssemblyDescription("Hardened Windows browser shell powered by Microsoft Edge WebView2")]
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.2.3.0")]
-[assembly: AssemblyFileVersion("0.2.3.0")]
-[assembly: AssemblyInformationalVersion("0.2.3-preview")]
+[assembly: AssemblyVersion("0.3.0.0")]
+[assembly: AssemblyFileVersion("0.3.0.0")]
+[assembly: AssemblyInformationalVersion("0.3.0-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.2.3";
+        internal const string ProductVersion = "0.3.0";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
 
         [STAThread]
@@ -45,7 +45,7 @@ namespace TalkToAI.ZsecBrowserPreview
             {
                 MessageBox.Show(
                     "ZSEC Browser could not start.\r\n\r\n" + exception.Message,
-                    ProductName + " Desktop Preview",
+                    ProductName,
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error
                 );
@@ -126,7 +126,7 @@ namespace TalkToAI.ZsecBrowserPreview
             trackingParameters = LoadRequiredLines(Path.Combine(policyRoot, "tracking-parameters.txt"));
             browserViews = new List<WebView2>();
 
-            Text = "ZSEC Browser Desktop Preview";
+            Text = "ZSEC Browser";
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             StartPosition = FormStartPosition.CenterScreen;
             WindowState = FormWindowState.Maximized;
@@ -156,13 +156,13 @@ namespace TalkToAI.ZsecBrowserPreview
             product.Location = new Point(84, 16);
             brandBar.Controls.Add(product);
 
-            Label preview = new Label();
-            preview.Text = "DESKTOP PREVIEW";
-            preview.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
-            preview.ForeColor = Muted;
-            preview.AutoSize = true;
-            preview.Location = new Point(178, 18);
-            brandBar.Controls.Add(preview);
+            Label channel = new Label();
+            channel.Text = "COMMUNITY 0.3";
+            channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
+            channel.ForeColor = Muted;
+            channel.AutoSize = true;
+            channel.Location = new Point(178, 18);
+            brandBar.Controls.Add(channel);
 
             shieldStatus = new Label();
             shieldStatus.Text = "  SHIELDS ACTIVE  ";
@@ -306,7 +306,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 shieldStatus.BackColor = Color.FromArgb(232, 73, 78);
                 MessageBox.Show(
                     "ZSEC Browser failed closed before navigation.\r\n\r\n" + exception.Message,
-                    "ZSEC Browser Desktop Preview",
+                    "ZSEC Browser",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error
                 );
@@ -369,7 +369,7 @@ namespace TalkToAI.ZsecBrowserPreview
             {
                 string title = core.DocumentTitle;
                 page.Text = String.IsNullOrWhiteSpace(title) ? "New tab" : Truncate(title, 28);
-                if (view == ActiveView) Text = page.Text + " - ZSEC Browser Preview";
+                if (view == ActiveView) Text = page.Text + " - ZSEC Browser";
             };
             core.NavigationCompleted += delegate
             {
@@ -586,7 +586,7 @@ namespace TalkToAI.ZsecBrowserPreview
         {
             string runtime = environment == null ? "not initialized" : CoreWebView2Environment.GetAvailableBrowserVersionString();
             MessageBox.Show(
-                "ZSEC Browser Desktop Preview " + Program.ProductVersion + "\r\n\r\n" +
+                "ZSEC Browser Community " + Program.ProductVersion + "\r\n\r\n" +
                 "Engine: Microsoft Edge WebView2 (Chromium) " + runtime + "\r\n" +
                 "Policy: " + trackerDomains.Count + " reviewed blocker domains\r\n" +
                 "Profile: isolated under LocalAppData\r\n" +

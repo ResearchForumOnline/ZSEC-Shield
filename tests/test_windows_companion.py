@@ -32,12 +32,12 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn("-Priority 8", content)
         self.assertIn("-RestartCount 3", content)
         self.assertIn("-RestartInterval (New-TimeSpan -Minutes 1)", content)
-        self.assertIn('event_queue_size = 8192', content)
-        self.assertIn('event_log_max_bytes = 4194304', content)
-        self.assertIn('event_log_backups = 3', content)
-        self.assertIn('quarantine_enabled = [bool]$EnableQuarantine', content)
+        self.assertIn("event_queue_size = 8192", content)
+        self.assertIn("event_log_max_bytes = 4194304", content)
+        self.assertIn("event_log_backups = 3", content)
+        self.assertIn("quarantine_enabled = [bool]$EnableQuarantine", content)
         self.assertIn('"runtime-identity" "--json"', content)
-        self.assertIn('runtime_sha256 = $runtimeHash', content)
+        self.assertIn("runtime_sha256 = $runtimeHash", content)
         self.assertIn('$RunValueName = "ZSEC Antivirus Companion"', content)
         self.assertIn("function Test-IsAccessDeniedError", content)
         self.assertIn("[int64]$exception.HResult -eq -2147024891", content)
@@ -48,7 +48,7 @@ class WindowsCompanionStaticTests(unittest.TestCase):
             r"-ErrorAction Stop \| Out-Null",
         )
         self.assertIn("New-ItemProperty", content)
-        self.assertIn('supervisor_kind = $supervisorKind', content)
+        self.assertIn("supervisor_kind = $supervisorKind", content)
         self.assertIn("if ($PlanOnly)", content)
         self.assertNotIn("-RunLevel Highest", content)
         self.assertNotIn("-LogonType Password", content)
@@ -73,24 +73,24 @@ class WindowsCompanionStaticTests(unittest.TestCase):
     def test_status_uses_supported_wsc_aggregate_and_never_decodes_product_state(self) -> None:
         content = STATUS.read_text(encoding="utf-8")
         self.assertIn("WscGetSecurityProviderHealth(0x4", content)
-        self.assertIn('aggregate_health = $healthName', content)
-        self.assertIn('product_state_raw = [int]$product.productState', content)
-        self.assertIn('product_state_interpreted = $false', content)
+        self.assertIn("aggregate_health = $healthName", content)
+        self.assertIn("product_state_raw = [int]$product.productState", content)
+        self.assertIn("product_state_interpreted = $false", content)
         self.assertIn("Get-MpComputerStatus", content)
-        self.assertIn('confirmed_active = $false', content)
-        self.assertIn('primary_provider_uninstall_allowed = $false', content)
-        self.assertIn('cutover_allowed = $false', content)
-        self.assertIn('runtime_hash_verified = $runtimeHashVerified', content)
-        self.assertIn('(Get-NormalizedPath ([string]$installation.runtime_executable))', content)
-        self.assertIn('$installation.supervisor.registry_path -eq $RunKeyPath', content)
-        self.assertIn('$runRegistration.value_data -eq $expectedRunData', content)
-        self.assertIn('registration_verified = $supervisorRegistrationVerified', content)
+        self.assertIn("confirmed_active = $false", content)
+        self.assertIn("primary_provider_uninstall_allowed = $false", content)
+        self.assertIn("cutover_allowed = $false", content)
+        self.assertIn("runtime_hash_verified = $runtimeHashVerified", content)
+        self.assertIn("(Get-NormalizedPath ([string]$installation.runtime_executable))", content)
+        self.assertIn("$installation.supervisor.registry_path -eq $RunKeyPath", content)
+        self.assertIn("$runRegistration.value_data -eq $expectedRunData", content)
+        self.assertIn("registration_verified = $supervisorRegistrationVerified", content)
         self.assertIn(
-            '$updatedAt = ([DateTimeOffset]$health.updated_at).ToUniversalTime()',
+            "$updatedAt = ([DateTimeOffset]$health.updated_at).ToUniversalTime()",
             content,
         )
         self.assertNotIn(
-            '[DateTimeOffset]::Parse([string]$health.updated_at)',
+            "[DateTimeOffset]::Parse([string]$health.updated_at)",
             content,
         )
 
@@ -100,17 +100,17 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn("Scheduled Task no longer matches the owned installation", content)
         self.assertIn("Unregister-ScheduledTask", content)
         self.assertIn("Remove-ItemProperty", content)
-        self.assertIn('$runAtRemoval.value_data -ne $expectedRunData', content)
+        self.assertIn("$runAtRemoval.value_data -ne $expectedRunData", content)
         self.assertIn("HKCU Run value data changed", content)
         self.assertIn("Remove-Item -LiteralPath $installRoot -Recurse", content)
         self.assertIn('(Join-Path $state "feed")', content)
         self.assertIn('(Join-Path $state "quarantine")', content)
         self.assertIn(
-            '$updatedAt = ([DateTimeOffset]$health.updated_at).ToUniversalTime()',
+            "$updatedAt = ([DateTimeOffset]$health.updated_at).ToUniversalTime()",
             content,
         )
         self.assertNotIn(
-            '[DateTimeOffset]::Parse([string]$health.updated_at)',
+            "[DateTimeOffset]::Parse([string]$health.updated_at)",
             content,
         )
         self.assertNotIn("Win32_Product", content)
@@ -119,8 +119,7 @@ class WindowsCompanionStaticTests(unittest.TestCase):
 
     def test_scripts_have_no_provider_disable_or_exclusion_commands(self) -> None:
         combined = "\n".join(
-            path.read_text(encoding="utf-8")
-            for path in (INSTALLER, LAUNCHER, STATUS, UNINSTALLER)
+            path.read_text(encoding="utf-8") for path in (INSTALLER, LAUNCHER, STATUS, UNINSTALLER)
         ).casefold()
         forbidden = (
             "set-mppreference",
@@ -177,6 +176,11 @@ class WindowsCompanionReadOnlyIntegrationTests(unittest.TestCase):
                 timeout=30,
             )
             if result.returncode != 0:
+                if (
+                    "current-user Run value 'ZSEC Antivirus Companion' already exists"
+                    in result.stderr
+                ):
+                    self.skipTest("an installed ZSEC companion owns the per-user Run registration")
                 self.fail(f"PlanOnly failed: {result.stderr}")
             plan = json.loads(result.stdout)
             self.assertFalse(state.exists())

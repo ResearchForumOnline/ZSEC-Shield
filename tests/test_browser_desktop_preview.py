@@ -27,7 +27,7 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "standalone_chromium_fork = $false" in installer
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
-    assert "unsigned local developer preview" in readme
+    assert "unsigned local Community build" in readme
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:

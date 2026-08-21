@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ZSEC Antivirus Community 0.3 | Automatic Desktop Protection</title>
+  <title>ZSEC Antivirus Community 0.3 | Post-Change File Monitoring</title>
   <meta name="description" content="ZSEC Antivirus Community 0.3 delivers automatic post-change file monitoring, local deterministic checks and encrypted quarantine for Windows, macOS and Linux.">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -12,13 +12,13 @@
   <link rel="alternate" hreflang="en-GB" href="https://talktoai.org/zero-security/">
   <link rel="alternate" hreflang="x-default" href="https://talktoai.org/zero-security/">
   <link rel="icon" href="../assets/zero-security-mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="../assets/style.css?v=20260821-zsec2">
+  <link rel="stylesheet" href="../assets/style.css?v=20260821-zsec3">
 
   <meta property="og:site_name" content="TalkToAI">
   <meta property="og:locale" content="en_GB">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://talktoai.org/zero-security/">
-  <meta property="og:title" content="ZSEC Antivirus Community 0.3 | Automatic Desktop Protection">
+  <meta property="og:title" content="ZSEC Antivirus Community 0.3 | Post-Change File Monitoring">
   <meta property="og:description" content="Cross-platform native file-event monitoring, deterministic local checks, signed data-only rules and authenticated encrypted quarantine.">
   <meta property="og:image" content="https://talktoai.org/assets/zero-security-og.png">
   <meta property="og:image:width" content="1536">
@@ -26,8 +26,8 @@
   <meta property="og:image:alt" content="ZSEC Antivirus Community 0.3 product interface concept">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="ZSEC Antivirus Community 0.3 | Automatic Desktop Protection">
-  <meta name="twitter:description" content="Native file-event monitoring for Windows, macOS and Linux. Useful companion protection; not yet a primary antivirus.">
+  <meta name="twitter:title" content="ZSEC Antivirus Community 0.3 | Post-Change File Monitoring">
+  <meta name="twitter:description" content="Companion post-change monitoring for Windows, macOS and Linux; not a primary antivirus.">
   <meta name="twitter:image" content="https://talktoai.org/assets/zero-security-og.png">
   <meta name="twitter:image:alt" content="ZSEC Antivirus Community 0.3 product interface concept">
 
@@ -39,8 +39,8 @@
         "@type": "WebPage",
         "@id": "https://talktoai.org/zero-security/#webpage",
         "url": "https://talktoai.org/zero-security/",
-        "name": "ZSEC Antivirus Community 0.3 | Automatic Desktop Protection",
-        "description": "ZSEC Antivirus Community 0.3 provides automatic per-user post-change file monitoring, deterministic scanning and authenticated encrypted quarantine across Windows, macOS and Linux.",
+        "name": "ZSEC Antivirus Community 0.3 | Post-Change File Monitoring",
+        "description": "ZSEC Antivirus Community 0.3 provides per-user post-change file monitoring, deterministic local checks and authenticated encrypted quarantine for Windows, macOS and Linux.",
         "inLanguage": "en-GB",
         "dateModified": "2026-08-21",
         "isPartOf": { "@id": "https://talktoai.org/#website" },
@@ -170,6 +170,18 @@
         <a href="#faq">FAQ</a>
         <a class="nav-switch" href="../zero-browser/">ZSEC Browser <span aria-hidden="true">→</span></a>
       </nav>
+      <details class="mobile-nav">
+        <summary>Menu</summary>
+        <nav aria-label="Mobile navigation">
+          <a href="download/">Download</a>
+          <a href="#platforms">Platforms</a>
+          <a href="#how-it-works">How it works</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#open-core">Open core</a>
+          <a href="#faq">FAQ</a>
+          <a href="../zero-browser/">ZSEC Browser <span aria-hidden="true">→</span></a>
+        </nav>
+      </details>
     </div>
   </header>
 
@@ -178,13 +190,13 @@
       <div class="container hero-grid">
         <div class="hero-copy">
           <p class="hero-kicker">Windows · macOS · Linux · automatic post-change monitoring</p>
-          <h1 id="hero-title">Automatic file protection that explains itself.</h1>
+          <h1 id="hero-title">Automatic post-change file monitoring with verifiable status.</h1>
           <p class="lede">ZSEC Antivirus 0.3 watches the folders you choose, reacts to native operating-system file events, checks changed files locally against deterministic rules and can place configured matches into authenticated encrypted quarantine when you explicitly enable it.</p>
           <div class="hero-actions">
             <a class="button" href="download/">Download Community 0.3 <span aria-hidden="true">↓</span></a>
             <a class="button button-secondary" href="#how-it-works">See what works</a>
           </div>
-          <p class="microcopy"><strong>Clear boundary:</strong> Community 0.3 is an unsigned automatic companion. It detects after filesystem changes rather than blocking at the kernel boundary, so keep the current Windows Security provider or native platform controls active.</p>
+          <p class="microcopy"><strong>Clear boundary:</strong> Community 0.3 is an unsigned automatic companion. It detects after filesystem changes rather than blocking at the kernel boundary, so keep the current Windows Security provider or native platform controls active. Delivery format: self-contained command-line archives with per-user companion scripts; no graphical antivirus dashboard, protected system service or primary-provider integration.</p>
         </div>
 
         <!-- Local launch artwork: ../assets/zsec-family-hero-v2.png -->
@@ -403,7 +415,7 @@
             <p class="section-label">Evidence before claims</p>
             <h2 id="status-title">Know exactly what is available.</h2>
           </div>
-          <p>A passing test proves a defined path works. It does not establish real-world malware-detection efficacy. ZSEC Antivirus separates working Community capabilities from the extra evidence required for primary-provider replacement.</p>
+          <p>A passing test proves a defined path works. It does not establish real-world malware-detection efficacy. ZSEC Antivirus separates implemented Community capabilities from the additional evidence required for primary-provider replacement.</p>
         </div>
 
         <div class="status-matrix">
@@ -590,7 +602,7 @@
         <div>
           <p class="section-label">Build trust in public</p>
           <h2 id="cta-title">Download it. Verify it. Start with a test folder.</h2>
-          <p>Community 0.3 provides a working cross-platform automatic-monitoring layer, authenticated quarantine and daily data-only security intelligence. Keep the existing primary provider active while evaluating it.</p>
+          <p>Community 0.3 packages post-change companions for Windows, macOS and Linux. The exact Windows companion has live development-machine evidence; macOS and Linux archives were built and smoke-tested in CI, but native activation remains unverified on physical macOS hardware and a supported Linux desktop. Keep the existing primary provider active.</p>
         </div>
         <div class="cta-actions">
           <a class="button" href="download/">Choose your platform <span aria-hidden="true">↓</span></a>
@@ -622,7 +634,8 @@
       <div>
         <p class="footer-title">Project</p>
         <ul class="footer-links">
-          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield">Source code</a></li>
+          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/2e46d12c345e853282af97214b35b3c3badaea86">Immutable 0.3 source</a></li>
+          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield">GitHub repository</a></li>
           <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/security/policy">Report a vulnerability</a></li>
           <li><a href="https://talktoai.org/zsec/">ZSEC foundation</a></li>
           <li><a href="../zero-browser/">ZSEC Browser</a></li>

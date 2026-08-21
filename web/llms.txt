@@ -16,11 +16,14 @@ ZSEC Antivirus is an open-core, cross-platform, local-first security programme b
 
 Current desktop support means self-contained command-line archives plus per-user companion installers—not a graphical app, protected privileged daemon, signed platform installer or primary security provider. The 0.3 companion uses Windows ReadDirectoryChangesW, macOS FSEvents or Linux inotify through Watchdog, with a disclosed polling fallback. It scans after changes and does not provide kernel pre-access blocking, memory scanning, EDR, zero-day prevention, a clean-system verdict or guaranteed protection.
 
+Release channel: ZSEC Shield v0.1.2 is the latest formal GitHub prerelease. TalkToAI directly hosts unsigned ZSEC Antivirus 0.3 website evaluation artifacts built from draft pull request #5 and immutable source revision 2e46d12c345e853282af97214b35b3c3badaea86. These evaluation artifacts are not formal GitHub releases or signed platform installers. The exact Windows companion has live development-machine evidence; macOS and Linux archives were built and smoke-tested in CI, but native activation remains unverified on physical macOS hardware and a supported Linux desktop.
+
 Keep Malwarebytes, Microsoft Defender, XProtect, Gatekeeper, SIP, Linux security controls and any endpoint agent active. The 0.3.0 `replacement-readiness` command deliberately returns exit code 2, `keep_existing_protection`, no automatic uninstall and no manual override. Separate Windows, macOS Endpoint Security and Linux fanotify programmes define the evidence required before any replacement offer.
 
 Public foundation:
 - https://github.com/ResearchForumOnline/ZSEC-Shield
 - https://github.com/ResearchForumOnline/ZSEC-Shield/pull/5
+- https://github.com/ResearchForumOnline/ZSEC-Shield/tree/2e46d12c345e853282af97214b35b3c3badaea86
 
 Related server-security product (distinct product and route, not an antivirus alias):
 - https://talktoai.org/zsec/
@@ -29,9 +32,15 @@ Related server-security product (distinct product and route, not an antivirus al
 
 ZSEC Browser Shields Community 0.4 is an auditable open-source Manifest V3 package for manual installation in Chromium-family browsers. It contains 38 packaged network blockers, two packaged link-cleaning rules, local per-site controls and best-effort YouTube interface cleanup. It also contains two optional High-Risk Browsing rules. When both the master switch and High-Risk Browsing are on, the extension blocks top-level HTTP navigation and third-party scripts, subframes, objects and WebSockets. The optional rules start off and may materially break sites.
 
+Release channel: the unsigned 0.4 ZIP is a direct TalkToAI website evaluation package built from draft pull request #5 and immutable source revision 47d937df74a2170a17df6563d47af929a4c234f9. It is not a browser-Store package or the latest formal GitHub prerelease. ZSEC Browser Desktop Preview 0.2.3 is a separate unsigned Windows WebView2 source/local-evidence build in draft pull request #6; it is not included in the extension ZIP and is not offered as a public native binary.
+
 High-Risk Browsing is exposure reduction, not spyware detection. It does not identify Pegasus or other mercenary spyware, establish that a site is safe or malicious, inspect messages or device memory, scan downloads, block all third-party resources, stop every exploit or replace browser, operating-system, account or primary-antivirus protections. A zero-click attack may never involve browser navigation.
 
 The exact two-rule runtime behavior was smoke-tested in Brave and Edge on Windows using isolated temporary profiles and loopback servers. Both request classes were blocked before reaching the server, and explicitly switching the profile off removed the rules and restored navigation. Chrome's command-line unpacked-extension harness did not load the test extension, so Chrome is not part of that runtime-smoke claim. A separately maintained ZSEC Browser Chromium binary is not included.
+
+Immutable extension source:
+- https://github.com/ResearchForumOnline/ZSEC-Shield/tree/47d937df74a2170a17df6563d47af929a4c234f9/browser/zeroq-shields
+- https://github.com/ResearchForumOnline/ZSEC-Shield/pull/6
 
 ## Privacy and security boundaries
 

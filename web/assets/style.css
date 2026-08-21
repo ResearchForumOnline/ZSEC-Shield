@@ -323,6 +323,79 @@ code[data-linux-sha] {
   color: var(--white);
 }
 
+.mobile-nav {
+  position: relative;
+  display: none;
+  flex: none;
+  margin-left: auto;
+}
+
+.mobile-nav summary {
+  display: inline-flex;
+  min-width: 5.4rem;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius-pill);
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+  color: var(--ink-950);
+  padding: 0.55rem 0.85rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 800;
+  list-style: none;
+}
+
+.mobile-nav summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobile-nav summary::after {
+  color: var(--ink-500);
+  content: "+";
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.mobile-nav[open] summary::after {
+  content: "−";
+}
+
+.mobile-nav nav {
+  position: absolute;
+  z-index: 120;
+  top: calc(100% + 0.55rem);
+  right: 0;
+  display: grid;
+  width: min(20rem, calc(100vw - 1.25rem));
+  overflow: hidden;
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  box-shadow: var(--shadow-md);
+  padding: 0.45rem;
+}
+
+.mobile-nav nav a {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 0.75rem;
+  color: var(--ink-700);
+  padding: 0.65rem 0.8rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.mobile-nav nav a:hover {
+  background: var(--ink-100);
+  color: var(--ink-950);
+}
+
 .hero {
   position: relative;
   overflow: hidden;
@@ -1257,8 +1330,12 @@ code[data-linux-sha] {
 }
 
 @media (max-width: 64rem) {
-  .nav-links a:not(.nav-switch):not(.nav-priority) {
+  .nav-links {
     display: none;
+  }
+
+  .mobile-nav {
+    display: block;
   }
 
   .hero-grid {
@@ -1313,20 +1390,6 @@ code[data-linux-sha] {
   .brand-product,
   .preview-chip {
     display: none;
-  }
-
-  .nav-links .nav-switch {
-    padding-inline: 0.7rem;
-    font-size: 0.78rem;
-  }
-
-  .product-browser .nav-links .nav-switch {
-    display: none;
-  }
-
-  .nav-links .nav-priority {
-    padding-inline: 0.8rem;
-    font-size: 0.78rem;
   }
 
   .hero-grid {

@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#07101f">
   <link rel="canonical" href="https://talktoai.org/zero-browser/privacy/">
   <link rel="icon" href="../../assets/zero-browser-mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="../../assets/style.css?v=20260821-zsec2">
+  <link rel="stylesheet" href="../../assets/style.css?v=20260821-zsec3">
 </head>
 <body class="product-browser">
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -18,7 +18,7 @@
   <header class="site-header">
     <div class="container nav-shell">
       <a class="brand" href="https://talktoai.org/" aria-label="TalkToAI home">
-        <span class="brand-mark" aria-hidden="true">Q</span>
+        <span class="brand-mark" aria-hidden="true">Z</span>
         <span>TalkToAI</span>
         <span class="brand-product">ZSEC Browser</span>
         <span class="preview-chip">Community 0.4</span>
@@ -26,8 +26,20 @@
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="../">Product</a>
         <a href="../#security">Security</a>
-        <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/main/browser/zeroq-shields">Source</a>
+        <a href="../high-risk-browsing/">High-Risk</a>
+        <a href="../download/">Install</a>
+        <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/47d937df74a2170a17df6563d47af929a4c234f9/browser/zeroq-shields">Source</a>
       </nav>
+      <details class="mobile-nav">
+        <summary>Menu</summary>
+        <nav aria-label="Mobile navigation">
+          <a href="../">Product</a>
+          <a href="../#security">Security</a>
+          <a href="../high-risk-browsing/">High-Risk</a>
+          <a href="../download/">Install</a>
+          <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/47d937df74a2170a17df6563d47af929a4c234f9/browser/zeroq-shields">Source</a>
+        </nav>
+      </details>
     </div>
   </header>
 
@@ -37,7 +49,7 @@
           <p class="hero-kicker">ZSEC Browser · ZSEC Browser Shields Community 0.4</p>
         <h1 id="privacy-title">Privacy should be a testable contract.</h1>
         <p class="lede">ZSEC Browser Shields evaluates packaged rules, the optional High-Risk Browsing profile and site-pause choices inside the browser. Community 0.4 has no analytics, advertising, account, crash-upload, cloud-reputation, spyware-verdict or remote-control endpoint.</p>
-        <p class="microcopy"><strong>Effective and last reviewed:</strong> <time datetime="2026-08-21">21 August 2026</time>. This policy applies to the public Manifest V3 Community 0.4 extension in the ZSEC Shield repository.</p>
+        <p class="microcopy"><strong>Effective and last reviewed:</strong> <time datetime="2026-08-21">21 August 2026</time>. This policy's Community 0.4 statements apply to the website evaluation Manifest V3 extension. The separate Windows Desktop Preview 0.2.3 section documents a local developer build that is not included in the extension ZIP and is not offered as a public native download.</p>
       </div>
     </section>
 
@@ -79,7 +91,7 @@
         <p class="section-label">Permissions</p>
         <h2 id="permissions-title">Why broad site access exists</h2>
         <p>A network blocker must be able to evaluate requests across websites, and the interface-cleanup script must run on the sites it supports. That access is not permission to build a browsing profile or transmit page contents. The extension uses Manifest V3 packaged code and rules; it does not download or execute remote code.</p>
-        <p>High-Risk Browsing uses Chrome's <code>declarativeNetRequest</code> mechanism to apply two fixed local request rules. It does not decrypt TLS, inspect response bodies, upload full URLs, classify a request as spyware or produce a forensic request log. A blocked request means only that it matched one of the disclosed local rules.</p>
+        <p>High-Risk Browsing uses Chromium Manifest V3's <a href="https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest"><code>declarativeNetRequest</code> mechanism</a> to apply two fixed local request rules. It does not decrypt TLS, inspect response bodies, upload full URLs, classify a request as spyware or produce a forensic request log. A blocked request means only that it matched one of the disclosed local rules.</p>
         <p>The global protection choice, High-Risk Browsing choice and paused domains remain in the browser extension's local storage. Paused domains may remain stored while High-Risk Browsing is active, but the pause control cannot override the stricter rules. Removing the extension removes its local settings through the browser's normal extension lifecycle. Community 0.4 creates no ZSEC server-side account record to delete.</p>
       </div>
     </section>
@@ -94,7 +106,7 @@
         <article class="panel panel-private">
           <p class="section-label">Microsoft runtime boundary</p>
           <h2>WebView2 and SmartScreen are not ZSEC services.</h2>
-          <p>Microsoft's Evergreen WebView2 Chromium runtime supplies the web engine and its updates. Microsoft reputation and security features may process security-related browsing information under Microsoft's terms. The developer preview keeps those upstream protections available; it does not claim that all browser data is encrypted by ZMath or hidden from the engine provider.</p>
+          <p>Microsoft's Evergreen WebView2 runtime supplies the engine and updates. WebView2 diagnostics and SmartScreen may send information to Microsoft under Microsoft's terms and Windows diagnostic settings; see <a href="https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/data-privacy">Microsoft's WebView2 data and privacy documentation</a>. The ZSEC developer build adds no ZSEC analytics, account, browsing-history upload or remote-control endpoint. It does not claim that all browser data is encrypted by ZMath or hidden from the engine provider.</p>
         </article>
       </div>
     </section>
@@ -117,10 +129,10 @@
     <div class="container footer-grid">
       <div class="footer-brand">
         <a class="brand" href="../">
-          <span class="brand-mark" aria-hidden="true">Q</span>
+          <span class="brand-mark" aria-hidden="true">Z</span>
           <span>ZSEC Browser</span>
         </a>
-        <p>Local-first browser privacy from TalkToAI. Public distribution: Manifest V3 Community 0.4 extension. Windows desktop shell: unsigned developer preview.</p>
+        <p>Local-first browser privacy from TalkToAI. Website evaluation package: Manifest V3 Community 0.4 extension. Windows desktop shell: source/local-evidence unsigned developer build.</p>
       </div>
       <div>
         <p class="footer-title">Policy</p>
@@ -135,13 +147,14 @@
         <ul class="footer-links">
           <li><a href="../">ZSEC Browser</a></li>
           <li><a href="../../zero-security/">ZSEC Antivirus</a></li>
-          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield">Source code</a></li>
+          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/47d937df74a2170a17df6563d47af929a4c234f9/browser/zeroq-shields">Immutable Shields 0.4 source</a></li>
+          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield">GitHub repository</a></li>
         </ul>
       </div>
     </div>
     <div class="container footer-bottom">
       <p>© 2026 TalkToAI. ZSEC Browser Community 0.4.</p>
-      <p>Policy version 1.1 · 21 August 2026.</p>
+      <p>Policy version 1.2 · 21 August 2026.</p>
     </div>
   </footer>
 </body>

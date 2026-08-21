@@ -1,6 +1,6 @@
-# ZSEC Browser Desktop Preview
+# ZSEC Browser Community desktop client
 
-ZSEC Browser Desktop Preview is a visible, branded Windows browser shell with
+ZSEC Browser is a branded Windows browser shell with
 its own executable, window, tabs, address bar, Desktop shortcut, Start-menu
 entry, protection controls, and isolated profile. It is powered by Microsoft's
 automatically serviced Evergreen WebView2 Chromium runtime.
@@ -16,7 +16,7 @@ policy, UI, profile boundary, packaging, and tests.
 The build pins Microsoft WebView2 SDK `1.0.4129.50` and verifies its official
 NuGet SHA-512 plus a locked SHA-256 before compilation. Installation requires a
 supported, validly Microsoft-signed Evergreen runtime. The ZSEC executable is
-currently an **unsigned local developer preview**, so it is not a production
+currently an **unsigned local Community build**, so it is not a production
 installer for the public.
 
 ## Implemented protections
@@ -36,7 +36,7 @@ installer for the public.
   filesystem, process, registry, PowerShell, antivirus or application bridge.
 - New windows are converted into managed ZSEC tabs after URL validation.
 - Non-web schemes are rejected; remote debugging and developer tools are off.
-- The UI labels the product as `Desktop Preview` and exposes the exact runtime
+- The UI labels the product as `Community 0.3` and exposes the exact runtime
   and policy boundary in its About dialog.
 
 The blocker is a small reviewed starting policy, not a mature filter ecosystem.
@@ -69,7 +69,7 @@ WebView2 SmartScreen/reputation protection remains available through the
 Microsoft runtime. That means security-related browsing information may be
 processed by Microsoft according to its terms; ZSEC must disclose that before a
 public release. ZSEC does not add telemetry or send browsing history to a ZSEC
-server in this preview.
+server in this Community build.
 
 ZMath and Zero Boundary Algebra are not substituted for the runtime sandbox,
 TLS, certificate validation, Windows DPAPI/CNG, code signing, or other reviewed
@@ -84,4 +84,4 @@ Linux builds, browser signing, an authenticated rollback-resistant updater,
 sandbox and Site Isolation evidence, browser integration tests, reputation
 services with an explicit privacy contract, crash/update infrastructure, an
 SBOM, third-party notices, and an operating security-response process. This
-preview does not claim those gates are complete.
+Community build does not claim those gates are complete.

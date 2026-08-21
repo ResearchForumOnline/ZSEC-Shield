@@ -86,7 +86,7 @@ if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
 $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json
 if (
     $state.schema -ne "zsec.browser.desktop-preview-installation.v2" -or
-    $state.product -ne "ZSEC Browser Desktop Preview"
+    $state.product -ne "ZSEC Browser"
 ) {
     throw "The installed product identity is invalid."
 }
@@ -121,7 +121,7 @@ if (-not $LeaveClosed) {
 
 $result = [ordered]@{
     schema = "zsec.browser.desktop-preview-runtime-acceptance.v1"
-    product = "ZSEC Browser Desktop Preview"
+    product = "ZSEC Browser"
     version = [string]$state.version
     passed = $true
     tested_at = [DateTimeOffset]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")

@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#07101f">
   <link rel="canonical" href="https://talktoai.org/zero-browser/download/">
   <link rel="icon" href="../../assets/zero-browser-mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="../../assets/style.css?v=20260821-zsec2">
+  <link rel="stylesheet" href="../../assets/style.css?v=20260821-zsec3">
 
   <meta property="og:site_name" content="TalkToAI">
   <meta property="og:locale" content="en_GB">
@@ -40,9 +40,21 @@
         <a href="#install">Install</a>
         <a href="#verify">Verify</a>
         <a href="#scope">What works</a>
+        <a href="#desktop-preview">Desktop build</a>
         <a href="../privacy/">Privacy</a>
         <a class="nav-switch" href="../../zero-security/">ZSEC Antivirus <span aria-hidden="true">→</span></a>
       </nav>
+      <details class="mobile-nav">
+        <summary>Menu</summary>
+        <nav aria-label="Mobile navigation">
+          <a href="#install">Install</a>
+          <a href="#verify">Verify</a>
+          <a href="#scope">What works</a>
+          <a href="#desktop-preview">Desktop build</a>
+          <a href="../privacy/">Privacy</a>
+          <a href="../../zero-security/">ZSEC Antivirus <span aria-hidden="true">→</span></a>
+        </nav>
+      </details>
     </div>
   </header>
 
@@ -50,14 +62,14 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="container hero-grid">
         <div class="hero-copy">
-          <p class="hero-kicker">Chrome · Edge · Brave · Chromium 120+</p>
+          <p class="hero-kicker">Manifest V3 · Chromium 120+ target · runtime-smoked in Brave and Edge on Windows</p>
           <h1 id="hero-title">Install ZSEC Browser Shields.</h1>
-          <p class="lede">ZSEC Browser 0.4 is delivered as the ZSEC Browser Shields Manifest V3 extension. It combines 38 packaged network blockers, two link-cleaning rules, per-site controls, best-effort YouTube assistance and an optional two-rule High-Risk Browsing profile.</p>
+          <p class="lede">ZSEC Browser Shields 0.4 is delivered as an unsigned Manifest V3 extension. It combines 38 packaged network blockers, two link-cleaning rules, per-site controls, best-effort YouTube assistance and an optional two-rule High-Risk Browsing profile.</p>
           <div class="hero-actions">
             <a class="button" href="/downloads/zero-browser/zsec-browser-shields-0.4.0-chromium-mv3.zip" download>Download ZSEC Browser Shields 0.4 <span aria-hidden="true">↓</span></a>
             <a class="button button-secondary" href="#install">Installation steps</a>
           </div>
-          <p class="microcopy"><strong>Distribution boundary:</strong> this is the unsigned, manually installed extension ZIP. A working Windows Desktop Preview 0.2.3 now exists in source and local acceptance evidence, but it is not offered here as a public native download because the ZSEC executable is not publisher-signed.</p>
+          <p class="microcopy"><strong>Distribution boundary:</strong> this unsigned, manually installed website evaluation ZIP is built from draft pull request #5; it is not a browser-Store package or the latest formal GitHub prerelease. Desktop Preview 0.2.3 remains a source/local-evidence build in draft pull request #6 and is not offered as a public native download because the ZSEC executable is not publisher-signed.</p>
         </div>
 
         <div class="hero-art" role="img" aria-label="ZSEC Browser and ZSEC Browser Shields control panel concept">
@@ -91,11 +103,11 @@
     <section class="section section-muted" id="desktop-preview" aria-labelledby="desktop-preview-title">
       <div class="container">
         <div class="section-head">
-          <div><p class="section-label">Windows development channel</p><h2 id="desktop-preview-title">The desktop preview is real—and kept behind its release gates.</h2></div>
+          <div><p class="section-label">Windows development channel</p><h2 id="desktop-preview-title">Windows desktop build: implemented locally, public distribution gated.</h2></div>
           <p>ZSEC Browser Desktop Preview 0.2.3 provides a branded WebView2 Chromium shell, isolated profile, 81 compiled blocker domains, 21 tracking-parameter cleaners, default-deny permissions and repeatable runtime acceptance tests.</p>
         </div>
         <div class="split">
-          <article class="panel panel-positive"><h3>Implemented and tested locally</h3><ul><li>Desktop and Start-menu application entries.</li><li>Valid Microsoft-signed Evergreen runtime requirement.</li><li>Exact installed-file hashes and process-boundary status.</li><li>Live tracking cleanup and reviewed tracker-domain block.</li></ul></article>
+          <article class="panel panel-positive"><h3>Local acceptance boundary</h3><ul><li>Desktop and Start-menu application entries.</li><li>Installer and status checks verify the Microsoft-signed Evergreen WebView2 runtime.</li><li>Exact installed-file hashes and process-boundary status.</li><li>Live tracking cleanup and reviewed tracker-domain block.</li></ul></article>
           <article class="panel panel-private"><h3>Public native download remains blocked</h3><ul><li>No Authenticode signature or trusted timestamp.</li><li>No signed rollback-resistant ZSEC binary updater.</li><li>No independent sandbox/Site Isolation attestation.</li><li>No Windows 11, macOS or Linux release qualification.</li></ul></article>
         </div>
         <p><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/pull/6">Review the desktop-preview source, tests and release boundary in draft pull request #6.</a> Do not bypass operating-system warnings to run an unsigned developer build.</p>
@@ -157,7 +169,7 @@
       <div class="container">
         <div class="section-head">
           <div>
-            <p class="section-label">Working protection</p>
+            <p class="section-label">Documented protection scope</p>
             <h2 id="scope-title">Useful now. Narrow enough to audit.</h2>
           </div>
         <p>Community 0.4 prioritises inspectable source, bounded permissions and local controls. It does not claim Brave-level browser maintenance, anonymous browsing, spyware detection or complete malicious-site protection.</p>
@@ -177,7 +189,7 @@
 
     <section class="section cta-section" aria-labelledby="cta-title">
       <div class="container cta-box">
-      <div><p class="section-label">Ready to test</p><h2 id="cta-title">Download it. Verify it. Keep control.</h2><p>ZSEC Browser Shields remains the current public download. The Windows desktop shell is a working unsigned developer preview in source, not a public signed browser or independent Chromium maintenance channel.</p></div>
+        <div><p class="section-label">Ready to test</p><h2 id="cta-title">Download it. Verify it. Keep control.</h2><p>ZSEC Browser Shields 0.4 is the current unsigned website evaluation package. The Windows desktop shell remains a source/local-evidence developer build—not a public signed browser or independent Chromium maintenance channel.</p></div>
         <div class="cta-actions"><a class="button" href="/downloads/zero-browser/zsec-browser-shields-0.4.0-chromium-mv3.zip" download>Download 0.4</a><a class="button button-secondary" href="../">Product overview</a></div>
       </div>
     </section>
@@ -185,9 +197,9 @@
 
   <footer class="site-footer">
     <div class="container footer-grid">
-      <div class="footer-brand"><a class="brand" href="../"><span class="brand-mark" aria-hidden="true">Z</span><span>ZSEC Browser</span></a><p>Local-first browser protection from TalkToAI: a public extension preview and a source-available Windows desktop-shell developer build.</p></div>
+      <div class="footer-brand"><a class="brand" href="../"><span class="brand-mark" aria-hidden="true">Z</span><span>ZSEC Browser</span></a><p>Local-first browser protection from TalkToAI: an unsigned website evaluation extension and a source/local-evidence Windows desktop developer build.</p></div>
       <div><p class="footer-title">Install</p><ul class="footer-links"><li><a href="#verify">Verify the ZIP</a></li><li><a href="#install">Chrome / Edge / Brave</a></li><li><a href="../privacy/">Privacy policy</a></li></ul></div>
-      <div><p class="footer-title">Project</p><ul class="footer-links"><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield">GitHub repository</a></li><li><a href="https://talktoai.org/.well-known/security.txt">Report a vulnerability</a></li><li><a href="../../zero-security/">ZSEC Antivirus</a></li></ul></div>
+      <div><p class="footer-title">Project</p><ul class="footer-links"><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/47d937df74a2170a17df6563d47af929a4c234f9/browser/zeroq-shields">Immutable Shields 0.4 source</a></li><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield">GitHub repository</a></li><li><a href="https://talktoai.org/.well-known/security.txt">Report a vulnerability</a></li><li><a href="../../zero-security/">ZSEC Antivirus</a></li></ul></div>
     </div>
     <div class="container footer-bottom"><p>© 2026 TalkToAI. ZSEC Browser Shields Community 0.4.</p><p>Last reviewed <time datetime="2026-08-21">21 August 2026</time>.</p></div>
   </footer>
