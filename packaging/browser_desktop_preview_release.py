@@ -5,11 +5,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import zipfile
 from pathlib import Path
 from typing import Any
 
 ZIP_TIMESTAMP = (2026, 1, 1, 0, 0, 0)
+SOURCE_REPOSITORY = "https://github.com/ResearchForumOnline/ZSEC-Shield"
+SOURCE_REVISION_PATTERN = re.compile(r"[0-9a-f]{40}")
 
 
 def sha256(path: Path) -> str:
@@ -24,7 +27,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("build_directory", type=Path)
     parser.add_argument("output_directory", type=Path)
+    parser.add_argument(
+        "--source-revision",
+        required=True,
+        help="Exact 40-character lowercase Git commit used for the build.",
+    )
     args = parser.parse_args()
+
+    source_revision = args.source_revision
+    if SOURCE_REVISION_PATTERN.fullmatch(source_revision) is None:
+        raise ValueError("source revision must be a 40-character lowercase Git commit")
 
     build_directory = args.build_directory.resolve(strict=True)
     output_directory = args.output_directory.resolve(strict=False)
@@ -53,9 +65,19 @@ def main() -> int:
 
     version = str(build_manifest["version"])
     output_directory.mkdir(parents=True, exist_ok=True)
-    archive_name = f"zsec-browser-desktop-preview-{version}-windows-x64-unsigned.zip"
+    archive_name = f"zsec-browser-community-{version}-windows-x64-unsigned.zip"
     archive_path = output_directory / archive_name
-    root_name = f"zsec-browser-desktop-preview-{version}"
+    root_name = f"zsec-browser-community-{version}"
+
+    release_provenance = {
+        "schema": "zsec.browser.community-provenance.v1",
+        "product": "ZSEC Browser Community",
+        "version": version,
+        "source_repository": SOURCE_REPOSITORY,
+        "source_revision": source_revision,
+        "signed_zsec_binary": False,
+        "standalone_chromium_fork": False,
+    }
 
     entries = [
         (path, path.relative_to(payload).as_posix())
@@ -79,12 +101,23 @@ def main() -> int:
                 compress_type=zipfile.ZIP_DEFLATED,
                 compresslevel=9,
             )
+        provenance_info = zipfile.ZipInfo(
+            f"{root_name}/release-provenance.json", ZIP_TIMESTAMP
+        )
+        provenance_info.compress_type = zipfile.ZIP_DEFLATED
+        provenance_info.external_attr = 0o100644 << 16
+        archive.writestr(
+            provenance_info,
+            json.dumps(release_provenance, indent=2, sort_keys=True) + "\n",
+            compress_type=zipfile.ZIP_DEFLATED,
+            compresslevel=9,
+        )
 
     metadata = {
-        "schema": "zsec.browser.desktop-preview-release.v1",
+        "schema": "zsec.browser.community-release.v1",
         "product": "ZSEC Browser",
         "version": version,
-        "channel": "local-community-build",
+        "channel": "website-evaluation",
         "platform": "windows-x64",
         "architecture": build_manifest["architecture"],
         "artifact": archive_name,
@@ -95,6 +128,8 @@ def main() -> int:
         "standalone_chromium_fork": False,
         "default_browser_changed": False,
         "system_security_products_modified": False,
+        "source_repository": SOURCE_REPOSITORY,
+        "source_revision": source_revision,
         "engine": {
             "distribution": build_manifest["engine_distribution"],
             "maintained_by": build_manifest["engine_maintained_by"],
@@ -112,14 +147,20 @@ def main() -> int:
             "Install-ZsecBrowserPreview.ps1 from PowerShell."
         ),
         "claims_boundary": (
-            "Unsigned local Community build. Not a maintained Chromium fork, "
-            "not antivirus, and not approved for public production distribution."
+            "Unsigned Community evaluation. Not a maintained Chromium fork, "
+            "not antivirus, and not approved as a primary browser or managed "
+            "production deployment."
         ),
     }
     metadata_path = archive_path.with_suffix(archive_path.suffix + ".json")
     metadata_path.write_text(
         json.dumps(metadata, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
+    )
+    checksum_path = archive_path.with_suffix(archive_path.suffix + ".sha256")
+    checksum_path.write_text(
+        f"{metadata['artifact_sha256']}  {archive_name}\n",
+        encoding="ascii",
     )
     print(json.dumps(metadata, sort_keys=True))
     return 0

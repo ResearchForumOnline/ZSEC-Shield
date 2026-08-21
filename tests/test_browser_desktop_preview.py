@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,6 +14,7 @@ INSTALLER = ROOT / "windows" / "browser" / "Install-ZsecBrowserPreview.ps1"
 STATUS = ROOT / "windows" / "browser" / "Get-ZsecBrowserPreviewStatus.ps1"
 README = ROOT / "browser" / "zsec-desktop-preview" / "README.md"
 COMPILER = ROOT / "packaging" / "compile_browser_policy.py"
+PACKAGER = ROOT / "packaging" / "browser_desktop_preview_release.py"
 MANIFEST = ROOT / "browser" / "zeroq-shields" / "manifest.json"
 
 
@@ -108,3 +111,76 @@ def test_status_requires_runtime_and_integrity_evidence() -> None:
     assert "runtime_evidence" in status
     assert "host_objects_allowed" in status
     assert "running_instance_verified" in status
+
+
+def test_community_release_is_deterministic_and_publishes_provenance(
+    tmp_path: Path,
+) -> None:
+    build = tmp_path / "build"
+    payload = build / "payload"
+    payload.mkdir(parents=True)
+    payload_file = payload / "README.md"
+    payload_file.write_text("ZSEC Browser Community\n", encoding="utf-8")
+    payload_sha = hashlib.sha256(payload_file.read_bytes()).hexdigest()
+    manifest = {
+        "schema": "zsec.browser.desktop-preview-build.v2",
+        "version": "0.3.0",
+        "architecture": "windows-x64-webview2-shell",
+        "engine_distribution": "Microsoft Evergreen WebView2 Chromium runtime",
+        "engine_maintained_by": "Microsoft",
+        "standalone_chromium_fork": False,
+        "signed_zsec_binary": False,
+        "webview2_sdk_version": "1.0.4129.50",
+        "webview2_nuget_sha256": "a" * 64,
+        "webview2_nuget_sha512_base64": "catalog-hash",
+        "tracker_domain_count": 81,
+        "tracking_parameter_count": 21,
+        "files": [
+            {"path": "README.md", "sha256": payload_sha, "bytes": 23}
+        ],
+    }
+    (build / "build-manifest.json").write_text(
+        json.dumps(manifest), encoding="utf-8"
+    )
+    revision = "1" * 40
+    release_a = tmp_path / "release-a"
+    release_b = tmp_path / "release-b"
+    for output in (release_a, release_b):
+        subprocess.run(
+            [
+                sys.executable,
+                str(PACKAGER),
+                str(build),
+                str(output),
+                "--source-revision",
+                revision,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    name = "zsec-browser-community-0.3.0-windows-x64-unsigned.zip"
+    archive_a = release_a / name
+    archive_b = release_b / name
+    assert archive_a.read_bytes() == archive_b.read_bytes()
+    artifact_sha = hashlib.sha256(archive_a.read_bytes()).hexdigest()
+    metadata = json.loads(
+        (release_a / f"{name}.json").read_text(encoding="utf-8")
+    )
+    assert metadata["schema"] == "zsec.browser.community-release.v1"
+    assert metadata["source_revision"] == revision
+    assert metadata["standalone_chromium_fork"] is False
+    assert metadata["signed_zsec_binary"] is False
+    assert metadata["artifact_sha256"] == artifact_sha
+    assert (release_a / f"{name}.sha256").read_text(encoding="ascii") == (
+        f"{artifact_sha}  {name}\n"
+    )
+    with zipfile.ZipFile(archive_a) as archive:
+        provenance = json.loads(
+            archive.read(
+                "zsec-browser-community-0.3.0/release-provenance.json"
+            ).decode("utf-8")
+        )
+    assert provenance["source_revision"] == revision
+    assert provenance["standalone_chromium_fork"] is False
