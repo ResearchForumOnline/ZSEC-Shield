@@ -191,12 +191,12 @@
         <div class="hero-copy">
           <p class="hero-kicker">Windows · macOS · Linux · automatic post-change monitoring</p>
           <h1 id="hero-title">Automatic post-change file monitoring with verifiable status.</h1>
-          <p class="lede">ZSEC Antivirus 0.3 watches the folders you choose, reacts to native operating-system file events, checks changed files locally against deterministic rules and can place configured matches into authenticated encrypted quarantine when you explicitly enable it.</p>
+          <p class="lede">ZSEC Antivirus 0.3 combines a full Windows desktop dashboard with automatic post-change folder monitoring, deterministic local scans, signed data-only rules, encrypted quarantine, reports, health evidence and replacement-readiness interlocks.</p>
           <div class="hero-actions">
             <a class="button" href="download/">Download Community 0.3 <span aria-hidden="true">↓</span></a>
             <a class="button button-secondary" href="#how-it-works">See what works</a>
           </div>
-          <p class="microcopy"><strong>Clear boundary:</strong> Community 0.3 is an unsigned automatic companion. It detects after filesystem changes rather than blocking at the kernel boundary, so keep the current Windows Security provider or native platform controls active. Delivery format: self-contained command-line archives with per-user companion scripts; no graphical antivirus dashboard, protected system service or primary-provider integration.</p>
+          <p class="microcopy"><strong>Clear boundary:</strong> the Windows Community 0.3 graphical client is implemented, packaged, installed and hash-verified from source, with animated local operation status and a reduced-motion control. It remains unsigned and detects after filesystem changes rather than blocking at the kernel boundary, so it is not a protected service or primary-provider integration. Keep the current Windows Security provider or native platform controls active.</p>
         </div>
 
         <!-- Local launch artwork: ../assets/zsec-family-hero-v2.png -->
@@ -252,14 +252,14 @@
             <p class="section-label">Exact delivery status</p>
             <h2 id="platforms-title">One auditable core. Three separately gated desktops.</h2>
           </div>
-          <p>Version 0.3 packages the same auditable core for each desktop and adds foreground post-change monitoring. “Native archive” means a self-contained CLI—not a graphical app, protected background service or primary provider.</p>
+          <p>Version 0.3 packages the same auditable core for each desktop and adds foreground post-change monitoring. Windows now has a source-available graphical Community client; the public macOS and Linux evaluation archives remain self-contained command-line builds. None is a protected background service or primary provider.</p>
         </div>
 
         <div class="feature-grid">
           <article class="card">
             <span class="card-icon" aria-hidden="true">W</span>
             <h3>Windows</h3>
-            <p><strong>Community 0.3:</strong> x86-64 ZIP with a reversible per-user Scheduled Task, ReadDirectoryChangesW monitoring, heartbeat/integrity status and CurrentUser DPAPI key protection.</p>
+            <p><strong>Community 0.3:</strong> full per-user dashboard for overview, scans, monitoring, quarantine, signed feeds, reports, health, security/YubiKey status, replacement gates and settings; plus reversible logon monitoring, heartbeat/integrity status and CurrentUser DPAPI key protection. <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/4da85359feddf25f45c76115762b7018c5ef7cfb/apps/windows-ui">Inspect the immutable GUI source.</a></p>
           </article>
           <article class="card">
             <span class="card-icon" aria-hidden="true">M</span>
@@ -372,7 +372,7 @@
         <div class="architecture-copy">
           <p class="section-label">Fail-closed architecture</p>
           <h2 id="architecture-title">Small components. Narrow authority.</h2>
-          <p>The product architecture separates the interface, supervisor and hostile-file parsing. Community 0.3 ships a user-scoped CLI companion; privileged enforcement and isolated parser workers are outside this release.</p>
+          <p>The product architecture separates the unelevated Windows interface, supervisor and hostile-file parsing. Community 0.3 ships the graphical client and user-scoped CLI companion; privileged enforcement and isolated parser workers remain outside this release.</p>
           <ul class="check-list">
             <li>The currently registered antivirus remains active alongside Community 0.3.</li>
             <li>Feeds contain data, not remote commands.</li>
@@ -602,7 +602,7 @@
         <div>
           <p class="section-label">Build trust in public</p>
           <h2 id="cta-title">Download it. Verify it. Start with a test folder.</h2>
-          <p>Community 0.3 packages post-change companions for Windows, macOS and Linux. The exact Windows companion has live development-machine evidence; macOS and Linux archives were built and smoke-tested in CI, but native activation remains unverified on physical macOS hardware and a supported Linux desktop. Keep the existing primary provider active.</p>
+          <p>Community 0.3 packages post-change companions for Windows, macOS and Linux. The Windows graphical client and companion have live development-machine evidence; macOS and Linux archives were built and smoke-tested in CI, but native activation remains unverified on physical macOS hardware and a supported Linux desktop. Keep the existing primary provider active.</p>
         </div>
         <div class="cta-actions">
           <a class="button" href="download/">Choose your platform <span aria-hidden="true">↓</span></a>

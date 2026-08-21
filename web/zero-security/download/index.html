@@ -67,7 +67,7 @@
             <a class="button" href="#downloads">Choose your platform <span aria-hidden="true">↓</span></a>
             <a class="button button-secondary" href="#protect">See the protection command</a>
           </div>
-          <p class="microcopy"><strong>Install boundary:</strong> these unsigned website evaluation packages are built from draft pull request #5 and detect after filesystem changes rather than at the kernel access boundary. They are distinct from the latest formal GitHub prerelease and are not signed platform installers. Verify the exact SHA-256 and keep Malwarebytes, Microsoft Defender or native platform controls active.</p>
+          <p class="microcopy"><strong>Install boundary:</strong> these unsigned website evaluation packages are built from draft pull request #5 and detect after filesystem changes rather than at the kernel access boundary. The newer Windows graphical client is source/local-evidence only at immutable revision <code>4da8535</code>; its public native download remains gated by publisher signing and release qualification. Verify exact SHA-256 values and keep Malwarebytes, Microsoft Defender or native platform controls active.</p>
         </div>
 
         <div class="hero-art" role="img" aria-label="ZSEC Antivirus foreground protection status panel">
@@ -96,6 +96,20 @@
         <div class="trust-item"><strong>Existing protection stays on</strong><p>The build contains no antivirus uninstall, exclusion or provider-registration automation.</p></div>
       </div>
     </aside>
+
+    <section class="section section-muted" id="windows-desktop" aria-labelledby="windows-desktop-title">
+      <div class="container">
+        <div class="section-head">
+          <div><p class="section-label">Windows graphical client</p><h2 id="windows-desktop-title">A full local dashboard, with public distribution still gated.</h2></div>
+          <p>The installed Community 0.3 client exposes overview, scans, automatic monitoring, encrypted quarantine, signed feeds, reports, evidence-backed health, security/YubiKey status, replacement blockers and settings in one interface.</p>
+        </div>
+        <div class="split">
+          <article class="panel panel-positive"><h3>Implemented and locally accepted</h3><ul><li>Unelevated GUI with animated local-operation status and reduced-motion support.</li><li>Separate packaged scanner engine with strict JSON contracts and no command shell.</li><li>Manifest hash verification, versioned per-user install, Desktop and Start-menu shortcuts.</li><li>Existing Malwarebytes and Windows Security state preserved during install and test.</li></ul></article>
+          <article class="panel panel-private"><h3>Public native release remains gated</h3><ul><li>No publisher Authenticode signature or trusted timestamp.</li><li>No protected service, kernel pre-access mediation or Windows Security provider registration.</li><li>No independently validated efficacy or false-positive benchmark.</li><li>No automatic removal of an existing antivirus provider.</li></ul></article>
+        </div>
+        <p><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/4da85359feddf25f45c76115762b7018c5ef7cfb/apps/windows-ui">Inspect the immutable Windows GUI source</a> and <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/4da85359feddf25f45c76115762b7018c5ef7cfb/windows/desktop">the hash-verifying desktop installer scripts</a>.</p>
+      </div>
+    </section>
 
     <section class="section" id="downloads" aria-labelledby="downloads-title">
       <div class="container">
@@ -195,7 +209,7 @@
 
   <footer class="site-footer">
     <div class="container footer-grid">
-      <div class="footer-brand"><a class="brand" href="../"><span class="brand-mark" aria-hidden="true">Z</span><span>ZSEC Antivirus</span></a><p>Open-core, local-first security engineering from TalkToAI. Community 0.3 is an unsigned automatic companion package.</p></div>
+      <div class="footer-brand"><a class="brand" href="../"><span class="brand-mark" aria-hidden="true">Z</span><span>ZSEC Antivirus</span></a><p>Open-core, local-first security engineering from TalkToAI. Community 0.3 includes an unsigned Windows graphical client and cross-platform automatic companion packages.</p></div>
       <div><p class="footer-title">Download</p><ul class="footer-links"><li><a href="#downloads">Platform packages</a></li><li><a href="#install">Verification and install</a></li><li><a href="#protect">Protection command</a></li></ul></div>
       <div><p class="footer-title">Project</p><ul class="footer-links"><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/2e46d12c345e853282af97214b35b3c3badaea86">Immutable 0.3 source</a></li><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield">GitHub repository</a></li><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/security/policy">Report a vulnerability</a></li><li><a href="../../zero-browser/">ZSEC Browser</a></li></ul></div>
     </div>
