@@ -280,7 +280,7 @@ $plan = [ordered]@{
     }
     resource_bounds = [ordered]@{
         serial_scanner = $true
-        event_queue_size = 2048
+        event_queue_size = 8192
         max_file_bytes = 67108864
         chunk_bytes = 1048576
         event_log_max_bytes = 4194304
@@ -353,7 +353,7 @@ try {
         poll_seconds = 1.0
         reconcile_seconds = 300.0
         heartbeat_seconds = 30.0
-        event_queue_size = 2048
+        event_queue_size = 8192
         max_file_bytes = 67108864
         chunk_bytes = 1048576
         health_file = $healthPath
@@ -397,7 +397,8 @@ try {
         Register-ScheduledTask `
             -TaskName $taskName `
             -TaskPath $taskPath `
-            -InputObject $definition | Out-Null
+            -InputObject $definition `
+            -ErrorAction Stop | Out-Null
         $registeredByThisRun = $true
     }
     catch {

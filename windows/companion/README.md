@@ -89,7 +89,7 @@ The generated configuration is deliberately conservative:
 | Control | Bound |
 | --- | --- |
 | Scanner concurrency | One serial watcher/scanner process |
-| Raw event queue | 2,048 entries; overflow ends incomplete |
+| Raw event queue | 8,192 entries; overflow ends incomplete |
 | Duplicate events | 0.75-second quiet-period debounce |
 | File input | 64 MiB maximum per file, streamed in 1 MiB chunks |
 | Reconciliation | One Downloads rescan every five minutes |

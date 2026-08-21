@@ -38,7 +38,7 @@ function Assert-ExactFields {
     )
     $actual = @($Value.PSObject.Properties.Name | Sort-Object)
     $wanted = @($Expected | Sort-Object)
-    if ((Compare-Object -ReferenceObject $wanted -DifferenceObject $actual).Count -ne 0) {
+    if (@(Compare-Object -ReferenceObject $wanted -DifferenceObject $actual).Count -ne 0) {
         throw "$Context fields are invalid."
     }
 }

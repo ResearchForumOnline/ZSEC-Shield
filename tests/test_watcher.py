@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import threading
 import unittest
 from collections.abc import Callable
@@ -17,6 +18,7 @@ from zsec_shield.watcher import (
     ForegroundProtectionWatcher,
     WatchConfig,
     WatchEventHandler,
+    _configure_windows_native_change_mask,
     normalize_watch_roots,
     watch_policy,
 )
@@ -67,6 +69,22 @@ def make_test_rule(pattern: bytes = b"zsec-watch-test-marker") -> Rule:
 
 
 class WatchQueueTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "nt", "Windows notification mask test")
+    def test_windows_native_mask_ignores_last_access_only_changes(self) -> None:
+        from watchdog.observers import winapi
+
+        original = int(winapi.WATCHDOG_FILE_NOTIFY_FLAGS)
+        try:
+            _configure_windows_native_change_mask()
+            narrowed = int(winapi.WATCHDOG_FILE_NOTIFY_FLAGS)
+            self.assertEqual(0, narrowed & int(winapi.FILE_NOTIFY_CHANGE_LAST_ACCESS))
+            self.assertEqual(
+                original & ~int(winapi.FILE_NOTIFY_CHANGE_LAST_ACCESS),
+                narrowed,
+            )
+        finally:
+            winapi.WATCHDOG_FILE_NOTIFY_FLAGS = original
+
     def test_duplicate_events_are_debounced_and_state_is_excluded_pre_queue(self) -> None:
         with TemporaryDirectory() as temporary:
             root = Path(temporary)

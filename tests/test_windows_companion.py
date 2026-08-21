@@ -32,7 +32,7 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn("-Priority 8", content)
         self.assertIn("-RestartCount 3", content)
         self.assertIn("-RestartInterval (New-TimeSpan -Minutes 1)", content)
-        self.assertIn('event_queue_size = 2048', content)
+        self.assertIn('event_queue_size = 8192', content)
         self.assertIn('event_log_max_bytes = 4194304', content)
         self.assertIn('event_log_backups = 3', content)
         self.assertIn('quarantine_enabled = [bool]$EnableQuarantine', content)
@@ -42,6 +42,11 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn("function Test-IsAccessDeniedError", content)
         self.assertIn("[int64]$exception.HResult -eq -2147024891", content)
         self.assertIn("-not (Test-IsAccessDeniedError $registrationError)", content)
+        self.assertRegex(
+            content,
+            r"Register-ScheduledTask[\s\S]*?-InputObject \$definition\s+`\s*"
+            r"-ErrorAction Stop \| Out-Null",
+        )
         self.assertIn("New-ItemProperty", content)
         self.assertIn('supervisor_kind = $supervisorKind', content)
         self.assertIn("if ($PlanOnly)", content)
@@ -60,6 +65,10 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn("Start-Process", content)
         self.assertIn("-WindowStyle Hidden", content)
         self.assertIn("$actualRuntimeHash = Get-Sha256 $runtimeExecutable", content)
+        self.assertIn(
+            "@(Compare-Object -ReferenceObject $wanted -DifferenceObject $actual).Count",
+            content,
+        )
 
     def test_status_uses_supported_wsc_aggregate_and_never_decodes_product_state(self) -> None:
         content = STATUS.read_text(encoding="utf-8")

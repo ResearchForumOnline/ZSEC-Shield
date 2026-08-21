@@ -366,7 +366,30 @@ class WatchEventHandler(FileSystemEventHandler):
 
 
 def _native_observer(timeout: float) -> _Observer:
+    _configure_windows_native_change_mask()
     return cast(_Observer, Observer(timeout=timeout))
+
+
+def _configure_windows_native_change_mask() -> None:
+    """Ignore access-time-only Windows notifications that our own reads can cause.
+
+    Watchdog's default ReadDirectoryChangesW mask includes LAST_ACCESS.  A
+    baseline antivirus read can therefore report every inspected file as
+    modified, overflow the bounded queue, and stop the companion.  Last-access
+    changes do not alter file content; name, creation, attributes, size,
+    security, and last-write notifications remain enabled.
+    """
+
+    if os.name != "nt":
+        return
+    from watchdog.observers import winapi
+
+    last_access = int(winapi.FILE_NOTIFY_CHANGE_LAST_ACCESS)
+    current = int(winapi.WATCHDOG_FILE_NOTIFY_FLAGS)
+    narrowed = current & ~last_access
+    if narrowed <= 0:
+        raise WatchError("Windows native watch notification mask is invalid")
+    winapi.WATCHDOG_FILE_NOTIFY_FLAGS = narrowed
 
 
 def _polling_observer(timeout: float) -> _Observer:
