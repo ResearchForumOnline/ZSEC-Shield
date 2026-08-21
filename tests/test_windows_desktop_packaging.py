@@ -51,3 +51,12 @@ def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
     assert "DESKTOP PREVIEW" not in app
     assert 'self.root.title("ZSEC Antivirus")' in app
     assert 'text="COMMUNITY 0.3"' in app
+
+
+def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None:
+    app = (ROOT / "apps" / "windows-ui" / "zsec_desktop" / "app.py").read_text(encoding="utf-8")
+    assert "self.busy_operations" in app
+    assert "LOCAL CORE READY" in app
+    assert "VERIFYING" in app
+    assert "Reduce motion" in app
+    assert "after_cancel" in app

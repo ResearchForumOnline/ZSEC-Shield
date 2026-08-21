@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import json
+import math
 import os
 import threading
 import tkinter as tk
@@ -50,6 +51,10 @@ class ZsecDesktop:
         self.watch_session: WatchSession | None = None
         self.quarantine_rows: dict[str, dict[str, Any]] = {}
         self.report_rows: dict[str, Path] = {}
+        self.reduce_motion = tk.BooleanVar(value=False)
+        self.animation_phase = 0
+        self.animation_job: str | None = None
+        self.busy_operations = 0
 
         self.root.title("ZSEC Antivirus")
         self.root.geometry("1180x760")
@@ -59,6 +64,7 @@ class ZsecDesktop:
         self._configure_style()
         self._build_header()
         self._build_tabs()
+        self.animation_job = self.root.after(80, self._animate_activity)
         self.root.after(120, self.refresh_all)
 
     def _configure_style(self) -> None:
@@ -152,11 +158,21 @@ class ZsecDesktop:
         title_row.pack(fill=tk.X)
         ttk.Label(title_row, text="ZSEC", style="Title.TLabel", foreground=CYAN).pack(side=tk.LEFT)
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
-        ttk.Label(
-            title_row, text="COMMUNITY 0.3", style="Subtitle.TLabel", foreground=AMBER
-        ).pack(side=tk.LEFT, padx=(18, 0), pady=(9, 0))
+        ttk.Label(title_row, text="COMMUNITY 0.3", style="Subtitle.TLabel", foreground=AMBER).pack(
+            side=tk.LEFT, padx=(18, 0), pady=(9, 0)
+        )
         self.global_busy = ttk.Progressbar(title_row, mode="indeterminate", length=150)
         self.global_busy.pack(side=tk.RIGHT, pady=8)
+        self.activity_canvas = tk.Canvas(
+            title_row,
+            width=180,
+            height=40,
+            bg=BACKGROUND,
+            highlightthickness=0,
+            borderwidth=0,
+            takefocus=0,
+        )
+        self.activity_canvas.pack(side=tk.RIGHT, padx=(0, 18), pady=2)
         ttk.Label(
             header,
             text=(
@@ -636,6 +652,15 @@ class ZsecDesktop:
             grid, from_=1, to=16384, textvariable=self.max_file_mebibytes, width=12
         )
         max_box.grid(row=2, column=1, sticky=tk.W, padx=(14, 0), pady=6)
+        ttk.Label(grid, text="Interface motion", style="Surface.TLabel").grid(
+            row=3, column=0, sticky=tk.W, pady=6
+        )
+        ttk.Checkbutton(
+            grid,
+            text="Reduce motion (keeps operation status visible)",
+            variable=self.reduce_motion,
+            command=self._motion_preference_changed,
+        ).grid(row=3, column=1, sticky=tk.W, padx=(14, 0), pady=6)
         ttk.Label(
             panel,
             text=(
@@ -654,14 +679,18 @@ class ZsecDesktop:
         *,
         failure: Callable[[BaseException], None] | None = None,
     ) -> Future[Any]:
-        self.global_busy.start(12)
+        self.busy_operations += 1
+        if self.busy_operations == 1:
+            self.global_busy.start(12)
         future = self.executor.submit(operation)
 
         def done(completed: Future[Any]) -> None:
             def deliver() -> None:
                 if self.closing:
                     return
-                self.global_busy.stop()
+                self.busy_operations = max(0, self.busy_operations - 1)
+                if self.busy_operations == 0:
+                    self.global_busy.stop()
                 try:
                     value = completed.result()
                 except BaseException as exc:
@@ -678,6 +707,67 @@ class ZsecDesktop:
 
         future.add_done_callback(done)
         return future
+
+    def _motion_preference_changed(self) -> None:
+        if self.animation_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.root.after_cancel(self.animation_job)
+            self.animation_job = None
+        self.animation_phase = 0
+        self._animate_activity()
+
+    def _animate_activity(self) -> None:
+        if self.closing:
+            return
+        reduced = bool(self.reduce_motion.get())
+        working = self.busy_operations > 0
+        colour = CYAN if working else GREEN
+        status = "VERIFYING" if working else "LOCAL CORE READY"
+        self.activity_canvas.delete("activity")
+        if reduced:
+            self.activity_canvas.create_oval(
+                8, 10, 28, 30, outline=colour, width=3, tags="activity"
+            )
+        else:
+            pulse = 2.0 + 2.0 * ((math.sin(math.radians(self.animation_phase)) + 1.0) / 2.0)
+            self.activity_canvas.create_oval(
+                11 - pulse,
+                13 - pulse,
+                25 + pulse,
+                27 + pulse,
+                outline=colour,
+                width=1,
+                tags="activity",
+            )
+            self.activity_canvas.create_arc(
+                6,
+                8,
+                30,
+                32,
+                start=self.animation_phase,
+                extent=110,
+                style=tk.ARC,
+                outline=colour,
+                width=3,
+                tags="activity",
+            )
+        self.activity_canvas.create_oval(
+            15, 17, 21, 23, fill=colour, outline=colour, tags="activity"
+        )
+        self.activity_canvas.create_text(
+            39,
+            20,
+            text=status,
+            anchor=tk.W,
+            fill=colour,
+            font=("Segoe UI Semibold", 8),
+            tags="activity",
+        )
+        self.animation_phase = (self.animation_phase + 12) % 360
+        if not reduced:
+            self.animation_job = self.root.after(80, self._animate_activity)
+        else:
+            self.animation_job = None
 
     def refresh_all(self) -> None:
         self.refresh_status()
@@ -1115,6 +1205,10 @@ class ZsecDesktop:
 
     def _close(self) -> None:
         self.closing = True
+        if self.animation_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.root.after_cancel(self.animation_job)
+            self.animation_job = None
         if self.watch_session is not None:
             self.watch_session.stop()
         if self.scan_cancel is not None:
