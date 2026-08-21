@@ -89,20 +89,25 @@ The generated configuration is deliberately conservative:
 | Control | Bound |
 | --- | --- |
 | Scanner concurrency | One serial watcher/scanner process |
-| Raw event queue | 8,192 entries; overflow ends incomplete |
-| Duplicate events | 0.75-second quiet-period debounce |
-| File input | 64 MiB maximum per file, streamed in 1 MiB chunks |
-| Reconciliation | One Downloads rescan every five minutes |
+| Event work | 8,192 total raw/coalesced paths; either overflow ends incomplete |
+| Duplicate events | 0.75-second quiet-period debounce plus a hard anti-starvation age |
+| File input | 256 MiB maximum per file, streamed in 1 MiB chunks |
+| Reconciliation | Five-minute metadata inventory; only new, changed or unresolved files are hashed |
+| Cache-independent sweep | Full content rescan every 24 hours and on every start |
 | Process scheduling | Task priority `8` plus child `BelowNormal` priority |
 | Event evidence | 4 MiB current NDJSON plus three rotated backups |
 | Health | Atomic heartbeat every 30 seconds; stale after 105 seconds |
 | Restart | Scheduled Task: at most three retries, one minute apart; HKCU Run: no automatic retry |
 | Multiple instances | Scheduled Task `IgnoreNew`; both supervisors use the engine's state-directory lock |
 
-These bounds limit queue memory, file-buffer memory, concurrency, scheduling
-priority, log storage, and restart churn. They are not a Windows Job Object or a
-hard CPU/RSS quota; sustained file churn can still use CPU and disk I/O. A future
-hard resource sandbox requires its own measured design and compatibility gates.
+Only a completed stable hash enters the session-local reconciliation snapshot.
+Oversized, unreadable and unstable files remain unresolved and health stays
+incomplete. Metadata-only passes have their own evidence and never claim a clean
+or no-match content scan. These bounds limit queue memory, file-buffer memory,
+concurrency, scheduling priority, log storage, restart churn and unchanged-tree
+disk reads. They are not a Windows Job Object or a hard CPU/RSS quota; sustained
+file churn and the daily full sweep can still use CPU and disk I/O. A future hard
+resource sandbox requires its own measured design and compatibility gates.
 
 The task settings follow Microsoft's documented `New-ScheduledTaskSettingsSet`
 controls for `IgnoreNew`, background priority, restart count, and restart
@@ -128,7 +133,8 @@ A healthy result requires all of the following:
 4. Scheduled Task state `Running`, when that supervisor is installed;
 5. a fresh heartbeat from a live process whose executable path matches the
    configured CLI;
-6. watcher operational state `healthy`; and
+6. watcher operational state `healthy` only after the initial baseline completed
+   (startup remains `baselining`); and
 7. Windows Security Center aggregate antivirus health `GOOD` from the supported
    `WscGetSecurityProviderHealth(WSC_SECURITY_PROVIDER_ANTIVIRUS)` API.
 

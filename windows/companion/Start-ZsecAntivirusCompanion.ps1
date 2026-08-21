@@ -92,7 +92,7 @@ Assert-ExactFields -Value $config -Context "Companion config" -Expected @(
     "schema", "product", "engine", "owner_sid", "task_name", "cli_path", "cli_sha256",
     "runtime_executable", "runtime_sha256",
     "state_directory", "protected_roots", "backend", "debounce_seconds", "poll_seconds",
-    "reconcile_seconds", "heartbeat_seconds", "event_queue_size", "max_file_bytes",
+    "reconcile_seconds", "full_rescan_seconds", "heartbeat_seconds", "event_queue_size", "max_file_bytes",
     "chunk_bytes", "health_file", "event_log", "event_log_max_bytes", "event_log_backups",
     "stdout_file", "stderr_file", "quarantine_enabled", "installed_at", "policy"
 )
@@ -175,6 +175,12 @@ if ($config.heartbeat_seconds -lt 5 -or $config.heartbeat_seconds -gt 300) {
 if ($config.reconcile_seconds -lt 30 -or $config.reconcile_seconds -gt 3600) {
     throw "Companion reconciliation interval is invalid."
 }
+if (
+    $config.full_rescan_seconds -lt $config.reconcile_seconds -or
+    $config.full_rescan_seconds -gt 604800
+) {
+    throw "Companion cache-independent full-rescan interval is invalid."
+}
 
 $arguments = @(
     "--state-dir", (Quote-NativeArgument $state),
@@ -188,6 +194,7 @@ $arguments += @(
     "--debounce-seconds", [string]$config.debounce_seconds,
     "--poll-seconds", [string]$config.poll_seconds,
     "--reconcile-seconds", [string]$config.reconcile_seconds,
+    "--full-rescan-seconds", [string]$config.full_rescan_seconds,
     "--heartbeat-seconds", [string]$config.heartbeat_seconds,
     "--event-queue-size", [string]$config.event_queue_size,
     "--max-file-bytes", [string]$config.max_file_bytes,

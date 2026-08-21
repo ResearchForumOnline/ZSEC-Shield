@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import os
 import stat
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -77,7 +77,13 @@ class Scanner:
             default=0,
         )
 
-    def scan(self, roots: list[Path]) -> ScanResult:
+    def scan(
+        self,
+        roots: list[Path],
+        *,
+        file_filter: Callable[[Path, os.stat_result], bool] | None = None,
+        file_observer: Callable[[Path, os.stat_result, bool], None] | None = None,
+    ) -> ScanResult:
         if not roots:
             raise ScanConfigurationError("at least one scan path is required")
         started = utc_now()
@@ -92,7 +98,21 @@ class Scanner:
                 if key in seen_paths:
                     continue
                 seen_paths.add(key)
+                if file_filter is not None:
+                    try:
+                        if not file_filter(path, metadata):
+                            continue
+                    except Exception as exc:
+                        self._issue(issues, path, "file_filter_failed", exc)
+                        continue
+                hashed_before = stats.files_hashed
                 finding = self._scan_file(path, metadata, stats, issues)
+                hashed = stats.files_hashed > hashed_before
+                if file_observer is not None:
+                    try:
+                        file_observer(path, metadata, hashed)
+                    except Exception as exc:
+                        self._issue(issues, path, "file_observer_failed", exc)
                 if finding is not None:
                     findings.append(finding)
         findings.sort(key=lambda finding: os.path.normcase(finding.path))

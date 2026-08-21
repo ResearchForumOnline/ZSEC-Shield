@@ -104,7 +104,13 @@ def _add_watch_parser(subparsers: Any, name: str, help_text: str) -> None:
         "--reconcile-seconds",
         type=_positive_float,
         default=60.0,
-        help="full rescan interval used to reduce missed-event risk (default: 60)",
+        help="metadata reconciliation interval used to reduce missed-event risk (default: 60)",
+    )
+    parser.add_argument(
+        "--full-rescan-seconds",
+        type=_positive_float,
+        default=24 * 60 * 60.0,
+        help="cache-independent full hashing interval (default: 86400)",
     )
     parser.add_argument(
         "--duration-seconds",
@@ -457,6 +463,7 @@ def _command_watch(args: argparse.Namespace) -> int:
             debounce_seconds=args.debounce_seconds,
             poll_seconds=args.poll_seconds,
             reconcile_seconds=args.reconcile_seconds,
+            full_rescan_seconds=args.full_rescan_seconds,
             cross_filesystems=args.cross_filesystems,
             quarantine=bool(args.quarantine),
             event_queue_size=args.event_queue_size,

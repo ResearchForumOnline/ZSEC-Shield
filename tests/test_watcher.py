@@ -7,6 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
+from unittest.mock import patch
 
 from watchdog.events import FileCreatedEvent, FileMovedEvent
 
@@ -137,8 +138,49 @@ class WatchQueueTests(unittest.TestCase):
             events.ingest()
             now[0] = 1.1
             due = events.due()
-        self.assertEqual([destination.absolute()], [item.path for item in due])
-        self.assertEqual({"moved_to"}, due[0].event_types)
+        self.assertEqual(
+            [destination.absolute(), source.absolute()],
+            [item.path for item in due],
+        )
+        event_types = {str(item.path): item.event_types for item in due}
+        self.assertEqual({"moved_to"}, event_types[str(destination.absolute())])
+        self.assertEqual({"moved_from"}, event_types[str(source.absolute())])
+
+    def test_pending_paths_share_the_raw_queue_bound_and_overflow_fail_closed(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            queue = DebouncedPathQueue(
+                excluded_paths=(),
+                debounce_seconds=0.5,
+                max_events=16,
+            )
+            for index in range(16):
+                queue.submit(root / f"{index}.bin", "modified", False)
+            queue.ingest()
+            queue.submit(root / "overflow.bin", "modified", False)
+            queue.ingest()
+        self.assertTrue(queue.overflowed.is_set())
+        self.assertGreaterEqual(queue.events_dropped, 1)
+        self.assertLessEqual(queue.pending_high_water, 16)
+
+    def test_repeated_modifications_cannot_postpone_scan_forever(self) -> None:
+        with TemporaryDirectory() as temporary:
+            now = [10.0]
+            target = Path(temporary) / "busy.bin"
+            queue = DebouncedPathQueue(
+                excluded_paths=(),
+                debounce_seconds=0.75,
+                max_events=16,
+                clock=lambda: now[0],
+            )
+            queue.submit(target, "modified", False)
+            queue.ingest()
+            for _ in range(5):
+                now[0] += 0.4
+                queue.submit(target, "modified", False)
+                queue.ingest()
+            due = queue.due()
+        self.assertEqual([target.absolute()], [item.path for item in due])
 
 
 class WatchEngineTests(unittest.TestCase):
@@ -267,12 +309,15 @@ class WatchEngineTests(unittest.TestCase):
         (self.scan_root / "large.bin").write_bytes(b"12345")
         watcher = ForegroundProtectionWatcher(
             Scanner((), ScannerConfig(max_file_bytes=4)),
-            self._config(),
+            self._config(reconcile_seconds=0.1, full_rescan_seconds=10.0),
             polling_observer_factory=FakeObserver,
         )
-        summary = watcher.run(duration_seconds=0.1)
+        summary = watcher.run(duration_seconds=0.3)
         self.assertEqual("incomplete", summary.outcome)
         self.assertEqual("scan_scope_incomplete", summary.health_issues[0]["code"])
+        self.assertEqual(1, summary.stats.unresolved_files)
+        self.assertEqual(0, summary.stats.metadata_files_unchanged)
+        self.assertEqual(1, summary.stats.issues)
 
     def test_short_lived_event_is_superseded_without_poisoning_session_health(self) -> None:
         records: list[dict[str, Any]] = []
@@ -343,6 +388,116 @@ class WatchEngineTests(unittest.TestCase):
         self.assertEqual("polling", heartbeats[0]["backend_active"])
         self.assertFalse(heartbeats[0]["policy"]["real_time_protection"])
         self.assertFalse(heartbeats[0]["policy"]["pre_access_enforcement"])
+
+    def test_metadata_reconciliation_does_not_rehash_unchanged_files(self) -> None:
+        target = self.scan_root / "stable.bin"
+        target.write_bytes(b"stable reconciliation test")
+        records: list[dict[str, Any]] = []
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(
+                reconcile_seconds=0.1,
+                full_rescan_seconds=10.0,
+                heartbeat_seconds=0.1,
+            ),
+            on_record=records.append,
+            polling_observer_factory=FakeObserver,
+        )
+        summary = watcher.run(duration_seconds=0.45)
+        periodic = [
+            record
+            for record in records
+            if record["event"] == "reconciliation_completed"
+            and record["triggers"] == ["periodic_reconciliation"]
+        ]
+        self.assertGreaterEqual(summary.stats.reconciliations, 3)
+        self.assertEqual(1, summary.stats.full_reconciliations)
+        self.assertEqual(1, summary.stats.files_hashed)
+        self.assertGreaterEqual(summary.stats.metadata_files_unchanged, 1)
+        self.assertTrue(periodic)
+        self.assertTrue(
+            all(record["scan"]["stats"]["files_hashed"] == 0 for record in periodic)
+        )
+        self.assertTrue(all(record["outcome"] == "no_metadata_changes" for record in periodic))
+
+    def test_metadata_reconciliation_hashes_a_changed_file_without_an_event(self) -> None:
+        target = self.scan_root / "changed-without-event.bin"
+        target.write_bytes(b"first version")
+        changed = False
+
+        def record(value: dict[str, Any]) -> None:
+            nonlocal changed
+            if (
+                not changed
+                and value["event"] == "scan_completed"
+                and value["triggers"] == ["initial_baseline"]
+            ):
+                target.write_bytes(b"second version with a different size")
+                changed = True
+
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(reconcile_seconds=0.1, full_rescan_seconds=10.0),
+            on_record=record,
+            polling_observer_factory=FakeObserver,
+        )
+        summary = watcher.run(duration_seconds=0.35)
+        self.assertTrue(changed)
+        self.assertEqual(2, summary.stats.files_hashed)
+
+    def test_full_rescan_ignores_metadata_cache_on_its_bounded_interval(self) -> None:
+        target = self.scan_root / "daily-full-sweep.bin"
+        target.write_bytes(b"full rescan coverage test")
+        records: list[dict[str, Any]] = []
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(reconcile_seconds=0.1, full_rescan_seconds=0.25),
+            on_record=records.append,
+            polling_observer_factory=FakeObserver,
+        )
+        summary = watcher.run(duration_seconds=0.65)
+        full_scans = [
+            record
+            for record in records
+            if record["event"] == "scan_completed"
+            and record["triggers"] == ["periodic_full_rescan"]
+        ]
+        self.assertGreaterEqual(summary.stats.full_reconciliations, 2)
+        self.assertGreaterEqual(summary.stats.files_hashed, 2)
+        self.assertTrue(full_scans)
+        self.assertTrue(
+            all(record["scan"]["stats"]["files_hashed"] == 1 for record in full_scans)
+        )
+
+    def test_full_rescan_catches_same_fingerprint_content_change(self) -> None:
+        marker = make_test_rule().literal or b""
+        target = self.scan_root / "restored-metadata.bin"
+        target.write_bytes(b"x" * len(marker))
+        changed = False
+
+        def record(value: dict[str, Any]) -> None:
+            nonlocal changed
+            if (
+                not changed
+                and value["event"] == "scan_completed"
+                and value["triggers"] == ["initial_baseline"]
+            ):
+                target.write_bytes(marker)
+                changed = True
+
+        watcher = ForegroundProtectionWatcher(
+            Scanner((make_test_rule(),)),
+            self._config(reconcile_seconds=0.1, full_rescan_seconds=0.25),
+            on_record=record,
+            polling_observer_factory=FakeObserver,
+        )
+        with patch(
+            "zsec_shield.watcher._file_fingerprint",
+            return_value=(1, 1, len(marker), 1, 1, 0),
+        ):
+            summary = watcher.run(duration_seconds=0.55)
+        self.assertTrue(changed)
+        self.assertGreaterEqual(summary.stats.findings, 1)
 
     def test_heartbeat_reports_live_event_queue_counters(self) -> None:
         target = self.scan_root / "heartbeat-event.bin"

@@ -81,9 +81,24 @@ class WatchEvidenceTests(unittest.TestCase):
                     },
                 }
             )
+            baselining = json.loads(health_path.read_text(encoding="utf-8"))
+            sink.record(
+                {
+                    "schema": "zsec.shield.watch-event.v1",
+                    "version": "0.2.0",
+                    "session_id": "test-session",
+                    "sequence": 2,
+                    "generated_at": "2026-08-21T12:00:01Z",
+                    "event": "scan_completed",
+                    "triggers": ["initial_baseline"],
+                    "outcome": "no_configured_rule_matches",
+                    "scan": {"stats": {"files_hashed": 1, "bytes_hashed": 8}},
+                }
+            )
             health = json.loads(health_path.read_text(encoding="utf-8"))
         self.assertEqual("zsec.antivirus.companion-health.v1", health["schema"])
         self.assertEqual("ZSEC Antivirus", health["product"])
+        self.assertEqual("baselining", baselining["operational_state"])
         self.assertEqual("healthy", health["operational_state"])
         self.assertEqual("native", health["backend_active"])
         self.assertEqual(str(Path(sys.executable).resolve()), health["runtime_executable"])
