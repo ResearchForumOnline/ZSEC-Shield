@@ -1,13 +1,41 @@
-# ZSEC Shield
+# Zero Security / ZSEC Shield
+
+![Zero Security launch artwork](assets/brand/zero-security-hero.png)
+
+**Zero Security is being engineered as a proper replacement Windows antivirus.**
+This repository contains its already working, auditable ZSEC Shield engine and
+the next production foundations: signed data-only protection feeds, automatic
+authenticated encrypted quarantine, ZBA-bound provenance, and the ZeroQ Shields
+browser protection preview.
 
 ZSEC Shield is a deterministic, non-AI, on-demand file scanner for Python 3.11+.
 It hashes regular files with SHA-256, applies exact byte and digest rules, verifies
 Ed25519-signed data-only rule feeds, produces structured JSON, and can move an
-explicitly selected match into recoverable quarantine.
+explicitly selected match into recoverable encrypted quarantine.
 
-This is an MVP, not a complete antivirus product. It has no kernel driver,
-real-time filesystem interception, behavior monitoring, memory scanner, cloud
-reputation service, exploit blocker, or guarantee that a host is clean.
+The current tagged build is still an on-demand preview, not yet a registered
+replacement antivirus. It has no production minifilter, AMSI provider, ELAM
+driver, protected service, approved Windows Security registration, or independent
+efficacy certification. Those are explicit engineering and release gates, not
+features claimed by a mock dashboard. See the
+[full antivirus programme](docs/FULL_ANTIVIRUS_PROGRAM.md) and
+[Windows safety boundary](windows/README.md).
+
+## What is real now, and what comes next
+
+| Layer | Current evidence | Replacement-antivirus gate |
+| --- | --- | --- |
+| Scan engine | Streaming SHA-256, exact byte/digest rules, EICAR wiring test, deterministic JSON | Sandboxed PE/script/document/archive engines, locked malware and cleanware evaluation |
+| Quarantine | Per-object AES-256-GCM, automatic Windows DPAPI key sealing, authenticated ZBA metadata, tamper-fail restore | Windows service key isolation, TPM/CNG root, crash and recovery certification |
+| Updates | Strict Ed25519 signed data-only feed with expiry and rollback checks | Authenticode plus threshold TUF metadata, staged binary/rule/driver rollback |
+| Real time | Not installed or claimed | Microsoft-assigned FltMgr minifilter, bounded service verdicts, HLK/HVCI/Verifier |
+| Scripts/boot | Not installed or claimed | x86/x64 AMSI providers, ELAM, protected antimalware service |
+| Windows status | Read-only inventory | Approved WSC/MVI onboarding and independently verified active/current state |
+| Browser | Testable MV3 ZeroQ Shields extension | Maintained Chromium build, upstream security cadence, signed updater and browser regression fleet |
+
+Your existing antivirus should remain active while these gates are developed and
+tested in disposable VMs. No placeholder driver, always-clean AMSI provider, or
+fake Security Center registration belongs on a real machine.
 
 ## Security boundaries
 
@@ -18,6 +46,9 @@ reputation service, exploit blocker, or guarantee that a host is clean.
 - Files larger than 64 MiB are skipped by default; the limit is explicit and
   reported.
 - Quarantine is disabled unless `--quarantine` is present.
+- New quarantine objects use a fresh random AES-256 key, AES-GCM authentication,
+  an automatically DPAPI-sealed device root on Windows, and a MAC over operational
+  metadata. No routine password prompt is required.
 - Restore never overwrites an existing destination, and the verified recovery
   object is retained after restore.
 - Feed signatures, schemas, timestamps, key status, sequence numbers, and payload
@@ -27,7 +58,41 @@ reputation service, exploit blocker, or guarantee that a host is clean.
 - If a feed, trust store, or rollback record is invalid, every feed rule is ignored
   and the command reports an incomplete result. Built-in rules remain available.
 
-See [Threat model](docs/THREAT_MODEL.md) and [Feed format](docs/FEED_FORMAT.md).
+See the [threat model](docs/THREAT_MODEL.md), [ZSV2 vault
+profile](specs/ZSV2.md), [research integration](docs/RESEARCH_INTEGRATION.md),
+and [feed format](docs/FEED_FORMAT.md).
+
+## ZBA and ZMath integration
+
+Zero Boundary Algebra 1.1 is used where it is strongest: typed entering,
+boundary, emerging, rejected, sealed, recursion, and lineage states. The record
+and original file commitment are canonicalized and authenticated as AES-GCM AAD.
+Changing the ZBA phase, evidence state, path, digest, rule matches, or object
+identity causes restore to fail.
+
+ZBA is not marketed as a cipher. AES-GCM, HKDF, DPAPI/CNG, signatures, isolation,
+and release engineering provide the security properties. The new `ZSV2`
+namespace avoids silently combining three incompatible older formats that all
+used the `ZME1` name.
+
+## Zero Browser and ZeroQ Shields
+
+The open-source extension preview lives in
+[`browser/zeroq-shields`](browser/zeroq-shields). It provides packaged local
+ad/tracker rules, a per-site pause switch, and best-effort YouTube skip/nuisance
+cleanup. It has no analytics endpoint, remote code, TLS interception, replacement
+ads, or affiliate rewriting.
+
+```powershell
+cd browser\zeroq-shields
+npm test
+npm run validate
+```
+
+The extension is an early protection layer, not yet a Chromium browser binary.
+The canonical product pages are
+[talktoai.org/zero-security](https://talktoai.org/zero-security/) and
+[talktoai.org/zero-browser](https://talktoai.org/zero-browser/).
 
 ## Platform scope
 
@@ -61,7 +126,8 @@ python3.11 -m venv .venv
 .venv/bin/zsec-shield --version
 ```
 
-The runtime dependency is `cryptography`, used only for Ed25519 verification.
+The runtime dependency is `cryptography`, used for Ed25519 verification,
+AES-256-GCM quarantine, and HKDF key separation.
 
 ## Native archives
 
@@ -139,10 +205,13 @@ Quarantine requires the explicit flag:
 zsec-shield check ./incoming --quarantine --report ./reports/quarantine.json
 ```
 
-For each matched file, ZSEC Shield first creates and hashes a private recovery copy.
-It removes the original only if the source still matches the scan result. If source
-removal fails, metadata says `copy_only` and the command returns an incomplete exit
-code. This is not reported as a successful quarantine.
+For each matched file, ZSEC Shield creates an encrypted private recovery object
+while hashing the same opened source handle. A fresh random content key is wrapped
+to the local device root. Immutable metadata and the typed ZBA boundary record are
+authenticated as AAD; mutable metadata is authenticated with a separate derived
+MAC. The original is removed only if it still matches the scan result. If removal
+fails, metadata says `copy_only` and the command returns an incomplete exit code.
+This is not reported as a successful quarantine.
 
 List and restore entries:
 
@@ -217,3 +286,8 @@ their metadata and checksums, and creates a draft GitHub Release for human revie
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
+
+The product model is [open core](OPEN_CORE.md): the public core remains useful and
+auditable; any proprietary cloud intelligence, licensed OEM engine, or enterprise
+control service is identified separately. Hidden or obfuscated code is not called
+open source and is never treated as a security boundary.

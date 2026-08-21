@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "zsec-shield"
 version = "0.1.2"
-description = "Deterministic, on-demand file scanning and signed security-rule feeds"
+description = "Zero Security antivirus foundation: deterministic scanning, signed feeds, and encrypted quarantine"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "ZSEC contributors" }]
-keywords = ["security", "scanner", "sha256", "quarantine", "ed25519"]
+keywords = ["antivirus", "security", "scanner", "sha256", "encrypted-quarantine", "ed25519"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
@@ -42,7 +42,7 @@ native = ["pyinstaller==6.21.0"]
 zsec-shield = "zsec_shield.cli:entrypoint"
 
 [project.urls]
-Homepage = "https://talktoai.org/zsec/"
+Homepage = "https://talktoai.org/zero-security/"
 Repository = "https://github.com/ResearchForumOnline/ZSEC-Shield"
 Issues = "https://github.com/ResearchForumOnline/ZSEC-Shield/issues"
 Releases = "https://github.com/ResearchForumOnline/ZSEC-Shield/releases"

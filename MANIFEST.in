@@ -1,9 +1,13 @@
 include CHANGELOG.md
+include BRAND.md
+include COMPONENTS.json
 include CONTRIBUTING.md
 include LICENSE
+include OPEN_CORE.md
 include README.md
 include SECURITY.md
 include packaging/licenses/CPython-3.11-LICENSE.txt
 recursive-include docs *.md
+recursive-include specs *.md
 recursive-include packaging *.json *.md *.py *.spec
 recursive-include tests *.py

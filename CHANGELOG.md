@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+- established Zero Security as the full replacement-antivirus programme while
+  preserving the current ZSEC Shield preview boundary;
+- encrypted all new quarantine objects with per-object AES-256-GCM keys and an
+  automatically DPAPI-sealed device root on Windows;
+- authenticated canonical immutable metadata and a ZBA 1.1 lifecycle record as
+  AAD, plus a separate MAC over mutable quarantine metadata;
+- retained fail-closed legacy v1 restore compatibility without silently treating
+  incompatible ZME1 research formats as one format;
+- added ciphertext, metadata-tamper, ZBA-mutation, and no-plaintext-publication
+  tests;
+- added the ZeroQ Shields Manifest V3 extension preview, local privacy rules,
+  per-site pause, best-effort YouTube cleanup, and static security validation;
+- documented the open-core boundary, privacy contract, recovery design, research
+  integration, full Windows antivirus/MVI programme, and evidence-based claims;
+- added the Zero Security/Zero Browser brand system and product website sources.
+
 ## 0.1.2 - 2026-08-02
 
 Status evidence repair:

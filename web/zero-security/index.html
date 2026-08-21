@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zero Security for Windows | Local-First PC Protection</title>
+  <meta name="description" content="Zero Security is a full Windows antivirus programme in development, with an auditable scanner, signed rules and automatic encrypted quarantine in preview.">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="theme-color" content="#07101f">
+  <link rel="canonical" href="https://talktoai.org/zero-security/">
+  <link rel="alternate" hreflang="en-GB" href="https://talktoai.org/zero-security/">
+  <link rel="alternate" hreflang="x-default" href="https://talktoai.org/zero-security/">
+  <link rel="icon" href="../assets/zero-security-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/style.css">
+
+  <meta property="og:site_name" content="TalkToAI">
+  <meta property="og:locale" content="en_GB">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://talktoai.org/zero-security/">
+  <meta property="og:title" content="Zero Security for Windows | Local-First PC Protection">
+  <meta property="og:description" content="A full replacement-antivirus programme in active development, with a working auditable scanner, signed data-only rules and automatic encrypted quarantine preview.">
+  <meta property="og:image" content="https://talktoai.org/assets/zero-security-og.png">
+  <meta property="og:image:width" content="1536">
+  <meta property="og:image:height" content="1024">
+  <meta property="og:image:alt" content="Zero Security Preview product interface concept">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Zero Security for Windows | Local-First PC Protection">
+  <meta name="twitter:description" content="The auditable foundation of a full Windows antivirus: local checks, signed data-only rules and automatic encrypted quarantine.">
+  <meta name="twitter:image" content="https://talktoai.org/assets/zero-security-og.png">
+  <meta name="twitter:image:alt" content="Zero Security Preview product interface concept">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": "https://talktoai.org/zero-security/#webpage",
+        "url": "https://talktoai.org/zero-security/",
+        "name": "Zero Security for Windows | Local-First PC Protection",
+        "description": "Zero Security is a full Windows antivirus programme in active development. Its current preview provides deterministic local checks, signed data-only rules and automatic authenticated encrypted quarantine.",
+        "inLanguage": "en-GB",
+        "dateModified": "2026-08-21",
+        "isPartOf": { "@id": "https://talktoai.org/#website" },
+        "about": { "@id": "https://talktoai.org/zero-security/#software" },
+        "breadcrumb": { "@id": "https://talktoai.org/zero-security/#breadcrumb" }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://talktoai.org/#website",
+        "url": "https://talktoai.org/",
+        "name": "TalkToAI"
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://talktoai.org/#organization",
+        "name": "TalkToAI",
+        "url": "https://talktoai.org/",
+        "sameAs": ["https://github.com/ResearchForumOnline"]
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://talktoai.org/zero-security/#software",
+        "name": "Zero Security Preview",
+        "url": "https://talktoai.org/zero-security/",
+        "applicationCategory": "SecurityApplication",
+        "applicationSubCategory": "Windows antivirus development programme",
+        "operatingSystem": "Windows 10, Windows 11",
+        "softwareVersion": "Implementation preview",
+        "isAccessibleForFree": true,
+        "license": "https://www.apache.org/licenses/LICENSE-2.0",
+        "publisher": { "@id": "https://talktoai.org/#organization" },
+        "description": "An open-core full Windows antivirus programme in active development. The current preview provides deterministic on-demand checks, signed data-only rule verification and working automatic encrypted quarantine. It is not yet registered as a primary antivirus."
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://talktoai.org/zero-security/#breadcrumb",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "TalkToAI",
+            "item": "https://talktoai.org/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Zero Security",
+            "item": "https://talktoai.org/zero-security/"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://talktoai.org/zero-security/#faq-schema",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Does Zero Security replace Microsoft Defender or Malwarebytes?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Not yet. Zero Security is being built as a genuine primary Windows antivirus, but the current public build is an on-demand implementation preview. Keep the antivirus currently registered with Windows active until Zero Security passes real-time integration, signing, compatibility, efficacy, Microsoft onboarding and transactional cutover gates."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Zero Security upload my files?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Not by default. File hashing, configured rule matching and quarantine processing occur locally. Any future sample upload must be a separate per-item choice that identifies its destination, purpose, retention and sharing terms before transmission."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is quarantine encryption automatic?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The release-gated implementation is designed to create and protect keys automatically after an operator explicitly enables quarantine for a scan. Selecting a scan scope, enabling quarantine and restoring an item remain visible choices."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What does ZBA do in Zero Security?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Zero Boundary Algebra, or ZBA, supplies typed lifecycle and provenance records for events such as quarantine, verification and recovery. Cryptographic security comes from established authenticated encryption, signatures and operating-system key protection—not from ZBA labels alone."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I use a YubiKey for recovery?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "YubiKey and passkey recovery is designed but not shipped in the preview. The intended flow uses an optional compatible authenticator to help unwrap a recovery key after physical presence and local verification. Routine scanning should not require a YubiKey touch."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is every Zero Security component open source?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Zero Security follows an open-core model. The scanner, data-only feed verifier, quarantine format, ZBA records, browser rules and public specifications are intended to remain auditable. Optional OEM engines, signing infrastructure and managed services may be separately licensed and are labelled as such."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body class="product-security">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <header class="site-header">
+    <div class="container nav-shell">
+      <a class="brand" href="https://talktoai.org/" aria-label="TalkToAI home">
+        <span class="brand-mark" aria-hidden="true">Z</span>
+        <span>TalkToAI</span>
+        <span class="brand-product">Zero Security</span>
+        <span class="preview-chip">Preview</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#how-it-works">How it works</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#open-core">Open core</a>
+        <a href="#faq">FAQ</a>
+        <a class="nav-switch" href="../zero-browser/">Zero Browser <span aria-hidden="true">→</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="hero-kicker">Full antivirus programme · working foundation preview</p>
+          <h1 id="hero-title">Security that explains itself.</h1>
+          <p class="lede">Zero Security is being engineered as a proper local-first Windows antivirus, built on the open ZSEC Shield foundation. The working preview checks selected files on demand, verifies signed data-only rules and automatically encrypts recoverable quarantine objects.</p>
+          <div class="hero-actions">
+            <a class="button" href="https://github.com/ResearchForumOnline/ZSEC-Shield">Explore the public foundation <span aria-hidden="true">↗</span></a>
+            <a class="button button-secondary" href="#architecture">See the architecture</a>
+          </div>
+          <p class="microcopy"><strong>Clear boundary:</strong> the destination is a genuine replacement antivirus; this current preview is not yet registered for real-time protection and never treats a limited scan as proof that a computer is clean.</p>
+        </div>
+
+        <!-- Local launch artwork: ../assets/zero-security-hero.png -->
+        <div class="hero-art" role="img" aria-label="Zero Security interface concept showing local, signed and recoverable protection states">
+          <span class="concept-label">Product concept · not live scan data</span>
+          <div class="status-window" aria-hidden="true">
+            <div class="window-bar">
+              <span class="window-dot"></span>
+              <span class="window-dot"></span>
+              <span class="window-dot"></span>
+              <span class="window-title">Zero Security Preview</span>
+            </div>
+            <div class="window-body">
+              <div class="status-row">
+                <span class="status-name">Registered antivirus</span>
+                <span class="status-value">Stays on during preview</span>
+              </div>
+              <div class="status-row">
+                <span class="status-name">File processing</span>
+                <span class="status-value">Local by default</span>
+              </div>
+              <div class="status-row">
+                <span class="status-name">Protection mode</span>
+                <span class="status-value planned">On-demand preview</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="trust-strip" aria-label="Zero Security preview principles">
+      <div class="container trust-grid">
+        <div class="trust-item">
+          <strong>Local-first processing</strong>
+          <p>No automatic sample upload, remote-control channel or advertising identifier in the preview.</p>
+        </div>
+        <div class="trust-item">
+          <strong>Signed data, never commands</strong>
+          <p>Rule feeds can describe exact detection data. They cannot request execution, deletion or system changes.</p>
+        </div>
+        <div class="trust-item">
+          <strong>Recoverable by design</strong>
+          <p>The project retains recovery objects, refuses overwrite restore and treats incomplete operations as incomplete.</p>
+        </div>
+      </div>
+    </aside>
+
+    <section class="section" id="how-it-works" aria-labelledby="how-title">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Automatic protection model</p>
+            <h2 id="how-title">Automatic where it should be. Explicit where it matters.</h2>
+          </div>
+          <p>Routine cryptographic key handling is designed to happen without password prompts. The preview keeps file selection, quarantine enablement and restore visible because automation should not hide consequential actions.</p>
+        </div>
+
+        <div class="step-grid" aria-label="Zero Security on-demand workflow">
+          <article class="step">
+            <h3>Choose a scope</h3>
+            <p>Select the file or directory you want checked. The scanner does not silently sweep unrelated storage.</p>
+          </article>
+          <article class="step">
+            <h3>Check deterministically</h3>
+            <p>SHA-256, exact-byte rules and verified signed feed data produce explainable configured matches.</p>
+          </article>
+          <article class="step">
+            <h3>Protect a match</h3>
+            <p>When quarantine is enabled, the implementation authenticates metadata and encrypts the recovery object before source removal.</p>
+          </article>
+          <article class="step">
+            <h3>Review or restore</h3>
+            <p>Entries remain inspectable. Restore refuses unsafe paths and never overwrites an existing destination.</p>
+          </article>
+        </div>
+
+        <div class="callout callout-spaced">
+          <span class="callout-mark" aria-hidden="true">i</span>
+          <div>
+            <h3>No hidden deletion</h3>
+            <p>The current preview has no purge command. If the original cannot be removed safely, the operation is reported as incomplete rather than presented as successful quarantine.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-muted" id="encryption" aria-labelledby="encryption-title">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Authenticated quarantine</p>
+            <h2 id="encryption-title">Established cryptography. No invented shortcuts.</h2>
+          </div>
+          <p>The encrypted-quarantine work is implementation-preview code and remains release-gated. Its security properties come from established primitives, key management and testing.</p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="card card-accent">
+            <span class="card-icon" aria-hidden="true">01</span>
+            <h3>Automatic device root</h3>
+            <p>A random device key is created once. On Windows, the design seals it with CurrentUser DPAPI before it is written to disk.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">02</span>
+            <h3>Fresh key per entry</h3>
+            <p>Each quarantined object receives a new random AES-256 content key instead of reusing one raw encryption key for every file.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">03</span>
+            <h3>Metadata bound to bytes</h3>
+            <p>AES-256-GCM authenticates file bytes together with canonical identity, path, hash, size and lifecycle metadata as additional data.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">04</span>
+            <h3>Verify before publish</h3>
+            <p>Restore reconstructs and authenticates the same metadata before any plaintext is made available at its destination.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">05</span>
+            <h3>ZBA provenance</h3>
+            <p>Zero Boundary Algebra records typed quarantine, verification and recovery transitions. It is an audit vocabulary, not a substitute for cryptography.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">06</span>
+            <h3>Recovery remains separate</h3>
+            <p>A future recovery kit will wrap a recovery key without exposing the raw device root. Lost-key and revocation drills are required before release.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-dark" id="architecture" aria-labelledby="architecture-title">
+      <div class="container architecture">
+        <div class="architecture-copy">
+          <p class="section-label">Fail-closed architecture</p>
+          <h2 id="architecture-title">Small components. Narrow authority.</h2>
+          <p>The product architecture separates the interface, privileged broker and hostile-file parsing. The current public foundation is a user-run CLI; service and worker layers are future release gates, not claimed capabilities.</p>
+          <ul class="check-list">
+            <li>The currently registered antivirus remains active during preview development.</li>
+            <li>Feeds contain data, not remote commands.</li>
+            <li>Untrusted parsing belongs in bounded workers.</li>
+            <li>Invalid signatures, rollback records or schemas fail closed.</li>
+            <li>Updates need expiry, rollback and freeze protection.</li>
+          </ul>
+        </div>
+
+        <div class="architecture-diagram" role="img" aria-label="Planned Zero Security architecture with an unelevated interface, restricted broker and bounded scanner workers">
+          <div class="layer">
+            <strong>Unelevated interface</strong>
+            <span>Clear status, consent and recovery controls</span>
+          </div>
+          <div class="layer">
+            <strong>Authenticated local IPC</strong>
+            <span>Versioned requests with narrow permissions</span>
+          </div>
+          <div class="layer layer-primary">
+            <strong>Restricted local broker</strong>
+            <span>Key protection, quarantine coordination and policy</span>
+          </div>
+          <div class="layer">
+            <strong>Unprivileged bounded workers</strong>
+            <span>Hashing, exact rules and future archive/document parsing</span>
+          </div>
+          <div class="layer">
+            <strong>Signed data-only updates</strong>
+            <span>No feed-driven command, package or firewall actions</span>
+          </div>
+          <p class="architecture-note">Architecture target · not a claim that every layer ships today</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="status" aria-labelledby="status-title">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Evidence before claims</p>
+            <h2 id="status-title">Know exactly what is available.</h2>
+          </div>
+          <p>A passing test proves a defined path works. It does not establish real-world malware-detection efficacy. Zero Security separates shipped foundations, implementation work and future plans.</p>
+        </div>
+
+        <div class="status-matrix">
+          <div class="status-line">
+            <div><span class="status-tag">Public foundation</span></div>
+            <p>Deterministic on-demand SHA-256 and exact-byte checks, signed data-only feed verification, structured reports and recoverable quarantine in ZSEC Shield.</p>
+          </div>
+          <div class="status-line">
+            <div><span class="status-tag implementation">Implementation preview</span></div>
+            <p>Automatic AES-256-GCM quarantine protection, operating-system key sealing and authenticated ZBA lifecycle records under active test and release review.</p>
+          </div>
+          <div class="status-line">
+            <div><span class="status-tag planned">Designed, not shipped</span></div>
+            <p>Optional YubiKey/passkey recovery, restricted Windows broker, bounded parser workers and licensed-engine adapters.</p>
+          </div>
+          <div class="status-line">
+            <div><span class="status-tag not-claimed">Not claimed</span></div>
+            <p>Real-time protection, memory scanning, EDR, complete antivirus coverage, zero-day prevention, a clean system verdict or guaranteed protection from attackers.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-muted" id="privacy" aria-labelledby="privacy-title">
+      <div class="container split">
+        <div>
+          <p class="section-label">Privacy contract</p>
+          <h2 id="privacy-title">Your files stay local by default.</h2>
+          <p>File hashing, configured rule matching and quarantine processing happen on the device. The preview has no automatic sample upload, advertising identifier, account requirement or remote-control channel.</p>
+          <p>Local-first does not mean pretending a connected product never uses a network. Update checks may disclose only the documented product, version, platform, architecture, channel and coarse rollout cohort.</p>
+        </div>
+        <div class="panel panel-positive">
+          <h3>A future sample upload must ask first</h3>
+          <ul>
+            <li>Separate opt-in for each selected item.</li>
+            <li>Visible purpose and destination.</li>
+            <li>Retention, region and sharing terms before transmission.</li>
+            <li>No filenames, local paths or file contents in routine diagnostics.</li>
+            <li>Crash reporting remains a separate opt-in.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="yubikey" aria-labelledby="yubikey-title">
+      <div class="container boundary-banner">
+        <div>
+          <p class="section-label">Optional recovery factor</p>
+          <h2 id="yubikey-title">YubiKey support—designed carefully, not advertised early.</h2>
+          <p>The planned consumer flow prefers a compatible FIDO2/WebAuthn authenticator with verified PRF support. It wraps a recovery key after physical presence and local verification; it never stores a reusable YubiKey PIN and does not interrupt every routine scan.</p>
+          <p><strong>Status:</strong> designed, not shipped. Capability detection, lost-key drills, revocation tests and non-destructive recovery self-tests remain required gates.</p>
+        </div>
+        <a class="button button-light" href="#faq">Read recovery answers</a>
+      </div>
+    </section>
+
+    <section class="section section-muted" id="open-core" aria-labelledby="open-core-title">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Open-core, clearly labelled</p>
+            <h2 id="open-core-title">Auditable where trust is earned. Private where secrets must stay private.</h2>
+          </div>
+          <p>Open source means source can be viewed and modified under its licence. Zero Security does not call hidden code “open source,” and it does not treat compilation, minification or obfuscation as a security boundary.</p>
+        </div>
+
+        <div class="split">
+          <article class="panel panel-positive">
+            <h3>Public and auditable</h3>
+            <ul>
+              <li>ZSEC Shield deterministic scanner.</li>
+              <li>Signed data-only feed format and verifier.</li>
+              <li>Encrypted quarantine format and ZBA records.</li>
+              <li>Threat models, privacy contracts and test fixtures.</li>
+              <li>Reproducible packaging and update specifications.</li>
+            </ul>
+          </article>
+          <article class="panel panel-private">
+            <h3>Separately licensed or private</h3>
+            <ul>
+              <li>Third-party OEM engines and proprietary signatures.</li>
+              <li>Production signing keys, HSM policy and release credentials.</li>
+              <li>Optional managed reputation, sync and fleet services.</li>
+              <li>Customer-support systems and private operational data.</li>
+              <li>Future Windows components until their release model is ready.</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="release-gates" aria-labelledby="gates-title">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Before primary antivirus claims</p>
+            <h2 id="gates-title">No shortcuts around trust.</h2>
+          </div>
+          <p>A future primary-antivirus edition must earn the claim through engineering and independent evidence, not a polished dashboard.</p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">A</span>
+            <h3>Publisher identity</h3>
+            <p>Authenticode-signed Windows binaries, protected signing infrastructure and verifiable release provenance.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">B</span>
+            <h3>Windows integration</h3>
+            <p>Supported services and drivers, Microsoft onboarding, HVCI compatibility and safe uninstall/coexistence behaviour.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">C</span>
+            <h3>Measured efficacy</h3>
+            <p>Dated, reproducible methodology and maintained independent testing for detection and false positives.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">D</span>
+            <h3>Safe updates</h3>
+            <p>Signed metadata, staged rings, health halts, emergency repair and tested automatic rollback.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">E</span>
+            <h3>Compatibility</h3>
+            <p>Clean-machine, suspend/resume, low-disk, application and operating-system compatibility matrices.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">F</span>
+            <h3>Human response</h3>
+            <p>False-positive appeals, vulnerability intake, incident response and reliable customer support.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-muted" id="faq" aria-labelledby="faq-title">
+      <div class="container narrow">
+        <p class="section-label">Questions, answered plainly</p>
+        <h2 id="faq-title">Zero Security FAQ</h2>
+        <div class="faq-list">
+          <details>
+            <summary>Does Zero Security replace Microsoft Defender or Malwarebytes?</summary>
+            <div class="faq-answer"><p>Not yet. Zero Security is being built as a genuine primary Windows antivirus, but the current public build is an on-demand implementation preview. Keep the antivirus currently registered with Windows active until Zero Security passes real-time integration, signing, compatibility, efficacy, Microsoft onboarding and transactional cutover gates.</p></div>
+          </details>
+          <details>
+            <summary>Does Zero Security upload my files?</summary>
+            <div class="faq-answer"><p>Not by default. File hashing, configured rule matching and quarantine processing occur locally. Any future sample upload must be a separate per-item choice that identifies its destination, purpose, retention and sharing terms before transmission.</p></div>
+          </details>
+          <details>
+            <summary>Is quarantine encryption automatic?</summary>
+            <div class="faq-answer"><p>The release-gated implementation is designed to create and protect keys automatically after an operator explicitly enables quarantine for a scan. Selecting a scan scope, enabling quarantine and restoring an item remain visible choices.</p></div>
+          </details>
+          <details>
+            <summary>What does ZBA do in Zero Security?</summary>
+            <div class="faq-answer"><p>Zero Boundary Algebra supplies typed lifecycle and provenance records for events such as quarantine, verification and recovery. Cryptographic security comes from established authenticated encryption, signatures and operating-system key protection—not from ZBA labels alone.</p></div>
+          </details>
+          <details>
+            <summary>Can I use a YubiKey for recovery?</summary>
+            <div class="faq-answer"><p>YubiKey and passkey recovery is designed but not shipped in the preview. The intended flow uses an optional compatible authenticator to help unwrap a recovery key after physical presence and local verification. Routine scanning should not require a YubiKey touch.</p></div>
+          </details>
+          <details>
+            <summary>Is every Zero Security component open source?</summary>
+            <div class="faq-answer"><p>No. Zero Security follows an open-core model. The scanner, data-only feed verifier, quarantine format, ZBA records, browser rules and public specifications are intended to remain auditable. Optional OEM engines, signing infrastructure and managed services may be separately licensed and are labelled as such.</p></div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="section cta-section" aria-labelledby="cta-title">
+      <div class="container cta-box">
+        <div>
+          <p class="section-label">Build trust in public</p>
+          <h2 id="cta-title">Start with the code and the boundaries.</h2>
+          <p>Review the current ZSEC Shield foundation, its tests, threat model and signed-feed design. Preview software should be evaluated on disposable data and must not be used to disable operating-system protection.</p>
+        </div>
+        <div class="cta-actions">
+          <a class="button" href="https://github.com/ResearchForumOnline/ZSEC-Shield">View the source <span aria-hidden="true">↗</span></a>
+          <a class="button button-secondary" href="../zero-browser/">Meet Zero Browser</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="https://talktoai.org/">
+          <span class="brand-mark" aria-hidden="true">Z</span>
+          <span>Zero Security</span>
+        </a>
+        <p>Local-first Windows security research from TalkToAI. Current status: implementation preview, not a complete antivirus product.</p>
+      </div>
+      <div>
+        <p class="footer-title">Product</p>
+        <ul class="footer-links">
+          <li><a href="#how-it-works">How it works</a></li>
+          <li><a href="#architecture">Architecture</a></li>
+          <li><a href="#privacy">Privacy contract</a></li>
+          <li><a href="#open-core">Open-core boundary</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="footer-title">Project</p>
+        <ul class="footer-links">
+          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield">Source code</a></li>
+          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/security/policy">Report a vulnerability</a></li>
+          <li><a href="https://talktoai.org/zsec/">ZSEC foundation</a></li>
+          <li><a href="../zero-browser/">Zero Browser</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <p>© 2026 TalkToAI. Zero Security Preview.</p>
+      <p>Last reviewed <time datetime="2026-08-21">21 August 2026</time>.</p>
+    </div>
+  </footer>
+</body>
+</html>

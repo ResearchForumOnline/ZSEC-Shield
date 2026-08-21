@@ -1,0 +1,47 @@
+{
+  "schema": "zero.security.components.v1",
+  "generated_at": "2026-08-21",
+  "release_status": "development-preview",
+  "components": [
+    {
+      "id": "zsec-shield",
+      "path": "src/zsec_shield",
+      "role": "deterministic on-demand scanner, signed feed verifier, encrypted quarantine",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "working-preview"
+    },
+    {
+      "id": "zsv2",
+      "path": "specs/ZSV2.md",
+      "role": "automatic authenticated encrypted quarantine profile",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "single-implementation-preview"
+    },
+    {
+      "id": "zeroq-shields",
+      "path": "browser/zeroq-shields",
+      "role": "Manifest V3 local ad and tracker protection preview",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "working-preview"
+    },
+    {
+      "id": "zero-security-windows-antivirus",
+      "path": "windows",
+      "role": "replacement-antivirus programme",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "specified-not-installed"
+    },
+    {
+      "id": "commercial-protection-services",
+      "path": null,
+      "role": "future licensed reputation, OEM engine, enterprise and signing operations",
+      "license": "separately-licensed",
+      "source_public": false,
+      "status": "not-in-this-repository"
+    }
+  ]
+}

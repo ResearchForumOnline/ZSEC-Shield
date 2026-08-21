@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ZeroQ Shields</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <img src="../assets/zeroq-icon.png" alt="" width="44" height="44">
+        <div>
+          <p class="eyebrow">ZERO BROWSER</p>
+          <h1>ZeroQ Shields</h1>
+        </div>
+        <span class="preview">PREVIEW</span>
+      </header>
+
+      <section class="hero" aria-labelledby="status-title">
+        <span class="orb" aria-hidden="true"></span>
+        <div>
+          <p id="status-title" class="status">Protection is on</p>
+          <p class="substatus">Local rules. No browsing-data upload.</p>
+        </div>
+        <label class="switch" aria-label="Toggle network protection">
+          <input id="protection" type="checkbox">
+          <span></span>
+        </label>
+      </section>
+
+      <section class="controls" aria-label="Protection controls">
+        <label class="row">
+          <span>
+            <strong>YouTube assistance</strong>
+            <small>Best-effort skip and nuisance cleanup</small>
+          </span>
+          <input id="youtube" type="checkbox">
+        </label>
+        <label class="row">
+          <span>
+            <strong>Pause on this site</strong>
+            <small id="domain">Unavailable on this page</small>
+          </span>
+          <input id="pause-site" type="checkbox" disabled>
+        </label>
+      </section>
+
+      <p id="message" class="message" role="status" aria-live="polite"></p>
+      <footer>
+        <a href="https://talktoai.org/zero-browser/privacy/" target="_blank" rel="noreferrer">Privacy</a>
+        <span>Local-first · Open core</span>
+      </footer>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

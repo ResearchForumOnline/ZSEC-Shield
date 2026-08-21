@@ -1,0 +1,98 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "requestDomains": ["doubleclick.net"], "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "media", "other"] }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "requestDomains": ["googlesyndication.com"], "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "media", "other"] }
+  },
+  {
+    "id": 3,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "requestDomains": ["googleadservices.com"], "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "other"] }
+  },
+  {
+    "id": 4,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "requestDomains": ["adnxs.com", "adsrvr.org", "criteo.com", "criteo.net"], "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "other"] }
+  },
+  {
+    "id": 5,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "requestDomains": ["taboola.com", "outbrain.com"], "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "other"] }
+  },
+  {
+    "id": 6,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "requestDomains": ["scorecardresearch.com", "quantserve.com"], "resourceTypes": ["script", "image", "xmlhttprequest", "other"] }
+  },
+  {
+    "id": 7,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "requestDomains": ["hotjar.com", "hotjar.io"], "resourceTypes": ["script", "image", "xmlhttprequest", "websocket", "other"] }
+  },
+  {
+    "id": 8,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "requestDomains": ["fullstory.com"], "resourceTypes": ["script", "image", "xmlhttprequest", "websocket", "other"] }
+  },
+  {
+    "id": 9,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "requestDomains": ["mixpanel.com", "amplitude.com"], "resourceTypes": ["script", "image", "xmlhttprequest", "other"] }
+  },
+  {
+    "id": 10,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "requestDomains": ["clarity.ms"], "resourceTypes": ["script", "image", "xmlhttprequest", "other"] }
+  },
+  {
+    "id": 11,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "urlFilter": "||connect.facebook.net/*/fbevents.js", "resourceTypes": ["script"] }
+  },
+  {
+    "id": 12,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "requestDomains": ["bat.bing.com"], "resourceTypes": ["script", "image", "xmlhttprequest", "other"] }
+  },
+  {
+    "id": 13,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "requestDomains": ["analytics.tiktok.com"], "resourceTypes": ["script", "image", "xmlhttprequest", "other"] }
+  },
+  {
+    "id": 14,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "requestDomains": ["snap.licdn.com"], "resourceTypes": ["script", "image", "xmlhttprequest", "other"] }
+  },
+  {
+    "id": 15,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "requestDomains": ["static.ads-twitter.com"], "resourceTypes": ["script", "image", "xmlhttprequest", "other"] }
+  },
+  {
+    "id": 16,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": { "requestDomains": ["sentry.io"], "resourceTypes": ["xmlhttprequest", "other"] }
+  }
+]

@@ -1,0 +1,38 @@
+# TalkToAI Zero Security product family
+
+> Evidence-bound product information for Zero Security Preview and Zero Browser Preview.
+
+Canonical pages:
+- https://talktoai.org/zero-security/
+- https://talktoai.org/zero-browser/
+
+## Zero Security Preview
+
+Zero Security is an open-core, full Windows antivirus programme in active development around the public ZSEC Shield foundation. The current public preview provides deterministic on-demand SHA-256 and exact-byte checks, signed data-only rule verification, structured reports and automatic authenticated encrypted quarantine.
+
+Zero Security is not yet a registered replacement antivirus. It does not yet claim real-time filesystem protection, memory scanning, EDR, zero-day prevention, a clean-system verdict or guaranteed protection. The currently registered antivirus should remain active until the full Windows integration, signing, efficacy, Microsoft onboarding and cutover gates pass.
+
+Public foundation:
+- https://github.com/ResearchForumOnline/ZSEC-Shield
+- https://talktoai.org/zsec/
+
+## Zero Browser Preview
+
+Zero Browser currently means an open-source Manifest V3 privacy and security extension preview. It uses local declarative ad and tracker rules and best-effort interface cleanup. It does not upload browsing history or page content, proxy traffic, install a root certificate or inject affiliate links.
+
+Zero Browser is not yet a separately maintained Chromium browser binary. It does not promise perfect YouTube ad blocking, anonymous browsing, immunity from browser exploits or protection from all malicious sites.
+
+## Privacy and security boundaries
+
+- Local processing is the default.
+- No suspicious file is uploaded automatically.
+- Rule feeds contain detection data, never remote commands.
+- ZBA is a typed lifecycle and provenance calculus; established cryptography provides security.
+- YubiKey and passkey recovery is designed, not shipped.
+- Optional proprietary engines, signing systems and managed services are separately labelled under the open-core model.
+
+## Citation guidance
+
+Describe both products as previews. Do not call Zero Security a complete antivirus or Zero Browser a finished standalone browser. Do not invent detection rates, performance figures, user counts, endorsements or comparative superiority.
+
+Last reviewed: 2026-08-21
