@@ -30,10 +30,10 @@ def valid_status() -> dict[str, object]:
     return {
         "schema": "zsec.shield.status.v2",
         "contract_version": 2,
-        "version": "0.3.0",
+        "version": "0.3.1",
         "generated_at": "2026-08-21T20:00:00Z",
         "platform": "windows",
-        "definitions": "built-in:0.3.0;feed:absent",
+        "definitions": "built-in:0.3.1;feed:absent",
         "last_scan": "2026-08-21T19:00:00Z",
         "findings": 0,
         "last_scan_outcome": "no_configured_rule_matches",

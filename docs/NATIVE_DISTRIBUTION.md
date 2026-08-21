@@ -76,7 +76,7 @@ invariant for the preview, not a failed build. The readiness check does not crea
 the disposable state directory or change installed protection.
 
 Python/wheel installation exposes the `zsec-antivirus`, `zero-security`, and
-`zsec-shield` command aliases in the 0.3.0 development candidate. Native archives
+`zsec-shield` command aliases in the 0.3.1 development candidate. Native archives
 retain the `zsec-shield` executable name for compatibility.
 
 Native manifest v2 lists both `on-demand` and

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.1 - 2026-08-22
+
+- added the path-free bounded exact-rule content worker used by CLI scan and
+  foreground watch commands;
+- added independent broker SHA-256 verification, strict correlation IDs,
+  duplicate/unknown-field rejection, bounded frames, periodic worker
+  replacement and fail-closed worker/protocol outcomes;
+- exposed the exact worker boundary in status and GUI Health evidence without
+  claiming reduced privilege, hostile-format parsing or a completed replacement
+  gate;
+- repaired the Windows GUI watch contract so verified metadata-reconciliation
+  events remain renderable rather than being rejected as unknown; and
+- preserved 0.3.0 artifact identity and advanced the new bytes to a distinct
+  candidate version for side-by-side installation and rollback.
+
 ## 0.3.0 - 2026-08-21
 
 - reserved version 0.3.0 for this materially new feature set rather

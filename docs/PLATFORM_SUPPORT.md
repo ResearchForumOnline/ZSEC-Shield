@@ -1,6 +1,6 @@
 # Platform support and delivery status
 
-Last reviewed: 21 August 2026.
+Last reviewed: 22 August 2026.
 
 ZSEC Antivirus Community currently means a cross-platform command-line scanner
 plus an installable, per-user automatic post-change companion. It does not mean a
@@ -12,19 +12,19 @@ primary-antivirus replacement.
 | Surface | Version/status | What it contains |
 | --- | --- | --- |
 | [Latest public GitHub release](https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.1.2) | `0.1.2` prerelease | Earlier on-demand scanner, feed and status implementation plus unsigned native CLI archives |
-| Current development branch | `0.3.0` unreleased candidate | Encrypted ZSV2 quarantine, automatic per-user companion packages, bounded health evidence, ZSEC Browser Shields, Windows ZSEC Browser Desktop Preview 0.2.3, daily desktop advisory intelligence, and the replacement-readiness guard |
+| Current development branch | `0.3.1` unreleased candidate | 0.3 feature set plus the path-free bounded exact-rule content worker and broker digest verification; ZSEC Browser remains independently versioned |
 | `main` branch | May lag the draft branch | The canonical public source only after reviewed changes merge |
 
 Do not publish or distribute the current feature set under `0.1.2`; that version
 and tag already identify different bytes. A passing draft pull request does not
-make `0.3.0` released.
+make `0.3.1` released.
 
 ## Current public native-archive matrix
 
 The `0.1.2` release exposes these self-contained PyInstaller one-directory CLI
 archives. This table describes artifacts, not production desktop support.
 
-| Artifact family | Architecture | Delivery | Automatic companion | Key protection in 0.3.0 development code | Publisher identity | Status |
+| Artifact family | Architecture | Delivery | Automatic companion | Key protection in 0.3.1 development code | Publisher identity | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | Windows | x86-64 | ZIP CLI | Per-user Scheduled Task scripts | CurrentUser DPAPI | No Authenticode signature | Automatic post-change companion candidate |
 | macOS | Apple silicon (`arm64`) | `tar.gz` CLI | Per-user LaunchAgent scripts | `filesystem-0600-preview`; not production Keychain custody | No Developer ID signature/notarization | Native validation still required |
