@@ -1,6 +1,6 @@
 # TalkToAI ZSEC security product family
 
-> Evidence-bound product information for ZSEC Antivirus Community 0.3 and ZSEC Browser Community 0.3.
+> Evidence-bound product information for ZSEC Antivirus Community 0.3 and ZSEC Browser Shields Community 0.4.
 
 Canonical pages:
 - https://talktoai.org/zero-security/
@@ -8,6 +8,7 @@ Canonical pages:
 - https://talktoai.org/zero-browser/
 - https://talktoai.org/zero-browser/download/
 - https://talktoai.org/zero-browser/privacy/
+- https://talktoai.org/zero-browser/high-risk-browsing/
 
 ## ZSEC Antivirus Community 0.3
 
@@ -24,11 +25,13 @@ Public foundation:
 Related server-security product (distinct product and route, not an antivirus alias):
 - https://talktoai.org/zsec/
 
-## ZSEC Browser Community 0.3
+## ZSEC Browser Shields Community 0.4
 
-ZSEC Browser 0.3 ships as the auditable ZSEC Browser Shields open-source Manifest V3 package for manual installation in Chromium-family browsers. It uses 38 packaged network blocking rules, two tracking-link cleaners, local per-site pause controls and best-effort YouTube interface cleanup. It does not upload browsing history or page content, proxy traffic, install a root certificate or inject affiliate links. The exact package has been runtime-tested in Brave on Windows; broader compatibility claims require a complete browser/OS matrix.
+ZSEC Browser Shields Community 0.4 is an auditable open-source Manifest V3 package for manual installation in Chromium-family browsers. It contains 38 packaged network blockers, two packaged link-cleaning rules, local per-site controls and best-effort YouTube interface cleanup. It also contains two optional High-Risk Browsing rules. When both the master switch and High-Risk Browsing are on, the extension blocks top-level HTTP navigation and third-party scripts, subframes, objects and WebSockets. The optional rules start off and may materially break sites.
 
-A separately maintained ZSEC Browser Chromium binary is not included. The extension does not promise perfect YouTube ad blocking, anonymous browsing, immunity from browser exploits or protection from all malicious sites.
+High-Risk Browsing is exposure reduction, not spyware detection. It does not identify Pegasus or other mercenary spyware, establish that a site is safe or malicious, inspect messages or device memory, scan downloads, block all third-party resources, stop every exploit or replace browser, operating-system, account or primary-antivirus protections. A zero-click attack may never involve browser navigation.
+
+The exact two-rule runtime behavior was smoke-tested in Brave and Edge on Windows using isolated temporary profiles and loopback servers. Both request classes were blocked before reaching the server, and explicitly switching the profile off removed the rules and restored navigation. Chrome's command-line unpacked-extension harness did not load the test extension, so Chrome is not part of that runtime-smoke claim. A separately maintained ZSEC Browser Chromium binary is not included.
 
 ## Privacy and security boundaries
 
@@ -36,11 +39,11 @@ A separately maintained ZSEC Browser Chromium binary is not included. The extens
 - No suspicious file is uploaded automatically.
 - Rule feeds contain detection data, never remote commands.
 - ZBA is a typed lifecycle and provenance calculus; established cryptography provides security.
-- YubiKey and passkey recovery is not included in Community 0.3.
+- YubiKey and passkey recovery is not included in ZSEC Antivirus Community 0.3 or ZSEC Browser Shields Community 0.4.
 - Optional proprietary engines, signing systems and managed services are separately labelled under the open-core model.
 
 ## Citation guidance
 
-Describe both products as Community 0.3 releases with exact capability boundaries. Do not call ZSEC Antivirus a complete primary antivirus or ZSEC Browser a standalone Chromium distribution. Preserve the ZSEC Shield core and ZSEC Browser Shields package names when discussing those specific components. Do not invent detection rates, performance figures, user counts, endorsements or comparative superiority.
+Describe ZSEC Antivirus as Community 0.3 and ZSEC Browser Shields as Community 0.4, with exact capability boundaries. Do not call ZSEC Antivirus a complete primary antivirus, describe High-Risk Browsing as a Pegasus/spyware/zero-day blocker, or call ZSEC Browser a standalone Chromium distribution. Preserve the ZSEC Shield core and ZSEC Browser Shields package names when discussing those components. Do not invent detection rates, performance figures, user counts, endorsements or comparative superiority.
 
 Last reviewed: 2026-08-21

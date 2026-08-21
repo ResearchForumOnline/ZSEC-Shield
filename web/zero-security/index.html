@@ -423,6 +423,34 @@
       </div>
     </section>
 
+    <section class="section section-muted" id="browser-layer" aria-labelledby="browser-layer-title">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Separate browser layer · Community 0.4</p>
+            <h2 id="browser-layer-title">A browser request layer beside—not inside—the antivirus companion.</h2>
+          </div>
+          <p>ZSEC Browser Shields Community 0.4 adds optional High-Risk Browsing. When it is enabled with the master protection switch, two local browser rules block top-level plaintext HTTP navigation and third-party scripts, subframes, objects and WebSockets before those requests are sent.</p>
+        </div>
+        <div class="split">
+          <article class="panel panel-positive">
+            <h3>Browser decision point</h3>
+            <p>The extension can block only the two disclosed request classes. It does not inspect messages, renderer memory, downloads or the operating system, and it does not decide that a site is malicious or safe.</p>
+            <p><a href="../zero-browser/high-risk-browsing/">Review High-Risk Browsing research and runtime evidence.</a></p>
+          </article>
+          <article class="panel panel-private">
+            <h3>Filesystem decision point</h3>
+            <p>ZSEC Antivirus Community 0.3 operates later and separately: it observes selected filesystem changes and runs configured local checks after the event. It does not turn the browser rules into malware detection or pre-access file protection.</p>
+            <p><a href="../zero-browser/privacy/">Read the browser privacy contract.</a></p>
+          </article>
+        </div>
+        <div class="callout callout-spaced">
+          <span class="callout-mark" aria-hidden="true">!</span>
+          <div><h3>Two bounded layers do not equal complete protection.</h3><p>Neither product detects mercenary spyware, inspects memory, stops an unknown browser or operating-system exploit chain, proves that a device is clean, or replaces the registered antivirus and native platform protections.</p></div>
+        </div>
+      </div>
+    </section>
+
     <section class="section section-muted" id="privacy" aria-labelledby="privacy-title">
       <div class="container split">
         <div>

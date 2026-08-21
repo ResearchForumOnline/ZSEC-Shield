@@ -19,6 +19,15 @@ PAGES = {
     "zero-security": "https://talktoai.org/zero-security/",
     "zero-browser": "https://talktoai.org/zero-browser/",
 }
+FAQ_COUNTS = {
+    "zero-security": 6,
+    "zero-browser": 7,
+}
+INFO_PAGES = {
+    "zero-browser/high-risk-browsing": (
+        "https://talktoai.org/zero-browser/high-risk-browsing/"
+    ),
+}
 
 class DownloadPolicy(TypedDict):
     canonical: str
@@ -41,7 +50,7 @@ DOWNLOAD_PAGES: dict[str, DownloadPolicy] = {
         "canonical": "https://talktoai.org/zero-browser/download/",
         "fingerprints": 1,
         "artifacts": {
-            "/downloads/zero-browser/zsec-browser-shields-0.3.0-chromium-mv3.zip",
+            "/downloads/zero-browser/zsec-browser-shields-0.4.0-chromium-mv3.zip",
         },
     },
 }
@@ -104,7 +113,8 @@ def validate_page(slug: str, canonical: str) -> None:
     parser = PageParser()
     parser.feed(text)
     require(parser.h1_count == 1, f"{slug}: expected exactly one H1")
-    require(parser.faq_count == 6, f"{slug}: expected six visible FAQs")
+    expected_faqs = FAQ_COUNTS[slug]
+    require(parser.faq_count == expected_faqs, f"{slug}: visible FAQ count")
     require(parser.canonicals == [canonical], f"{slug}: canonical mismatch")
     require(len(parser.ids) == len(set(parser.ids)), f"{slug}: duplicate HTML id")
     require(len(parser.meta_descriptions) == 1, f"{slug}: meta description missing")
@@ -128,7 +138,10 @@ def validate_page(slug: str, canonical: str) -> None:
         ),
         None,
     )
-    require(faq is not None and len(faq.get("mainEntity", [])) == 6, f"{slug}: FAQ schema")
+    require(
+        faq is not None and len(faq.get("mainEntity", [])) == expected_faqs,
+        f"{slug}: FAQ schema",
+    )
 
     digest = base64.b64encode(hashlib.sha256(script_text.encode("utf-8")).digest()).decode()
     htaccess = (page.parent / ".htaccess").read_text(encoding="utf-8")
@@ -162,6 +175,27 @@ def validate_privacy_page() -> None:
         target = local_asset(page, reference)
         if target is not None:
             require(target.exists(), f"zero-browser/privacy: missing local asset {reference}")
+
+
+def validate_info_page(slug: str, canonical: str) -> None:
+    page = WEB / slug / "index.html"
+    text = page.read_text(encoding="utf-8")
+    parser = PageParser()
+    parser.feed(text)
+    require(parser.h1_count == 1, f"{slug}: expected exactly one H1")
+    require(parser.canonicals == [canonical], f"{slug}: canonical mismatch")
+    require(len(parser.ids) == len(set(parser.ids)), f"{slug}: duplicate HTML id")
+    require(len(parser.meta_descriptions) == 1, f"{slug}: description missing")
+    require(80 <= len(parser.meta_descriptions[0]) <= 180, f"{slug}: description length")
+    require("<script" not in text.casefold(), f"{slug}: executable script is not permitted")
+    htaccess = (page.parent / ".htaccess").read_text(encoding="utf-8")
+    require("script-src 'none'" in htaccess, f"{slug}: script CSP missing")
+    require("frame-ancestors 'none'" in htaccess, f"{slug}: frame CSP missing")
+    require("Permissions-Policy" in htaccess, f"{slug}: permissions policy missing")
+    for reference in parser.assets:
+        target = local_asset(page, reference)
+        if target is not None:
+            require(target.exists(), f"{slug}: missing local asset {reference}")
 
 
 def validate_download_page(slug: str, policy: DownloadPolicy) -> None:
@@ -205,6 +239,8 @@ def main() -> int:
     for slug, policy in DOWNLOAD_PAGES.items():
         validate_download_page(slug, policy)
     validate_privacy_page()
+    for slug, canonical in INFO_PAGES.items():
+        validate_info_page(slug, canonical)
     sitemap = ET.parse(WEB / "sitemap.xml")
     namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     locations = {node.text for node in sitemap.findall("sm:url/sm:loc", namespace)}
@@ -212,6 +248,7 @@ def main() -> int:
         set(PAGES.values())
         | {str(policy["canonical"]) for policy in DOWNLOAD_PAGES.values()}
         | {PRIVACY_PAGE}
+        | set(INFO_PAGES.values())
         <= locations,
         "product, download or privacy URLs missing from sitemap",
     )
@@ -221,7 +258,7 @@ def main() -> int:
     require(css.count("{") == css.count("}"), "CSS braces are unbalanced")
     require(".webp" not in css, "CSS references an unavailable WebP asset")
     print(
-        "Validated two product pages, two download pages, browser privacy, "
+        "Validated two product pages, two download pages, browser privacy and guidance, "
         "fingerprints, JSON-LD/CSP hashes, assets, sitemap, robots and CSS."
     )
     return 0
