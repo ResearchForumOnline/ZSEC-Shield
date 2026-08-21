@@ -11,6 +11,12 @@ It adds no service, Scheduled Task, registry value, driver, root certificate,
 firewall rule, antivirus exclusion, provider registration, telemetry endpoint,
 account login, or remote-command surface.
 
+The Windows interface uses a dark protection-centre layout with a persistent
+left navigation rail, rounded evidence cards, animated local-operation state,
+keyboard-accessible native controls, and a reduced-motion setting. Motion
+communicates verified background activity; it never substitutes for a health
+contract or turns an incomplete state green.
+
 ## Run from source
 
 From the repository root, with the existing project environment active:

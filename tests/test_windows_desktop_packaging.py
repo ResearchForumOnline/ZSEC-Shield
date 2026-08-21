@@ -60,3 +60,6 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     assert "VERIFYING" in app
     assert "Reduce motion" in app
     assert "after_cancel" in app
+    assert "ModernStatusCard" in app
+    assert "NavSelected.TButton" in app
+    assert 'style.layout("Content.TNotebook.Tab", [])' in app

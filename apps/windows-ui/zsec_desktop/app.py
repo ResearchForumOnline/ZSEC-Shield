@@ -16,6 +16,7 @@ import threading
 import tkinter as tk
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
+from functools import partial
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Any
@@ -32,6 +33,98 @@ CYAN = "#26d9d1"
 GREEN = "#32d583"
 AMBER = "#f5b942"
 RED = "#f97066"
+
+
+class ModernStatusCard(tk.Canvas):
+    """Rounded evidence card rendered with native Tk primitives."""
+
+    def __init__(self, parent: tk.Misc, title: str) -> None:
+        super().__init__(
+            parent,
+            height=124,
+            bg=BACKGROUND,
+            highlightthickness=0,
+            borderwidth=0,
+            takefocus=0,
+        )
+        self.title = title
+        self.value = "Loading…"
+        self.accent = CYAN
+        self.bind("<Configure>", self._render)
+
+    def set_value(self, value: str, accent: str) -> None:
+        self.value = value
+        self.accent = accent
+        self._render()
+
+    def _rounded_rectangle(
+        self,
+        x1: float,
+        y1: float,
+        x2: float,
+        y2: float,
+        radius: float,
+        **options: Any,
+    ) -> int:
+        points = (
+            x1 + radius,
+            y1,
+            x2 - radius,
+            y1,
+            x2,
+            y1,
+            x2,
+            y1 + radius,
+            x2,
+            y2 - radius,
+            x2,
+            y2,
+            x2 - radius,
+            y2,
+            x1 + radius,
+            y2,
+            x1,
+            y2,
+            x1,
+            y2 - radius,
+            x1,
+            y1 + radius,
+            x1,
+            y1,
+        )
+        return int(self.create_polygon(points, smooth=True, splinesteps=24, **options))
+
+    def _render(self, _event: tk.Event[tk.Misc] | None = None) -> None:
+        width = max(self.winfo_width(), 260)
+        self.delete("all")
+        self._rounded_rectangle(
+            2,
+            2,
+            width - 2,
+            120,
+            18,
+            fill=SURFACE,
+            outline=SURFACE_ALT,
+            width=2,
+        )
+        self.create_rectangle(2, 24, 6, 96, fill=self.accent, outline=self.accent)
+        self.create_text(
+            22,
+            23,
+            text=self.title.upper(),
+            anchor=tk.W,
+            fill=MUTED,
+            font=("Segoe UI Semibold", 9),
+        )
+        self.create_text(
+            22,
+            61,
+            text=self.value,
+            anchor=tk.W,
+            width=max(width - 46, 180),
+            fill=self.accent,
+            font=("Segoe UI Semibold", 12),
+        )
 
 
 def _default_state_dir() -> Path:
@@ -150,6 +243,38 @@ class ZsecDesktop:
         )
         style.configure("TCombobox", fieldbackground="#0b1524", foreground=TEXT, padding=6)
         style.configure("Horizontal.TProgressbar", troughcolor="#142137", background=CYAN)
+        style.configure("Content.TNotebook", background=BACKGROUND, borderwidth=0, tabmargins=0)
+        style.layout("Content.TNotebook.Tab", [])
+        style.configure(
+            "Nav.TButton",
+            background=SURFACE,
+            foreground=MUTED,
+            borderwidth=0,
+            focusthickness=0,
+            padding=(16, 10),
+            anchor=tk.W,
+            font=("Segoe UI Semibold", 9),
+        )
+        style.map(
+            "Nav.TButton",
+            background=[("active", SURFACE_ALT)],
+            foreground=[("active", TEXT)],
+        )
+        style.configure(
+            "NavSelected.TButton",
+            background="#123f4b",
+            foreground=CYAN,
+            borderwidth=0,
+            focusthickness=0,
+            padding=(16, 10),
+            anchor=tk.W,
+            font=("Segoe UI Semibold", 9),
+        )
+        style.map(
+            "NavSelected.TButton",
+            background=[("active", "#165668")],
+            foreground=[("active", "#7ff8ee")],
+        )
 
     def _build_header(self) -> None:
         header = ttk.Frame(self.root, padding=(24, 18, 24, 12))
@@ -183,8 +308,22 @@ class ZsecDesktop:
         ).pack(anchor=tk.W, pady=(4, 0))
 
     def _build_tabs(self) -> None:
-        self.tabs = ttk.Notebook(self.root)
-        self.tabs.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 20))
+        workspace = ttk.Frame(self.root, padding=(20, 0, 20, 20))
+        workspace.pack(fill=tk.BOTH, expand=True)
+        navigation = ttk.Frame(workspace, style="Surface.TFrame", padding=(12, 16))
+        navigation.pack(side=tk.LEFT, fill=tk.Y)
+        navigation.configure(width=220)
+        navigation.pack_propagate(False)
+        ttk.Label(
+            navigation,
+            text="PROTECTION CENTRE",
+            style="Muted.TLabel",
+            background=SURFACE,
+            foreground=CYAN,
+            font=("Segoe UI Semibold", 9),
+        ).pack(anchor=tk.W, padx=10, pady=(0, 10))
+        self.tabs = ttk.Notebook(workspace, style="Content.TNotebook")
+        self.tabs.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(12, 0))
         self.overview_tab = self._tab("Overview")
         self.scan_tab = self._tab("Scan")
         self.monitor_tab = self._tab("Automatic monitoring")
@@ -205,6 +344,49 @@ class ZsecDesktop:
         self._build_security()
         self._build_readiness()
         self._build_settings()
+        self.navigation_buttons: list[tuple[ttk.Frame, ttk.Button]] = []
+        for frame, title in (
+            (self.overview_tab, "Overview"),
+            (self.scan_tab, "Scan"),
+            (self.monitor_tab, "Automatic monitoring"),
+            (self.quarantine_tab, "Quarantine"),
+            (self.feeds_tab, "Signed feeds"),
+            (self.reports_tab, "Reports"),
+            (self.health_tab, "Evidence health"),
+            (self.security_tab, "Security & YubiKey"),
+            (self.readiness_tab, "Replacement readiness"),
+            (self.settings_tab, "Settings"),
+        ):
+            button = ttk.Button(
+                navigation,
+                text=title,
+                style="Nav.TButton",
+                command=partial(self._select_tab, frame),
+            )
+            button.pack(fill=tk.X, pady=2)
+            self.navigation_buttons.append((frame, button))
+        ttk.Separator(navigation).pack(fill=tk.X, pady=(14, 10))
+        ttk.Label(
+            navigation,
+            text="LOCAL · NO ACCOUNT\nEVIDENCE FIRST",
+            style="Muted.TLabel",
+            background=SURFACE,
+            foreground=MUTED,
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W, padx=10)
+        self.tabs.bind("<<NotebookTabChanged>>", self._sync_navigation)
+        self._sync_navigation()
+
+    def _select_tab(self, frame: ttk.Frame) -> None:
+        self.tabs.select(frame)  # type: ignore[no-untyped-call]
+        self._sync_navigation()
+
+    def _sync_navigation(self, _event: tk.Event[tk.Misc] | None = None) -> None:
+        selected = self.tabs.select()  # type: ignore[no-untyped-call]
+        for frame, button in self.navigation_buttons:
+            button.configure(
+                style=("NavSelected.TButton" if str(frame) == str(selected) else "Nav.TButton")
+            )
 
     def _tab(self, title: str) -> ttk.Frame:
         frame = ttk.Frame(self.tabs, padding=16)
@@ -258,18 +440,15 @@ class ZsecDesktop:
             ),
         ).pack(side=tk.LEFT)
 
-    def _overview_card(self, parent: ttk.Frame, column: int, title: str) -> ttk.Label:
-        panel = self._panel(parent)
-        panel.grid(
+    def _overview_card(self, parent: ttk.Frame, column: int, title: str) -> ModernStatusCard:
+        card = ModernStatusCard(parent, title)
+        card.grid(
             row=0,
             column=column,
             sticky="nsew",
             padx=(0 if column == 0 else 6, 0 if column == 2 else 6),
         )
-        ttk.Label(panel, text=title, style="Section.TLabel").pack(anchor=tk.W)
-        value = ttk.Label(panel, text="Loading…", style="Status.TLabel", wraplength=300)
-        value.pack(anchor=tk.W, pady=(12, 3))
-        return value
+        return card
 
     def _build_scan(self) -> None:
         panel = self._panel(self.scan_tab)
@@ -780,27 +959,27 @@ class ZsecDesktop:
         self._run_async(self.bridge.status, self._render_status, failure=self._status_failure)
 
     def _status_failure(self, exc: BaseException) -> None:
-        self.scan_card.configure(text="Evidence unavailable", foreground=RED)
-        self.feed_card.configure(text="Evidence unavailable", foreground=RED)
-        self.quarantine_card.configure(text="Evidence unavailable", foreground=RED)
+        self.scan_card.set_value("Evidence unavailable", RED)
+        self.feed_card.set_value("Evidence unavailable", RED)
+        self.quarantine_card.set_value("Evidence unavailable", RED)
         self.feed_status_label.configure(text=f"Status error: {exc}", foreground=RED)
 
     def _render_status(self, result: CommandResult) -> None:
         status = result.payload
         presentation = status_presentation(status)
-        self.scan_card.configure(text=presentation.headline, foreground=presentation.accent)
+        self.scan_card.set_value(presentation.headline, presentation.accent)
         feed = status["feed"]
         feed_text = f"{feed['state'].upper()} — {feed.get('rules_count', 0)} verified rule(s)"
         feed_colour = (
             GREEN if feed["state"] == "valid" else AMBER if feed["state"] == "absent" else RED
         )
-        self.feed_card.configure(text=feed_text, foreground=feed_colour)
-        self.quarantine_card.configure(
-            text=(
+        self.feed_card.set_value(feed_text, feed_colour)
+        self.quarantine_card.set_value(
+            (
                 f"{status['quarantine_count']} recovery "
                 f"entr{'y' if status['quarantine_count'] == 1 else 'ies'}"
             ),
-            foreground=CYAN,
+            CYAN,
         )
         self.feed_status_label.configure(text=feed_text, foreground=feed_colour)
         detail = f"Definitions: {status['definitions']}"
