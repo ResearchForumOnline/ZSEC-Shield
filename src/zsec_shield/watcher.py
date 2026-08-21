@@ -447,6 +447,15 @@ class ForegroundProtectionWatcher:
             }
         )
 
+    def _stats_snapshot(self) -> dict[str, int]:
+        """Return live counters without waiting for session shutdown."""
+        snapshot = self._stats.to_dict()
+        snapshot["events_received"] = self._events.events_received
+        snapshot["events_debounced"] = self._events.events_debounced
+        snapshot["events_excluded"] = self._events.events_excluded
+        snapshot["events_dropped"] += self._events.events_dropped
+        return snapshot
+
     def _new_observer(self, backend: str) -> _Observer:
         factory = self._native_factory if backend == "native" else self._polling_factory
         observer = factory(self.config.poll_seconds)
@@ -715,7 +724,7 @@ class ForegroundProtectionWatcher:
                         backend_active=self._active_backend,
                         roots=[str(root.path) for root in self.roots],
                         operational_incomplete=self._operational_incomplete,
-                        stats=self._stats.to_dict(),
+                        stats=self._stats_snapshot(),
                         policy=watch_policy(self.config.quarantine),
                     )
                     next_heartbeat = now + self.config.heartbeat_seconds

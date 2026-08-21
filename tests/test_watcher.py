@@ -344,6 +344,29 @@ class WatchEngineTests(unittest.TestCase):
         self.assertFalse(heartbeats[0]["policy"]["real_time_protection"])
         self.assertFalse(heartbeats[0]["policy"]["pre_access_enforcement"])
 
+    def test_heartbeat_reports_live_event_queue_counters(self) -> None:
+        target = self.scan_root / "heartbeat-event.bin"
+
+        def submit_event(observer: FakeObserver) -> None:
+            if observer.handler is None:
+                raise AssertionError("observer was started without a handler")
+            target.write_bytes(b"benign heartbeat counter test")
+            observer.handler.on_created(FileCreatedEvent(str(target)))
+
+        records: list[dict[str, Any]] = []
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(heartbeat_seconds=0.1),
+            on_record=records.append,
+            polling_observer_factory=lambda timeout: FakeObserver(timeout, submit_event),
+        )
+        summary = watcher.run(duration_seconds=0.3)
+        heartbeats = [record for record in records if record["event"] == "health_heartbeat"]
+        self.assertFalse(summary.operational_incomplete)
+        self.assertGreaterEqual(len(heartbeats), 1)
+        self.assertEqual(1, heartbeats[-1]["stats"]["events_received"])
+        self.assertEqual(0, heartbeats[-1]["stats"]["events_dropped"])
+
 
 if __name__ == "__main__":
     unittest.main()
