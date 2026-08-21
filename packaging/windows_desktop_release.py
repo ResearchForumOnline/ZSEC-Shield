@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import json
 import os
 import platform
@@ -164,7 +165,7 @@ def build(output_dir: Path) -> dict[str, Any]:
         raise DesktopReleaseError("the desktop package must be built on Windows x86-64")
     version = native.project_version()
     expected_pyinstaller = native.expected_pyinstaller_version()
-    actual_pyinstaller = native.importlib.metadata.version("pyinstaller")
+    actual_pyinstaller = importlib.metadata.version("pyinstaller")
     if actual_pyinstaller != expected_pyinstaller:
         raise DesktopReleaseError(
             f"PyInstaller {actual_pyinstaller} is installed; expected {expected_pyinstaller}"

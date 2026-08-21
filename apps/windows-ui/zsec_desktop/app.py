@@ -768,8 +768,8 @@ class ZsecDesktop:
         self.yubikey_status = ttk.Label(
             panel,
             text=(
-                "YubiKey feature state: NOT IMPLEMENTED — current quarantine remains "
-                "automatic and device-bound."
+                "YubiKey feature state: NOT IMPLEMENTED — after each explicit "
+                "quarantine opt-in, encryption is automatic and device-bound."
             ),
             style="Warning.TLabel",
         )
@@ -900,8 +900,8 @@ class ZsecDesktop:
             return
         reduced = bool(self.reduce_motion.get())
         working = self.busy_operations > 0
-        colour = CYAN if working else GREEN
-        status = "VERIFYING" if working else "LOCAL CORE READY"
+        colour = CYAN if working else MUTED
+        status = "VERIFYING LOCAL EVIDENCE" if working else "LOCAL ENGINE IDLE"
         self.activity_canvas.delete("activity")
         if reduced:
             self.activity_canvas.create_oval(
@@ -1148,12 +1148,45 @@ class ZsecDesktop:
         name = event["event"]
         detail = ""
         if name == "scan_completed":
-            detail = f" outcome={event.get('outcome')}"
+            outcome = event.get("outcome")
+            detail = f" outcome={outcome}"
+            if outcome == "no_configured_rule_matches":
+                self.watch_state_label.configure(
+                    text="Latest scan: no configured rule matches",
+                    foreground=GREEN,
+                )
+            elif outcome == "configured_rule_matches_detected":
+                self.watch_state_label.configure(
+                    text="Configured rule matches detected — review required",
+                    foreground=RED,
+                )
+            else:
+                self.watch_state_label.configure(
+                    text="Scan incomplete — coverage is unknown",
+                    foreground=RED,
+                )
         elif name == "health_issue":
             detail = f" {event.get('code')}: {event.get('message')}"
+            self.watch_state_label.configure(
+                text="Monitoring degraded — review the health event",
+                foreground=RED,
+            )
         elif name == "session_started":
             detail = f" backend={event.get('backend_active')}"
-            self.watch_state_label.configure(text="Healthy post-change session", foreground=GREEN)
+            self.watch_state_label.configure(
+                text="Observer started — health evidence pending",
+                foreground=CYAN,
+            )
+        elif name == "backend_fallback":
+            self.watch_state_label.configure(
+                text="Fallback observer active — review backend evidence",
+                foreground=AMBER,
+            )
+        elif name == "health_heartbeat":
+            self.watch_state_label.configure(
+                text="Observer active — heartbeat received",
+                foreground=GREEN,
+            )
         self.watch_events.insert(tk.END, f"{event['sequence']:>5}  {name}{detail}")
         if self.watch_events.size() > 500:
             self.watch_events.delete(0, self.watch_events.size() - 500)
@@ -1171,8 +1204,16 @@ class ZsecDesktop:
         self.watch_quarantine.set(False)
         if error:
             self.watch_state_label.configure(text=error, foreground=RED)
+        elif exit_code == 1:
+            self.watch_state_label.configure(
+                text="Completed — configured rule matches require review",
+                foreground=RED,
+            )
         else:
-            self.watch_state_label.configure(text=f"Completed (exit {exit_code})", foreground=GREEN)
+            self.watch_state_label.configure(
+                text="Completed — no configured rule matches",
+                foreground=GREEN,
+            )
 
     def refresh_companion(self) -> None:
         self._run_async(

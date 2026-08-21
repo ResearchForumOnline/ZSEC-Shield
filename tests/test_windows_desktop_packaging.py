@@ -56,7 +56,8 @@ def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
 def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None:
     app = (ROOT / "apps" / "windows-ui" / "zsec_desktop" / "app.py").read_text(encoding="utf-8")
     assert "self.busy_operations" in app
-    assert "LOCAL CORE READY" in app
+    assert "LOCAL ENGINE IDLE" in app
+    assert "LOCAL CORE READY" not in app
     assert "VERIFYING" in app
     assert "Reduce motion" in app
     assert "after_cancel" in app
