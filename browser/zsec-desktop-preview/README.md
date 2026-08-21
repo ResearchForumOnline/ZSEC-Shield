@@ -1,0 +1,87 @@
+# ZSEC Browser Desktop Preview
+
+ZSEC Browser Desktop Preview is a visible, branded Windows browser shell with
+its own executable, window, tabs, address bar, Desktop shortcut, Start-menu
+entry, protection controls, and isolated profile. It is powered by Microsoft's
+automatically serviced Evergreen WebView2 Chromium runtime.
+
+## Exact architecture boundary
+
+This is a hardened browser shell. It is **not** a separately built or maintained
+Chromium fork, is not a renamed copy of Brave, and is not yet a replacement for
+a full browser such as Brave, Chrome, Edge, or Firefox. Microsoft maintains and
+updates the embedded Chromium engine; ZSEC owns the native window, browser
+policy, UI, profile boundary, packaging, and tests.
+
+The build pins Microsoft WebView2 SDK `1.0.4129.50` and verifies its official
+NuGet SHA-512 plus a locked SHA-256 before compilation. Installation requires a
+supported, validly Microsoft-signed Evergreen runtime. The ZSEC executable is
+currently an **unsigned local developer preview**, so it is not a production
+installer for the public.
+
+## Implemented protections
+
+- Separate profile under `%LOCALAPPDATA%\TalkToAI\ZSEC Browser\User Data`.
+- HTTPS upgrades for plaintext addresses; High-Risk mode blocks plaintext HTTP.
+- Data-only, deterministic adaptation of the reviewed ZSEC Browser Shields 0.4
+  rules: 81 blocker domains and 21 tracking-link parameters at this revision.
+- Optional High-Risk mode blocks cross-site active resource classes.
+- Camera, microphone, location, notification, clipboard and other site
+  permissions are denied by default.
+- Certificate errors are cancelled; there is no bypass path in the UI.
+- Downloads require a confirmation and destination choice and are never opened
+  automatically by ZSEC.
+- Password autosave and general form autofill are disabled.
+- Host objects and web messaging are disabled, so remote pages receive no native
+  filesystem, process, registry, PowerShell, antivirus or application bridge.
+- New windows are converted into managed ZSEC tabs after URL validation.
+- Non-web schemes are rejected; remote debugging and developer tools are off.
+- The UI labels the product as `Desktop Preview` and exposes the exact runtime
+  and policy boundary in its About dialog.
+
+The blocker is a small reviewed starting policy, not a mature filter ecosystem.
+It does not prove complete or permanent YouTube ad blocking. The application is
+also not antivirus and cannot guarantee protection from every browser-engine,
+zero-click, Pegasus-class or other exploit.
+
+## Build and install
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\Build-ZsecBrowserPreview.ps1
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\Install-ZsecBrowserPreview.ps1 -PlanOnly
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\Install-ZsecBrowserPreview.ps1 -Open
+```
+
+Status is read-only:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\Get-ZsecBrowserPreviewStatus.ps1
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\Test-ZsecBrowserPreviewRuntime.ps1
+```
+
+Uninstall removes the versioned application files and owned shortcuts while
+preserving the browser profile by default. `-RemoveProfile` is a separate,
+explicit destructive choice.
+
+## Security and privacy boundary
+
+WebView2 SmartScreen/reputation protection remains available through the
+Microsoft runtime. That means security-related browsing information may be
+processed by Microsoft according to its terms; ZSEC must disclose that before a
+public release. ZSEC does not add telemetry or send browsing history to a ZSEC
+server in this preview.
+
+ZMath and Zero Boundary Algebra are not substituted for the runtime sandbox,
+TLS, certificate validation, Windows DPAPI/CNG, code signing, or other reviewed
+cryptographic controls. Research-derived scoring may be evaluated separately,
+but it must pass measurable security tests before it can affect browser policy.
+
+## Full-browser release gate
+
+A product comparable to Brave requires a maintained Chromium source
+distribution, continuous upstream security merges, reproducible Windows/macOS/
+Linux builds, browser signing, an authenticated rollback-resistant updater,
+sandbox and Site Isolation evidence, browser integration tests, reputation
+services with an explicit privacy contract, crash/update infrastructure, an
+SBOM, third-party notices, and an operating security-response process. This
+preview does not claim those gates are complete.

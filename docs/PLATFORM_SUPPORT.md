@@ -12,7 +12,7 @@ primary-antivirus replacement.
 | Surface | Version/status | What it contains |
 | --- | --- | --- |
 | [Latest public GitHub release](https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.1.2) | `0.1.2` prerelease | Earlier on-demand scanner, feed and status implementation plus unsigned native CLI archives |
-| Current development branch | `0.3.0` unreleased candidate | Encrypted ZSV2 quarantine, automatic per-user companion packages, bounded health evidence, ZSEC Browser Shields, daily desktop advisory intelligence, and the replacement-readiness guard |
+| Current development branch | `0.3.0` unreleased candidate | Encrypted ZSV2 quarantine, automatic per-user companion packages, bounded health evidence, ZSEC Browser Shields, Windows ZSEC Browser Desktop Preview 0.2.3, daily desktop advisory intelligence, and the replacement-readiness guard |
 | `main` branch | May lag the draft branch | The canonical public source only after reviewed changes merge |
 
 Do not publish or distribute the current feature set under `0.1.2`; that version
@@ -62,6 +62,23 @@ platform/endpoint provider must remain active.
    warning merely to run an unsigned preview on an everyday computer.
 8. Use `zero-security replacement-readiness --json`; current exit `2` is an
    intentional block on provider removal and cutover.
+
+## Browser desktop preview
+
+ZSEC Browser Desktop Preview 0.2.3 is a Windows x64 developer build with its own
+native ZSEC window and isolated profile. Microsoft maintains the Evergreen
+WebView2 Chromium engine; ZSEC maintains the shell, UI and data-only policy
+adapter. The local acceptance run verifies application hashes, the Microsoft
+runtime signature, dedicated profile, HTTPS navigation, tracking-parameter
+cleanup, a reviewed tracker-domain block and absence of prohibited weakening
+flags in the observed runtime processes.
+
+It is not a direct Chromium fork, Brave replacement, public signed installer or
+antivirus. The ZSEC executable is unsigned, WebView2's full sandbox/Site
+Isolation configuration has not been independently attested, no ZSEC binary
+updater has shipped, and macOS/Linux desktop shells do not exist. Public and
+cross-platform distribution remain blocked on signing, rollback-resistant
+updates, privacy review and a sustained browser security-patch operation.
 
 ## Platform boundaries
 

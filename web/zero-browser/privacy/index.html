@@ -84,7 +84,22 @@
       </div>
     </section>
 
-      <section class="section" aria-labelledby="change-title">
+    <section class="section" aria-labelledby="desktop-privacy-title">
+      <div class="container split">
+        <article class="panel panel-positive">
+          <p class="section-label">Windows desktop preview</p>
+          <h2 id="desktop-privacy-title">A separate local profile, with no ZSEC telemetry.</h2>
+          <p>ZSEC Browser Desktop Preview 0.2.3 stores cookies, history, cache, permissions and other browser state under the user's dedicated <code>LocalAppData\TalkToAI\ZSEC Browser</code> profile. It does not reuse Chrome, Edge or Brave profiles and adds no ZSEC analytics, account, browsing-history upload or remote-control endpoint.</p>
+        </article>
+        <article class="panel panel-private">
+          <p class="section-label">Microsoft runtime boundary</p>
+          <h2>WebView2 and SmartScreen are not ZSEC services.</h2>
+          <p>Microsoft's Evergreen WebView2 Chromium runtime supplies the web engine and its updates. Microsoft reputation and security features may process security-related browsing information under Microsoft's terms. The developer preview keeps those upstream protections available; it does not claim that all browser data is encrypted by ZMath or hidden from the engine provider.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="change-title">
       <div class="container boundary-banner">
         <div>
           <p class="section-label">Change control</p>
@@ -105,7 +120,7 @@
           <span class="brand-mark" aria-hidden="true">Q</span>
           <span>ZSEC Browser</span>
         </a>
-        <p>Local-first browser privacy from TalkToAI. Current distribution: Manifest V3 Community 0.4 extension.</p>
+        <p>Local-first browser privacy from TalkToAI. Public distribution: Manifest V3 Community 0.4 extension. Windows desktop shell: unsigned developer preview.</p>
       </div>
       <div>
         <p class="footer-title">Policy</p>

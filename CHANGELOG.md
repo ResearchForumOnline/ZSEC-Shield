@@ -24,6 +24,14 @@
   fanotify desktop programmes with platform signing, key custody, coexistence,
   rollback, efficacy, and support gates;
 - added a canonical ZSEC Browser privacy page and deterministic site validation;
+- added ZSEC Browser Desktop Preview 0.2.3 for Windows: a visible WebView2
+  Chromium shell with native ZSEC UI, isolated profile, default-deny permissions,
+  HTTPS upgrading, certificate-error cancellation, explicit downloads, compiled
+  ZSEC blocker/link-cleaning policy, versioned per-user install/status/uninstall,
+  and live runtime acceptance checks;
+- pinned the Microsoft WebView2 SDK to 1.0.4129.50 with official NuGet SHA-512
+  and locked SHA-256 verification, while keeping the ZSEC binary explicitly
+  unsigned and the maintained-Chromium-fork/signing/updater gates visible;
 - established ZSEC Antivirus as the full replacement-antivirus programme while
   preserving the current ZSEC Shield preview boundary;
 - encrypted all new quarantine objects with per-object AES-256-GCM keys and an

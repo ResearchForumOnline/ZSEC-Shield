@@ -57,7 +57,7 @@
             <a class="button" href="/downloads/zero-browser/zsec-browser-shields-0.4.0-chromium-mv3.zip" download>Download ZSEC Browser Shields 0.4 <span aria-hidden="true">↓</span></a>
             <a class="button button-secondary" href="#install">Installation steps</a>
           </div>
-          <p class="microcopy"><strong>Distribution boundary:</strong> this is an unsigned, manually installed and manually updated extension ZIP—not a Chrome Web Store package, signed native application or standalone Chromium browser.</p>
+          <p class="microcopy"><strong>Distribution boundary:</strong> this is the unsigned, manually installed extension ZIP. A working Windows Desktop Preview 0.2.3 now exists in source and local acceptance evidence, but it is not offered here as a public native download because the ZSEC executable is not publisher-signed.</p>
         </div>
 
         <div class="hero-art" role="img" aria-label="ZSEC Browser and ZSEC Browser Shields control panel concept">
@@ -87,6 +87,20 @@
         <div class="trust-item"><strong>No silent updates</strong><p>This developer package changes only when you deliberately replace the unpacked extension.</p></div>
       </div>
     </aside>
+
+    <section class="section section-muted" id="desktop-preview" aria-labelledby="desktop-preview-title">
+      <div class="container">
+        <div class="section-head">
+          <div><p class="section-label">Windows development channel</p><h2 id="desktop-preview-title">The desktop preview is real—and kept behind its release gates.</h2></div>
+          <p>ZSEC Browser Desktop Preview 0.2.3 provides a branded WebView2 Chromium shell, isolated profile, 81 compiled blocker domains, 21 tracking-parameter cleaners, default-deny permissions and repeatable runtime acceptance tests.</p>
+        </div>
+        <div class="split">
+          <article class="panel panel-positive"><h3>Implemented and tested locally</h3><ul><li>Desktop and Start-menu application entries.</li><li>Valid Microsoft-signed Evergreen runtime requirement.</li><li>Exact installed-file hashes and process-boundary status.</li><li>Live tracking cleanup and reviewed tracker-domain block.</li></ul></article>
+          <article class="panel panel-private"><h3>Public native download remains blocked</h3><ul><li>No Authenticode signature or trusted timestamp.</li><li>No signed rollback-resistant ZSEC binary updater.</li><li>No independent sandbox/Site Isolation attestation.</li><li>No Windows 11, macOS or Linux release qualification.</li></ul></article>
+        </div>
+        <p><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/main/browser/zsec-desktop-preview">Review the desktop-preview source and build boundary on GitHub.</a> Do not bypass operating-system warnings to run an unsigned developer build.</p>
+      </div>
+    </section>
 
     <section class="section" id="verify" aria-labelledby="verify-title">
       <div class="container">
@@ -163,7 +177,7 @@
 
     <section class="section cta-section" aria-labelledby="cta-title">
       <div class="container cta-box">
-      <div><p class="section-label">Ready to test</p><h2 id="cta-title">Download it. Verify it. Keep control.</h2><p>ZSEC Browser Shields is the current ZSEC Browser extension package. Community 0.4 does not include a standalone browser binary or claim an independent Chromium maintenance channel.</p></div>
+      <div><p class="section-label">Ready to test</p><h2 id="cta-title">Download it. Verify it. Keep control.</h2><p>ZSEC Browser Shields remains the current public download. The Windows desktop shell is a working unsigned developer preview in source, not a public signed browser or independent Chromium maintenance channel.</p></div>
         <div class="cta-actions"><a class="button" href="/downloads/zero-browser/zsec-browser-shields-0.4.0-chromium-mv3.zip" download>Download 0.4</a><a class="button button-secondary" href="../">Product overview</a></div>
       </div>
     </section>
@@ -171,7 +185,7 @@
 
   <footer class="site-footer">
     <div class="container footer-grid">
-      <div class="footer-brand"><a class="brand" href="../"><span class="brand-mark" aria-hidden="true">Z</span><span>ZSEC Browser</span></a><p>Local-first browser protection from TalkToAI, delivered as the manually installed and manually updated ZSEC Browser Shields developer package.</p></div>
+      <div class="footer-brand"><a class="brand" href="../"><span class="brand-mark" aria-hidden="true">Z</span><span>ZSEC Browser</span></a><p>Local-first browser protection from TalkToAI: a public extension preview and a source-available Windows desktop-shell developer build.</p></div>
       <div><p class="footer-title">Install</p><ul class="footer-links"><li><a href="#verify">Verify the ZIP</a></li><li><a href="#install">Chrome / Edge / Brave</a></li><li><a href="../privacy/">Privacy policy</a></li></ul></div>
       <div><p class="footer-title">Project</p><ul class="footer-links"><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield">GitHub repository</a></li><li><a href="https://talktoai.org/.well-known/security.txt">Report a vulnerability</a></li><li><a href="../../zero-security/">ZSEC Antivirus</a></li></ul></div>
     </div>

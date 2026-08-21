@@ -28,6 +28,14 @@
       "status": "working-candidate"
     },
     {
+      "id": "zsec-browser-desktop-preview",
+      "path": "browser/zsec-desktop-preview",
+      "role": "visible Windows browser shell powered by Microsoft Evergreen WebView2 Chromium with isolated profile and compiled ZSEC policy",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "working-local-developer-preview; unsigned; not-a-maintained-chromium-fork"
+    },
+    {
       "id": "zero-security-windows-antivirus",
       "path": "windows",
       "role": "ZSEC Antivirus per-user post-change companion and future Windows primary-antivirus programme",
