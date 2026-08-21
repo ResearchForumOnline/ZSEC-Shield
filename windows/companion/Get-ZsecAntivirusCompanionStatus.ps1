@@ -370,7 +370,11 @@ else {
         if (-not $healthSchemaValid) {
             $reasons += "health schema or non-primary policy is invalid"
         }
-        $updatedAt = [DateTimeOffset]::Parse([string]$health.updated_at).ToUniversalTime()
+        # Windows PowerShell leaves JSON timestamps as strings, while PowerShell 7
+        # materializes ISO-8601 values as DateTime. A direct DateTimeOffset cast
+        # preserves the instant in both runtimes without a locale-sensitive
+        # DateTime -> display string -> Parse round trip.
+        $updatedAt = ([DateTimeOffset]$health.updated_at).ToUniversalTime()
         $maximumAge = [double]$health.heartbeat_seconds * 3.0 + 15.0
         $age = ([DateTimeOffset]::UtcNow - $updatedAt).TotalSeconds
         $healthFresh = $age -ge -5.0 -and $age -le $maximumAge

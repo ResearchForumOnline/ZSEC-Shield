@@ -85,6 +85,14 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn('$installation.supervisor.registry_path -eq $RunKeyPath', content)
         self.assertIn('$runRegistration.value_data -eq $expectedRunData', content)
         self.assertIn('registration_verified = $supervisorRegistrationVerified', content)
+        self.assertIn(
+            '$updatedAt = ([DateTimeOffset]$health.updated_at).ToUniversalTime()',
+            content,
+        )
+        self.assertNotIn(
+            '[DateTimeOffset]::Parse([string]$health.updated_at)',
+            content,
+        )
 
     def test_rollback_is_owned_and_preserves_scanner_security_state(self) -> None:
         content = UNINSTALLER.read_text(encoding="utf-8")
