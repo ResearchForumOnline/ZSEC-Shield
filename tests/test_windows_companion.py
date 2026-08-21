@@ -38,6 +38,12 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn('quarantine_enabled = [bool]$EnableQuarantine', content)
         self.assertIn('"runtime-identity" "--json"', content)
         self.assertIn('runtime_sha256 = $runtimeHash', content)
+        self.assertIn('$RunValueName = "ZSEC Antivirus Companion"', content)
+        self.assertIn("function Test-IsAccessDeniedError", content)
+        self.assertIn("[int64]$exception.HResult -eq -2147024891", content)
+        self.assertIn("-not (Test-IsAccessDeniedError $registrationError)", content)
+        self.assertIn("New-ItemProperty", content)
+        self.assertIn('supervisor_kind = $supervisorKind', content)
         self.assertIn("if ($PlanOnly)", content)
         self.assertNotIn("-RunLevel Highest", content)
         self.assertNotIn("-LogonType Password", content)
@@ -67,17 +73,24 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn('cutover_allowed = $false', content)
         self.assertIn('runtime_hash_verified = $runtimeHashVerified', content)
         self.assertIn('(Get-NormalizedPath ([string]$installation.runtime_executable))', content)
+        self.assertIn('$installation.supervisor.registry_path -eq $RunKeyPath', content)
+        self.assertIn('$runRegistration.value_data -eq $expectedRunData', content)
+        self.assertIn('registration_verified = $supervisorRegistrationVerified', content)
 
     def test_rollback_is_owned_and_preserves_scanner_security_state(self) -> None:
         content = UNINSTALLER.read_text(encoding="utf-8")
         self.assertIn("Installation ownership/path verification failed", content)
         self.assertIn("Scheduled Task no longer matches the owned installation", content)
         self.assertIn("Unregister-ScheduledTask", content)
+        self.assertIn("Remove-ItemProperty", content)
+        self.assertIn('$runAtRemoval.value_data -ne $expectedRunData', content)
+        self.assertIn("HKCU Run value data changed", content)
         self.assertIn("Remove-Item -LiteralPath $installRoot -Recurse", content)
         self.assertIn('(Join-Path $state "feed")', content)
         self.assertIn('(Join-Path $state "quarantine")', content)
         self.assertNotIn("Win32_Product", content)
         self.assertNotIn("msiexec", content.casefold())
+        self.assertNotIn("Remove-Item -LiteralPath $RunKeyPath", content)
 
     def test_scripts_have_no_provider_disable_or_exclusion_commands(self) -> None:
         combined = "\n".join(
@@ -145,6 +158,17 @@ class WindowsCompanionReadOnlyIntegrationTests(unittest.TestCase):
         self.assertEqual("zsec.antivirus.windows-companion-plan.v1", plan["schema"])
         self.assertEqual("ZSEC Antivirus", plan["product"])
         self.assertEqual("InteractiveToken / LeastPrivilege", plan["principal"])
+        self.assertEqual("scheduled_task", plan["supervisor"]["preferred"]["kind"])
+        fallback = plan["supervisor"]["access_denied_fallback"]
+        self.assertEqual("hkcu_run", fallback["kind"])
+        self.assertTrue(fallback["eligible_only_after_scheduled_task_access_denied"])
+        self.assertEqual(
+            "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+            fallback["registry_path"],
+        )
+        self.assertEqual("ZSEC Antivirus Companion", fallback["value_name"])
+        self.assertIn("Start-ZsecAntivirusCompanion.ps1", fallback["value_data"])
+        self.assertIn("config.json", fallback["value_data"])
         self.assertTrue(plan["plan_only"])
         self.assertFalse(plan["quarantine_enabled"])
         runtime_path = Path(plan["runtime_executable"])

@@ -6,6 +6,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$RunKeyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+$RunValueName = "ZSEC Antivirus Companion"
 
 function Get-NormalizedPath {
     param([Parameter(Mandatory = $true)][string]$Path)
@@ -32,6 +34,24 @@ function Get-Sha256 {
     finally {
         $algorithm.Dispose()
         $stream.Dispose()
+    }
+}
+
+function Get-RunRegistration {
+    if (-not (Test-Path -LiteralPath $RunKeyPath -PathType Container)) {
+        return [ordered]@{ present = $false; value_data = $null }
+    }
+    $key = Get-Item -LiteralPath $RunKeyPath -ErrorAction Stop
+    if ($key.GetValueNames() -notcontains $RunValueName) {
+        return [ordered]@{ present = $false; value_data = $null }
+    }
+    return [ordered]@{
+        present = $true
+        value_data = [string]$key.GetValue(
+            $RunValueName,
+            $null,
+            [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames
+        )
     }
 }
 
@@ -174,7 +194,9 @@ try {
     if (
         $installation.schema -ne "zsec.antivirus.windows-companion-installation.v1" -or
         $installation.product -ne "ZSEC Antivirus" -or
-        $config.schema -ne "zsec.antivirus.windows-companion.v1"
+        $config.schema -ne "zsec.antivirus.windows-companion.v1" -or
+        $installation.supervisor_kind -notin @("scheduled_task", "hkcu_run") -or
+        $installation.supervisor.kind -ne $installation.supervisor_kind
     ) {
         throw "installation/config schema is invalid"
     }
@@ -195,36 +217,92 @@ catch {
     Write-StatusAndExit -Value $base -Code 2
 }
 
-$task = Get-ScheduledTask `
-    -TaskName $installation.task_name `
-    -TaskPath $installation.task_path `
-    -ErrorAction SilentlyContinue
+$supervisorKind = [string]$installation.supervisor_kind
+$supervisorRegistrationVerified = $false
+$supervisorState = "unknown"
+$supervisorDetails = $null
+$task = $null
 $taskInfo = $null
 $taskActionVerified = $false
 $taskSingleInstance = $false
-if ($null -eq $task) {
-    $reasons += "owned Scheduled Task is absent"
-}
-else {
-    $taskInfo = Get-ScheduledTaskInfo `
+if ($supervisorKind -eq "scheduled_task") {
+    $task = Get-ScheduledTask `
         -TaskName $installation.task_name `
         -TaskPath $installation.task_path `
         -ErrorAction SilentlyContinue
-    $taskActionVerified = (
-        @($task.Actions).Count -eq 1 -and
-        $task.Actions[0].Execute -eq $installation.task_action_execute -and
-        $task.Actions[0].Arguments -eq $installation.task_action_arguments -and
-        $task.Description -eq $installation.task_description
+    if ($null -eq $task) {
+        $supervisorState = "absent"
+        $reasons += "owned Scheduled Task is absent"
+    }
+    else {
+        $taskInfo = Get-ScheduledTaskInfo `
+            -TaskName $installation.task_name `
+            -TaskPath $installation.task_path `
+            -ErrorAction SilentlyContinue
+        $taskActionVerified = (
+            @($task.Actions).Count -eq 1 -and
+            $task.Actions[0].Execute -eq $installation.task_action_execute -and
+            $task.Actions[0].Arguments -eq $installation.task_action_arguments -and
+            $task.Description -eq $installation.task_description
+        )
+        $taskSingleInstance = $task.Settings.MultipleInstances.ToString() -eq "IgnoreNew"
+        $supervisorState = $task.State.ToString()
+        $supervisorRegistrationVerified = $taskActionVerified -and $taskSingleInstance
+        if (-not $taskActionVerified) {
+            $reasons += "Scheduled Task ownership/action verification failed"
+        }
+        if (-not $taskSingleInstance) {
+            $reasons += "Scheduled Task single-instance policy is not IgnoreNew"
+        }
+        if ($supervisorState -ne "Running") {
+            $reasons += "Scheduled Task is not running"
+        }
+    }
+    $supervisorDetails = [ordered]@{
+        task_name = $installation.task_name
+        task_path = $installation.task_path
+        action_verified = $taskActionVerified
+        single_instance_verified = $taskSingleInstance
+        last_task_result = $(if ($null -eq $taskInfo) { $null } else { $taskInfo.LastTaskResult })
+    }
+}
+else {
+    $expectedRunData = (
+        "`"$($installation.task_action_execute)`" " +
+        [string]$installation.task_action_arguments
     )
-    $taskSingleInstance = $task.Settings.MultipleInstances.ToString() -eq "IgnoreNew"
-    if (-not $taskActionVerified) {
-        $reasons += "Scheduled Task ownership/action verification failed"
+    $metadataVerified = (
+        $installation.supervisor.registry_path -eq $RunKeyPath -and
+        $installation.supervisor.value_name -eq $RunValueName -and
+        $installation.supervisor.value_data -eq $expectedRunData
+    )
+    $runRegistration = Get-RunRegistration
+    $runValueVerified = (
+        $runRegistration.present -and
+        $runRegistration.value_data -eq $expectedRunData
+    )
+    $supervisorRegistrationVerified = $metadataVerified -and $runValueVerified
+    if (-not $metadataVerified) {
+        $supervisorState = "invalid_metadata"
+        $reasons += "HKCU Run supervisor metadata is outside the exact owned boundary"
     }
-    if (-not $taskSingleInstance) {
-        $reasons += "Scheduled Task single-instance policy is not IgnoreNew"
+    elseif (-not $runRegistration.present) {
+        $supervisorState = "absent"
+        $reasons += "owned HKCU Run value is absent"
     }
-    if ($task.State.ToString() -ne "Running") {
-        $reasons += "Scheduled Task is not running"
+    elseif (-not $runValueVerified) {
+        $supervisorState = "mismatch"
+        $reasons += "HKCU Run value data no longer matches the exact owned command"
+    }
+    else {
+        $supervisorState = "registered_for_logon"
+    }
+    $supervisorDetails = [ordered]@{
+        registry_path = $RunKeyPath
+        value_name = $RunValueName
+        value_present = $runRegistration.present
+        value_data_verified = $runValueVerified
+        metadata_verified = $metadataVerified
     }
 }
 
@@ -328,13 +406,11 @@ $base.installed = $true
 $base.healthy = $healthy
 $base.decision = $(if ($healthy) { "healthy_companion" } else { "degraded" })
 $base.reasons = $reasons
-$base.task = [ordered]@{
-    name = $installation.task_name
-    path = $installation.task_path
-    state = $(if ($null -eq $task) { "absent" } else { $task.State.ToString() })
-    action_verified = $taskActionVerified
-    single_instance_verified = $taskSingleInstance
-    last_task_result = $(if ($null -eq $taskInfo) { $null } else { $taskInfo.LastTaskResult })
+$base.supervisor = [ordered]@{
+    kind = $supervisorKind
+    registration_verified = $supervisorRegistrationVerified
+    state = $supervisorState
+    details = $supervisorDetails
 }
 $base.integrity = [ordered]@{
     cli_hash_verified = $cliHashVerified

@@ -17,6 +17,8 @@ $TaskDescription = (
     "ZSEC Antivirus per-user companion v1. Foreground post-change monitoring only; " +
     "not primary antivirus or pre-access enforcement. Existing protection stays active."
 )
+$RunKeyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+$RunValueName = "ZSEC Antivirus Companion"
 
 function Get-NormalizedPath {
     param([Parameter(Mandatory = $true)][string]$Path)
@@ -91,6 +93,52 @@ function Get-Sha256 {
     }
 }
 
+function Get-RunRegistration {
+    if (-not (Test-Path -LiteralPath $RunKeyPath -PathType Container)) {
+        return [ordered]@{ present = $false; value_data = $null }
+    }
+    $key = Get-Item -LiteralPath $RunKeyPath -ErrorAction Stop
+    if ($key.GetValueNames() -notcontains $RunValueName) {
+        return [ordered]@{ present = $false; value_data = $null }
+    }
+    return [ordered]@{
+        present = $true
+        value_data = [string]$key.GetValue(
+            $RunValueName,
+            $null,
+            [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames
+        )
+    }
+}
+
+function Test-IsAccessDeniedError {
+    param([Parameter(Mandatory = $true)][System.Management.Automation.ErrorRecord]$Record)
+    if (
+        $Record.CategoryInfo.Category -eq
+        [System.Management.Automation.ErrorCategory]::PermissionDenied
+    ) {
+        return $true
+    }
+    $exception = $Record.Exception
+    while ($null -ne $exception) {
+        if ([int64]$exception.HResult -eq -2147024891) {
+            return $true
+        }
+        foreach ($propertyName in @("NativeErrorCode", "ErrorCode")) {
+            $property = $exception.PSObject.Properties[$propertyName]
+            if ($null -ne $property -and [int64]$property.Value -eq 5) {
+                return $true
+            }
+        }
+        $statusCode = $exception.PSObject.Properties["StatusCode"]
+        if ($null -ne $statusCode -and [string]$statusCode.Value -eq "AccessDenied") {
+            return $true
+        }
+        $exception = $exception.InnerException
+    }
+    return $false
+}
+
 if ($PSVersionTable.PSEdition -eq "Core" -and -not $IsWindows) {
     throw "ZSEC Antivirus companion installation is supported only on Windows."
 }
@@ -145,6 +193,7 @@ $taskArguments = (
     '-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy RemoteSigned ' +
     "-File `"$launcherPath`" -ConfigPath `"$configPath`""
 )
+$runValueData = "`"$powerShellExe`" $taskArguments"
 $cliHash = Get-Sha256 $cli
 $launcherHash = Get-Sha256 $sourceLauncher
 $runtimeOutput = & $cli "runtime-identity" "--json" 2>$null
@@ -179,6 +228,13 @@ if ($null -ne $existingTask) {
         "This installer never overwrites a task; review or uninstall it first."
     )
 }
+$existingRun = Get-RunRegistration
+if ($existingRun.present) {
+    throw (
+        "The current-user Run value '$RunValueName' already exists. " +
+        "This installer never overwrites a registry value; review or uninstall it first."
+    )
+}
 
 $plan = [ordered]@{
     schema = "zsec.antivirus.windows-companion-plan.v1"
@@ -191,6 +247,21 @@ $plan = [ordered]@{
     principal = "InteractiveToken / LeastPrivilege"
     task_action_execute = $powerShellExe
     task_action_arguments = $taskArguments
+    supervisor = [ordered]@{
+        preferred = [ordered]@{
+            kind = "scheduled_task"
+            task_name = $taskName
+            task_path = $taskPath
+            access = "current-user InteractiveToken / LeastPrivilege"
+        }
+        access_denied_fallback = [ordered]@{
+            kind = "hkcu_run"
+            eligible_only_after_scheduled_task_access_denied = $true
+            registry_path = $RunKeyPath
+            value_name = $RunValueName
+            value_data = $runValueData
+        }
+    }
     cli_path = $cli
     cli_sha256 = $cliHash
     runtime_executable = $runtimeExecutable
@@ -252,6 +323,7 @@ if ($installRootPreexisted) {
 }
 
 $registeredByThisRun = $false
+$runRegisteredByThisRun = $false
 try {
     if (-not $installRootPreexisted) {
         New-Item -ItemType Directory -Path $installRoot -Force:$false | Out-Null
@@ -294,12 +366,114 @@ try {
         installed_at = $installedAt
         policy = $plan.policy
     }
+    Write-Utf8JsonAtomic -Path $configPath -Value $config
+
+    $action = New-ScheduledTaskAction `
+        -Execute $powerShellExe `
+        -Argument $taskArguments `
+        -WorkingDirectory $installRoot
+    $trigger = New-ScheduledTaskTrigger -AtLogOn -User $ownerName
+    $principal = New-ScheduledTaskPrincipal `
+        -UserId $ownerName `
+        -LogonType Interactive `
+        -RunLevel Limited
+    $settings = New-ScheduledTaskSettingsSet `
+        -MultipleInstances IgnoreNew `
+        -Priority 8 `
+        -RestartCount 3 `
+        -RestartInterval (New-TimeSpan -Minutes 1) `
+        -ExecutionTimeLimit ([TimeSpan]::Zero) `
+        -StartWhenAvailable `
+        -AllowStartIfOnBatteries `
+        -DontStopIfGoingOnBatteries
+    $definition = New-ScheduledTask `
+        -Action $action `
+        -Trigger $trigger `
+        -Principal $principal `
+        -Settings $settings `
+        -Description $TaskDescription
+    $registrationError = $null
+    try {
+        Register-ScheduledTask `
+            -TaskName $taskName `
+            -TaskPath $taskPath `
+            -InputObject $definition | Out-Null
+        $registeredByThisRun = $true
+    }
+    catch {
+        $registrationError = $_
+    }
+
+    if ($registeredByThisRun) {
+        $registered = Get-ScheduledTask -TaskName $taskName -TaskPath $taskPath -ErrorAction Stop
+        if ($registered.Description -ne $TaskDescription) {
+            throw "Scheduled Task description verification failed."
+        }
+        if (@($registered.Actions).Count -ne 1) {
+            throw "Scheduled Task action-count verification failed."
+        }
+        if (
+            $registered.Actions[0].Execute -ne $powerShellExe -or
+            $registered.Actions[0].Arguments -ne $taskArguments
+        ) {
+            throw "Scheduled Task action read-back verification failed."
+        }
+        if ($registered.Principal.UserId -ne $ownerName) {
+            throw "Scheduled Task principal read-back verification failed."
+        }
+        if ($registered.Settings.MultipleInstances.ToString() -ne "IgnoreNew") {
+            throw "Scheduled Task single-instance setting verification failed."
+        }
+        $supervisorKind = "scheduled_task"
+        $supervisorData = [ordered]@{
+            kind = $supervisorKind
+            task_name = $taskName
+            task_path = $taskPath
+            task_description = $TaskDescription
+            action_execute = $powerShellExe
+            action_arguments = $taskArguments
+        }
+    }
+    else {
+        if ($null -eq $registrationError -or -not (Test-IsAccessDeniedError $registrationError)) {
+            throw $registrationError
+        }
+        if (-not (Test-Path -LiteralPath $RunKeyPath -PathType Container)) {
+            throw "Scheduled Task registration was access denied and the current-user Run key is absent."
+        }
+        $runBeforeWrite = Get-RunRegistration
+        if ($runBeforeWrite.present) {
+            throw "The exact current-user Run value appeared during installation; refusing overwrite."
+        }
+        New-ItemProperty `
+            -LiteralPath $RunKeyPath `
+            -Name $RunValueName `
+            -Value $runValueData `
+            -PropertyType String `
+            -ErrorAction Stop | Out-Null
+        $runRegisteredByThisRun = $true
+        $runAfterWrite = Get-RunRegistration
+        if (-not $runAfterWrite.present -or $runAfterWrite.value_data -ne $runValueData) {
+            throw "Current-user Run fallback read-back verification failed."
+        }
+        $supervisorKind = "hkcu_run"
+        $supervisorData = [ordered]@{
+            kind = $supervisorKind
+            registry_path = $RunKeyPath
+            value_name = $RunValueName
+            value_data = $runValueData
+            fallback_reason = "scheduled_task_registration_access_denied"
+        }
+    }
+
     $installation = [ordered]@{
         schema = "zsec.antivirus.windows-companion-installation.v1"
         product = $ProductName
         installed_at = $installedAt
         owner_sid = $ownerSid
         owner_name = $ownerName
+        supervisor_kind = $supervisorKind
+        supervisor = $supervisorData
         task_name = $taskName
         task_path = $taskPath
         task_description = $TaskDescription
@@ -327,61 +501,19 @@ try {
         )
         policy = $plan.policy
     }
-    Write-Utf8JsonAtomic -Path $configPath -Value $config
     Write-Utf8JsonAtomic -Path $installationPath -Value $installation
 
-    $action = New-ScheduledTaskAction `
-        -Execute $powerShellExe `
-        -Argument $taskArguments `
-        -WorkingDirectory $installRoot
-    $trigger = New-ScheduledTaskTrigger -AtLogOn -User $ownerName
-    $principal = New-ScheduledTaskPrincipal `
-        -UserId $ownerName `
-        -LogonType Interactive `
-        -RunLevel Limited
-    $settings = New-ScheduledTaskSettingsSet `
-        -MultipleInstances IgnoreNew `
-        -Priority 8 `
-        -RestartCount 3 `
-        -RestartInterval (New-TimeSpan -Minutes 1) `
-        -ExecutionTimeLimit ([TimeSpan]::Zero) `
-        -StartWhenAvailable `
-        -AllowStartIfOnBatteries `
-        -DontStopIfGoingOnBatteries
-    $definition = New-ScheduledTask `
-        -Action $action `
-        -Trigger $trigger `
-        -Principal $principal `
-        -Settings $settings `
-        -Description $TaskDescription
-    Register-ScheduledTask `
-        -TaskName $taskName `
-        -TaskPath $taskPath `
-        -InputObject $definition | Out-Null
-    $registeredByThisRun = $true
-
-    $registered = Get-ScheduledTask -TaskName $taskName -TaskPath $taskPath -ErrorAction Stop
-    if ($registered.Description -ne $TaskDescription) {
-        throw "Scheduled Task description verification failed."
-    }
-    if (@($registered.Actions).Count -ne 1) {
-        throw "Scheduled Task action-count verification failed."
-    }
-    if (
-        $registered.Actions[0].Execute -ne $powerShellExe -or
-        $registered.Actions[0].Arguments -ne $taskArguments
-    ) {
-        throw "Scheduled Task action read-back verification failed."
-    }
-    if ($registered.Principal.UserId -ne $ownerName) {
-        throw "Scheduled Task principal read-back verification failed."
-    }
-    if ($registered.Settings.MultipleInstances.ToString() -ne "IgnoreNew") {
-        throw "Scheduled Task single-instance setting verification failed."
-    }
-
     if ($StartNow) {
-        Start-ScheduledTask -TaskName $taskName -TaskPath $taskPath -ErrorAction Stop
+        if ($supervisorKind -eq "scheduled_task") {
+            Start-ScheduledTask -TaskName $taskName -TaskPath $taskPath -ErrorAction Stop
+        }
+        else {
+            Start-Process `
+                -FilePath $powerShellExe `
+                -ArgumentList $taskArguments `
+                -WorkingDirectory $installRoot `
+                -WindowStyle Hidden | Out-Null
+        }
     }
 
     [ordered]@{
@@ -389,6 +521,8 @@ try {
         product = $ProductName
         installed = $true
         started = [bool]$StartNow
+        supervisor_kind = $supervisorKind
+        supervisor = $supervisorData
         task_name = $taskName
         task_path = $taskPath
         config_path = $configPath
@@ -406,6 +540,15 @@ catch {
             -TaskPath $taskPath `
             -Confirm:$false `
             -ErrorAction SilentlyContinue
+    }
+    if ($runRegisteredByThisRun) {
+        $currentRun = Get-RunRegistration
+        if ($currentRun.present -and $currentRun.value_data -eq $runValueData) {
+            Remove-ItemProperty `
+                -LiteralPath $RunKeyPath `
+                -Name $RunValueName `
+                -ErrorAction SilentlyContinue
+        }
     }
     if (Test-Path -LiteralPath $installRoot) {
         if ($installRootPreexisted) {

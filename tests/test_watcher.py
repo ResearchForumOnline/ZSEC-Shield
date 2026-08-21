@@ -270,7 +270,10 @@ class WatchEngineTests(unittest.TestCase):
             on_record=records.append,
             polling_observer_factory=lambda timeout: FakeObserver(timeout, submit_missing),
         )
-        summary = watcher.run(duration_seconds=0.2)
+        # macOS CI can spend most of a 200 ms window starting the observer. Keep
+        # this an integration-style timing test, but leave enough time for the
+        # configured 50 ms debounce to become due on slower hosted runners.
+        summary = watcher.run(duration_seconds=1.0)
         self.assertFalse(summary.operational_incomplete)
         self.assertEqual("no_configured_rule_matches", summary.outcome)
         self.assertEqual(1, summary.stats.events_superseded)
