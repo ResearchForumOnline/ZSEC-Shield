@@ -1,0 +1,351 @@
+#requires -Version 5.1
+[CmdletBinding()]
+param(
+    [string]$StateDirectory = (Join-Path $env:LOCALAPPDATA "ZSEC\Shield")
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+function Get-NormalizedPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    return [System.IO.Path]::GetFullPath($Path)
+}
+
+function Write-StatusAndExit {
+    param(
+        [Parameter(Mandatory = $true)]$Value,
+        [Parameter(Mandatory = $true)][int]$Code
+    )
+    $Value | ConvertTo-Json -Depth 10
+    exit $Code
+}
+
+function Get-Sha256 {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $stream = [System.IO.File]::OpenRead($Path)
+    $algorithm = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $digest = $algorithm.ComputeHash($stream)
+        return ([System.BitConverter]::ToString($digest)).Replace("-", "").ToLowerInvariant()
+    }
+    finally {
+        $algorithm.Dispose()
+        $stream.Dispose()
+    }
+}
+
+function Get-WscAntivirusEvidence {
+    $source = @'
+using System;
+using System.Runtime.InteropServices;
+public static class ZsecWscHealth {
+    [DllImport("wscapi.dll")]
+    public static extern int WscGetSecurityProviderHealth(uint providers, out int health);
+}
+'@
+    if ($null -eq ("ZsecWscHealth" -as [type])) {
+        Add-Type -TypeDefinition $source -ErrorAction Stop
+    }
+    $healthValue = 2
+    $hresult = [ZsecWscHealth]::WscGetSecurityProviderHealth(0x4, [ref]$healthValue)
+    $healthNames = @("GOOD", "NOTMONITORED", "POOR", "SNOOZE")
+    $healthName = if ($healthValue -ge 0 -and $healthValue -lt $healthNames.Count) {
+        $healthNames[$healthValue]
+    }
+    else {
+        "UNKNOWN_$healthValue"
+    }
+    $registrations = @()
+    try {
+        $products = Get-CimInstance `
+            -Namespace "root/SecurityCenter2" `
+            -ClassName "AntivirusProduct" `
+            -ErrorAction Stop
+        foreach ($product in @($products)) {
+            $registrations += [ordered]@{
+                display_name = [string]$product.displayName
+                product_state_raw = [int]$product.productState
+                product_state_interpreted = $false
+                instance_guid = [string]$product.instanceGuid
+            }
+        }
+    }
+    catch {
+        $registrations = @()
+    }
+    $defender = [ordered]@{
+        available = $false
+        antivirus_enabled = $null
+        real_time_protection_enabled = $null
+        antispyware_enabled = $null
+        service_enabled = $null
+        confirmed_active = $false
+        note = "Defender is not inferred active from WSC registration."
+    }
+    try {
+        $mp = Get-MpComputerStatus -ErrorAction Stop
+        $defender.available = $true
+        $defender.antivirus_enabled = [bool]$mp.AntivirusEnabled
+        $defender.real_time_protection_enabled = [bool]$mp.RealTimeProtectionEnabled
+        $defender.antispyware_enabled = [bool]$mp.AntispywareEnabled
+        $defender.service_enabled = [bool]$mp.AMServiceEnabled
+        $defender.confirmed_active = (
+            $defender.antivirus_enabled -and
+            $defender.real_time_protection_enabled -and
+            $defender.service_enabled
+        )
+    }
+    catch {
+        $defender.note = "Get-MpComputerStatus was unavailable; no Defender-active inference made."
+    }
+    return [ordered]@{
+        method = "WscGetSecurityProviderHealth(WSC_SECURITY_PROVIDER_ANTIVIRUS)"
+        hresult = $hresult
+        aggregate_health = $healthName
+        aggregate_good = ($hresult -eq 0 -and $healthValue -eq 0)
+        registered_products = $registrations
+        registration_note = (
+            "SecurityCenter2 productState values are retained as raw evidence and are not decoded."
+        )
+        defender = $defender
+        existing_primary_protection_present_and_active = (
+            $hresult -eq 0 -and $healthValue -eq 0
+        )
+    }
+}
+
+if ($PSVersionTable.PSEdition -eq "Core" -and -not $IsWindows) {
+    throw "ZSEC Antivirus companion status is supported only on Windows."
+}
+Import-Module ScheduledTasks -ErrorAction Stop
+$state = Get-NormalizedPath $StateDirectory
+$installRoot = Join-Path $state "companion"
+$installationPath = Join-Path $installRoot "installation.json"
+$configPath = Join-Path $installRoot "config.json"
+$healthPath = Join-Path $installRoot "health.json"
+$base = [ordered]@{
+    schema = "zsec.antivirus.windows-companion-status.v1"
+    product = "ZSEC Antivirus"
+    checked_at = [DateTimeOffset]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+    primary_antivirus = $false
+    real_time_protection = $false
+    pre_access_enforcement = $false
+    windows_security_registration = $false
+    existing_protection_must_remain_active = $true
+    primary_provider_uninstall_allowed = $false
+    cutover_allowed = $false
+}
+$existingProtectionError = $null
+try {
+    $existingProtection = Get-WscAntivirusEvidence
+}
+catch {
+    $existingProtectionError = $_.Exception.Message
+    $existingProtection = [ordered]@{
+        method = "WscGetSecurityProviderHealth(WSC_SECURITY_PROVIDER_ANTIVIRUS)"
+        aggregate_health = "UNKNOWN"
+        aggregate_good = $false
+        registered_products = @()
+        existing_primary_protection_present_and_active = $false
+        error = $existingProtectionError
+    }
+}
+$base.existing_primary_protection = $existingProtection
+if (-not (Test-Path -LiteralPath $installationPath -PathType Leaf)) {
+    $base.installed = $false
+    $base.healthy = $false
+    $base.decision = "not_installed"
+    $base.reasons = @("installation marker is absent")
+    Write-StatusAndExit -Value $base -Code 2
+}
+
+$reasons = @()
+if ($null -ne $existingProtectionError) {
+    $reasons += "cannot prove existing antivirus aggregate health: $existingProtectionError"
+}
+elseif (-not $existingProtection.aggregate_good) {
+    $reasons += "Windows Security Center antivirus aggregate health is not GOOD"
+}
+try {
+    $installation = Get-Content -LiteralPath $installationPath -Raw -Encoding UTF8 |
+        ConvertFrom-Json
+    $config = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if (
+        $installation.schema -ne "zsec.antivirus.windows-companion-installation.v1" -or
+        $installation.product -ne "ZSEC Antivirus" -or
+        $config.schema -ne "zsec.antivirus.windows-companion.v1"
+    ) {
+        throw "installation/config schema is invalid"
+    }
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    if (
+        $null -eq $identity.User -or
+        $installation.owner_sid -ne $identity.User.Value -or
+        $config.owner_sid -ne $identity.User.Value
+    ) {
+        throw "installation belongs to a different Windows user"
+    }
+}
+catch {
+    $base.installed = $true
+    $base.healthy = $false
+    $base.decision = "degraded"
+    $base.reasons = @("cannot validate installation metadata: $($_.Exception.Message)")
+    Write-StatusAndExit -Value $base -Code 2
+}
+
+$task = Get-ScheduledTask `
+    -TaskName $installation.task_name `
+    -TaskPath $installation.task_path `
+    -ErrorAction SilentlyContinue
+$taskInfo = $null
+$taskActionVerified = $false
+$taskSingleInstance = $false
+if ($null -eq $task) {
+    $reasons += "owned Scheduled Task is absent"
+}
+else {
+    $taskInfo = Get-ScheduledTaskInfo `
+        -TaskName $installation.task_name `
+        -TaskPath $installation.task_path `
+        -ErrorAction SilentlyContinue
+    $taskActionVerified = (
+        @($task.Actions).Count -eq 1 -and
+        $task.Actions[0].Execute -eq $installation.task_action_execute -and
+        $task.Actions[0].Arguments -eq $installation.task_action_arguments -and
+        $task.Description -eq $installation.task_description
+    )
+    $taskSingleInstance = $task.Settings.MultipleInstances.ToString() -eq "IgnoreNew"
+    if (-not $taskActionVerified) {
+        $reasons += "Scheduled Task ownership/action verification failed"
+    }
+    if (-not $taskSingleInstance) {
+        $reasons += "Scheduled Task single-instance policy is not IgnoreNew"
+    }
+    if ($task.State.ToString() -ne "Running") {
+        $reasons += "Scheduled Task is not running"
+    }
+}
+
+$cliHashVerified = $false
+$runtimeHashVerified = $false
+$launcherHashVerified = $false
+try {
+    $cliHashVerified = (
+        (Get-Sha256 ([string]$installation.cli_path)) -eq
+        ([string]$installation.cli_sha256).ToLowerInvariant()
+    )
+}
+catch {
+    $cliHashVerified = $false
+}
+try {
+    $runtimeHashVerified = (
+        (Get-Sha256 ([string]$installation.runtime_executable)) -eq
+        ([string]$installation.runtime_sha256).ToLowerInvariant()
+    )
+}
+catch {
+    $runtimeHashVerified = $false
+}
+try {
+    $launcherHashVerified = (
+        (Get-Sha256 ([string]$installation.launcher_path)) -eq
+        ([string]$installation.launcher_sha256).ToLowerInvariant()
+    )
+}
+catch {
+    $launcherHashVerified = $false
+}
+if (-not $cliHashVerified) {
+    $reasons += "configured CLI executable is missing or changed"
+}
+if (-not $runtimeHashVerified) {
+    $reasons += "configured CLI runtime is missing or changed"
+}
+if (-not $launcherHashVerified) {
+    $reasons += "installed companion launcher is missing or changed"
+}
+
+$health = $null
+$healthFresh = $false
+$healthSchemaValid = $false
+$processVerified = $false
+if (-not (Test-Path -LiteralPath $healthPath -PathType Leaf)) {
+    $reasons += "health heartbeat is absent"
+}
+else {
+    try {
+        $health = Get-Content -LiteralPath $healthPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $healthSchemaValid = (
+            $health.schema -eq "zsec.antivirus.companion-health.v1" -and
+            $health.product -eq "ZSEC Antivirus" -and
+            (Get-NormalizedPath ([string]$health.runtime_executable)) -eq
+                (Get-NormalizedPath ([string]$installation.runtime_executable)) -and
+            ([string]$health.runtime_sha256).ToLowerInvariant() -eq
+                ([string]$installation.runtime_sha256).ToLowerInvariant() -and
+            $health.policy.primary_antivirus -eq $false -and
+            $health.policy.real_time_protection -eq $false -and
+            $health.policy.pre_access_enforcement -eq $false
+        )
+        if (-not $healthSchemaValid) {
+            $reasons += "health schema or non-primary policy is invalid"
+        }
+        $updatedAt = [DateTimeOffset]::Parse([string]$health.updated_at).ToUniversalTime()
+        $maximumAge = [double]$health.heartbeat_seconds * 3.0 + 15.0
+        $age = ([DateTimeOffset]::UtcNow - $updatedAt).TotalSeconds
+        $healthFresh = $age -ge -5.0 -and $age -le $maximumAge
+        if (-not $healthFresh) {
+            $reasons += "health heartbeat is stale or from the future"
+        }
+        if ($health.operational_state -ne "healthy") {
+            $reasons += "watch session reports $($health.operational_state)"
+        }
+        $process = Get-Process -Id ([int]$health.process_id) -ErrorAction SilentlyContinue
+        if ($null -ne $process) {
+            try {
+                $processVerified = (
+                    (Get-NormalizedPath $process.Path) -eq
+                    (Get-NormalizedPath ([string]$installation.runtime_executable))
+                )
+            }
+            catch {
+                $processVerified = $false
+            }
+        }
+        if (-not $processVerified) {
+            $reasons += "heartbeat process is absent or does not match the configured CLI runtime"
+        }
+    }
+    catch {
+        $reasons += "cannot validate health heartbeat: $($_.Exception.Message)"
+    }
+}
+
+$healthy = $reasons.Count -eq 0
+$base.installed = $true
+$base.healthy = $healthy
+$base.decision = $(if ($healthy) { "healthy_companion" } else { "degraded" })
+$base.reasons = $reasons
+$base.task = [ordered]@{
+    name = $installation.task_name
+    path = $installation.task_path
+    state = $(if ($null -eq $task) { "absent" } else { $task.State.ToString() })
+    action_verified = $taskActionVerified
+    single_instance_verified = $taskSingleInstance
+    last_task_result = $(if ($null -eq $taskInfo) { $null } else { $taskInfo.LastTaskResult })
+}
+$base.integrity = [ordered]@{
+    cli_hash_verified = $cliHashVerified
+    runtime_hash_verified = $runtimeHashVerified
+    launcher_hash_verified = $launcherHashVerified
+}
+$base.health = [ordered]@{
+    path = $healthPath
+    schema_valid = $healthSchemaValid
+    fresh = $healthFresh
+    process_verified = $processVerified
+    last_record = $health
+}
+Write-StatusAndExit -Value $base -Code $(if ($healthy) { 0 } else { 2 })

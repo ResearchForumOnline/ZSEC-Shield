@@ -2,33 +2,33 @@
 
 Last reviewed: 21 August 2026.
 
-Zero Security currently means a cross-platform **command-line scanning and
-foreground post-change protection preview**. It does not mean a graphical desktop
-application, background service, pre-access real-time provider, signed installer,
-or primary-antivirus replacement.
+ZSEC Antivirus Community currently means a cross-platform command-line scanner
+plus an installable, per-user automatic post-change companion. It does not mean a
+privileged system service, pre-access real-time provider, signed installer, or
+primary-antivirus replacement.
 
 ## Release/source distinction
 
 | Surface | Version/status | What it contains |
 | --- | --- | --- |
 | [Latest public GitHub release](https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.1.2) | `0.1.2` prerelease | Earlier on-demand scanner, feed and status implementation plus unsigned native CLI archives |
-| Current development branch | `0.2.0` unreleased candidate | Encrypted ZSV2 quarantine, foreground post-change protection, ZeroQ Shields preview, replacement-readiness guard and the three desktop programmes |
+| Current development branch | `0.3.0` unreleased candidate | Encrypted ZSV2 quarantine, automatic per-user companion packages, bounded health evidence, ZSEC Browser Shields, daily desktop advisory intelligence, and the replacement-readiness guard |
 | `main` branch | May lag the draft branch | The canonical public source only after reviewed changes merge |
 
 Do not publish or distribute the current feature set under `0.1.2`; that version
 and tag already identify different bytes. A passing draft pull request does not
-make `0.2.0` released.
+make `0.3.0` released.
 
 ## Current public native-archive matrix
 
 The `0.1.2` release exposes these self-contained PyInstaller one-directory CLI
 archives. This table describes artifacts, not production desktop support.
 
-| Artifact family | Architecture | Delivery | Background protection | Key protection in 0.2.0 development code | Publisher identity | Status |
+| Artifact family | Architecture | Delivery | Automatic companion | Key protection in 0.3.0 development code | Publisher identity | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| Windows | x86-64 | ZIP CLI | No | CurrentUser DPAPI preview | No Authenticode signature | On-demand preview |
-| macOS | Apple silicon (`arm64`) | `tar.gz` CLI | No | `filesystem-0600-preview`; not production Keychain custody | No Developer ID signature/notarization | On-demand preview |
-| Linux | x86-64 | `tar.gz` CLI | No | `filesystem-0600-preview`; not production Secret Service/TPM custody | No signed DEB/RPM package or repository | On-demand preview |
+| Windows | x86-64 | ZIP CLI | Per-user Scheduled Task scripts | CurrentUser DPAPI | No Authenticode signature | Automatic post-change companion candidate |
+| macOS | Apple silicon (`arm64`) | `tar.gz` CLI | Per-user LaunchAgent scripts | `filesystem-0600-preview`; not production Keychain custody | No Developer ID signature/notarization | Native validation still required |
+| Linux | x86-64 | `tar.gz` CLI | systemd-user scripts | `filesystem-0600-preview`; not production Secret Service/TPM custody | No signed DEB/RPM package or repository | Native validation still required |
 
 The GitHub release workflow builds a Windows x86-64 target on `windows-2022`, a
 machine-native macOS target on `macos-14`, and Linux x86-64 on `ubuntu-22.04`.

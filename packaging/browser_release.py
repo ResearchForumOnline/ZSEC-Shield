@@ -1,4 +1,4 @@
-"""Build a deterministic, reviewable ZeroQ Shields extension archive."""
+"""Build a deterministic, reviewable ZSEC Browser Shields extension archive."""
 
 from __future__ import annotations
 
@@ -64,7 +64,7 @@ def build(output_dir: Path) -> tuple[Path, Path, Path]:
     manifest = json.loads((EXTENSION / "manifest.json").read_text(encoding="utf-8"))
     version = str(manifest["version"])
     output_dir.mkdir(parents=True, exist_ok=True)
-    archive = output_dir / f"zeroq-shields-{version}-chromium-mv3.zip"
+    archive = output_dir / f"zsec-browser-shields-{version}-chromium-mv3.zip"
 
     missing = [name for name in INCLUDE if not (EXTENSION / name).is_file()]
     if missing:
@@ -87,7 +87,7 @@ def build(output_dir: Path) -> tuple[Path, Path, Path]:
         json.dumps(
             {
                 "schema": "https://talktoai.org/zero-browser/download/artifact-v1.json",
-                "product": "ZeroQ Shields",
+                "product": "ZSEC Browser Shields",
                 "version": version,
                 "artifact": archive.name,
                 "sha256": digest,

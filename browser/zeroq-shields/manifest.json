@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ZeroQ Shields",
-  "short_name": "ZeroQ Shields",
-  "version": "0.2.0",
+  "name": "ZSEC Browser Shields",
+  "short_name": "ZSEC Shields",
+  "version": "0.3.0",
   "description": "Local ad and tracker filtering, tracking-link cleanup, per-site controls and best-effort YouTube assistance.",
   "minimum_chrome_version": "120",
   "permissions": [
@@ -18,7 +18,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "ZeroQ Shields",
+    "default_title": "ZSEC Browser Shields",
     "default_popup": "popup/index.html",
     "default_icon": "assets/zeroq-icon.png"
   },

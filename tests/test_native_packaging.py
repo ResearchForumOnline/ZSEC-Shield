@@ -29,15 +29,15 @@ release = load_release_module()
 
 class NativePackagingTests(unittest.TestCase):
     def test_source_version_and_pyinstaller_pin_are_explicit(self) -> None:
-        self.assertEqual("0.2.0", release.project_version())
+        self.assertEqual("0.3.0", release.project_version())
         self.assertEqual("6.21.0", release.expected_pyinstaller_version())
 
     def test_release_tag_must_exactly_match_source_version(self) -> None:
-        self.assertEqual("0.2.0", release.verify_release_tag("v0.2.0"))
+        self.assertEqual("0.3.0", release.verify_release_tag("v0.3.0"))
         with self.assertRaises(release.ReleaseError):
             release.verify_release_tag("v0.1.0")
         with self.assertRaises(release.ReleaseError):
-            release.verify_release_tag("preview-0.2.0")
+            release.verify_release_tag("preview-0.3.0")
 
     def test_python_license_uses_checksum_pinned_vendored_fallback(self) -> None:
         with TemporaryDirectory() as temporary:
@@ -120,6 +120,8 @@ class NativePackagingTests(unittest.TestCase):
         )
         self.assertEqual(False, policy["pre_access_enforcement"]["const"])
         self.assertEqual(False, policy["background_service"]["const"])
+        self.assertEqual(True, policy["per_user_background_companion"]["const"])
+        self.assertEqual(True, policy["opt_in_companion_quarantine"]["const"])
         self.assertEqual(False, policy["real_time_protection"]["const"])
         self.assertEqual(False, policy["automatic_quarantine"]["const"])
         self.assertEqual(False, policy["telemetry"]["const"])
@@ -134,7 +136,7 @@ class NativePackagingTests(unittest.TestCase):
             ):
                 path = release._write_manifest(
                     root,
-                    version="0.2.0",
+                    version="0.3.0",
                     target_os="windows",
                     architecture="x86_64",
                     entrypoint="zsec-shield.exe",
@@ -149,6 +151,8 @@ class NativePackagingTests(unittest.TestCase):
         )
         self.assertFalse(policy["pre_access_enforcement"])
         self.assertFalse(policy["background_service"])
+        self.assertTrue(policy["per_user_background_companion"])
+        self.assertTrue(policy["opt_in_companion_quarantine"])
         self.assertFalse(policy["real_time_protection"])
         self.assertFalse(policy["automatic_quarantine"])
 
@@ -179,6 +183,7 @@ class NativePackagingTests(unittest.TestCase):
         content = (PROJECT_ROOT / "MANIFEST.in").read_text(encoding="utf-8")
         self.assertIn("recursive-include docs *.md", content)
         self.assertIn("recursive-include packaging *.json *.md *.py *.spec", content)
+        self.assertIn("recursive-include windows *.md *.ps1", content)
         self.assertIn("include packaging/licenses/CPython-3.11-LICENSE.txt", content)
         self.assertIn("include SECURITY.md", content)
         self.assertNotIn("dist/", content)

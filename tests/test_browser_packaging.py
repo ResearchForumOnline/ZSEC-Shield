@@ -31,6 +31,8 @@ def test_browser_archive_is_complete_deterministic_and_explicitly_unsigned(tmp_p
 
     release = json.loads(metadata.read_text(encoding="utf-8"))
     assert release["artifact"] == first.name
+    assert first.name.startswith("zsec-browser-shields-")
+    assert release["product"] == "ZSEC Browser Shields"
     assert release["sha256"] == digest
     assert release["signed_store_package"] is False
     assert release["installation_channel"] == "unpacked-developer-preview"

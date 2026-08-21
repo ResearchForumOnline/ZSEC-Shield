@@ -136,6 +136,50 @@ class WatchCliTests(unittest.TestCase):
         self.assertEqual("WatchError", error["error"])
         self.assertIn("refused to start", error["message"])
 
+    def test_quiet_companion_evidence_is_bounded_under_state(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            scan_root = root / "Downloads"
+            state_dir = root / "state"
+            scan_root.mkdir()
+            health = state_dir / "companion" / "health.json"
+            events = state_dir / "companion" / "events.ndjson"
+            output = StringIO()
+            with redirect_stdout(output):
+                code = main(
+                    [
+                        "--state-dir",
+                        str(state_dir),
+                        "watch",
+                        str(scan_root),
+                        "--backend",
+                        "polling",
+                        "--duration-seconds",
+                        "0.25",
+                        "--heartbeat-seconds",
+                        "0.1",
+                        "--health-file",
+                        str(health),
+                        "--event-log",
+                        str(events),
+                        "--event-log-max-bytes",
+                        str(64 * 1024),
+                        "--event-log-backups",
+                        "1",
+                        "--quiet",
+                    ]
+                )
+            health_record = json.loads(health.read_text(encoding="utf-8"))
+            event_records = [
+                json.loads(line) for line in events.read_text(encoding="utf-8").splitlines()
+            ]
+        self.assertEqual(0, code)
+        self.assertEqual("", output.getvalue())
+        self.assertEqual("session_completed", health_record["last_event"])
+        self.assertEqual("stopped", health_record["operational_state"])
+        self.assertIn("health_heartbeat", [record["event"] for record in event_records])
+        self.assertFalse(health_record["policy"]["real_time_protection"])
+
 
 if __name__ == "__main__":
     unittest.main()

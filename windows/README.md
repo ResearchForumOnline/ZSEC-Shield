@@ -1,10 +1,15 @@
-# Zero Security for Windows
+# ZSEC Antivirus for Windows
 
-This directory is reserved for the future supported Windows replacement-antivirus
-programme. The current repository is an on-demand security preview; this
-directory does not contain a production antivirus, registered AMSI provider,
-file-system minifilter, ELAM driver, protected antimalware service, or Windows
-Security Center provider.
+This directory separates two very different deliverables:
+
+- [`companion`](companion) contains a reversible, per-user Scheduled Task wrapper
+  for the working foreground post-change scanner; and
+- the future supported Windows replacement-antivirus programme remains gated.
+
+The companion is automatic only while its current-user task/process is healthy.
+It is not a production primary antivirus, registered AMSI provider, file-system
+minifilter, ELAM driver, protected antimalware service, or Windows Security Center
+provider.
 
 The complete implementation and certification programme is defined in
 [`docs/FULL_ANTIVIRUS_PROGRAM.md`](../docs/FULL_ANTIVIRUS_PROGRAM.md).
@@ -29,7 +34,9 @@ is not permission to install a component on an everyday computer.
 Keep Malwarebytes or Microsoft Defender active. Do not change its exclusions,
 service state, registration, or update settings. Safe work on the everyday PC is
 limited to user-mode source/build/test work, read-only WSC status inspection,
-benign copied fixtures, and production of packages that are not installed.
+benign copied fixtures, production of packages that are not installed, and an
+explicitly reviewed per-user companion. Companion installation must follow its
+plan/install/status/rollback contract and does not relax any replacement gate.
 
 All minifilter, AMSI registration, ELAM, protected-service, WSC, coexistence,
 malware-corpus, cutover, and rollback testing occurs first in disposable,

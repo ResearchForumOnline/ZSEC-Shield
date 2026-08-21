@@ -10,6 +10,11 @@ post-change `watch` process, with no telemetry, pre-access enforcement, or
 operating-system antivirus registration. The bundled feed keyring is empty in this
 preview, so feed rules require an operator-supplied Ed25519 public-key ring.
 
+Windows archives also carry the review-first ZSEC Antivirus companion scripts.
+Merely extracting an archive installs nothing. Task Scheduler is changed only if
+the current user later runs the installer without `-PlanOnly`; the installed task
+is limited-user, per-user, reversible, and never a Windows service/provider.
+
 Exact released OS/architecture coverage, key-protection status, and safe-preview
 instructions are maintained in the [platform support matrix](PLATFORM_SUPPORT.md).
 An archive described as “native” contains a self-contained platform CLI; it is not
@@ -70,13 +75,17 @@ replacement-readiness command to return exit `2` with
 invariant for the preview, not a failed build. The readiness check does not create
 the disposable state directory or change installed protection.
 
-Python/wheel installation also exposes the `zero-security` product alias in the
-0.2.0 development candidate. Native archives retain the `zsec-shield` executable
-name for compatibility.
+Python/wheel installation exposes the `zsec-antivirus`, `zero-security`, and
+`zsec-shield` command aliases in the 0.3.0 development candidate. Native archives
+retain the `zsec-shield` executable name for compatibility.
 
 Native manifest v2 lists both `on-demand` and
 `foreground-post-change-protection` modes while fixing
 `pre_access_enforcement`, `background_service`, `real_time_protection`,
-`automatic_quarantine`, and `telemetry` to `false`. It records `watchdog` as a
+default `automatic_quarantine`, and `telemetry` to `false`; the separate
+`opt_in_companion_quarantine: true` field records the explicit Windows installer
+switch without implying a default. It records `watchdog` as a
 licensed runtime component. This capability metadata prevents a self-contained
 CLI archive from being mistaken for an installed primary-antivirus provider.
+`per_user_background_companion: true` means reviewed companion tooling is present,
+not that the archive has installed or activated it.

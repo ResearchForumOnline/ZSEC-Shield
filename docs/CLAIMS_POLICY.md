@@ -6,6 +6,8 @@
 - Foreground post-change protection or automatic file-event monitoring, when
   immediately qualified as user-mode, post-change, non-primary, and best effort;
   default detection only, with explicit polling fallback and incomplete failures.
+- Reversible per-user Windows companion launch, when qualified as a limited-user
+  Scheduled Task supervising the post-change mode—not a service or primary AV.
 - Source and self-contained command-line preview coverage on specifically
   identified Windows, macOS, and Linux artifact combinations.
 - Signed data-only rule-feed verification.

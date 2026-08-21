@@ -11,6 +11,9 @@ const serviceWorker = await readFile(join(root, "src", "service-worker.js"), "ut
 const totalRules = blockingRules.length + linkRules.length;
 
 if (manifest.manifest_version !== 3) throw new Error("Manifest V3 is required");
+if (manifest.name !== "ZSEC Browser Shields" || manifest.short_name !== "ZSEC Shields") {
+  throw new Error("Public extension branding is stale");
+}
 const resources = manifest.declarative_net_request?.rule_resources || [];
 if (resources.length !== 2) throw new Error("Expected blocking and link-cleaning rulesets");
 if (!resources.every((resource) => resource.enabled === true)) throw new Error("Protection rulesets must start enabled");
@@ -24,6 +27,7 @@ if (linkRules.some((rule) => rule.action?.type !== "redirect")) throw new Error(
 if (linkRules.some((rule) => rule.condition?.resourceTypes?.join() !== "main_frame")) throw new Error("Link cleaning must be limited to top-level navigation");
 if (linkRules.some((rule) => !rule.action?.redirect?.transform?.queryTransform?.removeParams?.length)) throw new Error("Link rules must only remove declared parameters");
 if (!popup.includes(`${totalRules} bundled protection rules`)) throw new Error("Popup rule count is stale");
+if (!popup.includes("ZSEC Browser") || popup.includes("ZeroQ Shields")) throw new Error("Popup branding is stale");
 if (!popup.includes("https://talktoai.org/zero-browser/privacy/")) throw new Error("Privacy URL missing");
 if (!serviceWorker.includes("runtimeHealth")) throw new Error("Runtime health reporting missing");
 if (serviceWorker.includes(".catch(() => undefined)")) throw new Error("Initialization errors are hidden");
@@ -36,4 +40,4 @@ for (const name of jsFiles) {
   if (/https?:\/\//.test(source)) throw new Error(`Remote endpoint/code reference forbidden in source: ${name}`);
 }
 
-console.log(`Validated ZeroQ Shields MV3: ${blockingRules.length} blockers, ${linkRules.length} link cleaners, ${jsFiles.length} source modules.`);
+console.log(`Validated ZSEC Browser Shields MV3: ${blockingRules.length} blockers, ${linkRules.length} link cleaners, ${jsFiles.length} source modules.`);

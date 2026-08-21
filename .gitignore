@@ -5,6 +5,7 @@ __pycache__/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+.cache/
 build/
 dist/
 deploy/
@@ -12,3 +13,5 @@ deploy/
 reports/
 native-release/
 browser/zeroq-shields/_metadata/
+intelligence/backups/
+intelligence/*.lock

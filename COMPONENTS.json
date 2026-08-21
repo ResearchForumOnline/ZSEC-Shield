@@ -1,7 +1,7 @@
 {
   "schema": "zero.security.components.v1",
   "generated_at": "2026-08-21",
-  "release_status": "development-preview",
+  "release_status": "0.3.0-candidate",
   "components": [
     {
       "id": "zsec-shield",
@@ -9,7 +9,7 @@
       "role": "deterministic scanner, foreground post-change watcher, signed feed verifier, encrypted quarantine",
       "license": "Apache-2.0",
       "source_public": true,
-      "status": "working-preview"
+      "status": "working-candidate"
     },
     {
       "id": "zsv2",
@@ -17,39 +17,39 @@
       "role": "automatic authenticated encrypted quarantine profile",
       "license": "Apache-2.0",
       "source_public": true,
-      "status": "single-implementation-preview"
+      "status": "single-implementation-candidate"
     },
     {
-      "id": "zeroq-shields",
+      "id": "zsec-browser-shields",
       "path": "browser/zeroq-shields",
-      "role": "Manifest V3 local ad and tracker protection preview",
+      "role": "ZSEC Browser Manifest V3 local ad and tracker protection layer",
       "license": "Apache-2.0",
       "source_public": true,
-      "status": "working-preview"
+      "status": "working-candidate"
     },
     {
       "id": "zero-security-windows-antivirus",
       "path": "windows",
-      "role": "future Windows primary-antivirus programme",
+      "role": "ZSEC Antivirus per-user post-change companion and future Windows primary-antivirus programme",
       "license": "Apache-2.0",
       "source_public": true,
-      "status": "specified-not-installed"
+      "status": "companion-working-candidate; primary-gates-not-met"
     },
     {
-      "id": "zero-security-macos-desktop",
-      "path": "docs/MACOS_DESKTOP_PROGRAM.md",
-      "role": "future native macOS Endpoint Security desktop programme",
+      "id": "zsec-antivirus-macos-companion",
+      "path": "packaging/companion/macos",
+      "role": "per-user LaunchAgent post-change companion plus Endpoint Security programme",
       "license": "Apache-2.0",
       "source_public": true,
-      "status": "specified-not-installed"
+      "status": "package-implemented; native-activation-not-yet-verified"
     },
     {
-      "id": "zero-security-linux-desktop",
-      "path": "docs/LINUX_DESKTOP_PROGRAM.md",
-      "role": "future supported Linux fanotify desktop programme",
+      "id": "zsec-antivirus-linux-companion",
+      "path": "packaging/companion/linux",
+      "role": "hardened systemd-user post-change companion plus fanotify programme",
       "license": "Apache-2.0",
       "source_public": true,
-      "status": "specified-not-installed"
+      "status": "package-implemented; native-activation-not-yet-verified"
     },
     {
       "id": "native-cli-archives",
@@ -57,7 +57,15 @@
       "role": "unsigned self-contained platform CLI archives with native manifests",
       "license": "Apache-2.0",
       "source_public": true,
-      "status": "working-preview"
+      "status": "working-candidate"
+    },
+    {
+      "id": "zsec-desktop-intelligence",
+      "path": "src/zsec_shield/intelligence.py",
+      "role": "strict data-only CISA, Microsoft, Apple and Ubuntu desktop advisory catalog",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "working-candidate"
     },
     {
       "id": "commercial-protection-services",

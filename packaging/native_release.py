@@ -49,6 +49,64 @@ DOCUMENTS: tuple[tuple[Path, str], ...] = (
     (SCHEMA_PATH, "native-manifest.schema.json"),
 )
 
+PLATFORM_COMPANION_DOCUMENTS: dict[str, tuple[tuple[Path, str], ...]] = {
+    "windows": (
+        (PROJECT_ROOT / "windows" / "companion" / "README.md", "COMPANION.md"),
+        (
+            PROJECT_ROOT / "windows" / "companion" / "Install-ZsecAntivirusCompanion.ps1",
+            "Install-ZsecAntivirusCompanion.ps1",
+        ),
+        (
+            PROJECT_ROOT / "windows" / "companion" / "Start-ZsecAntivirusCompanion.ps1",
+            "Start-ZsecAntivirusCompanion.ps1",
+        ),
+        (
+            PROJECT_ROOT / "windows" / "companion" / "Get-ZsecAntivirusCompanionStatus.ps1",
+            "Get-ZsecAntivirusCompanionStatus.ps1",
+        ),
+        (
+            PROJECT_ROOT / "windows" / "companion" / "Uninstall-ZsecAntivirusCompanion.ps1",
+            "Uninstall-ZsecAntivirusCompanion.ps1",
+        ),
+    ),
+    "macos": (
+        (PROJECT_ROOT / "packaging" / "companion" / "README.md", "COMPANION.md"),
+        (PROJECT_ROOT / "packaging" / "companion" / "macos" / "install.sh", "install.sh"),
+        (PROJECT_ROOT / "packaging" / "companion" / "macos" / "run.sh", "run.sh"),
+        (PROJECT_ROOT / "packaging" / "companion" / "macos" / "status.sh", "status.sh"),
+        (
+            PROJECT_ROOT / "packaging" / "companion" / "macos" / "uninstall.sh",
+            "uninstall.sh",
+        ),
+        (
+            PROJECT_ROOT
+            / "packaging"
+            / "companion"
+            / "macos"
+            / "com.talktoai.zsec-antivirus-companion.plist.template",
+            "com.talktoai.zsec-antivirus-companion.plist.template",
+        ),
+    ),
+    "linux": (
+        (PROJECT_ROOT / "packaging" / "companion" / "README.md", "COMPANION.md"),
+        (PROJECT_ROOT / "packaging" / "companion" / "linux" / "install.sh", "install.sh"),
+        (PROJECT_ROOT / "packaging" / "companion" / "linux" / "run.sh", "run.sh"),
+        (PROJECT_ROOT / "packaging" / "companion" / "linux" / "status.sh", "status.sh"),
+        (
+            PROJECT_ROOT / "packaging" / "companion" / "linux" / "uninstall.sh",
+            "uninstall.sh",
+        ),
+        (
+            PROJECT_ROOT
+            / "packaging"
+            / "companion"
+            / "linux"
+            / "zsec-antivirus-companion.service.template",
+            "zsec-antivirus-companion.service.template",
+        ),
+    ),
+}
+
 NOTICE_DISTRIBUTIONS: tuple[tuple[str, str, bool], ...] = (
     ("cryptography", "runtime", True),
     ("watchdog", "runtime filesystem-event observer", True),
@@ -289,8 +347,11 @@ def _copy_licenses(bundle_root: Path) -> list[dict[str, Any]]:
     return components
 
 
-def _copy_documents(bundle_root: Path) -> None:
-    for source, destination_name in DOCUMENTS:
+def _copy_documents(bundle_root: Path, target_os: str) -> None:
+    platform_documents = PLATFORM_COMPANION_DOCUMENTS.get(target_os)
+    if platform_documents is None:
+        raise ReleaseError(f"no companion package is defined for target OS: {target_os}")
+    for source, destination_name in (*DOCUMENTS, *platform_documents):
         if not source.is_file():
             raise ReleaseError(f"required distribution document is missing: {source}")
         shutil.copyfile(source, bundle_root / destination_name)
@@ -413,8 +474,10 @@ def _write_manifest(
             "modes": ["on-demand", "foreground-post-change-protection"],
             "pre_access_enforcement": False,
             "background_service": False,
+            "per_user_background_companion": True,
             "real_time_protection": False,
             "automatic_quarantine": False,
+            "opt_in_companion_quarantine": True,
             "telemetry": False,
             "bundled_trust_keys": _bundled_trust_key_count(),
         },
@@ -604,7 +667,7 @@ def build_native(output_dir: Path) -> dict[str, Any]:
 
         staged_root = temporary / "stage" / artifact_stem
         shutil.copytree(frozen_root, staged_root, symlinks=True)
-        _copy_documents(staged_root)
+        _copy_documents(staged_root, target_os)
         components = _copy_licenses(staged_root)
         _write_manifest(
             staged_root,

@@ -1,14 +1,13 @@
-# Zero Security / ZSEC Shield
+# ZSEC Antivirus + ZSEC Browser
 
-![Zero Security launch artwork](assets/brand/zero-security-hero.png)
+![ZSEC Antivirus launch artwork](assets/brand/zero-security-hero.png)
 
-**Zero Security is a cross-platform scanning and foreground post-change protection
-preview, plus an engineering programme for proper supported Windows, macOS, and
-Linux antivirus editions.**
-This repository contains its already working, auditable ZSEC Shield engine and
-the next production foundations: signed data-only protection feeds, automatic
-authenticated encrypted quarantine, ZBA-bound provenance, and the ZeroQ Shields
-browser protection preview.
+**ZSEC Antivirus Community is a working cross-platform scanner with automatic
+per-user post-change monitoring, authenticated encrypted quarantine, signed
+data-only rules, health evidence, and reversible Windows/macOS/Linux launchers.**
+This repository also contains ZSEC Browser Shields, a working local privacy layer
+for Chromium-family browsers, and the engineering gates for later privileged
+primary-antivirus and maintained browser distributions.
 
 ZSEC Shield is a deterministic, non-AI file scanner for Python 3.11+. It hashes
 regular files with SHA-256, applies exact byte and digest rules, verifies
@@ -18,8 +17,8 @@ candidate can also remain in the foreground and automatically scan file create a
 change events, with a disclosed polling fallback, duplicate-event debounce, and
 periodic reconciliation.
 
-The current tagged build is still an on-demand preview, not a replacement
-antivirus on any platform. It has no Windows minifilter/AMSI/ELAM stack, macOS
+The current public GitHub tag predates the 0.3 candidate and is not a replacement
+antivirus on any platform. The candidate has no Windows minifilter/AMSI/ELAM stack, macOS
 Endpoint Security system extension, Linux fanotify broker, production
 platform-keychain profile, publisher-signed installer, or independent efficacy
 certification. Those are explicit engineering and release gates, not features
@@ -28,16 +27,17 @@ claimed by a mock dashboard. See the [Windows programme](docs/FULL_ANTIVIRUS_PRO
 [Linux programme](docs/LINUX_DESKTOP_PROGRAM.md), and machine-readable
 [replacement-readiness contract](docs/REPLACEMENT_READINESS.md).
 
-## What is real now, and what comes next
+## What works now and the remaining replacement gates
 
 | Layer | Current evidence | Replacement-antivirus gate |
 | --- | --- | --- |
 | Scan engine | Streaming SHA-256, exact byte/digest rules, EICAR wiring test, deterministic JSON | Sandboxed PE/script/document/archive engines, locked malware and cleanware evaluation |
 | Quarantine | Per-object AES-256-GCM, automatic Windows DPAPI key sealing, authenticated ZBA metadata, tamper-fail restore | Windows service key isolation, TPM/CNG root, crash and recovery certification |
 | Updates | Strict Ed25519 signed data-only feed with expiry and rollback checks | Authenticode plus threshold TUF metadata, staged binary/rule/driver rollback |
-| Automatic file monitoring | Foreground post-change event scans with baseline, debounce, bounded queue and polling fallback; no pre-access enforcement | Windows FltMgr/AMSI/ELAM; macOS Endpoint Security; Linux fanotify—with platform-specific deadline and failure tests |
+| Automatic file monitoring | Per-user Windows Scheduled Task, macOS LaunchAgent and Linux systemd-user packages; native events, baseline, debounce, bounded queue, heartbeat, reconciliation and rollback | Windows FltMgr/AMSI/ELAM; macOS Endpoint Security; Linux fanotify—with platform-specific deadline and failure tests |
+| Desktop intelligence | 957-record initial CISA/MSRC/Apple/Ubuntu catalog with strict parsing, raw/semantic digests, atomic update and rollback state | Version applicability, independently validated detection-content providers, signed staged rollout |
 | Platform trust | Read-only inventory | Windows WSC/MVI; Apple entitlement, Developer ID and notarization; signed DEB/RPM repositories and enforced Linux service confinement |
-| Browser | Testable MV3 ZeroQ Shields extension | Maintained Chromium build, upstream security cadence, signed updater and browser regression fleet |
+| Browser | Testable ZSEC Browser Shields MV3 extension | Maintained Chromium build, upstream security cadence, signed updater and browser regression fleet |
 
 Your existing antivirus and native operating-system protections should remain
 active while these gates are developed in isolated environments and tested on
@@ -87,9 +87,9 @@ and release engineering provide the security properties. The new `ZSV2`
 namespace avoids silently combining three incompatible older formats that all
 used the `ZME1` name.
 
-## Zero Browser and ZeroQ Shields
+## ZSEC Browser and ZSEC Browser Shields
 
-The open-source extension preview lives in
+The open-source extension lives in
 [`browser/zeroq-shields`](browser/zeroq-shields). It provides 38 packaged local
 network blockers, two tracking-link cleaners, a per-site pause switch, and
 best-effort YouTube skip/nuisance cleanup. It has no analytics endpoint, remote
@@ -101,13 +101,13 @@ npm test
 npm run validate
 ```
 
-The extension is an early protection layer, not yet a Chromium browser binary.
+The extension is a working protection layer, not a separately maintained Chromium binary.
 The canonical product pages are
 [talktoai.org/zero-security](https://talktoai.org/zero-security/) and
 [talktoai.org/zero-browser](https://talktoai.org/zero-browser/). Exact preview
 downloads and install guidance live at
-[Zero Security downloads](https://talktoai.org/zero-security/download/) and
-[ZeroQ Shields installation](https://talktoai.org/zero-browser/download/).
+[ZSEC Antivirus downloads](https://talktoai.org/zero-security/download/) and
+[ZSEC Browser Shields installation](https://talktoai.org/zero-browser/download/).
 
 ## Platform scope
 
@@ -117,9 +117,9 @@ operating system's supported security architecture:
 
 | Desktop | Current public build | Production programme—not shipped |
 | --- | --- | --- |
-| Windows 10/11 | On-demand scanning, foreground ReadDirectoryChangesW monitoring, read-only inventory and DPAPI-backed preview quarantine | FltMgr minifilter, protected service, x86/x64 AMSI, ELAM, approved WSC/MVI integration |
-| macOS | On-demand scanning, foreground FSEvents monitoring and read-only inventory; filesystem key root is preview-only | Universal 2 app, Endpoint Security system extension, Keychain root, Developer ID, Hardened Runtime and notarization |
-| Linux | On-demand scanning, foreground inotify monitoring and read-only inventory; filesystem key root is preview-only | Narrow distro/kernel matrix, fanotify broker, confined daemon/workers, signed DEB/RPM packages and repositories |
+| Windows 10/11 | On-demand scanning; per-user automatic ReadDirectoryChangesW monitoring; health evidence; DPAPI-backed quarantine | FltMgr minifilter, protected service, x86/x64 AMSI, ELAM, approved WSC/MVI integration |
+| macOS | On-demand scanning; per-user LaunchAgent with FSEvents; read-only inventory; filesystem key root is preview-only | Universal 2 app, Endpoint Security system extension, Keychain root, Developer ID, Hardened Runtime and notarization |
+| Linux | On-demand scanning; hardened systemd-user companion with inotify; read-only inventory; filesystem key root is preview-only | Narrow distro/kernel matrix, fanotify broker, confined daemon/workers, signed DEB/RPM packages and repositories |
 
 Inventory adapters identify only basic OS/runtime context. They do not claim that
 patches, Microsoft Defender, XProtect, Gatekeeper, SIP, packages, SELinux,
@@ -145,8 +145,8 @@ python3.11 -m venv .venv
 .venv/bin/zero-security --version
 ```
 
-`zero-security` is the product command. `zsec-shield` remains a compatible alias
-for existing scripts.
+`zsec-antivirus` is the product command. `zero-security` and `zsec-shield` remain
+compatible aliases for existing scripts.
 
 The runtime dependencies are `cryptography`, used for Ed25519 verification,
 AES-256-GCM quarantine, and HKDF key separation, plus the pinned `watchdog`
@@ -215,6 +215,46 @@ with a visible record. Use `--backend native` to require native events or
 `--backend polling` deliberately. This is post-change user-mode monitoring, not
 pre-access real-time enforcement. Keep the existing antivirus active. See the
 [foreground watch contract](docs/FOREGROUND_WATCH_MODE.md).
+
+### ZSEC Antivirus automatic desktop companion
+
+The Windows development candidate includes review-first scripts for a reversible,
+current-user logon task protecting `%USERPROFILE%\Downloads`. Start with the
+read-only plan; repository tests never execute task registration:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned `
+  -File .\windows\companion\Install-ZsecAntivirusCompanion.ps1 -PlanOnly
+```
+
+The generated task runs at limited user privilege, permits one instance, uses
+bounded event/log/restart settings, and writes a 30-second health heartbeat. Its
+status combines task/action/hash/process proof with supported aggregate WSC
+antivirus health while keeping raw provider `productState` uninterpreted. It
+never disables or removes Malwarebytes/Defender, changes exclusions, registers
+ZSEC with Windows Security, or authorizes primary-provider cutover. See the
+[ZSEC Antivirus Windows companion guide](windows/companion/README.md).
+
+Equivalent current-user LaunchAgent and systemd-user packages are included for
+macOS and Linux. They pin the selected CLI by SHA-256, require the native event
+backend, keep bounded evidence logs, preserve platform security controls, and
+offer plan/status/uninstall commands. Their source and native-test boundary is in
+the [macOS/Linux companion guide](packaging/companion/README.md).
+
+### Daily desktop security intelligence
+
+The data-only updater ingests strict, allowlisted advisory metadata from CISA,
+Microsoft MSRC, Apple and Ubuntu. It validates source identity, HTTPS redirects,
+sizes, timestamps, schema, exact raw hashes, semantic rollback state and ZBA-typed
+provenance before an atomic catalog update. It never downloads malware, executes
+remote content, creates scanner signatures or applies remediation:
+
+```bash
+python scripts/update_desktop_intelligence.py --dry-run --json
+python scripts/update_desktop_intelligence.py --json
+```
+
+See the [desktop intelligence contract](docs/DESKTOP_INTELLIGENCE.md).
 
 Inspect status and read-only inventory:
 

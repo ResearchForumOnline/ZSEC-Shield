@@ -1,4 +1,4 @@
-# ZeroQ Shields privacy contract
+# ZSEC Browser Shields privacy contract
 
 - Rules and site-pause decisions are evaluated locally.
 - The extension stores only protection toggles and the user-paused domain list.

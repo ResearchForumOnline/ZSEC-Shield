@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -25,6 +26,7 @@ from zsec_shield.rules import builtin_rules
 from zsec_shield.scanner import DEFAULT_CHUNK_BYTES, DEFAULT_MAX_FILE_BYTES, Scanner, ScannerConfig
 from zsec_shield.status_store import load_last_scan, save_last_scan
 from zsec_shield.util import atomic_write_json, format_utc
+from zsec_shield.watch_evidence import WatchEvidenceSink
 from zsec_shield.watcher import ForegroundProtectionWatcher, WatchConfig, watch_lock
 
 EXIT_OK = 0
@@ -116,6 +118,12 @@ def _add_watch_parser(subparsers: Any, name: str, help_text: str) -> None:
         help="bounded raw event queue capacity (default: 4096)",
     )
     parser.add_argument(
+        "--heartbeat-seconds",
+        type=_positive_float,
+        default=30.0,
+        help="health heartbeat interval in seconds (default: 30)",
+    )
+    parser.add_argument(
         "--max-file-bytes",
         type=_positive_integer,
         default=DEFAULT_MAX_FILE_BYTES,
@@ -133,6 +141,33 @@ def _add_watch_parser(subparsers: Any, name: str, help_text: str) -> None:
         help="explicitly opt in to quarantining configured-rule matches",
     )
     parser.add_argument("--report", type=Path, help="write the final session report atomically")
+    parser.add_argument(
+        "--health-file",
+        type=Path,
+        help="atomically write compact health below the excluded state directory",
+    )
+    parser.add_argument(
+        "--event-log",
+        type=Path,
+        help="append bounded NDJSON evidence below the excluded state directory",
+    )
+    parser.add_argument(
+        "--event-log-max-bytes",
+        type=_positive_integer,
+        default=4 * 1024 * 1024,
+        help="rotate the event log before it exceeds this bound (default: 4194304)",
+    )
+    parser.add_argument(
+        "--event-log-backups",
+        type=_positive_integer,
+        default=3,
+        help="number of rotated event logs to retain (default: 3)",
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="suppress routine console output; evidence files remain active",
+    )
     parser.add_argument(
         "--json-lines",
         "--json",
@@ -186,6 +221,13 @@ def build_parser() -> argparse.ArgumentParser:
     inventory = subparsers.add_parser("inventory", help="collect read-only platform inventory")
     inventory.add_argument("--json", action="store_true")
     inventory.set_defaults(handler=_command_inventory)
+
+    runtime = subparsers.add_parser(
+        "runtime-identity",
+        help="report the exact executable hosting the ZSEC Antivirus engine",
+    )
+    runtime.add_argument("--json", action="store_true")
+    runtime.set_defaults(handler=_command_runtime_identity)
 
     readiness = subparsers.add_parser(
         "replacement-readiness",
@@ -378,6 +420,14 @@ def _command_watch(args: argparse.Namespace) -> int:
             excluded_paths=(state_dir,),
         ),
     )
+    evidence = WatchEvidenceSink(
+        state_dir=state_dir,
+        health_file=args.health_file,
+        event_log=args.event_log,
+        event_log_max_bytes=args.event_log_max_bytes,
+        event_log_backups=args.event_log_backups,
+        heartbeat_seconds=args.heartbeat_seconds,
+    )
 
     def feed_health() -> str | None:
         current, _rules = inspect_feed(state_dir, keyring_path)
@@ -390,6 +440,9 @@ def _command_watch(args: argparse.Namespace) -> int:
 
     def emit(record: dict[str, Any]) -> None:
         payload = {"version": __version__, **record}
+        evidence.record(payload)
+        if args.quiet:
+            return
         if args.json:
             print(json.dumps(payload, sort_keys=True, ensure_ascii=False), flush=True)
         else:
@@ -407,6 +460,7 @@ def _command_watch(args: argparse.Namespace) -> int:
             cross_filesystems=args.cross_filesystems,
             quarantine=bool(args.quarantine),
             event_queue_size=args.event_queue_size,
+            heartbeat_seconds=args.heartbeat_seconds,
         ),
         on_record=emit,
         health_check=feed_health,
@@ -438,7 +492,7 @@ def _command_watch(args: argparse.Namespace) -> int:
     }
     if args.report is not None:
         atomic_write_json(args.report.expanduser().absolute(), report, mode=0o600)
-    if not args.json:
+    if not args.json and not args.quiet:
         print(
             "Foreground watch ended: "
             f"{summary.outcome}; findings {summary.stats.findings}; "
@@ -458,7 +512,7 @@ def _print_watch_event(record: dict[str, Any]) -> None:
     if event == "session_started":
         roots = ", ".join(record["roots"])
         print(
-            "Zero Security foreground post-change protection started "
+            "ZSEC Antivirus foreground post-change protection started "
             f"({record['backend_active']}) for {roots}."
         )
         print("Keep the existing antivirus active; this mode does not block kernel access.")
@@ -593,6 +647,34 @@ def _command_inventory(args: argparse.Namespace) -> int:
         print(f"Host: {host['hostname']} | {host['system']} {host['release']} | {host['machine']}")
         for observation in result["observations"]:
             print(f"- {observation}")
+    return EXIT_OK
+
+
+def _command_runtime_identity(args: argparse.Namespace) -> int:
+    executable = Path(sys.executable).resolve()
+    digest = hashlib.sha256()
+    try:
+        with executable.open("rb") as handle:
+            for block in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(block)
+    except OSError as exc:
+        raise ZsecShieldError(f"cannot hash active runtime executable: {exc}") from exc
+    result = {
+        "schema": "zsec.antivirus.runtime-identity.v1",
+        "product": "ZSEC Antivirus",
+        "engine": "ZSEC Shield",
+        "version": __version__,
+        "runtime_executable": str(executable),
+        "runtime_sha256": digest.hexdigest(),
+        "read_only": True,
+    }
+    if args.json:
+        _emit_json(result)
+    else:
+        print(
+            f"ZSEC Antivirus {__version__} runtime: "
+            f"{result['runtime_executable']} ({result['runtime_sha256']})"
+        )
     return EXIT_OK
 
 

@@ -1,4 +1,4 @@
-# ZeroQ Shields threat model
+# ZSEC Browser Shields threat model
 
 ## Protected properties
 

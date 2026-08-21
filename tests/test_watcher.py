@@ -307,6 +307,22 @@ class WatchEngineTests(unittest.TestCase):
         self.assertTrue(event_scans)
         self.assertTrue(target.exists(), "quarantine must remain off by default")
 
+    def test_periodic_heartbeat_proves_the_backend_loop_is_alive(self) -> None:
+        records: list[dict[str, Any]] = []
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(heartbeat_seconds=0.1),
+            on_record=records.append,
+            polling_observer_factory=FakeObserver,
+        )
+        summary = watcher.run(duration_seconds=0.25)
+        heartbeats = [record for record in records if record["event"] == "health_heartbeat"]
+        self.assertFalse(summary.operational_incomplete)
+        self.assertGreaterEqual(len(heartbeats), 1)
+        self.assertEqual("polling", heartbeats[0]["backend_active"])
+        self.assertFalse(heartbeats[0]["policy"]["real_time_protection"])
+        self.assertFalse(heartbeats[0]["policy"]["pre_access_enforcement"])
+
 
 if __name__ == "__main__":
     unittest.main()

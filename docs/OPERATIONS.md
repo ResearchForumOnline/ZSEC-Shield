@@ -34,6 +34,14 @@ reads; it does not register a provider, configure exclusions, disable another
 product, or install persistence. See
 [the complete foreground-mode contract](FOREGROUND_WATCH_MODE.md).
 
+On Windows, automatic current-user launch is available only through the
+review-first [ZSEC Antivirus companion](../windows/companion/README.md). Run its
+installer with `-PlanOnly` before registration and its uninstaller with
+`-PlanOnly` before rollback. A healthy companion requires fresh process/task/hash
+evidence and supported Windows Security Center aggregate antivirus health. Raw
+`SecurityCenter2.productState` is recorded but not decoded, and the companion
+never authorizes removal or cutover of the existing primary provider.
+
 When integrating `status --json`, apply the
 [desktop status bridge contract](STATUS_CONTRACT.md). A ready state requires the exact
 successful no-match outcome plus zero findings and zero errors. Never infer success

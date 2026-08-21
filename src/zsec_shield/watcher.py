@@ -34,6 +34,7 @@ DEFAULT_DEBOUNCE_SECONDS = 0.75
 DEFAULT_POLL_SECONDS = 1.0
 DEFAULT_RECONCILE_SECONDS = 60.0
 DEFAULT_EVENT_QUEUE_SIZE = 4096
+DEFAULT_HEARTBEAT_SECONDS = 30.0
 
 
 class _Observer(Protocol):
@@ -71,6 +72,7 @@ class WatchConfig:
     cross_filesystems: bool = False
     quarantine: bool = False
     event_queue_size: int = DEFAULT_EVENT_QUEUE_SIZE
+    heartbeat_seconds: float = DEFAULT_HEARTBEAT_SECONDS
 
     def __post_init__(self) -> None:
         if self.backend not in {"auto", "native", "polling"}:
@@ -83,6 +85,8 @@ class WatchConfig:
             raise WatchError("reconcile_seconds must be between 0.1 and 86400")
         if not 16 <= self.event_queue_size <= 1_000_000:
             raise WatchError("event_queue_size must be between 16 and 1000000")
+        if not 0.1 <= self.heartbeat_seconds <= 3600:
+            raise WatchError("heartbeat_seconds must be between 0.1 and 3600")
         if not self.roots:
             raise WatchError("at least one watch directory is required")
 
@@ -193,6 +197,8 @@ class WatchSummary:
 
 def watch_policy(quarantine_requested: bool) -> dict[str, Any]:
     return {
+        "product": "ZSEC Antivirus",
+        "engine": "ZSEC Shield",
         "mode": "foreground-post-change-protection",
         "real_time_protection": False,
         "pre_access_enforcement": False,
@@ -652,6 +658,7 @@ class ForegroundProtectionWatcher:
         )
         next_reconcile = self._clock() + self.config.reconcile_seconds
         next_health_check = self._clock() + min(5.0, self.config.reconcile_seconds)
+        next_heartbeat = self._clock() + self.config.heartbeat_seconds
         try:
             # Start the observer first so changes during the mandatory baseline scan
             # enter the bounded queue instead of falling into a startup gap.
@@ -679,6 +686,16 @@ class ForegroundProtectionWatcher:
                 for pending in self._events.due():
                     self._scan_pending(pending)
                 now = self._clock()
+                if now >= next_heartbeat:
+                    self._emit(
+                        "health_heartbeat",
+                        backend_active=self._active_backend,
+                        roots=[str(root.path) for root in self.roots],
+                        operational_incomplete=self._operational_incomplete,
+                        stats=self._stats.to_dict(),
+                        policy=watch_policy(self.config.quarantine),
+                    )
+                    next_heartbeat = now + self.config.heartbeat_seconds
                 if now >= next_reconcile:
                     self._reconcile("periodic_reconciliation")
                     next_reconcile = now + self.config.reconcile_seconds

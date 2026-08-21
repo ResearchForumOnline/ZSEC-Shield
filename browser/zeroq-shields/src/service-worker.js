@@ -73,7 +73,7 @@ async function initialiseRules() {
     try {
       await recordRuntimeHealth(false);
     } catch (healthError) {
-      console.error("ZeroQ runtime health could not be persisted", healthError, error);
+      console.error("ZSEC runtime health could not be persisted", healthError, error);
     }
   }
 }

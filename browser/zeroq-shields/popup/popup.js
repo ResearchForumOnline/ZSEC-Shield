@@ -8,7 +8,7 @@ let currentDomain = null;
 
 async function send(payload) {
   const response = await chrome.runtime.sendMessage(payload);
-  if (!response?.ok) throw new Error(response?.error || "ZeroQ request failed");
+  if (!response?.ok) throw new Error(response?.error || "ZSEC request failed");
   return response;
 }
 
@@ -27,8 +27,8 @@ function apply(settings, sitePaused = pauseSite.checked, health = { ok: true }) 
   status.textContent = unavailable
     ? "Filtering state unavailable"
     : settings.protectionEnabled
-      ? "ZeroQ rules are on"
-      : "ZeroQ rules are off";
+      ? "ZSEC rules are on"
+      : "ZSEC rules are off";
   if (unavailable) message.textContent = health.error || "Extension initialization failed";
 }
 

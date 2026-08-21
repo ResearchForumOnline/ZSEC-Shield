@@ -10,4 +10,6 @@ include packaging/licenses/CPython-3.11-LICENSE.txt
 recursive-include docs *.md
 recursive-include specs *.md
 recursive-include packaging *.json *.md *.py *.spec
+recursive-include packaging/companion *.md *.py *.sh *.template
+recursive-include windows *.md *.ps1
 recursive-include tests *.py

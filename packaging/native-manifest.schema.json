@@ -56,8 +56,10 @@
         "modes",
         "pre_access_enforcement",
         "background_service",
+        "per_user_background_companion",
         "real_time_protection",
         "automatic_quarantine",
+        "opt_in_companion_quarantine",
         "telemetry",
         "bundled_trust_keys"
       ],
@@ -67,8 +69,10 @@
         },
         "pre_access_enforcement": { "const": false },
         "background_service": { "const": false },
+        "per_user_background_companion": { "const": true },
         "real_time_protection": { "const": false },
         "automatic_quarantine": { "const": false },
+        "opt_in_companion_quarantine": { "const": true },
         "telemetry": { "const": false },
         "bundled_trust_keys": { "type": "integer", "minimum": 0 }
       }

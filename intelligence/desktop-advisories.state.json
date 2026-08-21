@@ -1,0 +1,27 @@
+{
+  "current_catalog_sha256": "86b153be9b581d7774e46aa7fb31d358404873e19c407d8c452acf5659774161",
+  "installed_at": "2026-08-21T17:15:38Z",
+  "schema": "zsec.desktop-intelligence-state.v1",
+  "sources": [
+    {
+      "semantic_sha256": "695a084c0fe35c5af3b89a9d4c30d83780a3f3cd774b570da1359d7df5461a9b",
+      "source_id": "apple-security",
+      "version": "2026-08-18T00:00:00Z"
+    },
+    {
+      "semantic_sha256": "6c37b084a48cdf4d2afed1cee069092fa44a43fb301a6c9bc149a05a684ac47a",
+      "source_id": "cisa-kev",
+      "version": "2026-08-21T16:42:49Z"
+    },
+    {
+      "semantic_sha256": "3b3d56d09b13c33044d9970eeb845e815620bd5d07c6a1eb24869cfb4df220b4",
+      "source_id": "microsoft-msrc",
+      "version": "2026-08-21T07:00:00Z"
+    },
+    {
+      "semantic_sha256": "6f869618cd9b424d1d315903c7b88bd970695b2377530fc29aad4851e3d4ed1e",
+      "source_id": "ubuntu-usn",
+      "version": "2026-08-20T23:47:34Z"
+    }
+  ]
+}
