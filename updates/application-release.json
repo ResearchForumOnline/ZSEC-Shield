@@ -3,19 +3,19 @@
     {
       "architecture": "x86_64",
       "authenticode": "unsigned",
-      "filename": "zsec-antivirus-desktop-0.3.18-windows-x86_64.zip",
+      "filename": "zsec-antivirus-desktop-0.3.19-windows-x86_64.zip",
       "operating_system": "windows",
-      "sha256": "80714eeb7cad3c597c033eeb1be3ceaeaf7294f92fc8c8adb157c79c679fd4e0",
-      "size": 34017693,
-      "url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.18/zsec-antivirus-desktop-0.3.18-windows-x86_64.zip"
+      "sha256": "198339141a2c00622fe363259366ea7cdce3efd7a2df418131793f9f5976cbf7",
+      "size": 33869787,
+      "url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.19-windows/zsec-antivirus-desktop-0.3.19-windows-x86_64.zip"
     }
   ],
   "auto_install_allowed": false,
   "channel": "stable",
   "minimum_supported_version": "0.3.13",
   "notification_only": true,
-  "release_notes_url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.18",
+  "release_notes_url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.19-windows",
   "schema": "zsec.application-release-source.v1",
-  "source_revision": "9649eda54305b0ddd0d3b2b43f738e54fda542c3",
-  "version": "0.3.18"
+  "source_revision": "a7f97595cd0350bb5254010925ddc8b25c82a82a",
+  "version": "0.3.19"
 }
