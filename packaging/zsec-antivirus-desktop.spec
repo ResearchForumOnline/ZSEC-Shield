@@ -25,6 +25,7 @@ analysis = Analysis(
         "pystray._win32",
         "PIL.Image",
         "PIL.ImageDraw",
+        "PIL.ImageTk",
     ],
     hookspath=[],
     hooksconfig={},

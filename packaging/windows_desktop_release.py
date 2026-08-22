@@ -20,7 +20,7 @@ import native_release as native
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 GUI_SPEC = PROJECT_ROOT / "packaging" / "zsec-antivirus-desktop.spec"
 CLI_SPEC = PROJECT_ROOT / "packaging" / "zsec-shield.spec"
-ICON_SOURCE = PROJECT_ROOT / "assets" / "brand" / "zeroq-icon.png"
+ICON_SOURCE = PROJECT_ROOT / "assets" / "brand" / "zsec-antivirus-mark.png"
 PRODUCT = "ZSEC Antivirus"
 
 TOOLS: tuple[Path, ...] = (

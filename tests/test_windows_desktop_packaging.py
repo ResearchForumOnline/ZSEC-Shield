@@ -21,6 +21,7 @@ def test_gui_spec_is_windowed_versioned_and_keeps_cli_out_of_process() -> None:
     assert "zsec_shield" not in spec
     assert '"pystray._win32"' in spec
     assert '"PIL.Image"' in spec
+    assert '"PIL.ImageTk"' in spec
 
 
 def test_desktop_builder_is_syntax_valid_and_records_coexistence_policy() -> None:
@@ -155,7 +156,7 @@ def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
     assert "Desktop Preview" not in app
     assert "DESKTOP PREVIEW" not in app
     assert 'self.root.title("ZSEC Antivirus")' in app
-    assert 'text="COMMUNITY 0.3.18"' in app
+    assert 'text="COMMUNITY 0.3.19"' in app
 
 
 def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None:
@@ -167,6 +168,10 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     assert "Reduce motion" in app
     assert "after_cancel" in app
     assert "ModernStatusCard" in app
+    assert "render_mark(64)" in app
+    assert "self.root.iconphoto(True, self.brand_icon)" in app
+    assert "self.global_busy.pack_forget()" in app
+    assert "self.global_busy_visible" in app
     assert "NavSelected.TButton" in app
     assert 'style.layout("Content.TNotebook.Tab", [])' in app
     assert "_layout_overview_cards" in app
@@ -174,6 +179,9 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     assert "self.status_emphasis" in app
     assert "_animate_status_emphasis" in app
     assert "if changed and self.motion_enabled()" in app
+    assert "card.sync_motion_preference()" in app
+    assert "_sync_global_busy_motion" in app
+    assert 'self.global_busy.configure(mode="determinate", value=100)' in app
     assert "width >= 1040" in app
     assert "width >= 520" in app
     assert "width=240" in app
@@ -193,6 +201,24 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     assert "Application releases remain notification-only" in app
     assert "never treats an unsigned package as trusted" in app
     assert "self.feed_update_refresh_button.configure(state=tk.DISABLED)" in app
+    assert "ThreadPoolExecutor(max_workers=4" in app
+    assert "STARTUP_EVIDENCE_NOTICE_MS = 10_000" in app
+    assert 'self.scan_card.set_value("Checking scan evidence…", CYAN)' in app
+    assert 'self.windows_card.set_value("Verifying Windows protection…", CYAN)' in app
+    assert 'self.windows_card.set_value("Windows verification taking longer", AMBER)' in app
+    assert 'self._resolve_startup_evidence("status")' in app
+    assert 'self._resolve_startup_evidence("companion")' in app
+    assert "Export support snapshot…" in app
+    assert "Nothing is uploaded or " in app
+    assert '"transmitted automatically."' in app
+    assert "self.latest_status_payload = None" in app
+    assert "self.latest_companion_payload = None" in app
+    assert "self._update_support_export_state()" in app
+    assert "build_support_snapshot(" in app
+    assert "from zsec_shield import __version__ as ZSEC_VERSION" in app
+    assert "desktop_version=ZSEC_VERSION" in app
+    assert "Export cancelled; no file was written or transmitted." in app
+    assert "Nothing was uploaded." in app
 
 
 def test_companion_sync_is_bounded_verified_and_rolls_back() -> None:

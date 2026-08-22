@@ -23,6 +23,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Any
 
+from zsec_desktop.brand import render_mark
 from zsec_desktop.bridge import BridgeError, CommandResult, WatchSession, ZsecBridge
 from zsec_desktop.contracts import (
     companion_presentation,
@@ -35,7 +36,9 @@ from zsec_desktop.settings import (
     load_settings,
     save_settings,
 )
+from zsec_desktop.support import build_support_snapshot, save_support_snapshot
 from zsec_desktop.tray import TrayController
+from zsec_shield import __version__ as ZSEC_VERSION
 
 BACKGROUND = "#08111f"
 SURFACE = "#101c2d"
@@ -46,6 +49,7 @@ CYAN = "#26d9d1"
 GREEN = "#32d583"
 AMBER = "#f5b942"
 RED = "#f97066"
+STARTUP_EVIDENCE_NOTICE_MS = 10_000
 
 
 class ModernStatusCard(tk.Canvas):
@@ -102,6 +106,23 @@ class ModernStatusCard(tk.Canvas):
         else:
             self.status_emphasis = 0.0
             self.status_job = None
+
+    def sync_motion_preference(self) -> None:
+        """Immediately settle decorative motion when reduced motion is enabled."""
+
+        if self.motion_enabled():
+            return
+        if self.hover_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.after_cancel(self.hover_job)
+            self.hover_job = None
+        if self.status_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.after_cancel(self.status_job)
+            self.status_job = None
+        self.hover_progress = self.hover_target
+        self.status_emphasis = 0.0
+        self._render()
 
     def _set_hover(self, target: float) -> None:
         self.hover_target = target
@@ -233,7 +254,11 @@ class ZsecDesktop:
     def __init__(self, root: tk.Tk, bridge: ZsecBridge, *, startup: bool = False) -> None:
         self.root = root
         self.bridge = bridge
-        self.executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="zsec-ui")
+        # Initial evidence comes from independent, read-only commands. Four workers
+        # let the slow Windows provider query start immediately instead of sitting
+        # behind status, readiness and list operations. Every bridge command keeps
+        # its own existing timeout and fail-closed contract.
+        self.executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="zsec-ui")
         self.closing = False
         self.scan_cancel: threading.Event | None = None
         self.watch_session: WatchSession | None = None
@@ -262,8 +287,12 @@ class ZsecDesktop:
         self.animation_phase = 0
         self.animation_job: str | None = None
         self.busy_operations = 0
+        self.global_busy_visible = False
         self.companion_refresh_generation = 0
         self.companion_refresh_job: str | None = None
+        self.startup_status_resolved = False
+        self.startup_companion_resolved = False
+        self.startup_evidence_deadline_job: str | None = None
         self.watch_session_id: str | None = None
         self.watch_last_sequence = 0
         self.watch_last_heartbeat_monotonic: float | None = None
@@ -271,17 +300,21 @@ class ZsecDesktop:
         self.tray_scan_status = "Local engine starting"
         self.tray_companion_status = "Companion evidence pending"
         self.protected_roots: tuple[Path, ...] = ()
+        self.latest_status_payload: dict[str, Any] | None = None
+        self.latest_companion_payload: dict[str, Any] | None = None
 
         self.root.title("ZSEC Antivirus")
         self.root.geometry("1180x760")
         self.root.minsize(960, 640)
         self.root.configure(bg=BACKGROUND)
+        self._apply_brand_icon()
         self.root.protocol("WM_DELETE_WINDOW", self._window_close)
         self.root.bind("<Unmap>", self._window_unmapped)
         self.root.after(0, self._apply_windows_chrome)
         self._configure_style()
         self._build_header()
         self._build_tabs()
+        self._set_initial_evidence_state()
         self.tray = TrayController(
             dispatch=lambda callback: self._post(callback),
             open_window=self._open_window,
@@ -293,6 +326,9 @@ class ZsecDesktop:
         self._update_tray_status()
         self._animate_activity()
         self.root.after(120, self.refresh_all)
+        self.startup_evidence_deadline_job = self.root.after(
+            STARTUP_EVIDENCE_NOTICE_MS, self._startup_evidence_deadline
+        )
         self.companion_refresh_job = self.root.after(30_000, self._periodic_companion_refresh)
         if startup and self.tray.active:
             self.root.after_idle(self.root.withdraw)
@@ -418,18 +454,37 @@ class ZsecDesktop:
         header.pack(fill=tk.X)
         title_row = ttk.Frame(header)
         title_row.pack(fill=tk.X)
+        brand_canvas = tk.Canvas(
+            title_row,
+            width=42,
+            height=42,
+            bg=BACKGROUND,
+            highlightthickness=0,
+            borderwidth=0,
+            takefocus=0,
+        )
+        brand_canvas.pack(side=tk.LEFT, padx=(0, 10))
+        brand_canvas.create_polygon(
+            21, 3, 37, 9, 37, 21, 34, 29, 28, 36, 21, 40,
+            14, 36, 8, 29, 5, 21, 5, 9,
+            fill="#102538", outline="#2e6470", width=2,
+        )
+        brand_canvas.create_polygon(
+            11, 12, 31, 12, 31, 17, 20, 27, 31, 27, 31, 33,
+            10, 33, 10, 27, 21, 17, 11, 17,
+            fill=CYAN, outline="",
+        )
         ttk.Label(title_row, text="ZSEC", style="Title.TLabel", foreground=CYAN).pack(side=tk.LEFT)
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
         ttk.Label(
             title_row,
-            text="COMMUNITY 0.3.18",
+            text="COMMUNITY 0.3.19",
             style="Subtitle.TLabel",
             foreground=AMBER,
         ).pack(
             side=tk.LEFT, padx=(18, 0), pady=(9, 0)
         )
         self.global_busy = ttk.Progressbar(title_row, mode="indeterminate", length=150)
-        self.global_busy.pack(side=tk.RIGHT, pady=8)
         self.activity_canvas = tk.Canvas(
             title_row,
             width=180,
@@ -448,6 +503,15 @@ class ZsecDesktop:
             ),
             style="Subtitle.TLabel",
         ).pack(anchor=tk.W, pady=(4, 0))
+
+    def _apply_brand_icon(self) -> None:
+        try:
+            from PIL import ImageTk
+
+            self.brand_icon = ImageTk.PhotoImage(render_mark(64), master=self.root)
+            self.root.iconphoto(True, self.brand_icon)
+        except (ImportError, OSError, RuntimeError, tk.TclError):
+            self.brand_icon = None
 
     def _apply_windows_chrome(self) -> None:
         if os.name != "nt":
@@ -1065,6 +1129,43 @@ class ZsecDesktop:
         ttk.Button(panel, text="View validated report", command=self._view_selected_report).pack(
             anchor=tk.E
         )
+        support = ttk.Frame(panel, style="Alt.TFrame", padding=14)
+        support.pack(fill=tk.X, pady=(14, 0))
+        ttk.Label(
+            support,
+            text="Privacy-bounded support snapshot",
+            style="Surface.TLabel",
+            background=SURFACE_ALT,
+            font=("Segoe UI Semibold", 11),
+        ).pack(anchor=tk.W)
+        ttk.Label(
+            support,
+            text=(
+                "Export validated protection and automation evidence without file paths, "
+                "quarantine contents, user or device identifiers. Nothing is uploaded or "
+                "transmitted automatically."
+            ),
+            style="Muted.TLabel",
+            background=SURFACE_ALT,
+            wraplength=850,
+        ).pack(anchor=tk.W, pady=(4, 10))
+        support_controls = ttk.Frame(support, style="Alt.TFrame")
+        support_controls.pack(fill=tk.X)
+        self.export_support_button = ttk.Button(
+            support_controls,
+            text="Export support snapshot…",
+            command=self._export_support_snapshot,
+            state=tk.DISABLED,
+        )
+        self.export_support_button.pack(side=tk.LEFT)
+        self.export_support_status = ttk.Label(
+            support_controls,
+            text="Waiting for validated status and companion evidence.",
+            style="Muted.TLabel",
+            background=SURFACE_ALT,
+            wraplength=620,
+        )
+        self.export_support_status.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(12, 0))
 
     def _build_health(self) -> None:
         panel = self._panel(self.health_tab)
@@ -1153,7 +1254,7 @@ class ZsecDesktop:
         self.yubikey_status = ttk.Label(
             panel,
             text=(
-                "Hardware-key recovery is not enabled in Community 0.3.18. When "
+                "Hardware-key recovery is not enabled in Community 0.3.19. When "
                 "quarantine is explicitly enabled, encryption remains automatic, "
                 "authenticated and device-bound."
             ),
@@ -1297,7 +1398,10 @@ class ZsecDesktop:
     ) -> Future[Any]:
         self.busy_operations += 1
         if self.busy_operations == 1:
-            self.global_busy.start(12)
+            if not self.global_busy_visible:
+                self.global_busy.pack(side=tk.RIGHT, pady=8)
+                self.global_busy_visible = True
+            self._sync_global_busy_motion()
             self._animate_activity()
         future = self.executor.submit(operation)
 
@@ -1308,6 +1412,8 @@ class ZsecDesktop:
                 self.busy_operations = max(0, self.busy_operations - 1)
                 if self.busy_operations == 0:
                     self.global_busy.stop()
+                    self.global_busy.pack_forget()
+                    self.global_busy_visible = False
                     if self.animation_job is not None:
                         with contextlib.suppress(tk.TclError):
                             self.root.after_cancel(self.animation_job)
@@ -1336,7 +1442,22 @@ class ZsecDesktop:
                 self.root.after_cancel(self.animation_job)
             self.animation_job = None
         self.animation_phase = 0
+        if hasattr(self, "overview_cards"):
+            for card in self.overview_cards:
+                card.sync_motion_preference()
+        if hasattr(self, "global_busy"):
+            self._sync_global_busy_motion()
         self._animate_activity()
+
+    def _sync_global_busy_motion(self) -> None:
+        self.global_busy.stop()
+        if self.busy_operations <= 0:
+            return
+        if bool(self.reduce_motion.get()):
+            self.global_busy.configure(mode="determinate", value=100)
+        else:
+            self.global_busy.configure(mode="indeterminate", value=0)
+            self.global_busy.start(12)
 
     def _save_desktop_settings(self) -> None:
         try:
@@ -1488,12 +1609,54 @@ class ZsecDesktop:
         self.refresh_reports()
         self.refresh_companion()
 
+    def _set_initial_evidence_state(self) -> None:
+        """Describe startup work without implying either health or failure."""
+
+        self.scan_card.set_value("Checking scan evidence…", CYAN)
+        self.feed_card.set_value("Checking signed intelligence…", CYAN)
+        self.quarantine_card.set_value("Checking recovery entries…", CYAN)
+        self.companion_card.set_value("Verifying local companion…", CYAN)
+        self.windows_card.set_value("Verifying Windows protection…", CYAN)
+
+    def _startup_evidence_deadline(self) -> None:
+        """Replace an unusually long neutral wait with an honest review state."""
+
+        self.startup_evidence_deadline_job = None
+        if self.closing:
+            return
+        if not self.startup_status_resolved:
+            self.scan_card.set_value("Scan verification taking longer", AMBER)
+            self.feed_card.set_value("Intelligence verification taking longer", AMBER)
+            self.quarantine_card.set_value("Recovery verification taking longer", AMBER)
+        if not self.startup_companion_resolved:
+            self.companion_card.set_value("Companion verification taking longer", AMBER)
+            self.windows_card.set_value("Windows verification taking longer", AMBER)
+
+    def _resolve_startup_evidence(self, group: str) -> None:
+        if group == "status":
+            self.startup_status_resolved = True
+        elif group == "companion":
+            self.startup_companion_resolved = True
+        else:  # pragma: no cover - internal programming guard
+            raise ValueError(f"unknown startup evidence group: {group}")
+        if (
+            self.startup_status_resolved
+            and self.startup_companion_resolved
+            and self.startup_evidence_deadline_job is not None
+        ):
+            with contextlib.suppress(tk.TclError):
+                self.root.after_cancel(self.startup_evidence_deadline_job)
+            self.startup_evidence_deadline_job = None
+
     def refresh_status(self) -> None:
         if hasattr(self, "feed_update_refresh_button"):
             self.feed_update_refresh_button.configure(state=tk.DISABLED)
         self._run_async(self.bridge.status, self._render_status, failure=self._status_failure)
 
     def _status_failure(self, exc: BaseException) -> None:
+        self._resolve_startup_evidence("status")
+        self.latest_status_payload = None
+        self._update_support_export_state()
         if hasattr(self, "feed_update_refresh_button"):
             self.feed_update_refresh_button.configure(state=tk.NORMAL)
         self.scan_card.set_value("Evidence unavailable", RED)
@@ -1511,9 +1674,12 @@ class ZsecDesktop:
         self._update_tray_status()
 
     def _render_status(self, result: CommandResult) -> None:
+        self._resolve_startup_evidence("status")
         if hasattr(self, "feed_update_refresh_button"):
             self.feed_update_refresh_button.configure(state=tk.NORMAL)
         status = result.payload
+        self.latest_status_payload = status
+        self._update_support_export_state()
         presentation = status_presentation(status)
         self.tray_scan_status = presentation.headline
         self._update_tray_status()
@@ -1928,7 +2094,10 @@ class ZsecDesktop:
     def _render_companion(self, result: CommandResult, generation: int) -> None:
         if generation != self.companion_refresh_generation:
             return
+        self._resolve_startup_evidence("companion")
         payload = result.payload
+        self.latest_companion_payload = payload
+        self._update_support_export_state()
         presentation = companion_presentation(payload)
         self.tray_companion_status = presentation.headline
         self._update_tray_status()
@@ -2112,6 +2281,9 @@ class ZsecDesktop:
     def _companion_failure(self, exc: BaseException, generation: int) -> None:
         if generation != self.companion_refresh_generation:
             return
+        self.latest_companion_payload = None
+        self._update_support_export_state()
+        self._resolve_startup_evidence("companion")
         self.companion_status_label.configure(
             text=f"Companion evidence unavailable: {exc}", foreground=RED
         )
@@ -2219,6 +2391,58 @@ class ZsecDesktop:
 
     def refresh_reports(self) -> None:
         self._run_async(self.bridge.list_reports, self._render_reports, failure=lambda exc: None)
+
+    def _update_support_export_state(self) -> None:
+        if not hasattr(self, "export_support_button"):
+            return
+        ready = self.latest_status_payload is not None and self.latest_companion_payload is not None
+        self.export_support_button.configure(state=tk.NORMAL if ready else tk.DISABLED)
+        if ready:
+            self.export_support_status.configure(
+                text="Validated evidence is ready for a local, user-chosen JSON export.",
+                foreground=GREEN,
+            )
+        else:
+            self.export_support_status.configure(
+                text="Waiting for validated status and companion evidence.",
+                foreground=MUTED,
+            )
+
+    def _export_support_snapshot(self) -> None:
+        status = self.latest_status_payload
+        companion = self.latest_companion_payload
+        if status is None or companion is None:
+            self._update_support_export_state()
+            return
+        destination = filedialog.asksaveasfilename(
+            parent=self.root,
+            title="Export privacy-bounded support snapshot",
+            defaultextension=".json",
+            filetypes=(("JSON files", "*.json"),),
+            initialfile="zsec-antivirus-support-snapshot.json",
+        )
+        if not destination:
+            self.export_support_status.configure(
+                text="Export cancelled; no file was written or transmitted.", foreground=MUTED
+            )
+            return
+        try:
+            snapshot = build_support_snapshot(
+                status,
+                companion,
+                desktop_version=ZSEC_VERSION,
+            )
+            target = Path(destination)
+            save_support_snapshot(target, snapshot)
+        except (OSError, TypeError, ValueError) as exc:
+            self.export_support_status.configure(
+                text=f"Support snapshot export failed: {exc}", foreground=RED
+            )
+            return
+        self.export_support_status.configure(
+            text=f"Support snapshot saved locally: {target.name}. Nothing was uploaded.",
+            foreground=GREEN,
+        )
 
     def _render_reports(self, reports: list[dict[str, Any]]) -> None:
         self.report_rows.clear()
@@ -2360,6 +2584,10 @@ class ZsecDesktop:
             with contextlib.suppress(tk.TclError):
                 self.root.after_cancel(self.companion_refresh_job)
             self.companion_refresh_job = None
+        if self.startup_evidence_deadline_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.root.after_cancel(self.startup_evidence_deadline_job)
+            self.startup_evidence_deadline_job = None
         if self.watch_watchdog_job is not None:
             with contextlib.suppress(tk.TclError):
                 self.root.after_cancel(self.watch_watchdog_job)

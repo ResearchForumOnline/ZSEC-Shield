@@ -12,6 +12,7 @@ GUI_ROOT = Path(__file__).resolve().parents[1] / "apps" / "windows-ui"
 if str(GUI_ROOT) not in sys.path:
     sys.path.insert(0, str(GUI_ROOT))
 
+from zsec_desktop.brand import render_mark  # noqa: E402
 from zsec_desktop.settings import (  # noqa: E402
     DesktopSettings,
     StartupRegistration,
@@ -20,6 +21,18 @@ from zsec_desktop.settings import (  # noqa: E402
     startup_command,
 )
 from zsec_desktop.tray import TrayController  # noqa: E402
+
+
+def test_brand_mark_is_crisp_bounded_and_preserves_small_size_identity() -> None:
+    small = render_mark(16)
+    large = render_mark(256)
+    assert small.size == (16, 16)
+    assert large.size == (256, 256)
+    assert small.mode == "RGBA"
+    assert small.getbbox() == (0, 0, 16, 16)
+    assert len(set(small.get_flattened_data())) > 12
+    with pytest.raises(ValueError, match="between 16 and 1024"):
+        render_mark(8)
 
 
 def test_desktop_settings_round_trip_and_corrupt_recovery(tmp_path: Path) -> None:

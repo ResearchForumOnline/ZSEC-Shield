@@ -7,6 +7,8 @@ import unicodedata
 from collections.abc import Callable
 from typing import Any
 
+from zsec_desktop.brand import render_mark
+
 
 def _single_line(value: str, *, maximum: int) -> str:
     """Return bounded tray text that cannot create deceptive extra lines."""
@@ -46,16 +48,7 @@ class TrayController:
     def start(self) -> bool:
         try:
             import pystray  # type: ignore[import-untyped]
-            from PIL import Image, ImageDraw
-
-            image = Image.new("RGBA", (64, 64), (8, 17, 31, 255))
-            draw = ImageDraw.Draw(image)
-            draw.rounded_rectangle((4, 4, 60, 60), radius=14, fill=(15, 35, 52, 255))
-            draw.polygon(
-                ((32, 8), (53, 16), (50, 41), (32, 56), (14, 41), (11, 16)),
-                fill=(16, 185, 175, 255),
-            )
-            draw.text((20, 18), "Z", fill=(255, 255, 255, 255), stroke_width=1)
+            image = render_mark(64)
 
             def dispatch(callback: Callable[[], None]) -> Callable[..., None]:
                 return lambda *_args: self._dispatch(callback)

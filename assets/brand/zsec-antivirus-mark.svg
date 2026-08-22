@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">ZSEC Antivirus mark</title>
+  <desc id="desc">A precise Z boundary inside a protected hexagonal shield.</desc>
+  <rect width="256" height="256" rx="56" fill="#08111f"/>
+  <path d="M128 25 213 58v61c0 54-31 91-85 112-54-21-85-58-85-112V58l85-33Z" fill="#102538" stroke="#2e6470" stroke-width="8"/>
+  <path d="M79 76h101v28l-57 51h58v30H76v-28l58-52H79V76Z" fill="#35e4cf"/>
+  <path d="m76 157 29-26 18 24h58v30H76v-28Z" fill="#13b8ae" opacity=".62"/>
+</svg>
