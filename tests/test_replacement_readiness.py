@@ -31,6 +31,8 @@ class ReplacementReadinessTests(unittest.TestCase):
                 self.assertIn(expected_gate, blocker_ids)
                 self.assertEqual(len(blocker_ids), len(set(blocker_ids)))
                 self.assertEqual(len(blocker_ids), result["gate_counts"]["not_met"])
+                self.assertNotIn("preview", result["next_action"].lower())
+                self.assertIn("on-demand companion", result["next_action"])
 
     def test_platform_normalization_is_explicit(self) -> None:
         self.assertEqual("windows", normalize_platform("Windows"))

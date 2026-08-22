@@ -4,8 +4,12 @@ const highRisk = document.querySelector("#high-risk");
 const pauseSite = document.querySelector("#pause-site");
 const domainLabel = document.querySelector("#domain");
 const status = document.querySelector(".status");
+const coverage = document.querySelector("#coverage");
 const message = document.querySelector("#message");
 let currentDomain = null;
+const pageParameters = new URLSearchParams(location.search);
+const tabSurface = pageParameters.get("surface") === "tab";
+if (tabSurface) document.body.classList.add("tab-surface");
 
 async function send(payload) {
   const response = await chrome.runtime.sendMessage(payload);
@@ -37,12 +41,28 @@ function apply(settings, sitePaused = pauseSite.checked, health = { ok: true }) 
       : settings.protectionEnabled
         ? "ZSEC rules are on"
         : "ZSEC rules are off";
-  if (unavailable) message.textContent = health.error || "Extension initialization failed";
+  const details = health?.details;
+  coverage.textContent = unavailable
+    ? "Coverage verification did not complete"
+    : details?.filteringMode === "full"
+      ? `${details.packagedStaticRuleCount.toLocaleString()} packaged rules · ${details.regexRulesVerified} regex checks passed`
+      : "Filtering is intentionally paused";
+  if (unavailable) {
+    message.textContent = health.diagnostic
+      ? `${health.error || "Extension initialization failed"} (${health.diagnostic})`
+      : health.error || "Extension initialization failed";
+  } else {
+    message.textContent = "";
+  }
 }
 
 async function initialise() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const response = await send({ type: "getStatus", url: tab?.url || "" });
+  const contextualSite = tabSurface ? pageParameters.get("site") : null;
+  const [tab] = contextualSite ? [] : await chrome.tabs.query({ active: true, currentWindow: true });
+  const response = await send({
+    type: "getStatus",
+    url: contextualSite ? `https://${contextualSite}/` : tab?.url || ""
+  });
   currentDomain = response.domain;
   apply(response.settings, response.sitePaused, response.health);
 }

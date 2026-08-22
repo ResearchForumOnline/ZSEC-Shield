@@ -33,7 +33,7 @@ if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
 $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json
 if (
     $state.schema -ne "zsec.browser.desktop-preview-installation.v2" -or
-    $state.product -ne "ZSEC Browser Desktop Preview" -or
+    $state.product -ne "ZSEC Browser" -or
     $state.architecture -ne "windows-x64-webview2-shell"
 ) {
     throw "The installation marker does not belong to ZSEC Browser."
@@ -79,7 +79,7 @@ if ($PSCmdlet.ShouldProcess($statePath, "Remove ZSEC Browser installation marker
 
 [ordered]@{
     schema = "zsec.browser.desktop-preview-uninstall-result.v1"
-    product = "ZSEC Browser Desktop Preview"
+    product = "ZSEC Browser"
     application_removed = $true
     shortcuts_removed = $true
     profile_removed = [bool]$RemoveProfile

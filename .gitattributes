@@ -1,1 +1,3 @@
 packaging/licenses/CPython-3.11-LICENSE.txt text eol=lf
+browser/zeroq-shields/rules/easylist.json -text
+browser/zeroq-shields/third_party/easylist-20260817.txt -text

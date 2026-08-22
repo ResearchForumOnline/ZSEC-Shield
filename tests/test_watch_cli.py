@@ -177,7 +177,10 @@ class WatchCliTests(unittest.TestCase):
         self.assertEqual("", output.getvalue())
         self.assertEqual("session_completed", health_record["last_event"])
         self.assertEqual("stopped", health_record["operational_state"])
-        self.assertIn("health_heartbeat", [record["event"] for record in event_records])
+        events_recorded = [record["event"] for record in event_records]
+        self.assertEqual("session_started", events_recorded[0])
+        self.assertIn("scan_completed", events_recorded)
+        self.assertEqual("session_completed", events_recorded[-1])
         self.assertFalse(health_record["policy"]["real_time_protection"])
 
 

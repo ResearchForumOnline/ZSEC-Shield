@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "product": "ZSEC Chromium Downstream Source Lock",
+  "observed_at_utc": "2026-08-22T00:50:09Z",
+  "channel": "Stable",
+  "platform": "Windows",
+  "version": "151.0.7922.174",
+  "milestone": 151,
+  "chromium_main_branch_position": 1654411,
+  "chromium_commit": "39c51c70dd5feca6b6aba5bb7997b595011c553d",
+  "chromium_remote": "https://chromium.googlesource.com/chromium/src.git",
+  "depot_tools_commit": "9f4b1bd59d29f5b9f4acd37733bd10fab3641204",
+  "depot_tools_remote": "https://chromium.googlesource.com/chromium/tools/depot_tools.git",
+  "release_source": {
+    "kind": "ChromiumDash Windows Stable release",
+    "url": "https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Windows&num=1"
+  },
+  "release_policy": {
+    "allow_automatic_lock_rewrite": false,
+    "allow_downgrade": false,
+    "require_manual_review": true,
+    "require_patch_revalidation": true,
+    "require_supported_host_build": true
+  }
+}

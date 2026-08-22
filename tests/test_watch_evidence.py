@@ -81,9 +81,52 @@ class WatchEvidenceTests(unittest.TestCase):
                     },
                 }
             )
+            baselining = json.loads(health_path.read_text(encoding="utf-8"))
+            sink.record(
+                {
+                    "schema": "zsec.shield.watch-event.v1",
+                    "version": "0.2.0",
+                    "session_id": "test-session",
+                    "sequence": 2,
+                    "generated_at": "2026-08-21T12:00:00Z",
+                    "event": "health_heartbeat",
+                    "backend_active": "native",
+                    "operational_incomplete": False,
+                    "reconciliation_phase": "initial_baseline",
+                    "stats": {
+                        "files_hashed": 0,
+                        "reconciliation_files_hashed": 7,
+                        "reconciliation_bytes_hashed": 70,
+                        "event_queue_capacity": 4096,
+                        "event_queue_raw_depth": 3,
+                        "event_queue_pending_paths": 2,
+                        "event_queue_total_depth": 5,
+                    },
+                }
+            )
+            progress = json.loads(health_path.read_text(encoding="utf-8"))
+            sink.record(
+                {
+                    "schema": "zsec.shield.watch-event.v1",
+                    "version": "0.2.0",
+                    "session_id": "test-session",
+                    "sequence": 3,
+                    "generated_at": "2026-08-21T12:00:01Z",
+                    "event": "scan_completed",
+                    "triggers": ["initial_baseline"],
+                    "outcome": "no_configured_rule_matches",
+                    "scan": {"stats": {"files_hashed": 1, "bytes_hashed": 8}},
+                }
+            )
             health = json.loads(health_path.read_text(encoding="utf-8"))
         self.assertEqual("zsec.antivirus.companion-health.v1", health["schema"])
         self.assertEqual("ZSEC Antivirus", health["product"])
+        self.assertEqual("baselining", baselining["operational_state"])
+        self.assertEqual("baselining", progress["operational_state"])
+        self.assertEqual(0, progress["counters"]["files_hashed"])
+        self.assertEqual(7, progress["counters"]["reconciliation_files_hashed"])
+        self.assertEqual(4096, progress["counters"]["event_queue_capacity"])
+        self.assertEqual(5, progress["counters"]["event_queue_total_depth"])
         self.assertEqual("healthy", health["operational_state"])
         self.assertEqual("native", health["backend_active"])
         self.assertEqual(str(Path(sys.executable).resolve()), health["runtime_executable"])

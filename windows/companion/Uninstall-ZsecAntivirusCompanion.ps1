@@ -79,6 +79,24 @@ function Stop-OwnedHeartbeatProcess {
     return $true
 }
 
+function Remove-OwnedCompanionDirectory {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $deadline = [DateTimeOffset]::UtcNow.AddSeconds(10)
+    do {
+        try {
+            Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+            return
+        }
+        catch [IO.IOException] {
+            if ([DateTimeOffset]::UtcNow -ge $deadline) { throw }
+        }
+        catch [UnauthorizedAccessException] {
+            if ([DateTimeOffset]::UtcNow -ge $deadline) { throw }
+        }
+        Start-Sleep -Milliseconds 250
+    } while ($true)
+}
+
 if ($PSVersionTable.PSEdition -eq "Core" -and -not $IsWindows) {
     throw "ZSEC Antivirus companion uninstall is supported only on Windows."
 }
@@ -242,7 +260,7 @@ if ($supervisorKind -eq "hkcu_run" -and $runRegistration.present) {
     $runRemoved = $true
 }
 
-Remove-Item -LiteralPath $installRoot -Recurse -Force -ErrorAction Stop
+Remove-OwnedCompanionDirectory -Path $installRoot
 if ([bool]$installation.install_root_preexisted) {
     New-Item -ItemType Directory -Path $installRoot -Force:$false | Out-Null
 }

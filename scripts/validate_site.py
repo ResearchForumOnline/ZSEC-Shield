@@ -41,6 +41,7 @@ DOWNLOAD_PAGES: dict[str, DownloadPolicy] = {
         "fingerprints": 3,
         "artifacts": {
             "/downloads/zero-security/zsec-shield-0.3.0-windows-x86_64.zip",
+            "/downloads/zero-security/zsec-antivirus-desktop-0.3.6-windows-x86_64.zip",
             "/downloads/zero-security/zsec-shield-0.3.0-macos-arm64.tar.gz",
             "/downloads/zero-security/zsec-shield-0.3.0-linux-x86_64.tar.gz",
             "/downloads/zero-security/zsec_shield-0.3.0-py3-none-any.whl",
@@ -48,9 +49,10 @@ DOWNLOAD_PAGES: dict[str, DownloadPolicy] = {
     },
     "zero-browser/download": {
         "canonical": "https://talktoai.org/zero-browser/download/",
-        "fingerprints": 1,
+        "fingerprints": 2,
         "artifacts": {
-            "/downloads/zero-browser/zsec-browser-shields-0.4.0-chromium-mv3.zip",
+            "/downloads/zero-browser/zsec-browser-community-0.3.6-windows-x64-unsigned.zip",
+            "/downloads/zero-browser/zsec-browser-shields-0.5.2-chromium-mv3.zip",
         },
     },
 }
@@ -63,6 +65,7 @@ class PageParser(HTMLParser):
         self.ids: list[str] = []
         self.h1_count = 0
         self.faq_count = 0
+        self.mobile_nav_count = 0
         self.canonicals: list[str] = []
         self.assets: list[str] = []
         self.meta_descriptions: list[str] = []
@@ -73,7 +76,10 @@ class PageParser(HTMLParser):
             self.ids.append(str(values["id"]))
         if tag == "h1":
             self.h1_count += 1
-        if tag == "details":
+        classes = str(values.get("class") or "").split()
+        if tag == "details" and "mobile-nav" in classes:
+            self.mobile_nav_count += 1
+        elif tag == "details":
             self.faq_count += 1
         if tag == "link" and values.get("rel") == "canonical" and values.get("href"):
             self.canonicals.append(str(values["href"]))
@@ -113,6 +119,7 @@ def validate_page(slug: str, canonical: str) -> None:
     parser = PageParser()
     parser.feed(text)
     require(parser.h1_count == 1, f"{slug}: expected exactly one H1")
+    require(parser.mobile_nav_count == 1, f"{slug}: expected one mobile navigation")
     expected_faqs = FAQ_COUNTS[slug]
     require(parser.faq_count == expected_faqs, f"{slug}: visible FAQ count")
     require(parser.canonicals == [canonical], f"{slug}: canonical mismatch")
@@ -161,6 +168,7 @@ def validate_privacy_page() -> None:
     parser = PageParser()
     parser.feed(text)
     require(parser.h1_count == 1, "zero-browser/privacy: expected exactly one H1")
+    require(parser.mobile_nav_count == 1, "zero-browser/privacy: expected one mobile navigation")
     require(parser.canonicals == [PRIVACY_PAGE], "zero-browser/privacy: canonical mismatch")
     require(len(parser.ids) == len(set(parser.ids)), "zero-browser/privacy: duplicate HTML id")
     require(len(parser.meta_descriptions) == 1, "zero-browser/privacy: description missing")
@@ -183,6 +191,7 @@ def validate_info_page(slug: str, canonical: str) -> None:
     parser = PageParser()
     parser.feed(text)
     require(parser.h1_count == 1, f"{slug}: expected exactly one H1")
+    require(parser.mobile_nav_count == 1, f"{slug}: expected one mobile navigation")
     require(parser.canonicals == [canonical], f"{slug}: canonical mismatch")
     require(len(parser.ids) == len(set(parser.ids)), f"{slug}: duplicate HTML id")
     require(len(parser.meta_descriptions) == 1, f"{slug}: description missing")
@@ -207,6 +216,7 @@ def validate_download_page(slug: str, policy: DownloadPolicy) -> None:
     expected_artifacts = set(policy["artifacts"])
     expected_fingerprints = int(policy["fingerprints"])
     require(parser.h1_count == 1, f"{slug}: expected exactly one H1")
+    require(parser.mobile_nav_count == 1, f"{slug}: expected one mobile navigation")
     require(parser.canonicals == [canonical], f"{slug}: canonical mismatch")
     require(len(parser.ids) == len(set(parser.ids)), f"{slug}: duplicate HTML id")
     require(len(parser.meta_descriptions) == 1, f"{slug}: description missing")

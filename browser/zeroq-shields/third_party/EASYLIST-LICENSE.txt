@@ -1,0 +1,27 @@
+EasyList third-party licensing and attribution
+================================================
+
+Work: EasyList
+Authors: EasyList authors and contributors
+Source: https://github.com/easylist/easylist
+Licence information: https://easylist.to/pages/licence.html
+
+The EasyList project states that its filters are dual licensed under:
+
+- GNU General Public License version 3 or later; or
+- Creative Commons Attribution-ShareAlike 3.0 Unported or later.
+
+This distribution retains the exact source snapshot used to create the bundled
+network rules in easylist-20260817.txt. Exact upstream release, archive, source,
+generated-rule hashes and the transformation policy are recorded in
+easylist-provenance.json and ../easylist.lock.json.
+
+The full GNU GPL version 3 text is available at:
+https://www.gnu.org/licenses/gpl-3.0.txt
+
+The CC BY-SA 3.0 legal code is available at:
+https://creativecommons.org/licenses/by-sa/3.0/legalcode
+
+No Adblock Plus, ABP, Acceptable Ads or eyeo trademark licence or endorsement
+is granted or implied. Adblock Plus is identified only as the factual upstream
+release pipeline from which the pinned EasyList network rules were compiled.

@@ -22,6 +22,7 @@ from zsec_shield.models import ScanIssue
 from zsec_shield.paths import default_state_dir, resolve_keyring_path
 from zsec_shield.quarantine import list_entries, quarantine_finding, restore_entry
 from zsec_shield.readiness import replacement_readiness
+from zsec_shield.recovery_drill import run_recovery_drill
 from zsec_shield.rules import builtin_rules
 from zsec_shield.scanner import DEFAULT_CHUNK_BYTES, DEFAULT_MAX_FILE_BYTES, Scanner, ScannerConfig
 from zsec_shield.status_store import load_last_scan, save_last_scan
@@ -104,7 +105,13 @@ def _add_watch_parser(subparsers: Any, name: str, help_text: str) -> None:
         "--reconcile-seconds",
         type=_positive_float,
         default=60.0,
-        help="full rescan interval used to reduce missed-event risk (default: 60)",
+        help="metadata reconciliation interval used to reduce missed-event risk (default: 60)",
+    )
+    parser.add_argument(
+        "--full-rescan-seconds",
+        type=_positive_float,
+        default=24 * 60 * 60.0,
+        help="cache-independent full hashing interval (default: 86400)",
     )
     parser.add_argument(
         "--duration-seconds",
@@ -241,6 +248,13 @@ def build_parser() -> argparse.ArgumentParser:
     readiness.add_argument("--json", action="store_true")
     readiness.set_defaults(handler=_command_replacement_readiness)
 
+    recovery_drill = subparsers.add_parser(
+        "recovery-drill",
+        help="self-test encrypted quarantine and restore with isolated synthetic data",
+    )
+    recovery_drill.add_argument("--json", action="store_true")
+    recovery_drill.set_defaults(handler=_command_recovery_drill)
+
     quarantine = subparsers.add_parser("quarantine", help="list or restore recovery entries")
     quarantine_subparsers = quarantine.add_subparsers(dest="quarantine_command", required=True)
     quarantine_list = quarantine_subparsers.add_parser("list", help="list recovery entries")
@@ -281,9 +295,13 @@ def _command_check(args: argparse.Namespace) -> int:
             chunk_bytes=args.chunk_bytes,
             cross_filesystems=args.cross_filesystems,
             excluded_paths=(state_dir,),
+            worker_isolation=True,
         ),
     )
-    result = scanner.scan(args.paths)
+    try:
+        result = scanner.scan(args.paths)
+    finally:
+        scanner.close()
     quarantine_results: list[dict[str, Any]] = []
     if args.quarantine:
         for finding in result.findings:
@@ -339,6 +357,8 @@ def _command_check(args: argparse.Namespace) -> int:
         "outcome": outcome,
         "policy": {
             "scanner_mode": "on-demand",
+            "content_worker": "bounded_out_of_process_exact_rules",
+            "content_worker_reduced_privilege": False,
             "feed_behavior": "data-only rules; no commands or actions are accepted",
             "quarantine_requested": bool(args.quarantine),
             "real_time_protection": False,
@@ -418,6 +438,7 @@ def _command_watch(args: argparse.Namespace) -> int:
             chunk_bytes=args.chunk_bytes,
             cross_filesystems=args.cross_filesystems,
             excluded_paths=(state_dir,),
+            worker_isolation=True,
         ),
     )
     evidence = WatchEvidenceSink(
@@ -457,6 +478,7 @@ def _command_watch(args: argparse.Namespace) -> int:
             debounce_seconds=args.debounce_seconds,
             poll_seconds=args.poll_seconds,
             reconcile_seconds=args.reconcile_seconds,
+            full_rescan_seconds=args.full_rescan_seconds,
             cross_filesystems=args.cross_filesystems,
             quarantine=bool(args.quarantine),
             event_queue_size=args.event_queue_size,
@@ -465,8 +487,11 @@ def _command_watch(args: argparse.Namespace) -> int:
         on_record=emit,
         health_check=feed_health,
     )
-    with watch_lock(state_dir):
-        summary = watcher.run(duration_seconds=args.duration_seconds)
+    try:
+        with watch_lock(state_dir):
+            summary = watcher.run(duration_seconds=args.duration_seconds)
+    finally:
+        scanner.close()
     report = {
         "schema": "zsec.shield.watch-report.v1",
         "version": __version__,
@@ -477,6 +502,11 @@ def _command_watch(args: argparse.Namespace) -> int:
             "built_in": len(builtin_rules()),
             "verified_feed": len(feed_rules),
             "total": len(scanner.rules),
+        },
+        "content_worker": {
+            "mode": "bounded_out_of_process_exact_rules",
+            "reduced_privilege": False,
+            "hostile_format_parser_gate_met": False,
         },
         "session": summary.to_dict(),
         "limitations": [
@@ -607,6 +637,13 @@ def _command_status(args: argparse.Namespace) -> int:
         "last_scan_diagnostic": {"available": last_scan is not None, "error": last_scan_error},
         "quarantine_count": len(entries),
         "scanner_mode": "on-demand",
+        "content_worker": {
+            "mode": "bounded_out_of_process_exact_rules",
+            "path_disclosure": False,
+            "broker_digest_verification": True,
+            "reduced_privilege": False,
+            "hostile_format_parser_gate_met": False,
+        },
         "real_time_protection": False,
         "state_dir": str(state_dir),
         "built_in_rules": len(builtin_rules()),
@@ -693,6 +730,22 @@ def _command_replacement_readiness(args: argparse.Namespace) -> int:
     # This command is intended to guard uninstall and cutover automation. The
     # preview cannot return success while replacement evidence is incomplete.
     return EXIT_INCOMPLETE
+
+
+def _command_recovery_drill(args: argparse.Namespace) -> int:
+    result = run_recovery_drill()
+    if args.json:
+        _emit_json(result)
+    else:
+        outcome = "PASSED" if result["passed"] else "FAILED"
+        print(f"ZSEC Antivirus isolated recovery drill: {outcome}")
+        for check in result["checks"]:
+            state = "PASS" if check["passed"] else "FAIL"
+            print(f"- {state} {check['id']}")
+            if check["error"]:
+                print(f"  {check['error']}")
+        print("This local self-test is not independent replacement certification.")
+    return EXIT_OK if result["passed"] else EXIT_INCOMPLETE
 
 
 def _command_quarantine_list(args: argparse.Namespace) -> int:

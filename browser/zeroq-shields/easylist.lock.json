@@ -1,0 +1,52 @@
+{
+  "schema": "zsec.browser.easylist-lock.v1",
+  "upstream": {
+    "product": "Adblock Plus",
+    "publisher": "eyeo GmbH",
+    "release_tag": "adblockplus-4.43.2",
+    "release_commit": "c9bfed65505242f089aa32844feee6c6b8963a04",
+    "release_url": "https://gitlab.com/eyeo/browser-extensions-and-premium/extensions/extensions/-/releases/adblockplus-4.43.2",
+    "archive_url": "https://gitlab.com/eyeo/browser-extensions-and-premium/extensions/extensions/-/releases/adblockplus-4.43.2/downloads/adblockplus-chrome-4.43.2-mv3.zip",
+    "archive_sha256": "88c7e3ea780c8a38183463b7527c79f3ed58134c3b83b527a7a7b00285d8162b",
+    "archive_bytes": 71753194,
+    "sdk_name": "@eyeo/webext-ad-filtering-solution",
+    "sdk_version": "4.1.0",
+    "sdk_license": "GPL-3.0"
+  },
+  "ruleset": {
+    "id": "8C13E995-8F06-4927-BEA7-6C845FB7EEBF",
+    "title": "EasyList",
+    "version": "202608170701",
+    "source_entry": "data/rules/abp/8C13E995-8F06-4927-BEA7-6C845FB7EEBF",
+    "source_sha256": "49a20729376cc23660d5d2dcdbdbf4fdce4e3e744562f65cace098ccd5450c4a",
+    "source_bytes": 2048997,
+    "dnr_entry": "data/rules/dnr/8C13E995-8F06-4927-BEA7-6C845FB7EEBF",
+    "dnr_sha256": "de5188ab9b98ff68f6f06d204c23496b46ae2489ef315eff0b8057a1365b541b",
+    "dnr_bytes": 5412940,
+    "rule_count": 49464,
+    "minimum_rule_id": 696552,
+    "maximum_rule_id": 746015,
+    "priority_map": {
+      "1000": 10,
+      "2000": 20,
+      "2010": 21
+    },
+    "output_path": "rules/easylist.json",
+    "output_sha256": "81d9ba06866a37595397ce62cbc4ccd310c8d9bdc6ed92c9b8b9c89b194ea9d6",
+    "output_bytes": 5314013,
+    "source_output_path": "third_party/easylist-20260817.txt",
+    "acceptable_ads_included": false
+  },
+  "license": {
+    "easylist": "GPL-3.0-or-later OR CC-BY-SA-3.0-or-later",
+    "license_url": "https://easylist.to/pages/licence.html",
+    "attribution": "EasyList authors and contributors"
+  },
+  "policy": {
+    "security_rule_priority_floor": 1000,
+    "easylist_priority_ceiling": 21,
+    "network_filtering_only": true,
+    "acceptable_ads_default": false,
+    "remote_code_allowed": false
+  }
+}

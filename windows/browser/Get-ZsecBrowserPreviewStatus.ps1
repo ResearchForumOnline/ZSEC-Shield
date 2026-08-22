@@ -62,7 +62,7 @@ $statePath = Join-Path $root "install-state.json"
 if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
     [ordered]@{
         schema = "zsec.browser.desktop-preview-status.v2"
-        product = "ZSEC Browser Desktop Preview"
+        product = "ZSEC Browser"
         checked_at = $checkedAt
         installed = $false
         healthy = $false
@@ -75,7 +75,7 @@ $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-J
 $reasons = @()
 if (
     $state.schema -ne "zsec.browser.desktop-preview-installation.v2" -or
-    $state.product -ne "ZSEC Browser Desktop Preview" -or
+    $state.product -ne "ZSEC Browser" -or
     $state.architecture -ne "windows-x64-webview2-shell" -or
     $state.standalone_chromium_fork -ne $false -or
     $state.signed_zsec_binary -ne $false
@@ -235,7 +235,7 @@ catch {
 $healthy = $reasons.Count -eq 0
 [ordered]@{
     schema = "zsec.browser.desktop-preview-status.v2"
-    product = "ZSEC Browser Desktop Preview"
+    product = "ZSEC Browser"
     checked_at = $checkedAt
     installed = $true
     healthy = $healthy

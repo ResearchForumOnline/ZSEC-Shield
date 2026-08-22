@@ -26,6 +26,29 @@ class ScannerTests(unittest.TestCase):
         self.assertEqual([], result.findings)
         self.assertEqual([], result.issues)
 
+    def test_file_filter_can_skip_unchanged_files_without_hashing_them(self) -> None:
+        target = self.root / "unchanged.bin"
+        target.write_bytes(b"unchanged")
+        observed: list[Path] = []
+        result = Scanner(()).scan(
+            [self.root],
+            file_filter=lambda path, _metadata: observed.append(path) is not None,
+        )
+        self.assertEqual([target], observed)
+        self.assertEqual(0, result.stats.files_hashed)
+        self.assertEqual([], result.issues)
+
+    def test_file_filter_failure_is_an_incomplete_scan_issue(self) -> None:
+        target = self.root / "filter-error.bin"
+        target.write_bytes(b"filter error")
+
+        def fail(_path: Path, _metadata: os.stat_result) -> bool:
+            raise RuntimeError("test filter failure")
+
+        result = Scanner(()).scan([self.root], file_filter=fail)
+        self.assertEqual(0, result.stats.files_hashed)
+        self.assertEqual("file_filter_failed", result.issues[0].code)
+
     def test_sha256_rule_matches_exact_digest(self) -> None:
         content = b"deterministic digest test"
         target = self.root / "sample.bin"

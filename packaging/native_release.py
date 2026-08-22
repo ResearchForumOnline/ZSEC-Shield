@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import tomllib
 import zipfile
 from collections.abc import Iterable
@@ -558,9 +559,7 @@ def _smoke_test(executable: Path, state_dir: Path, version: str) -> None:
     try:
         readiness = json.loads(readiness_result.stdout)
     except json.JSONDecodeError as exc:
-        raise ReleaseError(
-            "frozen executable readiness output is not valid JSON"
-        ) from exc
+        raise ReleaseError("frozen executable readiness output is not valid JSON") from exc
     if (
         readiness_result.returncode != 2
         or readiness.get("schema") != "zero.security.replacement-readiness.v1"
@@ -570,6 +569,44 @@ def _smoke_test(executable: Path, state_dir: Path, version: str) -> None:
         or readiness.get("automatic_uninstall_available") is not False
     ):
         raise ReleaseError("frozen executable replacement guard smoke test failed")
+
+    recovery_result = subprocess.run(
+        [str(executable), "recovery-drill", "--json"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    try:
+        recovery = json.loads(recovery_result.stdout)
+    except json.JSONDecodeError as exc:
+        raise ReleaseError("frozen executable recovery-drill output is not valid JSON") from exc
+    recovery_checks = recovery.get("checks")
+    expected_recovery_checks = {
+        "encrypted_authenticated_copy",
+        "authenticated_restore",
+        "no_overwrite_restore",
+        "ciphertext_tamper_rejected",
+        "device_key_loss_and_recovery",
+    }
+    if (
+        recovery_result.returncode != 0
+        or recovery.get("schema") != "zsec.antivirus.recovery-drill.v1"
+        or recovery.get("product") != "ZSEC Antivirus"
+        or recovery.get("scope") != "isolated synthetic data only"
+        or recovery.get("independent_certification") is not False
+        or recovery.get("passed") is not True
+        or not isinstance(recovery_checks, list)
+        or len(recovery_checks) != len(expected_recovery_checks)
+        or not all(
+            isinstance(check, dict) and check.get("passed") is True and check.get("error") is None
+            for check in recovery_checks
+        )
+        or {check.get("id") for check in recovery_checks if isinstance(check, dict)}
+        != expected_recovery_checks
+        or recovery.get("summary") != {"passed": 5, "failed": 0, "total": 5}
+    ):
+        raise ReleaseError("frozen executable recovery-drill smoke test failed")
 
 
 def _create_archive(bundle_root: Path, archive: Path, target_os: str) -> None:
@@ -582,9 +619,20 @@ def _create_archive(bundle_root: Path, archive: Path, target_os: str) -> None:
                     continue
                 if path.is_symlink():
                     raise ReleaseError("Windows ZIP bundle unexpectedly contains a symbolic link")
-                output.write(
-                    path, (Path(bundle_root.name) / path.relative_to(bundle_root)).as_posix()
-                )
+                archive_name = (
+                    Path(bundle_root.name) / path.relative_to(bundle_root)
+                ).as_posix()
+                for attempt in range(20):
+                    try:
+                        output.write(path, archive_name)
+                        break
+                    except PermissionError:
+                        if attempt == 19:
+                            raise
+                        # Endpoint protection can hold a newly staged runtime file
+                        # momentarily. Retry the exact immutable input without
+                        # weakening manifest or hash verification.
+                        time.sleep(0.1)
         return
     with tarfile.open(archive, mode="x:gz", compresslevel=9, format=tarfile.PAX_FORMAT) as output:
         output.add(bundle_root, arcname=bundle_root.name, recursive=True)

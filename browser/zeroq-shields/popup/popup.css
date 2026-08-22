@@ -9,13 +9,16 @@
 
 body { margin: 0; min-width: 370px; background: radial-gradient(circle at 80% -10%, #0c4b43 0, transparent 42%), #07100f; }
 
+body.tab-surface { min-height: 100vh; display: grid; place-items: start center; padding: 44px 20px; }
+body.tab-surface main { width: min(680px, 100%); border: 1px solid #1d3c35; border-radius: 26px; background: #081411e8; box-shadow: 0 28px 90px #0008, inset 0 1px #ffffff0b; }
+
 main { padding: 18px; }
 
 header { display: flex; align-items: center; gap: 11px; margin-bottom: 16px; }
 header img { border-radius: 13px; box-shadow: 0 0 24px #00e0a644; }
 h1 { margin: 1px 0 0; font-size: 19px; letter-spacing: -0.02em; }
 .eyebrow { margin: 0; color: #65e4c1; font-size: 9px; font-weight: 800; letter-spacing: .18em; }
-.preview { margin-left: auto; border: 1px solid #2c5a50; border-radius: 999px; padding: 4px 7px; color: #9dbbb4; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+.edition { margin-left: auto; border: 1px solid #2c5a50; border-radius: 999px; padding: 4px 7px; color: #9dbbb4; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
 
 .hero { display: flex; align-items: center; gap: 12px; border: 1px solid #1a4e43; border-radius: 18px; padding: 15px; background: linear-gradient(145deg, #0d2b25cc, #0a1514cc); box-shadow: inset 0 1px #ffffff0c; }
 .orb { width: 12px; height: 12px; border-radius: 50%; background: #18e0a7; box-shadow: 0 0 0 5px #18e0a71a, 0 0 20px #18e0a7; }

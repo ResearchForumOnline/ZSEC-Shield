@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#07101f">
   <link rel="canonical" href="https://talktoai.org/zero-security/download/">
   <link rel="icon" href="../../assets/zero-security-mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="../../assets/style.css?v=20260821-zsec2">
+  <link rel="stylesheet" href="../../assets/style.css?v=20260821-zsec5">
 
   <meta property="og:site_name" content="TalkToAI">
   <meta property="og:locale" content="en_GB">
@@ -34,7 +34,7 @@
         <span class="brand-mark" aria-hidden="true">Z</span>
         <span>ZSEC Antivirus</span>
         <span class="brand-product">Download</span>
-        <span class="preview-chip">Community 0.3</span>
+        <span class="preview-chip">Desktop security</span>
       </a>
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="#downloads">Downloads</a>
@@ -43,6 +43,16 @@
         <a href="#boundaries">Safety</a>
         <a class="nav-switch" href="../../zero-browser/download/">ZSEC Browser <span aria-hidden="true">→</span></a>
       </nav>
+      <details class="mobile-nav">
+        <summary>Menu</summary>
+        <nav aria-label="Mobile navigation">
+          <a href="#downloads">Downloads</a>
+          <a href="#install">Install</a>
+          <a href="#protect">Start protection</a>
+          <a href="#boundaries">Safety</a>
+          <a href="../../zero-browser/download/">ZSEC Browser <span aria-hidden="true">→</span></a>
+        </nav>
+      </details>
     </div>
   </header>
 
@@ -50,18 +60,18 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="container hero-grid">
         <div class="hero-copy">
-          <p class="hero-kicker">Windows · macOS · Linux · version 0.3.0</p>
-          <h1 id="hero-title">Automatic file monitoring you can verify.</h1>
-          <p class="lede">ZSEC Antivirus 0.3 can watch selected folders using native operating-system file events, scan changed files locally, verify signed data-only rules and place configured matches into authenticated encrypted quarantine when you explicitly enable it.</p>
+          <p class="hero-kicker">Windows desktop 0.3.6 · macOS and Linux core 0.3.0</p>
+          <h1 id="hero-title">Install automatic local file protection.</h1>
+          <p class="lede">ZSEC Antivirus watches selected folders with native operating-system file events, scans changed files locally, verifies signed data-only rules and can move exact configured matches into authenticated encrypted quarantine. Windows includes the full graphical protection centre.</p>
           <div class="hero-actions">
             <a class="button" href="#downloads">Choose your platform <span aria-hidden="true">↓</span></a>
             <a class="button button-secondary" href="#protect">See the protection command</a>
           </div>
-          <p class="microcopy"><strong>Install boundary:</strong> these packages are unsigned and detect after filesystem changes rather than at the kernel access boundary. Verify the exact SHA-256 and keep Malwarebytes, Microsoft Defender or native platform controls active.</p>
+          <p class="microcopy"><strong>Install boundary:</strong> these unsigned Community packages detect after filesystem changes rather than at the kernel access boundary. The Windows graphical 0.3.6 package is built from immutable revision <code>9e8b458</code>; it is not publisher-signed, independently efficacy-tested or qualified as a primary antivirus. Verify exact SHA-256 values and keep Malwarebytes, Microsoft Defender or native platform controls active.</p>
         </div>
 
         <div class="hero-art" role="img" aria-label="ZSEC Antivirus foreground protection status panel">
-          <span class="concept-label">Working automatic companion · Community 0.3</span>
+          <span class="concept-label">Automatic local companion · active user session</span>
           <div class="status-window" aria-hidden="true">
             <div class="window-bar">
               <span class="window-dot"></span>
@@ -72,7 +82,7 @@
             <div class="window-body">
               <div class="status-row"><span class="status-name">Windows backend</span><span class="status-value">Native events</span></div>
               <div class="status-row"><span class="status-name">macOS / Linux</span><span class="status-value">Native events</span></div>
-              <div class="status-row"><span class="status-name">Pre-access blocking</span><span class="status-value planned">Not provided</span></div>
+              <div class="status-row"><span class="status-name">Detection point</span><span class="status-value planned">After file change</span></div>
             </div>
           </div>
         </div>
@@ -87,11 +97,27 @@
       </div>
     </aside>
 
+    <section class="section section-muted" id="windows-desktop" aria-labelledby="windows-desktop-title">
+      <div class="container">
+        <div class="section-head">
+          <div><p class="section-label">Windows graphical client</p><h2 id="windows-desktop-title">A full local dashboard with a verifiable Community package.</h2></div>
+          <p>The Community 0.3.6 client exposes overview, scans, automatic monitoring, encrypted quarantine, signed feeds, reports, evidence-backed health, security/YubiKey status, replacement blockers and settings in one interface.</p>
+        </div>
+        <div class="split">
+          <article class="panel panel-positive"><h3>Implemented and runtime accepted</h3><ul><li>Modern dark protection centre with persistent navigation, responsive evidence cards, animated operation status and reduced-motion support.</li><li>Concurrent bounded event ingestion during baseline, coalescing repeated activity without silently losing coverage.</li><li>Five-control authenticated recovery self-test: encrypted copy, restore, no-overwrite, tamper rejection and device-key recovery.</li><li>Path-free bounded exact-rule worker with independent broker SHA-256 verification and fail-closed protocol outcomes.</li><li>Automatic companion installation and upgrades with executable integrity, process, registration and fresh-heartbeat verification.</li><li>Transactional versioned activation with rollback of launcher, shortcuts and companion state if installation fails.</li><li>Existing Malwarebytes and Windows Security state preserved during install and test.</li></ul></article>
+          <article class="panel panel-private"><h3>Primary-provider replacement readiness</h3><ul><li>No publisher Authenticode signature or trusted timestamp.</li><li>The exact-rule worker is same-user process separation, not an AppContainer hostile-parser sandbox.</li><li>No protected service, kernel pre-access mediation or Windows Security provider registration.</li><li>No independently validated efficacy or false-positive benchmark and no provider removal path.</li></ul></article>
+        </div>
+        <div class="cta-actions"><a class="button" href="/downloads/zero-security/zsec-antivirus-desktop-0.3.6-windows-x86_64.zip" download>Download Windows desktop 0.3.6 <span aria-hidden="true">↓</span></a><a class="button button-secondary" href="/downloads/zero-security/zsec-antivirus-desktop-0.3.6-windows-x86_64.zip.sha256" download>Checksum</a></div>
+        <p><strong>SHA-256:</strong> <code>4da16cd0f6028ab964b5eb92f3c3eb2fcc92bd01c645a45f7a2e40bc16e8f51f</code></p>
+        <p><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/9e8b458688529e82cc0450e0e5ddcad001d73169/apps/windows-ui">Inspect the immutable Windows GUI source</a>, <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/blob/9e8b458688529e82cc0450e0e5ddcad001d73169/docs/EXACT_RULE_WORKER.md">the exact worker boundary</a> and <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/9e8b458688529e82cc0450e0e5ddcad001d73169/windows/desktop">the hash-verifying installer scripts</a>.</p>
+      </div>
+    </section>
+
     <section class="section" id="downloads" aria-labelledby="downloads-title">
       <div class="container">
         <div class="section-head">
           <div><p class="section-label">Platform packages</p><h2 id="downloads-title">Download the exact build for this computer.</h2></div>
-          <p>Every archive has a separate SHA-256 file and clean source revision <code>2e46d12c345e853282af97214b35b3c3badaea86</code>. A mismatch means stop and delete the download.</p>
+          <p>Every archive has a separate SHA-256 file and <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/2e46d12c345e853282af97214b35b3c3badaea86">immutable source revision <code>2e46d12c345e853282af97214b35b3c3badaea86</code></a>. A mismatch means stop and delete the download.</p>
         </div>
         <div class="feature-grid">
           <article class="card card-accent">
@@ -177,7 +203,7 @@
 
     <section class="section cta-section" aria-labelledby="cta-title">
       <div class="container cta-box">
-        <div><p class="section-label">Browser privacy layer</p><h2 id="cta-title">Add ZSEC Browser Shields.</h2><p>ZSEC Browser Shields Community 0.3 includes 38 packaged ad/tracker targets, common tracking-link cleanup and per-site controls in Chromium 120+.</p></div>
+        <div><p class="section-label">Browser privacy layer</p><h2 id="cta-title">Add ZSEC Browser Shields.</h2><p>ZSEC Browser Shields Community 0.5.2 contains 49,464 pinned EasyList network rules, 39 focused privacy rules, two link-cleaning rules, 19 selected EasyList-derived YouTube cosmetic selectors, local per-site controls and optional High-Risk Browsing. Acceptable Ads is not included. It is an unsigned, manually installed Manifest V3 extension—not a spyware detector.</p></div>
         <div class="cta-actions"><a class="button" href="../../zero-browser/download/">Get ZSEC Browser</a><a class="button button-secondary" href="../">ZSEC Antivirus overview</a></div>
       </div>
     </section>
@@ -185,11 +211,11 @@
 
   <footer class="site-footer">
     <div class="container footer-grid">
-      <div class="footer-brand"><a class="brand" href="../"><span class="brand-mark" aria-hidden="true">Z</span><span>ZSEC Antivirus</span></a><p>Open-core, local-first security engineering from TalkToAI. Community 0.3 is an unsigned automatic companion package.</p></div>
+      <div class="footer-brand"><a class="brand" href="../"><span class="brand-mark" aria-hidden="true">Z</span><span>ZSEC Antivirus</span></a><p>Open-core, local-first security engineering from TalkToAI. Community 0.3 includes an unsigned Windows graphical client and cross-platform automatic companion packages.</p></div>
       <div><p class="footer-title">Download</p><ul class="footer-links"><li><a href="#downloads">Platform packages</a></li><li><a href="#install">Verification and install</a></li><li><a href="#protect">Protection command</a></li></ul></div>
-      <div><p class="footer-title">Project</p><ul class="footer-links"><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield">GitHub repository</a></li><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/security/policy">Report a vulnerability</a></li><li><a href="../../zero-browser/">ZSEC Browser</a></li></ul></div>
+      <div><p class="footer-title">Project</p><ul class="footer-links"><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/2e46d12c345e853282af97214b35b3c3badaea86">Immutable 0.3 source</a></li><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield">GitHub repository</a></li><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/security/policy">Report a vulnerability</a></li><li><a href="../../zero-browser/">ZSEC Browser</a></li></ul></div>
     </div>
-    <div class="container footer-bottom"><p>© 2026 TalkToAI. ZSEC Antivirus Community 0.3.</p><p>Last reviewed <time datetime="2026-08-21">21 August 2026</time>.</p></div>
+    <div class="container footer-bottom"><p>© 2026 TalkToAI. ZSEC Antivirus Community 0.3.</p><p>Last reviewed <time datetime="2026-08-22">22 August 2026</time>.</p></div>
   </footer>
 </body>
 </html>

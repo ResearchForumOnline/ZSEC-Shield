@@ -5,14 +5,19 @@ from __future__ import annotations
 import hashlib
 import os
 import stat
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from zsec_shield.errors import ScanConfigurationError
+from zsec_shield.errors import ScanConfigurationError, ScanWorkerError
 from zsec_shield.models import FileFinding, Rule, RuleMatch, ScanIssue, ScanResult, ScanStats
 from zsec_shield.rules import highest_severity
+from zsec_shield.scan_worker import (
+    DEFAULT_WORKER_MAX_REQUESTS,
+    DEFAULT_WORKER_TIMEOUT_SECONDS,
+    BoundedScanWorker,
+)
 from zsec_shield.util import format_utc, utc_now
 
 DEFAULT_MAX_FILE_BYTES = 64 * 1024 * 1024
@@ -25,6 +30,9 @@ class ScannerConfig:
     chunk_bytes: int = DEFAULT_CHUNK_BYTES
     cross_filesystems: bool = False
     excluded_paths: tuple[Path, ...] = ()
+    worker_isolation: bool = False
+    worker_timeout_seconds: float = DEFAULT_WORKER_TIMEOUT_SECONDS
+    worker_max_requests: int = DEFAULT_WORKER_MAX_REQUESTS
 
 
 def _absolute(path: Path) -> Path:
@@ -61,6 +69,10 @@ class Scanner:
             raise ScanConfigurationError("max_file_bytes must be between 1 and 16 GiB")
         if not 4096 <= self.config.chunk_bytes <= 16 * 1024 * 1024:
             raise ScanConfigurationError("chunk_bytes must be between 4096 and 16 MiB")
+        if not 1 <= self.config.worker_timeout_seconds <= 600:
+            raise ScanConfigurationError("worker_timeout_seconds must be between 1 and 600")
+        if not 1 <= self.config.worker_max_requests <= 100_000:
+            raise ScanConfigurationError("worker_max_requests must be between 1 and 100000")
         identifiers = [rule.rule_id for rule in self.rules]
         if len(set(identifiers)) != len(identifiers):
             raise ScanConfigurationError("rule IDs must be unique")
@@ -76,8 +88,35 @@ class Scanner:
             (len(rule.literal or b"") for rule in self._literal_rules),
             default=0,
         )
+        self._worker = (
+            BoundedScanWorker(
+                self.rules,
+                chunk_bytes=self.config.chunk_bytes,
+                max_file_bytes=self.config.max_file_bytes,
+                timeout_seconds=self.config.worker_timeout_seconds,
+                max_requests=self.config.worker_max_requests,
+            )
+            if self.config.worker_isolation
+            else None
+        )
 
-    def scan(self, roots: list[Path]) -> ScanResult:
+    def close(self) -> None:
+        if self._worker is not None:
+            self._worker.close()
+
+    def __enter__(self) -> Scanner:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.close()
+
+    def scan(
+        self,
+        roots: list[Path],
+        *,
+        file_filter: Callable[[Path, os.stat_result], bool] | None = None,
+        file_observer: Callable[[Path, os.stat_result, bool], None] | None = None,
+    ) -> ScanResult:
         if not roots:
             raise ScanConfigurationError("at least one scan path is required")
         started = utc_now()
@@ -92,7 +131,21 @@ class Scanner:
                 if key in seen_paths:
                     continue
                 seen_paths.add(key)
+                if file_filter is not None:
+                    try:
+                        if not file_filter(path, metadata):
+                            continue
+                    except Exception as exc:
+                        self._issue(issues, path, "file_filter_failed", exc)
+                        continue
+                hashed_before = stats.files_hashed
                 finding = self._scan_file(path, metadata, stats, issues)
+                hashed = stats.files_hashed > hashed_before
+                if file_observer is not None:
+                    try:
+                        file_observer(path, metadata, hashed)
+                    except Exception as exc:
+                        self._issue(issues, path, "file_observer_failed", exc)
                 if finding is not None:
                     findings.append(finding)
         findings.sort(key=lambda finding: os.path.normcase(finding.path))
@@ -226,34 +279,46 @@ class Scanner:
             if opened.st_size > self.config.max_file_bytes:
                 stats.skipped_too_large += 1
                 return None
-            digest = hashlib.sha256()
-            literal_matches: set[str] = set()
-            tail = b""
-            bytes_read = 0
-            while True:
-                chunk = os.read(descriptor, self.config.chunk_bytes)
-                if not chunk:
-                    break
-                bytes_read += len(chunk)
-                if bytes_read > self.config.max_file_bytes:
-                    stats.skipped_too_large += 1
+            if self._worker is not None:
+                try:
+                    worker_scan = self._worker.inspect(descriptor, opened)
+                except ScanWorkerError as exc:
+                    self._issue(issues, path, "content_worker_failed", exc)
                     return None
-                digest.update(chunk)
-                window = tail + chunk
-                for rule in self._literal_rules:
-                    if rule.rule_id not in literal_matches and (rule.literal or b"") in window:
-                        literal_matches.add(rule.rule_id)
-                if self._maximum_literal > 1:
-                    tail = window[-(self._maximum_literal - 1) :]
-            after = os.fstat(descriptor)
-            if (
-                after.st_size != opened.st_size
-                or after.st_mtime_ns != opened.st_mtime_ns
-                or bytes_read != opened.st_size
-            ):
-                self._issue(issues, path, "file_changed_during_scan", "file changed while hashing")
-                return None
-            hex_digest = digest.hexdigest()
+                hex_digest = worker_scan.sha256
+                bytes_read = worker_scan.bytes_read
+                literal_matches = set(worker_scan.literal_rule_ids)
+            else:
+                digest = hashlib.sha256()
+                literal_matches = set()
+                tail = b""
+                bytes_read = 0
+                while True:
+                    chunk = os.read(descriptor, self.config.chunk_bytes)
+                    if not chunk:
+                        break
+                    bytes_read += len(chunk)
+                    if bytes_read > self.config.max_file_bytes:
+                        stats.skipped_too_large += 1
+                        return None
+                    digest.update(chunk)
+                    window = tail + chunk
+                    for rule in self._literal_rules:
+                        if rule.rule_id not in literal_matches and (rule.literal or b"") in window:
+                            literal_matches.add(rule.rule_id)
+                    if self._maximum_literal > 1:
+                        tail = window[-(self._maximum_literal - 1) :]
+                after = os.fstat(descriptor)
+                if (
+                    after.st_size != opened.st_size
+                    or after.st_mtime_ns != opened.st_mtime_ns
+                    or bytes_read != opened.st_size
+                ):
+                    self._issue(
+                        issues, path, "file_changed_during_scan", "file changed while hashing"
+                    )
+                    return None
+                hex_digest = digest.hexdigest()
             matched_rules = [
                 rule for rule in self._literal_rules if rule.rule_id in literal_matches
             ]

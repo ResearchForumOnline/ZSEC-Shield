@@ -1,5 +1,77 @@
 # Changelog
 
+## 0.3.6 - 2026-08-22
+
+- Added a responsive, keyboard-accessible animated Windows protection-centre
+  dashboard with reduced-motion behavior and one-, two-, or four-column status
+  cards sized to the actual window.
+- Added transactional automatic Windows companion provisioning, upgrade,
+  30-second health verification, and prior-version rollback while preserving
+  the existing antivirus provider.
+- Hardened ZSEC Browser new-tab and Shields-control navigation with serialized
+  mutations, navigation-ID correlated completion, failed-tab rollback,
+  extension-origin locking, truthful failure
+  status, and Chromium runtime-update awareness.
+- Added exact Browser Shields ruleset, regex, dynamic-rule and settings
+  transaction verification; Browser Shields is now 0.5.2 and ZSEC Browser is
+  0.3.6.
+
+## 0.3.5 - 2026-08-22
+
+- timestamp raw filesystem events at the observer boundary so debounce time is
+  not restarted by delayed consumer-thread ingestion during a large baseline;
+- preserve bounded priority scans between inventory files, preventing a new
+  download or write from being postponed behind the full first inventory; and
+- retain fail-closed incomplete reporting, encrypted quarantine and mandatory
+  coexistence with the registered primary antivirus.
+
+## 0.3.4 - 2026-08-22
+
+- add four live overview cards, finite busy animations, hover feedback and a
+  strict companion truth table to the Windows protection centre;
+- prioritise up to 32 due filesystem-event scans between baseline files without
+  unbounding the queue or weakening scan evidence; and
+- add stale-session, sequence, version, integrity and heartbeat validation to
+  the installed companion status shown in the GUI.
+
+## 0.3.3 - 2026-08-22
+
+- add an isolated Antivirus recovery self-test covering automatic encrypted
+  quarantine, authenticated restore, no-overwrite behavior, ciphertext-tamper
+  rejection and simulated device-key loss/recovery using synthetic data only;
+- expose the validated recovery self-test in the Windows protection-centre GUI
+  while keeping independent replacement certification as a separate hard gate;
+- make the Browser runtime harness tolerate a bounded transient evidence-file
+  lock during exact installed-runtime acceptance.
+
+## 0.3.2 - 2026-08-22
+
+- expanded the reversible Windows companion installer from one protected root to
+  one through eight exact roots, with safe existing-folder defaults and strict
+  state-directory/reparse-point exclusion;
+- added bounded heartbeat progress evidence during mandatory baseline and
+  reconciliation scans so long scans do not look like a dead protection process;
+- preserved the post-change Community boundary, existing-provider coexistence,
+  opt-in encrypted quarantine, and the fail-closed Malwarebytes replacement gate;
+  and
+- advanced the new desktop bytes to a distinct side-by-side version instead of
+  rewriting the published 0.3.1 artifact.
+
+## 0.3.1 - 2026-08-22
+
+- added the path-free bounded exact-rule content worker used by CLI scan and
+  foreground watch commands;
+- added independent broker SHA-256 verification, strict correlation IDs,
+  duplicate/unknown-field rejection, bounded frames, periodic worker
+  replacement and fail-closed worker/protocol outcomes;
+- exposed the exact worker boundary in status and GUI Health evidence without
+  claiming reduced privilege, hostile-format parsing or a completed replacement
+  gate;
+- repaired the Windows GUI watch contract so verified metadata-reconciliation
+  events remain renderable rather than being rejected as unknown; and
+- preserved 0.3.0 artifact identity and advanced the new bytes to a distinct
+  candidate version for side-by-side installation and rollback.
+
 ## 0.3.0 - 2026-08-21
 
 - reserved version 0.3.0 for this materially new feature set rather

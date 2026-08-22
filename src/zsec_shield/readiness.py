@@ -28,11 +28,11 @@ _FOUNDATIONS: tuple[tuple[str, str], ...] = (
     ),
     (
         "authenticated_encrypted_quarantine",
-        "ZSV2 authenticated encrypted quarantine is implemented as a preview.",
+        "ZSV2 authenticated encrypted quarantine is implemented in the Community channel.",
     ),
     (
         "cross_platform_native_archives",
-        "Unsigned preview archives are built and smoke-tested on Windows, macOS and Linux.",
+        "Unsigned Community archives are built and smoke-tested on Windows, macOS and Linux.",
     ),
 )
 
@@ -262,7 +262,7 @@ def replacement_readiness(system: str | None = None) -> dict[str, Any]:
         ),
         "next_action": (
             "Keep the currently active antivirus and operating-system protections enabled; "
-            "use Zero Security only as an on-demand preview."
+            "use Zero Security as an on-demand companion while the production gates remain unmet."
         ),
     }
 

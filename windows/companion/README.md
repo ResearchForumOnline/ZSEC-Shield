@@ -1,5 +1,13 @@
 # ZSEC Antivirus Windows companion
 
+The Windows desktop package runs `Sync-ZsecAntivirusCompanion.ps1` as part of
+its activation transaction. A fresh install provisions and starts the owned
+per-user supervisor automatically. An upgrade preserves reviewed nonvolatile roots and
+quarantine preference, migrates the companion to the new immutable engine,
+waits for verified registration, integrity, process identity and a fresh heartbeat,
+then reports either baseline-in-progress or healthy. It restores the prior companion if verification
+fails. This lifecycle does not modify or remove an existing antivirus provider.
+
 Status: reversible per-user automation for the existing foreground post-change
 engine. It is not a Windows service, kernel minifilter, AMSI/ELAM provider,
 Windows Security provider, or primary antivirus. Keep Malwarebytes, Microsoft
@@ -8,8 +16,8 @@ enabled.
 
 The scripts are intentionally review-first. No repository build or test invokes
 the mutation path. `-PlanOnly` resolves the preferred current-user Scheduled
-Task, the access-denied-only `HKCU` Run fallback, executable hashes, Downloads
-root, state paths, settings, and rollback boundary without creating a directory,
+Task, the access-denied-only `HKCU` Run fallback, executable hashes, protected
+roots, state paths, settings, and rollback boundary without creating a directory,
 registering a task, or writing the registry.
 
 ## Review the exact plan
@@ -22,10 +30,16 @@ powershell.exe -NoLogo -NoProfile -ExecutionPolicy RemoteSigned `
   -PlanOnly
 ```
 
-The default protected root is `%USERPROFILE%\Downloads`. Use `-ProtectedRoot`
-to choose another existing, regular, non-reparse directory. The installer finds
-`zero-security.exe`, retaining `zsec-shield.exe` as a compatibility fallback, or
-accepts an explicit reviewed `-CliPath`.
+The secure Windows default monitors each existing current-user Desktop,
+Downloads and Documents folder. The volatile Windows Temp directory is not a
+default root because applications routinely hold transient files with exclusive
+locks; those incomplete reads would correctly degrade the session. A standard folder that Windows
+resolves to an absent or reparse-point location is skipped instead of making an
+automatic install fail. Pass one to eight `-ProtectedRoot` values to use a
+different bounded set of existing, regular, non-reparse directories. The installer deduplicates exact
+roots and refuses any root inside, equal to, or containing its mutable state
+directory. It finds `zero-security.exe`, retaining `zsec-shield.exe` as a
+compatibility fallback, or accepts an explicit reviewed `-CliPath`.
 
 Plan output fixes the safety policy to:
 
@@ -89,20 +103,25 @@ The generated configuration is deliberately conservative:
 | Control | Bound |
 | --- | --- |
 | Scanner concurrency | One serial watcher/scanner process |
-| Raw event queue | 8,192 entries; overflow ends incomplete |
-| Duplicate events | 0.75-second quiet-period debounce |
-| File input | 64 MiB maximum per file, streamed in 1 MiB chunks |
-| Reconciliation | One Downloads rescan every five minutes |
+| Event work | 8,192 total raw/coalesced paths; either overflow ends incomplete |
+| Duplicate events | 0.75-second quiet-period debounce plus a hard anti-starvation age |
+| File input | 256 MiB maximum per file, streamed in 1 MiB chunks |
+| Reconciliation | Five-minute metadata inventory; only new, changed or unresolved files are hashed |
+| Cache-independent sweep | Full content rescan every 24 hours and on every start |
 | Process scheduling | Task priority `8` plus child `BelowNormal` priority |
 | Event evidence | 4 MiB current NDJSON plus three rotated backups |
 | Health | Atomic heartbeat every 30 seconds; stale after 105 seconds |
 | Restart | Scheduled Task: at most three retries, one minute apart; HKCU Run: no automatic retry |
 | Multiple instances | Scheduled Task `IgnoreNew`; both supervisors use the engine's state-directory lock |
 
-These bounds limit queue memory, file-buffer memory, concurrency, scheduling
-priority, log storage, and restart churn. They are not a Windows Job Object or a
-hard CPU/RSS quota; sustained file churn can still use CPU and disk I/O. A future
-hard resource sandbox requires its own measured design and compatibility gates.
+Only a completed stable hash enters the session-local reconciliation snapshot.
+Oversized, unreadable and unstable files remain unresolved and health stays
+incomplete. Metadata-only passes have their own evidence and never claim a clean
+or no-match content scan. These bounds limit queue memory, file-buffer memory,
+concurrency, scheduling priority, log storage, restart churn and unchanged-tree
+disk reads. They are not a Windows Job Object or a hard CPU/RSS quota; sustained
+file churn and the daily full sweep can still use CPU and disk I/O. A future hard
+resource sandbox requires its own measured design and compatibility gates.
 
 The task settings follow Microsoft's documented `New-ScheduledTaskSettingsSet`
 controls for `IgnoreNew`, background priority, restart count, and restart
@@ -128,7 +147,8 @@ A healthy result requires all of the following:
 4. Scheduled Task state `Running`, when that supervisor is installed;
 5. a fresh heartbeat from a live process whose executable path matches the
    configured CLI;
-6. watcher operational state `healthy`; and
+6. watcher operational state `healthy` only after the initial baseline completed
+   (startup remains `baselining`); and
 7. Windows Security Center aggregate antivirus health `GOOD` from the supported
    `WscGetSecurityProviderHealth(WSC_SECURITY_PROVIDER_ANTIVIRUS)` API.
 

@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "product": "ZSEC Chromium Downstream Patch Series",
+  "base_commit": "39c51c70dd5feca6b6aba5bb7997b595011c553d",
+  "series": [],
+  "policy": {
+    "maximum_patch_count": 64,
+    "maximum_patch_bytes": 5242880,
+    "require_git_format_patch": true,
+    "allowed_extension": ".patch",
+    "forbidden_added_line_fragments": [
+      "--no-sandbox",
+      "--disable-web-security",
+      "--ignore-certificate-errors",
+      "--allow-running-insecure-content",
+      "--disable-site-isolation-trials",
+      "is_chrome_branded=true",
+      "is_chrome_branded = true",
+      "google_api_key",
+      "google_default_client_id",
+      "google_default_client_secret"
+    ]
+  }
+}

@@ -34,6 +34,14 @@ a native graphical desktop application or operating-system security provider.
 Windows builds are ZIP files. macOS and Linux builds are `tar.gz` files so executable
 permissions and any internal symbolic links are preserved.
 
+The separate Windows desktop archive uses a versioned per-user install root and
+validates every manifest-listed file before activation. Activation is
+transactional: the previous `current.json` and both shortcuts are copied into a
+product-owned transaction directory, both replacement shortcuts are prepared,
+and any activation failure restores the prior record and shortcuts before the
+new version directory is removed. This rollback protects ZSEC-owned desktop
+state; it does not alter or roll back any antivirus provider.
+
 ## Integrity and publisher identity
 
 Every workflow artifact has a SHA-256 sidecar, and a draft GitHub Release receives a
@@ -67,16 +75,19 @@ zsec-shield --version
 zsec-shield watch --help
 zsec-shield --state-dir ./temporary-state status --json
 zsec-shield replacement-readiness --json
+zsec-shield recovery-drill --json
 ```
 
-The build script performs the version, watch-command, and status checks, then requires the
-replacement-readiness command to return exit `2` with
+The build script performs the version, watch-command, status and isolated synthetic
+recovery-drill checks, then requires the replacement-readiness command to return exit `2` with
 `decision: keep_existing_protection`. That deliberate non-success is a packaging
 invariant for the preview, not a failed build. The readiness check does not create
-the disposable state directory or change installed protection.
+the disposable state directory or change installed protection. The recovery drill
+must return all five exact v1 control results while continuing to state that it is
+not independent certification.
 
 Python/wheel installation exposes the `zsec-antivirus`, `zero-security`, and
-`zsec-shield` command aliases in the 0.3.0 development candidate. Native archives
+`zsec-shield` command aliases in the 0.3.6 Community release. Native archives
 retain the `zsec-shield` executable name for compatibility.
 
 Native manifest v2 lists both `on-demand` and

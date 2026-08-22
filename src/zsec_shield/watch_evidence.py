@@ -246,10 +246,19 @@ class WatchEvidenceSink:
             policy = payload.get("policy")
             if isinstance(policy, dict):
                 self.policy = policy
-            self.operational_state = "healthy"
+            self.operational_state = "baselining"
         elif event == "health_issue":
             self.operational_state = "degraded"
         elif event == "scan_completed":
+            self.last_outcome = _optional_string(payload.get("outcome"))
+            scan = payload.get("scan")
+            if isinstance(scan, dict) and isinstance(scan.get("stats"), dict):
+                self.counters = _integer_values(scan["stats"])
+            if self.last_outcome == "incomplete":
+                self.operational_state = "degraded"
+            elif payload.get("triggers") == ["initial_baseline"]:
+                self.operational_state = "healthy"
+        elif event == "reconciliation_completed":
             self.last_outcome = _optional_string(payload.get("outcome"))
             scan = payload.get("scan")
             if isinstance(scan, dict) and isinstance(scan.get("stats"), dict):

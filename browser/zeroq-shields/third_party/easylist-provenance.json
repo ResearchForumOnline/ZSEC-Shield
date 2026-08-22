@@ -1,0 +1,46 @@
+{
+  "license": {
+    "attribution": "EasyList authors and contributors",
+    "easylist": "GPL-3.0-or-later OR CC-BY-SA-3.0-or-later",
+    "license_url": "https://easylist.to/pages/licence.html"
+  },
+  "output": {
+    "actions": {
+      "allow": 545,
+      "allowAllRequests": 4,
+      "block": 48905,
+      "modifyHeaders": 3,
+      "redirect": 7
+    },
+    "bytes": 5314013,
+    "maximum_rule_id": 746015,
+    "minimum_rule_id": 696552,
+    "path": "rules/easylist.json",
+    "priorities": [
+      10,
+      20,
+      21
+    ],
+    "rules": 49464,
+    "sha256": "81d9ba06866a37595397ce62cbc4ccd310c8d9bdc6ed92c9b8b9c89b194ea9d6"
+  },
+  "policy": {
+    "acceptable_ads_included": false,
+    "network_filtering_only": true,
+    "remote_code_allowed": false,
+    "security_rule_priority_floor": 1000
+  },
+  "schema": "zsec.browser.easylist-provenance.v1",
+  "source": {
+    "archive_sha256": "88c7e3ea780c8a38183463b7527c79f3ed58134c3b83b527a7a7b00285d8162b",
+    "archive_url": "https://gitlab.com/eyeo/browser-extensions-and-premium/extensions/extensions/-/releases/adblockplus-4.43.2/downloads/adblockplus-chrome-4.43.2-mv3.zip",
+    "dnr_sha256": "de5188ab9b98ff68f6f06d204c23496b46ae2489ef315eff0b8057a1365b541b",
+    "publisher": "eyeo GmbH",
+    "release_commit": "c9bfed65505242f089aa32844feee6c6b8963a04",
+    "release_tag": "adblockplus-4.43.2",
+    "ruleset_id": "8C13E995-8F06-4927-BEA7-6C845FB7EEBF",
+    "ruleset_title": "EasyList",
+    "ruleset_version": "202608170701",
+    "source_sha256": "49a20729376cc23660d5d2dcdbdbf4fdce4e3e744562f65cace098ccd5450c4a"
+  }
+}

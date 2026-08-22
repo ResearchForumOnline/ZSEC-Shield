@@ -13,12 +13,25 @@ $ErrorActionPreference = "Stop"
 function Get-KeyValueFile {
     param([Parameter(Mandatory = $true)][string]$Path)
     $values = @{}
-    $stream = New-Object IO.FileStream(
-        $Path,
-        [IO.FileMode]::Open,
-        [IO.FileAccess]::Read,
-        ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete)
-    )
+    $stream = $null
+    $openDeadline = [DateTimeOffset]::UtcNow.AddSeconds(2)
+    do {
+        try {
+            $stream = New-Object IO.FileStream(
+                $Path,
+                [IO.FileMode]::Open,
+                [IO.FileAccess]::Read,
+                ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete)
+            )
+            break
+        }
+        catch [IO.IOException] {
+            if ([DateTimeOffset]::UtcNow -ge $openDeadline) {
+                throw
+            }
+            Start-Sleep -Milliseconds 50
+        }
+    } while ($null -eq $stream)
     $reader = New-Object IO.StreamReader($stream, [Text.Encoding]::UTF8, $true)
     try {
         $lines = $reader.ReadToEnd() -split "`r?`n"
@@ -58,10 +71,12 @@ function Invoke-BrowserEvidenceTest {
         [Parameter(Mandatory = $true)][string]$ApplicationPath,
         [Parameter(Mandatory = $true)][string]$EvidencePath,
         [Parameter(Mandatory = $true)][string]$Destination,
+        [string[]]$AdditionalArguments = @(),
         [Parameter(Mandatory = $true)][scriptblock]$Accept
     )
     $startedAt = [DateTimeOffset]::UtcNow
-    Start-Process -FilePath $ApplicationPath -ArgumentList $Destination | Out-Null
+    $arguments = @($Destination) + $AdditionalArguments
+    Start-Process -FilePath $ApplicationPath -ArgumentList $arguments | Out-Null
     $deadline = [DateTimeOffset]::UtcNow.AddSeconds($TimeoutSeconds)
     do {
         Start-Sleep -Milliseconds 250
@@ -86,7 +101,7 @@ if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
 $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json
 if (
     $state.schema -ne "zsec.browser.desktop-preview-installation.v2" -or
-    $state.product -ne "ZSEC Browser Desktop Preview"
+    $state.product -ne "ZSEC Browser"
 ) {
     throw "The installed product identity is invalid."
 }
@@ -108,11 +123,33 @@ $trackingEvidence = Invoke-BrowserEvidenceTest `
     -Accept { param($evidence) [int]$evidence['tracking_cleanup_count'] -ge 1 -and $evidence['last_navigation_https'] -eq 'true' }
 Close-ExactBrowser -ExpectedPath $applicationPath
 
-$blockingEvidence = Invoke-BrowserEvidenceTest `
+$dnrEvidence = Invoke-BrowserEvidenceTest `
     -ApplicationPath $applicationPath `
     -EvidencePath $evidencePath `
-    -Destination "https://doubleclick.net/" `
-    -Accept { param($evidence) [int]$evidence['blocked_request_count'] -ge 1 }
+    -Destination "https://talktoai.org/zero-browser/runtime-check/index.html" `
+    -Accept {
+        param($evidence)
+        $evidence['dnr_runtime_test_status'] -eq 'passed' -and
+        $evidence['browser_shields_extension'] -eq 'enabled' -and
+        $evidence['browser_shields_expected_id'] -eq 'ddjbjhnlhapggenanpmcidieimaomiif' -and
+        $evidence['browser_shields_installed_id'] -eq 'ddjbjhnlhapggenanpmcidieimaomiif' -and
+        $evidence['tracking_prevention_effective'] -eq 'balanced'
+    }
+Close-ExactBrowser -ExpectedPath $applicationPath
+
+$newTabEvidence = Invoke-BrowserEvidenceTest `
+    -ApplicationPath $applicationPath `
+    -EvidencePath $evidencePath `
+    -Destination "https://talktoai.org/zero-browser/" `
+    -AdditionalArguments @("--zsec-runtime-test=new-tab") `
+    -Accept {
+        param($evidence)
+        [int]$evidence['tab_count'] -eq 2 -and
+        [int]$evidence['ready_tab_count'] -eq 2 -and
+        [int]$evidence['tab_creation_failure_count'] -eq 0 -and
+        $evidence['last_tab_action'] -eq 'new_tab_ready' -and
+        $evidence['last_new_tab_command_source'] -eq 'runtime_acceptance'
+    }
 Close-ExactBrowser -ExpectedPath $applicationPath
 
 if (-not $LeaveClosed) {
@@ -121,7 +158,7 @@ if (-not $LeaveClosed) {
 
 $result = [ordered]@{
     schema = "zsec.browser.desktop-preview-runtime-acceptance.v1"
-    product = "ZSEC Browser Desktop Preview"
+    product = "ZSEC Browser"
     version = [string]$state.version
     passed = $true
     tested_at = [DateTimeOffset]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
@@ -132,10 +169,22 @@ $result = [ordered]@{
             count = [int]$trackingEvidence['tracking_cleanup_count']
             final_navigation_https = $trackingEvidence['last_navigation_https'] -eq 'true'
         }
-        reviewed_tracker_domain_block = [ordered]@{
+        browser_shields_dnr = [ordered]@{
             passed = $true
-            blocked_request_count = [int]$blockingEvidence['blocked_request_count']
-            test_domain = "doubleclick.net"
+            fixture = "https://talktoai.org/zero-browser/runtime-check/index.html"
+            expected_extension_id = [string]$dnrEvidence['browser_shields_expected_id']
+            installed_extension_id = [string]$dnrEvidence['browser_shields_installed_id']
+            manifest_sha256 = [string]$dnrEvidence['browser_shields_manifest_sha256']
+            dnr_runtime_test_status = [string]$dnrEvidence['dnr_runtime_test_status']
+            tracking_prevention_effective = [string]$dnrEvidence['tracking_prevention_effective']
+        }
+        new_tab = [ordered]@{
+            passed = $true
+            tab_count = [int]$newTabEvidence['tab_count']
+            ready_tab_count = [int]$newTabEvidence['ready_tab_count']
+            tab_creation_failure_count = [int]$newTabEvidence['tab_creation_failure_count']
+            last_tab_action = [string]$newTabEvidence['last_tab_action']
+            command_source = [string]$newTabEvidence['last_new_tab_command_source']
         }
     }
     browser_reopened = (-not [bool]$LeaveClosed)

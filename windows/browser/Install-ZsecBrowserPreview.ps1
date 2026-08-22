@@ -8,8 +8,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$ProductName = "ZSEC Browser Desktop Preview"
-$ProductVersion = "0.2.3"
+$ProductName = "ZSEC Browser"
+$ProductVersion = "0.3.6"
 
 function Get-NormalizedPath {
     param([Parameter(Mandatory = $true)][string]$Path)
@@ -107,8 +107,46 @@ function Get-TrustedWebView2Runtime {
     return $selected
 }
 
+function Close-ObsoleteZsecBrowserWindows {
+    param(
+        [Parameter(Mandatory = $true)][string]$ApplicationContainer,
+        [Parameter(Mandatory = $true)][string]$CurrentLauncher
+    )
+    $container = (Get-NormalizedPath $ApplicationContainer).TrimEnd('\') + '\'
+    $current = Get-NormalizedPath $CurrentLauncher
+    $candidates = @()
+    foreach ($process in @(Get-Process -Name "ZSEC Browser" -ErrorAction SilentlyContinue)) {
+        try {
+            $path = Get-NormalizedPath $process.Path
+            if (
+                $path.StartsWith($container, [StringComparison]::OrdinalIgnoreCase) -and
+                -not [String]::Equals($path, $current, [StringComparison]::OrdinalIgnoreCase)
+            ) {
+                $candidates += $process
+            }
+        }
+        catch {
+            continue
+        }
+    }
+    foreach ($process in $candidates) {
+        [void]$process.CloseMainWindow()
+    }
+    if ($candidates.Count -gt 0) {
+        $candidates | Wait-Process -Timeout 8 -ErrorAction SilentlyContinue
+    }
+    $remaining = @($candidates | Where-Object { -not $_.HasExited })
+    return [ordered]@{
+        requested = [int]$candidates.Count
+        closed = [int]($candidates.Count - $remaining.Count)
+        still_running = [int]$remaining.Count
+        forced_termination = $false
+        profile_preserved = $true
+    }
+}
+
 if ($PSVersionTable.PSEdition -eq "Core" -and -not $IsWindows) {
-    throw "ZSEC Browser preview installation is supported only on Windows."
+    throw "ZSEC Browser installation is supported only on Windows."
 }
 
 if ([string]::IsNullOrWhiteSpace($PayloadRoot)) {
@@ -141,7 +179,7 @@ $policy = Get-Content -LiteralPath $payloadPolicy -Raw -Encoding UTF8 | ConvertF
 if (
     $policy.schema -ne "zsec.browser.desktop-policy.v1" -or
     $policy.source_extension.name -ne "ZSEC Browser Shields" -or
-    [string]$policy.source_extension.version -ne "0.4.0" -or
+    [string]$policy.source_extension.version -ne "0.5.2" -or
     [int]$policy.outputs.tracker_domain_count -lt 1
 ) {
     throw "The compiled ZSEC Browser policy identity is invalid."
@@ -196,7 +234,7 @@ if ($PlanOnly) {
     $plan | ConvertTo-Json -Depth 8
     return
 }
-if (-not $PSCmdlet.ShouldProcess($versionRoot, "Install ZSEC Browser WebView2 desktop preview")) {
+if (-not $PSCmdlet.ShouldProcess($versionRoot, "Install ZSEC Browser Community desktop client")) {
     $plan | ConvertTo-Json -Depth 8
     return
 }
@@ -244,7 +282,7 @@ foreach ($shortcutPath in @($desktopShortcut, $startMenuShortcut)) {
     $shortcut = $shell.CreateShortcut($shortcutPath)
     $shortcut.TargetPath = $installedLauncher
     $shortcut.WorkingDirectory = $versionRoot
-    $shortcut.Description = "ZSEC Browser Desktop Preview - hardened browser shell powered by Microsoft WebView2 Chromium"
+    $shortcut.Description = "ZSEC Browser - hardened browser shell powered by Microsoft WebView2 Chromium"
     $shortcut.IconLocation = "$installedLauncher,0"
     $shortcut.Save()
     if (-not (Test-Path -LiteralPath $shortcutPath -PathType Leaf)) {
@@ -295,6 +333,9 @@ $state = [ordered]@{
     }
 }
 Write-Utf8JsonAtomic -Path $statePath -Value $state
+$obsoleteWindows = Close-ObsoleteZsecBrowserWindows `
+    -ApplicationContainer $appContainer `
+    -CurrentLauncher $installedLauncher
 
 if ($Open) {
     Start-Process -FilePath $desktopShortcut | Out-Null
@@ -317,6 +358,7 @@ if ($Open) {
     engine_path = $runtime.Path
     engine_version = $runtime.Version.ToString()
     tracker_domain_count = [int]$policy.outputs.tracker_domain_count
+    obsolete_windows = $obsoleteWindows
     default_browser_changed = $false
     system_security_products_modified = $false
 } | ConvertTo-Json -Depth 8

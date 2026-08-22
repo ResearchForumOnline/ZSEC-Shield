@@ -263,7 +263,7 @@ async function main() {
 
     console.log(JSON.stringify({
       browser,
-      extensionVersion: "0.4.0",
+      extensionVersion: "0.5.2",
       highRiskRulesInstalled: [200000, 200001],
       thirdPartyScript: "blocked-before-server",
       plaintextMainFrame: "blocked-before-server",

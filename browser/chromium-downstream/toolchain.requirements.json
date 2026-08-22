@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema_version": 1,
+  "product": "ZSEC Chromium Downstream Bootstrap",
+  "as_of": "2026-08-21",
+  "host": {
+    "architecture": "x64",
+    "client_minimum_build": 22000,
+    "server_minimum_build": 17763,
+    "allowed_client_family": "Windows 11",
+    "allowed_server_family": "Windows Server"
+  },
+  "visual_studio": {
+    "product_year": 2026,
+    "minimum_version": "18.0.0.0",
+    "required_components": [
+      "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+      "Microsoft.VisualStudio.Component.VC.ATLMFC"
+    ]
+  },
+  "windows_sdk": {
+    "installer_release": "10.0.28000.2270",
+    "version_directory": "10.0.28000.0",
+    "required_architectures": [
+      "x86",
+      "x64"
+    ]
+  },
+  "debugging_tools": {
+    "minimum_version": "10.0.26100.3323",
+    "required_binary": "cdb.exe"
+  },
+  "depot_tools": {
+    "root": "C:\\src\\depot_tools",
+    "must_be_first_on_path": true,
+    "required_files": [
+      ".git",
+      "gclient.bat",
+      "vpython3.bat",
+      "fetch.bat"
+    ],
+    "required_environment": {
+      "DEPOT_TOOLS_WIN_TOOLCHAIN": "0",
+      "DEPOT_TOOLS_UPDATE": "0"
+    }
+  },
+  "checkout": {
+    "root": "C:\\src",
+    "target": "C:\\src\\zsec-chromium",
+    "git_cache": "C:\\src\\zsec-git-cache",
+    "require_ntfs": true,
+    "require_space_free_path": true,
+    "fetch_configuration": "chromium",
+    "fetch_arguments": [
+      "--nohooks",
+      "--git-cache"
+    ],
+    "initial_build_target": "chrome",
+    "installer_build_target": "mini_installer"
+  },
+  "resources": {
+    "minimum_memory_bytes": 17179869184,
+    "minimum_free_disk_bytes": 268435456000
+  },
+  "branding": {
+    "allow_chrome_branding": false,
+    "gn_requirement": "is_chrome_branded=false"
+  },
+  "safety": {
+    "default_mode": "audit-only",
+    "fetch_confirmation": "FETCH_LOCKED_CHROMIUM",
+    "may_modify_antivirus": false,
+    "may_disable_security_services": false,
+    "may_fetch_when_audit_fails": false
+  },
+  "official_sources": [
+    "https://chromium.googlesource.com/chromium/src.git/+/HEAD/docs/windows_build_instructions.md",
+    "https://chromium.googlesource.com/chromium/src/+/refs/heads/main/build/vs_toolchain.py",
+    "https://learn.microsoft.com/en-us/visualstudio/releases/2026/vs-system-requirements",
+    "https://learn.microsoft.com/en-us/windows/apps/windows-sdk/downloads",
+    "https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-download-tools",
+    "https://github.com/MicrosoftDocs/visualstudio-docs/blob/main/docs/install/includes/vs-2026/workload-component-id-vs-build-tools.md"
+  ]
+}

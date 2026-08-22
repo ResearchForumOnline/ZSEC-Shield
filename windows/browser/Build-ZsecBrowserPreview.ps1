@@ -6,7 +6,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$ProductVersion = "0.2.3"
+$ProductVersion = "0.3.6"
 $WebView2Version = "1.0.4129.50"
 $WebView2Uri = "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/$WebView2Version/microsoft.web.webview2.$WebView2Version.nupkg"
 $WebView2Sha256 = "d3934f482d484b89fb4825df720c710664e1143a1e90f7b3a60794ef33f473d2"
@@ -21,6 +21,7 @@ $PayloadRoot = Join-Path $OutputDirectory "payload"
 $AppRoot = Join-Path $PayloadRoot "App"
 $PolicyRoot = Join-Path $AppRoot "policy"
 $LauncherSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\ZsecBrowserApp.cs"
+$ExtensionSource = Join-Path $RepoRoot "browser\zeroq-shields"
 $IconSource = Join-Path $RepoRoot "assets\brand\zeroq-icon.png"
 $IconPath = Join-Path $OutputDirectory "zsec-browser.ico"
 $LauncherPath = Join-Path $AppRoot "ZSEC Browser.exe"
@@ -33,6 +34,9 @@ foreach ($path in @($LauncherSource, $IconSource, $CscPath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Required build input is absent: $path"
     }
+}
+if (-not (Test-Path -LiteralPath (Join-Path $ExtensionSource "manifest.json") -PathType Leaf)) {
+    throw "The reviewed ZSEC Browser Shields extension source is absent."
 }
 
 New-Item -ItemType Directory -Path $PackageCache -Force | Out-Null
@@ -107,15 +111,53 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $LauncherPath -PathType
 Copy-Item -LiteralPath $CoreDll -Destination (Join-Path $AppRoot "Microsoft.Web.WebView2.Core.dll") -Force
 Copy-Item -LiteralPath $WinFormsDll -Destination (Join-Path $AppRoot "Microsoft.Web.WebView2.WinForms.dll") -Force
 Copy-Item -LiteralPath $LoaderDll -Destination (Join-Path $AppRoot "WebView2Loader.dll") -Force
+$NewTabSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\assets\new-tab\index.html"
+if (-not (Test-Path -LiteralPath $NewTabSource -PathType Leaf)) {
+    throw "The packaged ZSEC Browser new-tab page is absent."
+}
+$NewTabRoot = Join-Path $AppRoot "new-tab"
+New-Item -ItemType Directory -Path $NewTabRoot -Force | Out-Null
+Copy-Item -LiteralPath $NewTabSource -Destination (Join-Path $NewTabRoot "index.html") -Force
+$ExtensionRoot = Join-Path $AppRoot "extension"
+$ExtensionFiles = @(
+    "manifest.json",
+    "assets/zeroq-icon.png",
+    "popup/index.html",
+    "popup/popup.css",
+    "popup/popup.js",
+    "easylist.lock.json",
+    "rules/easylist.json",
+    "rules/link-cleaning.json",
+    "rules/privacy.json",
+    "src/high-risk-browsing.js",
+    "src/policy.js",
+    "src/runtime-health.js",
+    "src/settings-transaction.js",
+    "src/service-worker.js",
+    "src/youtube-cosmetic-rules.js",
+    "src/youtube-cleanup.js",
+    "third_party/EASYLIST-LICENSE.txt",
+    "third_party/easylist-20260817.txt",
+    "third_party/easylist-provenance.json"
+)
+foreach ($relative in $ExtensionFiles) {
+    $source = Join-Path $ExtensionSource $relative.Replace('/', '\')
+    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+        throw "The reviewed extension payload is incomplete: $relative"
+    }
+    $destination = Join-Path $ExtensionRoot $relative.Replace('/', '\')
+    New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+    Copy-Item -LiteralPath $source -Destination $destination -Force
+}
 Copy-Item -LiteralPath (Join-Path $RepoRoot "LICENSE") -Destination (Join-Path $PayloadRoot "LICENSE.txt") -Force
 Copy-Item -LiteralPath (Join-Path $RepoRoot "browser\zsec-desktop-preview\README.md") -Destination (Join-Path $PayloadRoot "README.md") -Force
-foreach ($name in @(
-    "Install-ZsecBrowserPreview.ps1",
-    "Get-ZsecBrowserPreviewStatus.ps1",
-    "Test-ZsecBrowserPreviewRuntime.ps1",
-    "Uninstall-ZsecBrowserPreview.ps1"
+foreach ($script in @(
+    @{ Source = "Install-ZsecBrowserPreview.ps1"; Destination = "Install-ZsecBrowser.ps1" },
+    @{ Source = "Get-ZsecBrowserPreviewStatus.ps1"; Destination = "Get-ZsecBrowserStatus.ps1" },
+    @{ Source = "Test-ZsecBrowserPreviewRuntime.ps1"; Destination = "Test-ZsecBrowserRuntime.ps1" },
+    @{ Source = "Uninstall-ZsecBrowserPreview.ps1"; Destination = "Uninstall-ZsecBrowser.ps1" }
 )) {
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $PayloadRoot $name) -Force
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot $script.Source) -Destination (Join-Path $PayloadRoot $script.Destination) -Force
 }
 
 $fileManifest = @()
@@ -129,7 +171,7 @@ foreach ($file in Get-ChildItem -LiteralPath $PayloadRoot -Recurse -File | Sort-
 $policy = Get-Content -LiteralPath (Join-Path $PolicyRoot "policy-provenance.json") -Raw -Encoding UTF8 | ConvertFrom-Json
 $result = [ordered]@{
     schema = "zsec.browser.desktop-preview-build.v2"
-    product = "ZSEC Browser Desktop Preview"
+    product = "ZSEC Browser"
     version = $ProductVersion
     architecture = "windows-x64-webview2-shell"
     engine_distribution = "Microsoft Evergreen WebView2 Chromium runtime"
@@ -144,6 +186,8 @@ $result = [ordered]@{
     webview2_nuget_sha512_base64 = $WebView2Sha512Base64
     tracker_domain_count = [int]$policy.outputs.tracker_domain_count
     tracking_parameter_count = [int]$policy.outputs.tracking_parameter_count
+    source_extension_version = [string]$policy.source_extension.version
+    source_extension_id = "ddjbjhnlhapggenanpmcidieimaomiif"
     payload_root = $PayloadRoot
     files = $fileManifest
 }

@@ -1,7 +1,7 @@
 {
   "schema": "zero.security.components.v1",
   "generated_at": "2026-08-21",
-  "release_status": "0.3.0-candidate",
+  "release_status": "0.3.2-candidate",
   "components": [
     {
       "id": "zsec-shield",

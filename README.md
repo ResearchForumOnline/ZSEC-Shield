@@ -6,17 +6,23 @@
 per-user post-change monitoring, authenticated encrypted quarantine, signed
 data-only rules, health evidence, and reversible Windows/macOS/Linux launchers.**
 This repository also contains ZSEC Browser Shields, a working local privacy layer
-for Chromium-family browsers, plus ZSEC Browser Desktop Preview: a visible Windows
-browser shell powered by Microsoft's Evergreen WebView2 Chromium runtime. The
-desktop preview is not a maintained Chromium fork or public signed browser release.
+for Chromium-family browsers, plus ZSEC Browser Community: a visible Windows
+browser shell powered by Microsoft's Evergreen WebView2 Chromium runtime. The ZSEC
+binary is not a maintained Chromium fork or publisher-signed public browser release.
 
 ZSEC Shield is a deterministic, non-AI file scanner for Python 3.11+. It hashes
 regular files with SHA-256, applies exact byte and digest rules, verifies
 Ed25519-signed data-only rule feeds, produces structured JSON, and can move an
-explicitly selected match into recoverable encrypted quarantine. The development
-candidate can also remain in the foreground and automatically scan file create and
-change events, with a disclosed polling fallback, duplicate-event debounce, and
-periodic reconciliation.
+explicitly selected match into recoverable encrypted quarantine. The Community
+channel can also remain in the foreground and automatically scan file create and
+change events, with a disclosed polling fallback, anti-starvation debounce,
+verified-file metadata reconciliation, and cache-independent full sweeps.
+The CLI routes exact-rule content work through a bounded, path-free child process;
+the broker streams bytes from its already validated descriptor and independently
+checks the SHA-256 result. This limits worker crash/state persistence and fails
+closed on protocol or digest disagreement. The child currently retains the
+invoking user's authority, so it is process separation—not a reduced-privilege
+sandbox or evidence that the hostile-parser replacement gate is complete.
 
 The current public GitHub tag predates the 0.3 candidate and is not a replacement
 antivirus on any platform. The candidate has no Windows minifilter/AMSI/ELAM stack, macOS
@@ -32,13 +38,14 @@ claimed by a mock dashboard. See the [Windows programme](docs/FULL_ANTIVIRUS_PRO
 
 | Layer | Current evidence | Replacement-antivirus gate |
 | --- | --- | --- |
-| Scan engine | Streaming SHA-256, exact byte/digest rules, EICAR wiring test, deterministic JSON | Sandboxed PE/script/document/archive engines, locked malware and cleanware evaluation |
+| Scan engine | Broker-verified streaming SHA-256, exact byte/digest rules in a bounded path-free child process, EICAR wiring test, deterministic JSON | AppContainer/sandboxed PE/script/document/archive engines, locked malware and cleanware evaluation |
 | Quarantine | Per-object AES-256-GCM, automatic Windows DPAPI key sealing, authenticated ZBA metadata, tamper-fail restore | Windows service key isolation, TPM/CNG root, crash and recovery certification |
 | Updates | Strict Ed25519 signed data-only feed with expiry and rollback checks | Authenticode plus threshold TUF metadata, staged binary/rule/driver rollback |
-| Automatic file monitoring | Per-user Windows Scheduled Task, macOS LaunchAgent and Linux systemd-user packages; native events, baseline, debounce, bounded queue, heartbeat, reconciliation and rollback | Windows FltMgr/AMSI/ELAM; macOS Endpoint Security; Linux fanotify—with platform-specific deadline and failure tests |
+| Automatic file monitoring | Per-user Windows Scheduled Task, macOS LaunchAgent and Linux systemd-user packages; native events, baseline, anti-starvation debounce, bounded raw/pending work, verified-file metadata reconciliation, cache-independent full sweeps, heartbeat and rollback | Windows FltMgr/AMSI/ELAM; macOS Endpoint Security; Linux fanotify—with platform-specific deadline and failure tests |
+| Recovery self-test | Isolated synthetic encrypted-quarantine, authenticated-restore, no-overwrite, tamper-rejection and device-key loss/recovery drill | Independent crash, corruption, key-recovery, restore and rollback certification on the exact release |
 | Desktop intelligence | 957-record initial CISA/MSRC/Apple/Ubuntu catalog with strict parsing, raw/semantic digests, atomic update and rollback state | Version applicability, independently validated detection-content providers, signed staged rollout |
 | Platform trust | Read-only inventory | Windows WSC/MVI; Apple entitlement, Developer ID and notarization; signed DEB/RPM repositories and enforced Linux service confinement |
-| Browser | Testable ZSEC Browser Shields MV3 extension; installed Windows WebView2 desktop-shell preview with isolated profile and runtime acceptance evidence | Maintained Chromium distribution, upstream security cadence, signed updater and browser regression fleet |
+| Browser | Testable ZSEC Browser Shields MV3 extension; installed Windows WebView2 Community shell with isolated profile and runtime acceptance evidence | Maintained Chromium distribution, upstream security cadence, signed updater and browser regression fleet |
 
 Your existing antivirus and native operating-system protections should remain
 active while these gates are developed in isolated environments and tested on
@@ -57,11 +64,17 @@ unsigned privileged package, or security-control bypass belongs on a real machin
 - Recursive scans stay on the starting filesystem by default.
 - Files larger than 64 MiB are skipped by default; the limit is explicit and
   reported.
+- Exact-rule content inspection uses a versioned 1 MiB-bounded process protocol,
+  a bounded response deadline and periodic worker replacement. Crash, timeout, malformed
+  output, digest disagreement and unavailable-worker outcomes are incomplete;
+  there is no in-process compatibility fallback. The worker is not yet
+  AppContainer/restricted-token isolated and may retain current-user filesystem
+  and network authority.
 - Quarantine is disabled unless `--quarantine` is present.
 - New quarantine objects use a fresh random AES-256 key, AES-GCM authentication,
   an automatically DPAPI-sealed device root on Windows, and a MAC over operational
-  metadata. The macOS and Linux filesystem-key fallback remains a preview and is
-  not production platform key protection. No routine password prompt is required.
+  metadata. The macOS and Linux filesystem-key fallback remains development-only
+  and is not production platform key protection. No routine password prompt is required.
 - Restore never overwrites an existing destination, and the verified recovery
   object is retained after restore.
 - Feed signatures, schemas, timestamps, key status, sequence numbers, and payload
@@ -73,7 +86,8 @@ unsigned privileged package, or security-control bypass belongs on a real machin
 
 See the [threat model](docs/THREAT_MODEL.md), [ZSV2 vault
 profile](specs/ZSV2.md), [research integration](docs/RESEARCH_INTEGRATION.md),
-and [feed format](docs/FEED_FORMAT.md).
+[bounded exact-rule worker protocol](docs/EXACT_RULE_WORKER.md), and
+[feed format](docs/FEED_FORMAT.md).
 
 ## ZBA and ZMath integration
 
@@ -91,9 +105,10 @@ used the `ZME1` name.
 ## ZSEC Browser and ZSEC Browser Shields
 
 The open-source extension lives in
-[`browser/zeroq-shields`](browser/zeroq-shields). It provides 38 packaged local
+[`browser/zeroq-shields`](browser/zeroq-shields). It provides 39 packaged local
 network blockers, two tracking-link cleaners, a per-site pause switch, and
-best-effort YouTube skip/nuisance cleanup. Community 0.4 also adds an optional
+best-effort YouTube skip/nuisance cleanup. Community 0.5.2 adds 49,464 pinned
+EasyList network rules without Acceptable Ads and retains the optional
 High-Risk Browsing profile: two fixed local rules block top-level plaintext HTTP
 navigation and third-party scripts, subframes, objects, and WebSockets. It is off
 by default, may materially break sites, and is exposure reduction rather than
@@ -112,14 +127,18 @@ servers; it never opens the normal user profile. See the
 [bounded mercenary-spyware defence analysis](docs/MERCENARY_SPYWARE_DEFENCE.md)
 for the exact enforced decision points and non-claims.
 
-The native Windows desktop-preview source lives in
-[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.2.3
-provides a branded window, tabs, address bar, an isolated WebView2 profile,
+The native Windows Community desktop source lives in
+[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.6
+provides a modern rounded dark interface, managed tabs and popups, an address
+and search bar, and a separate WebView2 profile,
 default-deny site permissions, certificate-error cancellation, explicit downloads,
-HTTPS upgrading, 81 compiled blocker domains, 21 tracking-parameter cleaners and
-an optional stricter cross-site mode. Its build verifies the pinned Microsoft SDK
-package against the official NuGet SHA-512 and a locked SHA-256; installation
-requires a validly Microsoft-signed Evergreen runtime.
+HTTPS upgrading, Microsoft Balanced tracking prevention, an automatically loaded
+exact-ID Browser Shields 0.5.2 MV3 engine with 49,464 pinned EasyList-derived network
+rules, 21 tracking-parameter cleaners, a
+19 selected packaged YouTube cosmetic selectors, a bounded YouTube UI assist
+and an optional stricter cross-site mode. Its build
+verifies the pinned Microsoft SDK package against the official NuGet SHA-512 and
+a locked SHA-256; installation requires a validly Microsoft-signed Evergreen runtime.
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\Build-ZsecBrowserPreview.ps1
@@ -128,16 +147,16 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\
 powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\Test-ZsecBrowserPreviewRuntime.ps1
 ```
 
-The extension and desktop shell are working preview layers, not a separately
-maintained Chromium distribution. The ZSEC executable is unsigned and no public
-production installer or rollback-resistant ZSEC updater has shipped. Keep the
+The extension and desktop shell are working Community layers, not a separately
+maintained Chromium distribution. The direct ZSEC Community executable is unsigned
+and no rollback-resistant ZSEC binary updater has shipped. Keep the
 Microsoft Evergreen runtime and existing browser/operating-system protections
-updated; do not bypass SmartScreen to run an unsigned preview.
+updated; do not bypass SmartScreen to run an unsigned ZSEC binary.
 
 The canonical product pages are
 [talktoai.org/zero-security](https://talktoai.org/zero-security/) and
-[talktoai.org/zero-browser](https://talktoai.org/zero-browser/). Exact preview
-downloads and install guidance live at
+[talktoai.org/zero-browser](https://talktoai.org/zero-browser/). Exact verified
+build and install guidance lives at
 [ZSEC Antivirus downloads](https://talktoai.org/zero-security/download/) and
 [ZSEC Browser Shields installation](https://talktoai.org/zero-browser/download/).
 
@@ -149,15 +168,15 @@ operating system's supported security architecture:
 
 | Desktop | Current public build | Production programme—not shipped |
 | --- | --- | --- |
-| Windows 10/11 | On-demand scanning; per-user automatic ReadDirectoryChangesW monitoring; health evidence; DPAPI-backed quarantine; WebView2 ZSEC Browser desktop preview | FltMgr minifilter, protected service, x86/x64 AMSI, ELAM, approved WSC/MVI integration; signed maintained browser distribution/updater |
-| macOS | On-demand scanning; per-user LaunchAgent with FSEvents; read-only inventory; filesystem key root is preview-only | Universal 2 app, Endpoint Security system extension, Keychain root, Developer ID, Hardened Runtime and notarization |
-| Linux | On-demand scanning; hardened systemd-user companion with inotify; read-only inventory; filesystem key root is preview-only | Narrow distro/kernel matrix, fanotify broker, confined daemon/workers, signed DEB/RPM packages and repositories |
+| Windows 10/11 | On-demand scanning; per-user automatic ReadDirectoryChangesW monitoring; health evidence; DPAPI-backed quarantine; WebView2 ZSEC Browser Community shell | FltMgr minifilter, protected service, x86/x64 AMSI, ELAM, approved WSC/MVI integration; signed maintained browser distribution/updater |
+| macOS | On-demand scanning; per-user LaunchAgent with FSEvents; read-only inventory; filesystem key root is development-only | Universal 2 app, Endpoint Security system extension, Keychain root, Developer ID, Hardened Runtime and notarization |
+| Linux | On-demand scanning; hardened systemd-user companion with inotify; read-only inventory; filesystem key root is development-only | Narrow distro/kernel matrix, fanotify broker, confined daemon/workers, signed DEB/RPM packages and repositories |
 
 Inventory adapters identify only basic OS/runtime context. They do not claim that
 patches, Microsoft Defender, XProtect, Gatekeeper, SIP, packages, SELinux,
 AppArmor, or another antivirus are healthy.
 
-## Install for evaluation
+## Install the Community build
 
 Create an isolated environment with Python 3.11 or newer:
 
@@ -191,15 +210,15 @@ macOS, and Linux. These use an inspectable PyInstaller one-directory layout, not
 installer or privileged service. Keep the executable beside its `_internal` directory.
 
 Each archive contains `NATIVE-MANIFEST.json`, per-file SHA-256 values, component and
-license metadata, the empty preview trust store, and operating documentation. Release
+license metadata, the empty local trust store, and operating documentation. Release
 assets include SHA-256 checksum files. See the
 [native distribution guide](docs/NATIVE_DISTRIBUTION.md) before downloading or
 redistributing an archive.
 
 The workflow does not generate signing keys or perform Authenticode, Apple Developer
 ID/notarization, or Linux package signing. A checksum verifies bytes, not publisher
-identity, and unsigned preview builds may trigger platform warnings. Follow local
-security policy; do not bypass operating-system protections merely to run the preview.
+identity, and unsigned Community builds may trigger platform warnings. Follow local
+security policy; do not bypass operating-system protections merely to run ZSEC.
 
 Build an archive locally on its target operating system:
 
@@ -250,7 +269,7 @@ pre-access real-time enforcement. Keep the existing antivirus active. See the
 
 ### ZSEC Antivirus automatic desktop companion
 
-The Windows development candidate includes review-first scripts for a reversible,
+The Windows Community channel includes review-first scripts for a reversible,
 current-user logon task protecting `%USERPROFILE%\Downloads`. Start with the
 read-only plan; repository tests never execute task registration:
 
@@ -295,13 +314,14 @@ zsec-shield status --json
 zsec-shield inventory --json
 ```
 
-Prove that the preview must keep the current antivirus active:
+Prove that the current build must keep the existing antivirus active:
 
 ```bash
 zero-security replacement-readiness --json
 zero-security replacement-readiness --platform windows --json
 zero-security replacement-readiness --platform macos --json
 zero-security replacement-readiness --platform linux --json
+zero-security recovery-drill --json
 ```
 
 The guard returns `eligible_for_primary_replacement: false`, disables automatic
