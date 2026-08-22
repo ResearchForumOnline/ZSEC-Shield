@@ -107,7 +107,7 @@ used the `ZME1` name.
 The open-source extension lives in
 [`browser/zeroq-shields`](browser/zeroq-shields). It provides 39 packaged local
 network blockers, two tracking-link cleaners, a per-site pause switch, and
-best-effort YouTube skip/nuisance cleanup. Community 0.5.0 adds 49,464 pinned
+best-effort YouTube skip/nuisance cleanup. Community 0.5.1 adds 49,464 pinned
 EasyList network rules without Acceptable Ads and retains the optional
 High-Risk Browsing profile: two fixed local rules block top-level plaintext HTTP
 navigation and third-party scripts, subframes, objects, and WebSockets. It is off
