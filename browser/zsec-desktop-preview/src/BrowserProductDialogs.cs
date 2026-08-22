@@ -372,6 +372,7 @@ namespace TalkToAI.ZsecBrowserPreview
 
         internal bool ClearHistoryRequested { get; private set; }
         internal bool OpenShieldsRequested { get; private set; }
+        internal bool OpenPasswordsRequested { get; private set; }
 
         internal BrowserSettings Result
         {
@@ -393,6 +394,7 @@ namespace TalkToAI.ZsecBrowserPreview
             categories.TabPages.Add(BuildPrivacyPage());
             categories.TabPages.Add(BuildPermissionsPage());
             categories.TabPages.Add(BuildShieldsPage());
+            categories.TabPages.Add(BuildPasswordsPage());
             categories.TabPages.Add(BuildStartupPage());
             categories.TabPages.Add(BuildAppearancePage());
             categories.TabPages.Add(BuildDownloadsPage());
@@ -534,6 +536,29 @@ namespace TalkToAI.ZsecBrowserPreview
                 "The Journalist preset disables new local history, clears existing history on clean exit, enables native strict third-party active-content blocking, and enables YouTube ad protection. Restore standard compatibility disables only the strict native cross-site rule. The native strict policy and the extension High-Risk mode are separate controls."
             ));
             return Page("Shields", panel);
+        }
+
+        private TabPage BuildPasswordsPage()
+        {
+            FlowLayoutPanel panel = BrowserDialogTheme.PagePanel();
+            panel.Controls.Add(BrowserDialogTheme.Description(
+                "ZSEC Passwords stores website addresses, usernames, passwords and notes in the local encrypted vault for this Windows account. Passwords are never displayed in the manager list."
+            ));
+            Button open = BrowserDialogTheme.Button(
+                "Open ZSEC Passwords",
+                "Open the encrypted password vault"
+            );
+            open.Click += delegate
+            {
+                OpenPasswordsRequested = true;
+                DialogResult = DialogResult.OK;
+                Close();
+            };
+            panel.Controls.Add(open);
+            panel.Controls.Add(BrowserDialogTheme.Description(
+                "The vault locks after five idle minutes. Copied usernames and passwords are cleared from the clipboard after 30 seconds when they have not been replaced by other clipboard content."
+            ));
+            return Page("Passwords", panel);
         }
 
         private TabPage BuildStartupPage()

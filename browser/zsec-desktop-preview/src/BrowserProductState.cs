@@ -537,4 +537,27 @@ namespace TalkToAI.ZsecBrowserPreview
         internal string TrackingPrevention { get; set; }
         internal bool RuntimeUpdateAvailable { get; set; }
     }
+
+    internal static class BrowserToolbarLayout
+    {
+        internal const int CompactToolbarWidth = 1120;
+        internal const int StandardMinimumAddressWidth = 280;
+        internal const int CompactMinimumAddressWidth = 180;
+
+        internal static string NativeGuardLabel(bool strict, int toolbarWidth)
+        {
+            string mode = strict ? "Strict" : "Standard";
+            return toolbarWidth < CompactToolbarWidth
+                ? "Guard: " + mode
+                : "Native guard: " + mode;
+        }
+
+        internal static int AddressWidth(int toolbarWidth, int fixedItemWidth)
+        {
+            int minimum = toolbarWidth < CompactToolbarWidth
+                ? CompactMinimumAddressWidth
+                : StandardMinimumAddressWidth;
+            return Math.Max(minimum, toolbarWidth - Math.Max(0, fixedItemWidth));
+        }
+    }
 }

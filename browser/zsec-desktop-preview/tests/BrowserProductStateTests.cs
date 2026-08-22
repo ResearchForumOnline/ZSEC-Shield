@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using TalkToAI.ZsecBrowserPreview;
 
@@ -27,6 +28,11 @@ internal static class BrowserProductStateTests
             TestHistoryPolicyAndBounds(Path.Combine(parent, "history"));
             TestAddressSuggestionsAndSearch(Path.Combine(parent, "suggestions"));
             TestNativeRequestPolicy();
+            TestPasswordVault(Path.Combine(parent, "password-vault"));
+            TestPasswordVaultTamperFailsClosed(Path.Combine(parent, "password-vault-tamper"));
+            TestPasswordVaultUiPolicy();
+            TestPasswordVaultKeyFailure(Path.Combine(parent, "password-vault-key-failure"));
+            TestResponsiveToolbarLayout();
             Console.WriteLine("Browser product state tests passed: " + assertions.ToString());
             return 0;
         }
@@ -39,6 +45,164 @@ internal static class BrowserProductStateTests
         {
             if (Directory.Exists(parent)) Directory.Delete(parent, true);
         }
+    }
+
+    private static void TestPasswordVault(string root)
+    {
+        BrowserVaultService service = new BrowserVaultService(root);
+        BrowserVaultStatus before = service.GetStatus();
+        Assert(!before.IsUnlocked, "Password vault must begin locked.");
+        service.Unlock();
+        BrowserVaultEntry saved = service.Save(new BrowserVaultEntry
+        {
+            Url = "https://example.com/login",
+            Username = "journalist@example.com",
+            Password = "test-only-secret-value",
+            Notes = "Test fixture only"
+        });
+        Assert(saved.Id.Length == 32, "Password record ID is invalid.");
+        Assert(service.GetStatus().EntryCount == 1, "Password vault count is wrong.");
+        Assert(service.Search("journalist").Count == 1, "Password vault search failed.");
+        service.Lock();
+        bool locked = false;
+        try { service.Get(saved.Id); }
+        catch (InvalidOperationException) { locked = true; }
+        Assert(locked, "Locked password vault exposed a record.");
+        service.Unlock();
+        BrowserVaultEntry loaded = service.Get(saved.Id);
+        Assert(loaded.Password == "test-only-secret-value", "Password vault round trip failed.");
+        string vaultRoot = Path.Combine(root, "password-vault");
+        string atRest = String.Join("", Directory.GetFiles(
+            vaultRoot, "*.json", SearchOption.AllDirectories
+        ).Select(path => File.ReadAllText(path, Encoding.UTF8)));
+        Assert(!atRest.Contains("test-only-secret-value"), "Password appeared in plaintext at rest.");
+        Assert(!atRest.Contains("journalist@example.com"), "Username appeared in plaintext at rest.");
+        loaded.Password = "replacement-test-secret";
+        BrowserVaultEntry updated = service.Save(loaded);
+        Assert(service.Get(updated.Id).Password == "replacement-test-secret", "Password update failed.");
+        string generated = service.GeneratePassword(new BrowserPasswordGenerationOptions
+        {
+            Length = 32,
+            IncludeUppercase = true,
+            IncludeLowercase = true,
+            IncludeDigits = true,
+            IncludeSymbols = true
+        });
+        Assert(generated.Length == 32, "Generated password length is wrong.");
+        Assert(generated.Any(Char.IsUpper), "Generated password omitted uppercase.");
+        Assert(generated.Any(Char.IsLower), "Generated password omitted lowercase.");
+        Assert(generated.Any(Char.IsDigit), "Generated password omitted digits.");
+        Assert(generated.Any(character => !Char.IsLetterOrDigit(character)), "Generated password omitted symbols.");
+        service.Delete(updated.Id);
+        Assert(service.GetStatus().EntryCount == 0, "Password deletion failed.");
+        service.Dispose();
+    }
+
+    private static void TestPasswordVaultTamperFailsClosed(string root)
+    {
+        BrowserPasswordVault vault = new BrowserPasswordVault(root);
+        vault.Initialize();
+        string id = vault.Store("https://example.org/login", "test", "tamper-fixture");
+        string path = Path.Combine(root, "password-vault", "records", id + ".json");
+        string document = File.ReadAllText(path, Encoding.UTF8);
+        int marker = document.IndexOf("\"ciphertext\":\"", StringComparison.Ordinal);
+        Assert(marker >= 0, "Password record ciphertext was not found.");
+        int value = marker + "\"ciphertext\":\"".Length;
+        char replacement = document[value] == 'A' ? 'B' : 'A';
+        document = document.Substring(0, value) + replacement + document.Substring(value + 1);
+        File.WriteAllText(path, document, new UTF8Encoding(false));
+        bool rejected = false;
+        try { vault.Retrieve(id); }
+        catch (Exception exception)
+        {
+            rejected = exception is CryptographicException || exception is InvalidDataException;
+        }
+        Assert(rejected, "Tampered password ciphertext was accepted.");
+        vault.Dispose();
+    }
+
+    private static void TestPasswordVaultUiPolicy()
+    {
+        BrowserVaultEntry entry = new BrowserVaultEntry
+        {
+            Url = "https://news.example/login",
+            Username = "Reporter@Example.com",
+            Password = "test-only-value",
+            Notes = "Investigations desk"
+        };
+        Assert(BrowserVaultUiPolicy.ValidateEntry(entry) == null, "Valid vault entry was rejected.");
+        Assert(BrowserVaultUiPolicy.Matches(entry, "reporter"), "Username search is not case-insensitive.");
+        Assert(BrowserVaultUiPolicy.Matches(entry, "investigations"), "Notes search failed.");
+        Assert(!BrowserVaultUiPolicy.Matches(entry, "unrelated"), "Search matched unrelated content.");
+        entry.Url = "javascript:alert(1)";
+        Assert(BrowserVaultUiPolicy.ValidateEntry(entry) != null, "Unsafe vault URL was accepted.");
+
+        BrowserPasswordGenerationOptions invalid =
+            BrowserPasswordGenerationOptions.CreateDefault();
+        invalid.Length = 8;
+        Assert(
+            BrowserVaultUiPolicy.ValidateGenerationOptions(invalid) != null,
+            "Short generated-password policy was accepted."
+        );
+
+        DateTime start = new DateTime(2026, 8, 22, 20, 0, 0, DateTimeKind.Utc);
+        BrowserVaultAutoLockController autoLock = new BrowserVaultAutoLockController(5, start);
+        Assert(!autoLock.ShouldLock(start.AddMinutes(4)), "Vault locked before idle timeout.");
+        Assert(autoLock.ShouldLock(start.AddMinutes(5)), "Vault did not lock at idle timeout.");
+        autoLock.Touch(start.AddMinutes(5));
+        Assert(!autoLock.ShouldLock(start.AddMinutes(9)), "Vault activity did not reset timeout.");
+
+        TestClipboard clipboard = new TestClipboard();
+        BrowserSensitiveClipboardController sensitive =
+            new BrowserSensitiveClipboardController(clipboard);
+        sensitive.Copy("secret-one");
+        Assert(sensitive.HasPendingValue, "Sensitive clipboard state was not tracked.");
+        Assert(sensitive.ClearPending(), "Unchanged sensitive clipboard value was not cleared.");
+        sensitive.Copy("secret-two");
+        clipboard.Value = "new-user-value";
+        Assert(!sensitive.ClearPending(), "Changed user clipboard content was incorrectly cleared.");
+        Assert(clipboard.Value == "new-user-value", "Changed clipboard content was not preserved.");
+    }
+
+    private sealed class TestClipboard : IBrowserClipboard
+    {
+        internal string Value { get; set; }
+
+        public void SetSensitiveText(string value) { Value = value; }
+
+        public bool ClearIfUnchanged(string expectedValue)
+        {
+            if (!String.Equals(Value, expectedValue, StringComparison.Ordinal)) return false;
+            Value = null;
+            return true;
+        }
+    }
+
+    private static void TestPasswordVaultKeyFailure(string root)
+    {
+        BrowserPasswordVault vault = new BrowserPasswordVault(root);
+        vault.Initialize();
+        vault.Lock();
+        string keyPath = Path.Combine(root, "password-vault", "device-key.json");
+        string document = File.ReadAllText(keyPath, Encoding.UTF8);
+        int marker = document.IndexOf("\"protected_key\":\"", StringComparison.Ordinal);
+        Assert(marker >= 0, "Protected DPAPI key was not found.");
+        int value = marker + "\"protected_key\":\"".Length;
+        char replacement = document[value] == 'A' ? 'B' : 'A';
+        File.WriteAllText(
+            keyPath,
+            document.Substring(0, value) + replacement + document.Substring(value + 1),
+            new UTF8Encoding(false)
+        );
+        bool rejected = false;
+        try { vault.Unlock(); }
+        catch (Exception exception)
+        {
+            rejected = exception is CryptographicException || exception is InvalidDataException;
+        }
+        Assert(rejected, "Changed or wrong-user DPAPI material was accepted.");
+        Assert(!vault.IsUnlocked, "Failed DPAPI unlock left the vault unlocked.");
+        vault.Dispose();
     }
 
     private static void TestDefaultsAndRoundTrip(string root)
@@ -216,6 +380,32 @@ internal static class BrowserProductStateTests
         Assert(
             !BrowserRequestPolicy.HostMatchesDomain("notdoubleclick.net", "doubleclick.net"),
             "Tracker matching crossed a DNS label boundary."
+        );
+    }
+
+    private static void TestResponsiveToolbarLayout()
+    {
+        Assert(
+            BrowserToolbarLayout.NativeGuardLabel(false, 1920) == "Native guard: Standard",
+            "Wide toolbar guard label was shortened unexpectedly."
+        );
+        Assert(
+            BrowserToolbarLayout.NativeGuardLabel(true, 960) == "Guard: Strict",
+            "Compact toolbar guard label did not preserve its mode."
+        );
+        Assert(
+            BrowserToolbarLayout.AddressWidth(1920, 610) == 1310,
+            "Wide toolbar did not allocate the remaining width to the address field."
+        );
+        Assert(
+            BrowserToolbarLayout.AddressWidth(960, 850) ==
+                BrowserToolbarLayout.CompactMinimumAddressWidth,
+            "Compact toolbar address field fell below its usable minimum."
+        );
+        Assert(
+            BrowserToolbarLayout.AddressWidth(1120, 900) ==
+                BrowserToolbarLayout.StandardMinimumAddressWidth,
+            "Standard toolbar address field fell below its usable minimum."
         );
     }
 }

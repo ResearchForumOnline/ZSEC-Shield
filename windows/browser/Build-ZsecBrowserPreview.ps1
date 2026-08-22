@@ -6,7 +6,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$ProductVersion = "0.3.12"
+$ProductVersion = "0.3.13"
 $WebView2Version = "1.0.4129.50"
 $WebView2Uri = "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/$WebView2Version/microsoft.web.webview2.$WebView2Version.nupkg"
 $WebView2Sha256 = "d3934f482d484b89fb4825df720c710664e1143a1e90f7b3a60794ef33f473d2"
@@ -223,6 +223,9 @@ $LauncherSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\ZsecBrow
 $ProductStateSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserProductState.cs"
 $ProductPolicySource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserProductPolicy.cs"
 $ProductDialogsSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserProductDialogs.cs"
+$VaultContractsSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserVaultUiContracts.cs"
+$PasswordVaultSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserPasswordVault.cs"
+$VaultDialogsSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserVaultDialogs.cs"
 $YoutubeProtectionSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\assets\youtube-player-protection.js"
 $ExtensionSource = Join-Path $RepoRoot "browser\zeroq-shields"
 $IconSource = Join-Path $RepoRoot "assets\brand\zeroq-icon.png"
@@ -233,7 +236,11 @@ $PackagePath = Join-Path $PackageCache "microsoft.web.webview2.$WebView2Version.
 $CompilerPackageCache = Join-Path $env:LOCALAPPDATA "TalkToAI\ZSEC Browser Build\packages\Microsoft.Net.Compilers.Toolset\$CompilerToolsetVersion"
 $CompilerPackagePath = Join-Path $CompilerPackageCache "microsoft.net.compilers.toolset.$CompilerToolsetVersion.nupkg"
 
-foreach ($path in @($LauncherSource, $ProductStateSource, $ProductPolicySource, $ProductDialogsSource, $YoutubeProtectionSource, $IconSource)) {
+foreach ($path in @(
+    $LauncherSource, $ProductStateSource, $ProductPolicySource, $ProductDialogsSource,
+    $VaultContractsSource, $PasswordVaultSource, $VaultDialogsSource,
+    $YoutubeProtectionSource, $IconSource
+)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Required build input is absent: $path"
     }
@@ -323,7 +330,10 @@ $compilerArguments = @(
     $LauncherSource,
     $ProductStateSource,
     $ProductPolicySource,
-    $ProductDialogsSource
+    $ProductDialogsSource,
+    $VaultContractsSource,
+    $PasswordVaultSource,
+    $VaultDialogsSource
 )
 & $CscPath @compilerArguments
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $LauncherPath -PathType Leaf)) {

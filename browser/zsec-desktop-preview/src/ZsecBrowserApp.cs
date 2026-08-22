@@ -22,16 +22,16 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.12.0")]
-[assembly: AssemblyFileVersion("0.3.12.0")]
-[assembly: AssemblyInformationalVersion("0.3.12-community")]
+[assembly: AssemblyVersion("0.3.13.0")]
+[assembly: AssemblyFileVersion("0.3.13.0")]
+[assembly: AssemblyInformationalVersion("0.3.13-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.12";
+        internal const string ProductVersion = "0.3.13";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
         internal const string NewTabUri = "https://newtab.zsec.local/index.html";
 
@@ -384,12 +384,15 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly TabControl tabs;
         private readonly Panel tabHost;
         private readonly RoundedActionButton newTabButton;
+        private readonly ToolStrip navigation;
+        private readonly RoundedSurface addressSurface;
         private readonly TextBox address;
         private readonly ToolStripControlHost addressHost;
         private readonly Label shieldStatus;
         private readonly Label runtimeStatus;
         private readonly ProtectionPulse protectionPulse;
         private readonly ToolStripButton highRiskButton;
+        private readonly ToolStripButton shieldsButton;
         private readonly ToolStripButton bookmarkButton;
         private readonly ToolStripButton menuButton;
         private readonly ToolStripLabel blockedLabel;
@@ -397,6 +400,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly FlowLayoutPanel bookmarksBar;
         private readonly BrowserDataStore productStore;
         private readonly BrowserProductData productData;
+        private readonly IVaultService vaultService;
         private readonly ContextMenuStrip mainMenu;
         private readonly NotifyIcon trayIcon;
         private CoreWebView2Environment environment;
@@ -453,6 +457,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 "TalkToAI",
                 "ZSEC Browser"
             );
+            vaultService = new BrowserVaultService(productRoot);
             productStore = new BrowserDataStore(productRoot);
             try
             {
@@ -531,7 +536,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.12";
+            channel.Text = "COMMUNITY 0.3.13";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
@@ -557,7 +562,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 shieldStatus.Location = new Point(brandBar.ClientSize.Width - shieldStatus.Width - 20, 11);
             };
 
-            ToolStrip navigation = new ToolStrip();
+            navigation = new ToolStrip();
             navigation.Dock = DockStyle.Top;
             navigation.GripStyle = ToolStripGripStyle.Hidden;
             navigation.RenderMode = ToolStripRenderMode.Professional;
@@ -575,7 +580,7 @@ namespace TalkToAI.ZsecBrowserPreview
             ToolStripButton reloadButton = CreateButton("↻", "Reload (Ctrl+R)", delegate { if (ActiveView != null) ActiveView.Reload(); });
             ToolStripButton homeButton = CreateButton("⌂", "ZSEC home", delegate { Navigate(Program.DefaultStartPage); });
 
-            RoundedSurface addressSurface = new RoundedSurface();
+            addressSurface = new RoundedSurface();
             addressSurface.Size = new Size(660, 36);
             addressSurface.SurfaceColor = ElevatedSurface;
             addressSurface.BorderColor = Color.FromArgb(42, 75, 88);
@@ -601,13 +606,13 @@ namespace TalkToAI.ZsecBrowserPreview
             addressHost.Margin = new Padding(7, 0, 7, 0);
 
             highRiskButton = CreateButton(
-                highRiskMode ? "Native guard: Strict" : "Native guard: Standard",
+                BrowserToolbarLayout.NativeGuardLabel(highRiskMode, navigation.ClientSize.Width),
                 "Toggle stricter native navigation policy",
                 ToggleHighRiskMode
             );
             highRiskButton.CheckOnClick = false;
             highRiskButton.Checked = highRiskMode;
-            ToolStripButton shieldsButton = CreateButton("Shields", "Open ZSEC Browser Shields controls", async delegate { await OpenShieldsSettingsAsync(); });
+            shieldsButton = CreateButton("Shields", "Open ZSEC Browser Shields controls", async delegate { await OpenShieldsSettingsAsync(); });
             bookmarkButton = CreateButton("☆", "Bookmark this page (Ctrl+D)", AddActiveBookmark);
             menuButton = CreateButton("☰", "ZSEC Browser main menu (Alt+F)", delegate { ShowMainMenu(); });
             mainMenu = BuildMainMenu();
@@ -627,9 +632,7 @@ namespace TalkToAI.ZsecBrowserPreview
             });
             navigation.Resize += delegate
             {
-                int reserved = 690;
-                addressHost.Width = Math.Max(280, navigation.ClientSize.Width - reserved);
-                addressSurface.Width = addressHost.Width;
+                LayoutNavigationToolbar();
             };
 
             tabs = new TabControl();
@@ -762,12 +765,47 @@ namespace TalkToAI.ZsecBrowserPreview
             button.ForeColor = Color.White;
             button.Font = new Font("Segoe UI Symbol", text.Length <= 2 ? 14F : 9F, FontStyle.Bold);
             button.AutoSize = false;
-            button.Size = new Size(text.Length > 2 ? 118 : 42, 34);
+            button.Size = new Size(text.Length > 2 ? ToolbarTextButtonWidth(button) : 42, 34);
             button.Margin = new Padding(2, 0, 2, 0);
             button.ToolTipText = toolTip;
             button.AccessibleName = toolTip;
             button.Click += handler;
             return button;
+        }
+
+        private static int ToolbarTextButtonWidth(ToolStripButton button)
+        {
+            Size measured = TextRenderer.MeasureText(
+                button.Text,
+                button.Font,
+                Size.Empty,
+                TextFormatFlags.NoPadding | TextFormatFlags.SingleLine
+            );
+            return Math.Max(72, measured.Width + 24);
+        }
+
+        private void LayoutNavigationToolbar()
+        {
+            if (navigation == null || addressHost == null || highRiskButton == null) return;
+
+            highRiskButton.Text = BrowserToolbarLayout.NativeGuardLabel(
+                highRiskMode,
+                navigation.ClientSize.Width
+            );
+            highRiskButton.Width = ToolbarTextButtonWidth(highRiskButton);
+            shieldsButton.Width = ToolbarTextButtonWidth(shieldsButton);
+
+            int fixedWidth = navigation.Padding.Horizontal + addressHost.Margin.Horizontal;
+            foreach (ToolStripItem item in navigation.Items)
+            {
+                if (Object.ReferenceEquals(item, addressHost)) continue;
+                fixedWidth += item.Width + item.Margin.Horizontal;
+            }
+            addressHost.Width = BrowserToolbarLayout.AddressWidth(
+                navigation.ClientSize.Width,
+                fixedWidth
+            );
+            addressSurface.Width = addressHost.Width;
         }
 
         private ContextMenuStrip BuildMainMenu()
@@ -794,6 +832,7 @@ namespace TalkToAI.ZsecBrowserPreview
 
             menu.Items.Add(MenuItem("History", "Ctrl+H", delegate { ShowHistory(); }));
             menu.Items.Add(MenuItem("Clear browsing history", "Ctrl+Shift+Del", delegate { ClearBrowsingHistory(); }));
+            menu.Items.Add(MenuItem("Passwords", "Ctrl+Shift+P", delegate { ShowPasswords(); }));
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(MenuItem("ZSEC Shields", "", async delegate { await OpenShieldsSettingsAsync(); }));
             menu.Items.Add(MenuItem("Settings", "Ctrl+,", async delegate { await ShowSettingsAsync(); }));
@@ -1071,6 +1110,11 @@ namespace TalkToAI.ZsecBrowserPreview
             using (SettingsDialog dialog = new SettingsDialog(productData.Settings, snapshot))
             {
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
+                if (dialog.OpenPasswordsRequested)
+                {
+                    ShowPasswords();
+                    return;
+                }
                 if (!CanPersistProductData(true))
                 {
                     if (dialog.OpenShieldsRequested) await OpenShieldsSettingsAsync();
@@ -1100,6 +1144,17 @@ namespace TalkToAI.ZsecBrowserPreview
                     return;
                 }
                 if (dialog.OpenShieldsRequested) await OpenShieldsSettingsAsync();
+            }
+        }
+
+        private void ShowPasswords()
+        {
+            using (BrowserVaultDialog dialog = new BrowserVaultDialog(
+                vaultService,
+                new WindowsBrowserClipboard()
+            ))
+            {
+                dialog.ShowDialog(this);
             }
         }
 
@@ -1133,7 +1188,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private void ApplyProductSettings()
         {
             highRiskMode = productData.Settings.NativeStrictMode;
-            highRiskButton.Text = highRiskMode ? "Native guard: Strict" : "Native guard: Standard";
+            LayoutNavigationToolbar();
             highRiskButton.Checked = highRiskMode;
             highRiskButton.BackColor = highRiskMode ? Color.FromArgb(210, 74, 54) : PanelBackground;
             bookmarksBar.Visible = productData.Settings.ShowBookmarksBar;
@@ -2385,6 +2440,11 @@ namespace TalkToAI.ZsecBrowserPreview
                 ClearBrowsingHistory();
                 return true;
             }
+            if (keyData == (Keys.Control | Keys.Shift | Keys.P))
+            {
+                ShowPasswords();
+                return true;
+            }
             if (keyData == (Keys.Control | Keys.Oemcomma))
             {
                 BeginInvoke(new Action(async delegate { await ShowSettingsAsync(); }));
@@ -2473,7 +2533,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 );
                 return;
             }
-            highRiskButton.Text = highRiskMode ? "Native guard: Strict" : "Native guard: Standard";
+            LayoutNavigationToolbar();
             highRiskButton.Checked = highRiskMode;
             highRiskButton.BackColor = highRiskMode ? Color.FromArgb(210, 74, 54) : PanelBackground;
             runtimeStatus.Text = highRiskMode
@@ -2831,6 +2891,9 @@ namespace TalkToAI.ZsecBrowserPreview
 
         private void DisposeBrowserViews(object sender, FormClosedEventArgs args)
         {
+            try { vaultService.Lock(); } catch (Exception) { }
+            IDisposable disposableVault = vaultService as IDisposable;
+            if (disposableVault != null) disposableVault.Dispose();
             youtubeStatusTimer.Stop();
             youtubeStatusTimer.Dispose();
             trayIcon.Visible = false;

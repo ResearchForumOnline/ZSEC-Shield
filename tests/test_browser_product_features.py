@@ -179,6 +179,21 @@ def test_shortcuts_and_accessibility_contract() -> None:
         assert accessible in app
 
 
+def test_navigation_toolbar_measures_labels_and_preserves_address_space() -> None:
+    app = APP.read_text(encoding="utf-8")
+    state = STATE.read_text(encoding="utf-8")
+
+    assert "TextRenderer.MeasureText" in app
+    assert "LayoutNavigationToolbar()" in app
+    assert "BrowserToolbarLayout.NativeGuardLabel" in app
+    assert "BrowserToolbarLayout.AddressWidth" in app
+    assert "int reserved = 690" not in app
+    assert "text.Length > 2 ? 118 : 42" not in app
+    assert 'return toolbarWidth < CompactToolbarWidth' in state
+    assert '"Guard: " + mode' in state
+    assert '"Native guard: " + mode' in state
+
+
 def test_build_compiles_product_sources_and_docs_keep_engine_boundary() -> None:
     build = BUILD.read_text(encoding="utf-8")
     readme = README.read_text(encoding="utf-8")
