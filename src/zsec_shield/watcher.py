@@ -981,7 +981,6 @@ class ForegroundProtectionWatcher:
         if duration_seconds is not None and not 0.1 <= duration_seconds <= 7 * 24 * 60 * 60:
             raise WatchError("duration_seconds must be between 0.1 and 604800")
         started_at = format_utc()
-        started_monotonic = self._clock()
         interrupted = False
         self._start_observer()
         self._emit(
@@ -1015,11 +1014,20 @@ class ForegroundProtectionWatcher:
             # dedicated ingestion worker coalesces that raw work while the baseline
             # scanner owns this thread; it never scans or discards event paths.
             self._reconcile("initial_baseline", full=True)
+            # A finite watch duration describes monitored time after the mandatory
+            # baseline. Starting its clock before a slow baseline could otherwise
+            # stop the session with observer events still queued and report an
+            # avoidable coverage gap. The overall evidence timestamps continue to
+            # include baseline time.
+            monitoring_started_monotonic = self._clock()
             while True:
                 if not self._event_pipeline_is_healthy():
                     break
                 now = self._clock()
-                if duration_seconds is not None and now - started_monotonic >= duration_seconds:
+                if (
+                    duration_seconds is not None
+                    and now - monitoring_started_monotonic >= duration_seconds
+                ):
                     break
                 if not self._backend_is_healthy() or not self._roots_are_healthy():
                     break
