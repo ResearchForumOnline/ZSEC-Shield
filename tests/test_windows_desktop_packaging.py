@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 import ast
+import json
+import os
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -143,7 +149,7 @@ def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
     assert "Desktop Preview" not in app
     assert "DESKTOP PREVIEW" not in app
     assert 'self.root.title("ZSEC Antivirus")' in app
-    assert 'text="COMMUNITY 0.3.11"' in app
+    assert 'text="COMMUNITY 0.3.12"' in app
 
 
 def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None:
@@ -186,3 +192,174 @@ def test_companion_sync_is_bounded_verified_and_rolls_back() -> None:
     assert "Get-MigratedProtectedRoots" in sync
     assert "legacy_temp_root_retired" in sync
     assert "Move-PartialCompanionAside" in sync
+
+
+def test_powershell_script_roots_are_resolved_after_parameter_binding() -> None:
+    installer = (
+        ROOT / "windows" / "desktop" / "Install-ZsecAntivirusDesktop.ps1"
+    ).read_text(encoding="utf-8")
+    sync = (
+        ROOT / "windows" / "companion" / "Sync-ZsecAntivirusCompanion.ps1"
+    ).read_text(encoding="utf-8")
+    assert "[string]$PackageRoot = $PSScriptRoot" not in installer
+    assert 'if (-not $PSBoundParameters.ContainsKey("PackageRoot"))' in installer
+    assert "$PackageRoot = $PSScriptRoot" in installer
+    assert "[string]$ToolsRoot = $PSScriptRoot" not in sync
+    assert 'if (-not $PSBoundParameters.ContainsKey("ToolsRoot"))' in sync
+    assert "$ToolsRoot = $PSScriptRoot" in sync
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell 5.1 is required")
+def test_extracted_desktop_installer_no_argument_root_works_in_powershell_51(
+    tmp_path: Path,
+) -> None:
+    powershell = shutil.which("powershell.exe")
+    assert powershell is not None
+    package = tmp_path / "zsec-antivirus-desktop-0.3.12-windows-x86_64"
+    package.mkdir()
+    install_root = tmp_path / "install-root"
+    shutil.copy2(
+        ROOT / "windows" / "desktop" / "Install-ZsecAntivirusDesktop.ps1",
+        package / "Install-ZsecAntivirusDesktop.ps1",
+    )
+    (package / "DESKTOP-MANIFEST.json").write_text(
+        json.dumps(
+            {
+                "schema": "zsec.antivirus.windows-desktop-distribution.v1",
+                "product": "ZSEC Antivirus",
+                "version": "0.3.12",
+                "runtime_policy": {
+                    "primary_antivirus": False,
+                    "pre_access_enforcement": False,
+                    "existing_provider_must_remain_active": True,
+                    "automatic_provider_removal": False,
+                },
+                "files": [],
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [
+            powershell,
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "RemoteSigned",
+            "-File",
+            str(package / "Install-ZsecAntivirusDesktop.ps1"),
+            "-InstallRoot",
+            str(install_root),
+            "-PlanOnly",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    plan = json.loads(result.stdout)
+    assert plan["source"] == str(package)
+    assert plan["version"] == "0.3.12"
+    assert plan["plan_only"] is True
+    assert not install_root.exists()
+    explicit_empty = subprocess.run(
+        [
+            powershell,
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "RemoteSigned",
+            "-File",
+            str(package / "Install-ZsecAntivirusDesktop.ps1"),
+            "-PackageRoot",
+            "",
+            "-InstallRoot",
+            str(install_root),
+            "-PlanOnly",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert explicit_empty.returncode != 0
+    assert "empty" in explicit_empty.stderr.casefold()
+    assert not install_root.exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell 5.1 is required")
+def test_extracted_companion_sync_no_argument_tools_root_works_in_powershell_51(
+    tmp_path: Path,
+) -> None:
+    powershell = shutil.which("powershell.exe")
+    assert powershell is not None
+    tools = tmp_path / "Tools"
+    tools.mkdir()
+    companion = ROOT / "windows" / "companion"
+    for name in (
+        "Sync-ZsecAntivirusCompanion.ps1",
+        "Install-ZsecAntivirusCompanion.ps1",
+        "Uninstall-ZsecAntivirusCompanion.ps1",
+        "Get-ZsecAntivirusCompanionStatus.ps1",
+    ):
+        shutil.copy2(companion / name, tools / name)
+    cli = tmp_path / "zsec-shield.exe"
+    cli.write_bytes(b"synthetic-cli-fixture")
+    state = tmp_path / "state"
+    result = subprocess.run(
+        [
+            powershell,
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "RemoteSigned",
+            "-File",
+            str(tools / "Sync-ZsecAntivirusCompanion.ps1"),
+            "-CliPath",
+            str(cli),
+            "-StateDirectory",
+            str(state),
+            "-PlanOnly",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    plan = json.loads(result.stdout)
+    assert plan["schema"] == "zsec.antivirus.windows-companion-sync-plan.v1"
+    assert plan["cli_path"] == str(cli)
+    assert plan["plan_only"] is True
+    assert not state.exists()
+    explicit_empty = subprocess.run(
+        [
+            powershell,
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "RemoteSigned",
+            "-File",
+            str(tools / "Sync-ZsecAntivirusCompanion.ps1"),
+            "-CliPath",
+            str(cli),
+            "-StateDirectory",
+            str(state),
+            "-ToolsRoot",
+            "",
+            "-PlanOnly",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert explicit_empty.returncode != 0
+    assert "empty" in explicit_empty.stderr.casefold()
+    assert not state.exists()

@@ -2,7 +2,7 @@
 
 Last reviewed: 22 August 2026.
 
-ZSEC Antivirus Community 0.3.11 means a Windows graphical protection control plane
+ZSEC Antivirus Community 0.3.12 means a Windows graphical protection control plane
 plus a cross-platform command-line scanner and installable, per-user automatic
 post-change companion. On Windows, Microsoft Defender may supply the supported
 real-time/on-access enforcement only when the live status contract verifies it.
@@ -13,7 +13,8 @@ installer, or registered primary-antivirus replacement.
 
 | Surface | Version/status | What it contains |
 | --- | --- | --- |
-| Community release represented by this source | `0.3.11` | Defender-backed Windows control plane, bounded local scanning, post-change monitoring, encrypted quarantine, signed data-only feeds, and browser controls described below |
+| Community release represented by this source | `0.3.12` | Defender-backed Windows control plane, bounded local scanning, post-change monitoring, encrypted quarantine, signed data-only feeds, and browser controls described below |
+| Unpublished artifact checkpoint | [`v0.3.11`](https://github.com/ResearchForumOnline/ZSEC-Shield/tree/v0.3.11) | Exact extracted-package acceptance found that the no-argument Antivirus installer and nested companion synchronizer could receive an empty sibling root under built-in Windows PowerShell 5.1; the draft release was not promoted or accepted for installation |
 | Unpublished source checkpoint | [`v0.3.10`](https://github.com/ResearchForumOnline/ZSEC-Shield/tree/v0.3.10) | Browser artifact acceptance found non-deterministic compiler output and machine-specific build paths in the packaged manifest, so this checkpoint was not promoted to an accepted Browser package |
 | Published release rejected for site cutover | [`v0.3.9`](https://github.com/ResearchForumOnline/ZSEC-Shield/tree/v0.3.9) | Rejected for the TalkToAI site cutover because the installed Windows status path could reject Defender evidence when `FullScanAge` carried the no-scan sentinel; its immutable bytes remain available for historical verification and should not be used for provider-handoff decisions |
 | Historical source checkpoint | [`v0.3.8`](https://github.com/ResearchForumOnline/ZSEC-Shield/tree/v0.3.8) | Source tag only; it was not published as an accepted GitHub Release because its bundled release-status documentation failed the pre-publication audit |
@@ -26,12 +27,12 @@ archive is not a published accepted release on its own.
 
 ## Native-archive build matrix
 
-The 0.3.11 release workflow builds these self-contained PyInstaller one-directory
+The 0.3.12 release workflow builds these self-contained PyInstaller one-directory
 CLI archives. Publication requires every release gate to pass. This table
 describes bounded build targets, not proof that a particular byte sequence was
 accepted, production desktop support, or a platform antivirus certification.
 
-| Artifact family | Architecture | Delivery | Automatic companion | Key protection in Community 0.3.11 | Publisher identity | Status |
+| Artifact family | Architecture | Delivery | Automatic companion | Key protection in Community 0.3.12 | Publisher identity | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | Windows | x86-64 | ZIP CLI | Per-user startup launcher scripts | CurrentUser DPAPI | No Authenticode signature | Workflow build target; exact asset manifest and checksum required; post-change companion, not primary AV |
 | macOS | Workflow manifest identifies native architecture | `tar.gz` CLI | Per-user LaunchAgent scripts | `filesystem-0600-preview`; not production Keychain custody | No Developer ID signature/notarization | Workflow build target; exact asset manifest and checksum required; physical-hardware GUI/provider qualification absent |
@@ -48,7 +49,7 @@ Python test suite on GitHub-hosted Windows, macOS, and Linux with Python 3.11 an
 3.13. That is useful core compatibility evidence; it is not a support promise
 for every OS version, CPU, filesystem, desktop, or security configuration.
 
-The 0.3.11 `watch` command is a foreground process using native filesystem
+The 0.3.12 `watch` command is a foreground process using native filesystem
 notifications with a disclosed polling fallback. It performs post-change scans and has
 `pre_access_enforcement: false` and `real_time_protection: false`; the existing
 platform/endpoint provider must remain active.
@@ -71,7 +72,7 @@ platform/endpoint provider must remain active.
 
 ## Browser desktop application
 
-ZSEC Browser Community 0.3.11 is an unsigned Windows x64 application with its own
+ZSEC Browser Community 0.3.12 is an unsigned Windows x64 application with its own
 native ZSEC window and isolated profile. Microsoft maintains the Evergreen
 WebView2 Chromium engine; ZSEC maintains the shell, UI and data-only policy
 adapter. It includes managed tabs, tray controls, bookmarks, local typed-history

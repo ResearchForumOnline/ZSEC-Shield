@@ -1,7 +1,7 @@
 #requires -Version 5.1
 [CmdletBinding()]
 param(
-    [string]$PackageRoot = $PSScriptRoot,
+    [string]$PackageRoot,
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA "TalkToAI\ZSEC Antivirus"),
     [switch]$Open,
     [switch]$PlanOnly
@@ -9,6 +9,14 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+# Windows PowerShell 5.1 can evaluate a script parameter's default expression
+# before $PSScriptRoot is populated. Resolve the sibling package root only
+# after parameter binding so the documented no-argument -File path is stable
+# in both Windows PowerShell 5.1 and PowerShell 7.
+if (-not $PSBoundParameters.ContainsKey("PackageRoot")) {
+    $PackageRoot = $PSScriptRoot
+}
 
 function Get-NormalizedPath {
     param([Parameter(Mandatory = $true)][string]$Path)

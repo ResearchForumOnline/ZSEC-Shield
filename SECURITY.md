@@ -17,7 +17,7 @@ Security invariants for this project:
 - no “system is clean” claim from a limited scan;
 - no secrets or private signing keys committed to the repository.
 
-Community 0.3.11 source covers the cross-platform ZSEC Shield core, the Windows ZSEC
+Community 0.3.12 source covers the cross-platform ZSEC Shield core, the Windows ZSEC
 Antivirus control plane, and ZSEC Browser Community. Browser Shields Community
 0.5.2 remains separately versioned. All ZSEC desktop and native Community binaries
 are unsigned: a version name, tag, adjacent checksum, or passing workflow alone is

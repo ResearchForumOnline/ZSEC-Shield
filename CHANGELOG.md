@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.12 - 2026-08-22
+
+- Moved the Windows desktop installer's implicit package-root resolution out of
+  its parameter default and into the script body, because Windows PowerShell 5.1
+  can evaluate `$PSScriptRoot` too early for a no-argument `-File` launch.
+- Applied the same delayed sibling-root resolution to the automatic companion
+  synchronizer, closing the equivalent nested upgrade failure before endpoint
+  installation.
+- Added executable Windows PowerShell 5.1 regressions that stage a package and
+  companion tool directory in new locations, omit both root overrides, require
+  valid plan-only JSON, reject explicitly empty overrides, and prove that no
+  install or state directory is created.
+- Retained v0.3.11 as an unpublished source/artifact checkpoint after the exact
+  extracted Windows PowerShell 5.1 acceptance path found this installer defect;
+  its draft release was not promoted as an accepted public release.
+- Advanced the core, Windows desktop and ZSEC Browser Community identity to
+  0.3.12 while retaining Browser Shields 0.5.2 and all evidence-bound product
+  boundaries.
+
 ## 0.3.11 - 2026-08-22
 
 - Replaced the machine-dependent .NET Framework C# compiler in the Windows
