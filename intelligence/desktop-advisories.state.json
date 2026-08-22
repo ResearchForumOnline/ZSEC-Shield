@@ -1,6 +1,6 @@
 {
-  "current_catalog_sha256": "5ea76e7b9582582d144c6b20e8c9c29f2520630566ab16ca6a3d31c65ded0a10",
-  "installed_at": "2026-08-22T22:37:39Z",
+  "current_catalog_sha256": "794f635e945c10f8b8f81d2b5727fe3b8185e27adc7ac4c5f9c1ff74f66366ef",
+  "installed_at": "2026-08-22T23:51:35Z",
   "schema": "zsec.desktop-intelligence-state.v1",
   "sources": [
     {
