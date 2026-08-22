@@ -110,6 +110,7 @@ class QueuedPathEvent:
     path: Path
     event_type: str
     is_directory: bool
+    observed_at: float
 
 
 @dataclass(slots=True)
@@ -381,8 +382,11 @@ class DebouncedPathQueue:
                 self.overflowed.set()
                 return
             try:
+                observed_at = self._clock()
                 self._queue.put_nowait(
-                    QueuedPathEvent(_absolute(path), event_type, is_directory)
+                    QueuedPathEvent(
+                        _absolute(path), event_type, is_directory, observed_at
+                    )
                 )
             except queue.Full:
                 self.events_dropped += 1
@@ -405,7 +409,11 @@ class DebouncedPathQueue:
                         self.events_dropped += 1
                         self.overflowed.set()
                         continue
-                    now = self._clock()
+                    # Debounce begins at observation, not whenever the consumer
+                    # thread happens to drain the raw queue. Otherwise a busy
+                    # baseline can postpone a file that has already been quiet
+                    # for the full debounce interval.
+                    now = event.observed_at
                     pending = PendingPath(event.path, first_seen_at=now)
                     self._pending[key] = pending
                     self.pending_high_water = max(
@@ -413,7 +421,7 @@ class DebouncedPathQueue:
                     )
                 else:
                     self.events_debounced += 1
-                    now = self._clock()
+                    now = event.observed_at
                 pending.event_types.add(event.event_type)
                 if event.event_type in {
                     "closed_after_write",

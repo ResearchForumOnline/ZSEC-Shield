@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.5 - 2026-08-22
+
+- timestamp raw filesystem events at the observer boundary so debounce time is
+  not restarted by delayed consumer-thread ingestion during a large baseline;
+- preserve bounded priority scans between inventory files, preventing a new
+  download or write from being postponed behind the full first inventory; and
+- retain fail-closed incomplete reporting, encrypted quarantine and mandatory
+  coexistence with the registered primary antivirus.
+
+## 0.3.4 - 2026-08-22
+
+- add four live overview cards, finite busy animations, hover feedback and a
+  strict companion truth table to the Windows protection centre;
+- prioritise up to 32 due filesystem-event scans between baseline files without
+  unbounding the queue or weakening scan evidence; and
+- add stale-session, sequence, version, integrity and heartbeat validation to
+  the installed companion status shown in the GUI.
+
 ## 0.3.3 - 2026-08-22
 
 - add an isolated Antivirus recovery self-test covering automatic encrypted

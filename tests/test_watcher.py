@@ -141,6 +141,23 @@ class WatchQueueTests(unittest.TestCase):
         self.assertEqual(1, pending["event_queue_pending_paths"])
         self.assertEqual(1, pending["event_queue_total_depth"])
 
+    def test_debounce_starts_when_observer_submits_not_when_consumer_ingests(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            now = [10.0]
+            events = DebouncedPathQueue(
+                excluded_paths=(),
+                debounce_seconds=0.5,
+                max_events=16,
+                clock=lambda: now[0],
+            )
+            target = root / "observed.bin"
+            events.submit(target, "created", False)
+            now[0] = 10.5
+            due = events.due()
+        self.assertEqual(1, len(due))
+        self.assertEqual(target.absolute(), due[0].path)
+
     def test_moved_event_scans_destination_not_old_name(self) -> None:
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
