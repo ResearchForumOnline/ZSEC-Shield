@@ -41,6 +41,10 @@ namespace TalkToAI.ZsecBrowserPreview
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+            bool explicitDestination = args.Any(value =>
+                !String.IsNullOrWhiteSpace(value) &&
+                !value.StartsWith("--", StringComparison.Ordinal)
+            );
             string destination = ResolveDestination(args);
             try
             {
@@ -51,7 +55,11 @@ namespace TalkToAI.ZsecBrowserPreview
                         StringComparison.OrdinalIgnoreCase
                     )
                 );
-                Application.Run(new BrowserWindow(destination, runtimeNewTabTest));
+                Application.Run(new BrowserWindow(
+                    destination,
+                    explicitDestination,
+                    runtimeNewTabTest
+                ));
             }
             catch (Exception exception)
             {
@@ -372,8 +380,15 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly Label runtimeStatus;
         private readonly ProtectionPulse protectionPulse;
         private readonly ToolStripButton highRiskButton;
+        private readonly ToolStripButton bookmarkButton;
+        private readonly ToolStripButton menuButton;
         private readonly ToolStripLabel blockedLabel;
         private readonly ToolStripProgressBar navigationProgress;
+        private readonly FlowLayoutPanel bookmarksBar;
+        private readonly BrowserDataStore productStore;
+        private readonly BrowserProductData productData;
+        private readonly ContextMenuStrip mainMenu;
+        private readonly NotifyIcon trayIcon;
         private CoreWebView2Environment environment;
         private int blockedRequestCount;
         private int trackingCleanupCount;
@@ -383,6 +398,9 @@ namespace TalkToAI.ZsecBrowserPreview
         private bool dnrRuntimeVerified;
         private bool runtimeUpdateAvailable;
         private bool isClosing;
+        private bool exitRequested;
+        private bool trayNoticeShown;
+        private string productDataWarning;
         private string installedShieldsExtensionId = "unavailable";
         private string effectiveTrackingPrevention = "unavailable";
         private Task extensionInstallTask;
@@ -404,9 +422,12 @@ namespace TalkToAI.ZsecBrowserPreview
             int valueSize
         );
 
-        internal BrowserWindow(string destination, bool testNewTab = false)
+        internal BrowserWindow(
+            string destination,
+            bool explicitDestination,
+            bool testNewTab = false
+        )
         {
-            initialDestination = destination;
             runtimeNewTabTest = testNewTab;
             applicationRoot = AppDomain.CurrentDomain.BaseDirectory;
             productRoot = Path.Combine(
@@ -414,6 +435,20 @@ namespace TalkToAI.ZsecBrowserPreview
                 "TalkToAI",
                 "ZSEC Browser"
             );
+            productStore = new BrowserDataStore(productRoot);
+            try
+            {
+                productData = productStore.Load();
+            }
+            catch (Exception exception)
+            {
+                productData = BrowserProductData.CreateDefault();
+                productDataWarning = "Local bookmarks, history and settings could not be loaded: " +
+                    exception.Message;
+            }
+            initialDestination = explicitDestination
+                ? destination
+                : GetStartupDestination(productData.Settings);
             profileRoot = Path.Combine(productRoot, "User Data");
             policyRoot = Path.Combine(applicationRoot, "policy");
             extensionRoot = Path.Combine(applicationRoot, "extension");
@@ -428,6 +463,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 TaskCreationOptions.RunContinuationsAsynchronously
             );
             tabMutationGate = new SemaphoreSlim(1, 1);
+            highRiskMode = productData.Settings.NativeStrictMode;
 
             Text = "ZSEC Browser";
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
@@ -500,6 +536,7 @@ namespace TalkToAI.ZsecBrowserPreview
             navigation.ImageScalingSize = new Size(20, 20);
             navigation.AutoSize = false;
             navigation.Height = 54;
+            navigation.AccessibleName = "Browser navigation toolbar";
 
             ToolStripButton backButton = CreateButton("‹", "Back (Alt+Left)", delegate { if (ActiveView != null && ActiveView.CanGoBack) ActiveView.GoBack(); });
             ToolStripButton forwardButton = CreateButton("›", "Forward (Alt+Right)", delegate { if (ActiveView != null && ActiveView.CanGoForward) ActiveView.GoForward(); });
@@ -528,10 +565,17 @@ namespace TalkToAI.ZsecBrowserPreview
             addressHost.Height = 38;
             addressHost.Margin = new Padding(7, 0, 7, 0);
 
-            highRiskButton = CreateButton("Native guard: Standard", "Toggle stricter native navigation policy", ToggleHighRiskMode);
+            highRiskButton = CreateButton(
+                highRiskMode ? "Native guard: Strict" : "Native guard: Standard",
+                "Toggle stricter native navigation policy",
+                ToggleHighRiskMode
+            );
             highRiskButton.CheckOnClick = false;
+            highRiskButton.Checked = highRiskMode;
             ToolStripButton shieldsButton = CreateButton("Shields", "Open ZSEC Browser Shields controls", async delegate { await OpenShieldsSettingsAsync(); });
-            ToolStripButton aboutButton = CreateButton("⋯", "About ZSEC Browser", ShowAbout);
+            bookmarkButton = CreateButton("☆", "Bookmark this page (Ctrl+D)", AddActiveBookmark);
+            menuButton = CreateButton("☰", "ZSEC Browser main menu (Alt+F)", delegate { ShowMainMenu(); });
+            mainMenu = BuildMainMenu();
 
             navigation.Items.AddRange(new ToolStripItem[]
             {
@@ -541,13 +585,14 @@ namespace TalkToAI.ZsecBrowserPreview
                 homeButton,
                 addressHost,
                 new ToolStripSeparator(),
+                bookmarkButton,
                 highRiskButton,
                 shieldsButton,
-                aboutButton
+                menuButton
             });
             navigation.Resize += delegate
             {
-                int reserved = 520;
+                int reserved = 690;
                 addressHost.Width = Math.Max(280, navigation.ClientSize.Width - reserved);
                 addressSurface.Width = addressHost.Width;
             };
@@ -560,6 +605,7 @@ namespace TalkToAI.ZsecBrowserPreview
             tabs.SizeMode = TabSizeMode.Fixed;
             tabs.Padding = new Point(18, 5);
             tabs.HotTrack = true;
+            tabs.AccessibleName = "Open browser tabs";
             tabs.DrawItem += DrawBrowserTab;
             tabs.MouseDown += BrowserTabMouseDown;
             tabs.SelectedIndexChanged += delegate
@@ -584,6 +630,18 @@ namespace TalkToAI.ZsecBrowserPreview
             newTabButton.BringToFront();
             tabHost.Resize += delegate { PositionNewTabButton(); };
 
+            bookmarksBar = new FlowLayoutPanel();
+            bookmarksBar.Dock = DockStyle.Top;
+            bookmarksBar.Height = 38;
+            bookmarksBar.Padding = new Padding(12, 4, 12, 3);
+            bookmarksBar.WrapContents = false;
+            bookmarksBar.AutoScroll = true;
+            bookmarksBar.FlowDirection = FlowDirection.LeftToRight;
+            bookmarksBar.BackColor = Color.FromArgb(7, 20, 27);
+            bookmarksBar.AccessibleName = "Bookmarks bar";
+            bookmarksBar.Visible = productData.Settings.ShowBookmarksBar;
+            RefreshBookmarksBar();
+
             StatusStrip status = new StatusStrip();
             status.BackColor = PanelBackground;
             status.ForeColor = Muted;
@@ -591,9 +649,11 @@ namespace TalkToAI.ZsecBrowserPreview
             runtimeStatus.Text = "Starting Microsoft Chromium runtime...";
             runtimeStatus.ForeColor = Muted;
             runtimeStatus.AutoSize = true;
+            runtimeStatus.AccessibleName = "Browser runtime status";
             ToolStripControlHost runtimeHost = new ToolStripControlHost(runtimeStatus);
             blockedLabel = new ToolStripLabel("Native policy blocks: 0");
             blockedLabel.ForeColor = Accent;
+            blockedLabel.AccessibleName = "Native policy block count";
             navigationProgress = new ToolStripProgressBar();
             navigationProgress.Style = ProgressBarStyle.Marquee;
             navigationProgress.MarqueeAnimationSpeed = 24;
@@ -608,13 +668,22 @@ namespace TalkToAI.ZsecBrowserPreview
             status.Items.Add(blockedLabel);
             status.Items.Add(new ToolStripStatusLabel("Profile: separate app data"));
 
+            trayIcon = new NotifyIcon();
+            trayIcon.Icon = Icon;
+            trayIcon.Text = "ZSEC Browser Community";
+            trayIcon.ContextMenuStrip = BuildTrayMenu();
+            trayIcon.Visible = productData.Settings.MinimizeToTray || productData.Settings.CloseToTray;
+            trayIcon.DoubleClick += delegate { RestoreFromTray(); };
+
             Controls.Add(tabHost);
             Controls.Add(status);
+            Controls.Add(bookmarksBar);
             Controls.Add(navigation);
             Controls.Add(brandBar);
 
             Load += InitializeBrowserAsync;
-            FormClosing += delegate { isClosing = true; };
+            Resize += BrowserWindowResize;
+            FormClosing += BrowserWindowClosing;
             FormClosed += DisposeBrowserViews;
             KeyDown += BrowserKeyDown;
             WriteStartupStage("window_constructed");
@@ -664,6 +733,439 @@ namespace TalkToAI.ZsecBrowserPreview
             button.AccessibleName = toolTip;
             button.Click += handler;
             return button;
+        }
+
+        private ContextMenuStrip BuildMainMenu()
+        {
+            ContextMenuStrip menu = new ContextMenuStrip();
+            menu.ShowImageMargin = false;
+            menu.Font = new Font("Segoe UI", 9.5F);
+            menu.AccessibleName = "ZSEC Browser main menu";
+            ToolStripMenuItem status = new ToolStripMenuItem("Protection status: starting");
+            status.Enabled = false;
+            status.Tag = "protection_status";
+            menu.Items.Add(status);
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(MenuItem("New tab", "Ctrl+T", async delegate { await CreateNewTabCommandAsync("main_menu"); }));
+            menu.Items.Add(MenuItem("Bookmark this page", "Ctrl+D", AddActiveBookmark));
+
+            ToolStripMenuItem bookmarks = new ToolStripMenuItem("Bookmarks");
+            bookmarks.DropDownItems.Add(MenuItem("Show bookmarks bar", "Ctrl+Shift+B", ToggleBookmarksBar));
+            bookmarks.DropDownItems.Add(MenuItem("Bookmark manager", "Ctrl+Shift+O", delegate { ShowBookmarksManager(); }));
+            bookmarks.DropDownItems.Add(new ToolStripSeparator());
+            bookmarks.DropDownItems.Add(MenuItem("Import bookmarks", "", delegate { ImportBookmarks(); }));
+            bookmarks.DropDownItems.Add(MenuItem("Export bookmarks", "", delegate { ExportBookmarks(); }));
+            menu.Items.Add(bookmarks);
+
+            menu.Items.Add(MenuItem("History", "Ctrl+H", delegate { ShowHistory(); }));
+            menu.Items.Add(MenuItem("Clear browsing history", "Ctrl+Shift+Del", delegate { ClearBrowsingHistory(); }));
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(MenuItem("ZSEC Shields", "", async delegate { await OpenShieldsSettingsAsync(); }));
+            menu.Items.Add(MenuItem("Settings", "Ctrl+,", async delegate { await ShowSettingsAsync(); }));
+            menu.Items.Add(MenuItem("About ZSEC Browser", "", ShowAbout));
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(MenuItem("Minimize to tray", "", delegate { HideToTray(); }));
+            menu.Items.Add(MenuItem("Exit ZSEC Browser", "", delegate { ExitBrowser(); }));
+            return menu;
+        }
+
+        private ContextMenuStrip BuildTrayMenu()
+        {
+            ContextMenuStrip menu = new ContextMenuStrip();
+            menu.ShowImageMargin = false;
+            menu.Font = new Font("Segoe UI", 9.5F);
+            menu.AccessibleName = "ZSEC Browser notification area menu";
+            menu.Items.Add(MenuItem("Show ZSEC Browser", "", delegate { RestoreFromTray(); }));
+            menu.Items.Add(MenuItem("New tab", "Ctrl+T", async delegate
+            {
+                RestoreFromTray();
+                await CreateNewTabCommandAsync("tray_menu");
+            }));
+            ToolStripMenuItem protection = new ToolStripMenuItem("Protection status is shown in the browser window");
+            protection.Enabled = false;
+            menu.Items.Add(protection);
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(MenuItem("Settings", "Ctrl+,", async delegate
+            {
+                RestoreFromTray();
+                await ShowSettingsAsync();
+            }));
+            menu.Items.Add(MenuItem("Exit ZSEC Browser", "", delegate { ExitBrowser(); }));
+            return menu;
+        }
+
+        private static ToolStripMenuItem MenuItem(
+            string text,
+            string shortcut,
+            EventHandler handler
+        )
+        {
+            ToolStripMenuItem item = new ToolStripMenuItem(text);
+            item.ShowShortcutKeys = true;
+            item.ShortcutKeyDisplayString = shortcut;
+            item.AccessibleName = String.IsNullOrWhiteSpace(shortcut)
+                ? text
+                : text + " (" + shortcut + ")";
+            item.Click += handler;
+            return item;
+        }
+
+        private void ShowMainMenu()
+        {
+            foreach (ToolStripItem item in mainMenu.Items)
+            {
+                if (String.Equals(item.Tag as string, "protection_status", StringComparison.Ordinal))
+                {
+                    item.Text = shieldsExtensionEnabled
+                        ? dnrRuntimeVerified
+                            ? "Protection status: Shields verified in this session"
+                            : "Protection status: Shields loaded; DNR probe not passed"
+                        : "Protection status: Shields unavailable";
+                }
+            }
+            mainMenu.Show(menuButton.GetCurrentParent(), new Point(menuButton.Bounds.Left, menuButton.Bounds.Bottom));
+        }
+
+        private void RefreshBookmarksBar()
+        {
+            if (bookmarksBar == null) return;
+            bookmarksBar.SuspendLayout();
+            try
+            {
+                bookmarksBar.Controls.Clear();
+                foreach (BrowserBookmark bookmark in productData.Bookmarks.Take(12))
+                {
+                    Button button = BrowserDialogTheme.Button(
+                        Truncate(bookmark.Title, 24),
+                        "Open bookmark " + bookmark.Title
+                    );
+                    button.AutoSize = false;
+                    button.Height = 28;
+                    button.Width = Math.Min(180, Math.Max(86, TextRenderer.MeasureText(button.Text, Font).Width + 24));
+                    button.Margin = new Padding(2, 0, 2, 0);
+                    button.Tag = bookmark.Url;
+                    button.Click += delegate(object sender, EventArgs args)
+                    {
+                        Button selected = sender as Button;
+                        if (selected != null) Navigate(selected.Tag as string);
+                    };
+                    bookmarksBar.Controls.Add(button);
+                }
+                Button manage = BrowserDialogTheme.Button("Bookmarks", "Open bookmark manager");
+                manage.AutoSize = false;
+                manage.Size = new Size(104, 28);
+                manage.Margin = new Padding(4, 0, 2, 0);
+                manage.Click += delegate { ShowBookmarksManager(); };
+                bookmarksBar.Controls.Add(manage);
+            }
+            finally
+            {
+                bookmarksBar.ResumeLayout();
+            }
+        }
+
+        private void AddActiveBookmark(object sender, EventArgs args)
+        {
+            if (!CanPersistProductData(true)) return;
+            WebView2 view = ActiveView;
+            if (view == null || view.Source == null || !IsAllowedWebUri(view.Source.ToString(), true))
+            {
+                runtimeStatus.Text = "Only HTTP or HTTPS pages can be bookmarked.";
+                return;
+            }
+            string title = view.CoreWebView2 == null ? view.Source.Host : view.CoreWebView2.DocumentTitle;
+            bool added;
+            try
+            {
+                added = productStore.AddBookmark(productData, title, view.Source.AbsoluteUri);
+            }
+            catch (Exception exception)
+            {
+                ShowProductDataWriteFailure(exception);
+                return;
+            }
+            RefreshBookmarksBar();
+            UpdateBookmarkButton();
+            runtimeStatus.Text = added ? "Bookmark saved locally." : "Bookmark title updated locally.";
+        }
+
+        private void UpdateBookmarkButton()
+        {
+            if (bookmarkButton == null) return;
+            string current = ActiveView == null || ActiveView.Source == null
+                ? String.Empty
+                : ActiveView.Source.AbsoluteUri;
+            bool saved = productData.Bookmarks.Any(item =>
+                String.Equals(item.Url, current, StringComparison.OrdinalIgnoreCase)
+            );
+            bookmarkButton.Text = saved ? "★" : "☆";
+            bookmarkButton.ToolTipText = saved ? "This page is bookmarked" : "Bookmark this page (Ctrl+D)";
+            bookmarkButton.AccessibleName = bookmarkButton.ToolTipText;
+        }
+
+        private void ShowBookmarksManager()
+        {
+            if (!CanPersistProductData(true)) return;
+            using (BookmarksDialog dialog = new BookmarksDialog(
+                productStore,
+                productData,
+                delegate(string url) { Navigate(url); }
+            ))
+            {
+                dialog.ShowDialog(this);
+            }
+            RefreshBookmarksBar();
+            UpdateBookmarkButton();
+        }
+
+        private void ImportBookmarks()
+        {
+            if (!CanPersistProductData(true)) return;
+            OpenFileDialog picker = new OpenFileDialog();
+            picker.Filter = "Bookmark HTML (*.html;*.htm)|*.html;*.htm|All files (*.*)|*.*";
+            picker.CheckFileExists = true;
+            if (picker.ShowDialog(this) != DialogResult.OK) return;
+            try
+            {
+                int added = productStore.ImportBookmarksHtml(productData, picker.FileName);
+                RefreshBookmarksBar();
+                runtimeStatus.Text = added.ToString() + " bookmark(s) imported locally.";
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(
+                    "Bookmarks were not imported.\r\n\r\n" + exception.Message,
+                    "ZSEC Browser",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+            }
+        }
+
+        private void ExportBookmarks()
+        {
+            SaveFileDialog picker = new SaveFileDialog();
+            picker.Filter = "Bookmark HTML (*.html)|*.html";
+            picker.FileName = "zsec-browser-bookmarks.html";
+            picker.OverwritePrompt = true;
+            if (picker.ShowDialog(this) != DialogResult.OK) return;
+            try
+            {
+                productStore.ExportBookmarksHtml(productData, picker.FileName);
+                runtimeStatus.Text = "Bookmarks exported to " + picker.FileName;
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(
+                    "Bookmarks were not exported.\r\n\r\n" + exception.Message,
+                    "ZSEC Browser",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+            }
+        }
+
+        private void ToggleBookmarksBar(object sender, EventArgs args)
+        {
+            if (!CanPersistProductData(true)) return;
+            productData.Settings.ShowBookmarksBar = !productData.Settings.ShowBookmarksBar;
+            bookmarksBar.Visible = productData.Settings.ShowBookmarksBar;
+            try
+            {
+                productStore.Save(productData);
+            }
+            catch (Exception exception)
+            {
+                productData.Settings.ShowBookmarksBar = !productData.Settings.ShowBookmarksBar;
+                bookmarksBar.Visible = productData.Settings.ShowBookmarksBar;
+                ShowProductDataWriteFailure(exception);
+            }
+        }
+
+        private void ShowHistory()
+        {
+            if (!CanPersistProductData(true)) return;
+            using (HistoryDialog dialog = new HistoryDialog(
+                productStore,
+                productData,
+                delegate(string url) { Navigate(url); }
+            ))
+            {
+                dialog.ShowDialog(this);
+            }
+        }
+
+        private void ClearBrowsingHistory()
+        {
+            if (!CanPersistProductData(true)) return;
+            DialogResult answer = MessageBox.Show(
+                "Clear all locally stored ZSEC Browser history? Bookmarks are preserved.",
+                "Clear browsing history",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2
+            );
+            if (answer != DialogResult.Yes) return;
+            try
+            {
+                productStore.ClearHistory(productData);
+                runtimeStatus.Text = "Local browsing history cleared.";
+            }
+            catch (Exception exception)
+            {
+                ShowProductDataWriteFailure(exception);
+            }
+        }
+
+        private async Task ShowSettingsAsync()
+        {
+            BrowserRuntimeSnapshot snapshot = new BrowserRuntimeSnapshot
+            {
+                RuntimeVersion = environment == null
+                    ? "not initialized"
+                    : CoreWebView2Environment.GetAvailableBrowserVersionString(),
+                ShieldsExtensionLoaded = shieldsExtensionEnabled,
+                DnrProbePassed = dnrRuntimeVerified,
+                TrackingPrevention = effectiveTrackingPrevention,
+                RuntimeUpdateAvailable = runtimeUpdateAvailable
+            };
+            using (SettingsDialog dialog = new SettingsDialog(productData.Settings, snapshot))
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+                if (!CanPersistProductData(true))
+                {
+                    if (dialog.OpenShieldsRequested) await OpenShieldsSettingsAsync();
+                    return;
+                }
+                BrowserSettings previous = productData.Settings;
+                try
+                {
+                    productData.Settings = dialog.Result;
+                    productStore.Save(productData);
+                    ApplyProductSettings();
+                    if (dialog.ClearHistoryRequested) productStore.ClearHistory(productData);
+                }
+                catch (Exception exception)
+                {
+                    productData.Settings = previous;
+                    ApplyProductSettings();
+                    ShowProductDataWriteFailure(exception);
+                    return;
+                }
+                if (dialog.OpenShieldsRequested) await OpenShieldsSettingsAsync();
+            }
+        }
+
+        private bool CanPersistProductData(bool notify)
+        {
+            if (String.IsNullOrWhiteSpace(productDataWarning)) return true;
+            runtimeStatus.Text = Truncate(productDataWarning, 140);
+            if (notify)
+            {
+                MessageBox.Show(
+                    productDataWarning +
+                        "\r\n\r\nZSEC preserved the existing data file and will not overwrite it during this session.",
+                    "ZSEC Browser local data",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+            }
+            return false;
+        }
+
+        private void ShowProductDataWriteFailure(Exception exception)
+        {
+            MessageBox.Show(
+                "The local browser-data change was not saved.\r\n\r\n" + exception.Message,
+                "ZSEC Browser local data",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            );
+        }
+
+        private void ApplyProductSettings()
+        {
+            highRiskMode = productData.Settings.NativeStrictMode;
+            highRiskButton.Text = highRiskMode ? "Native guard: Strict" : "Native guard: Standard";
+            highRiskButton.Checked = highRiskMode;
+            highRiskButton.BackColor = highRiskMode ? Color.FromArgb(210, 74, 54) : PanelBackground;
+            bookmarksBar.Visible = productData.Settings.ShowBookmarksBar;
+            trayIcon.Visible = productData.Settings.MinimizeToTray || productData.Settings.CloseToTray;
+            RefreshBookmarksBar();
+            if (environment != null)
+            {
+                WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
+            }
+        }
+
+        private void BrowserWindowResize(object sender, EventArgs args)
+        {
+            if (WindowState == FormWindowState.Minimized && productData.Settings.MinimizeToTray)
+            {
+                BeginInvoke(new Action(HideToTray));
+            }
+        }
+
+        private void HideToTray()
+        {
+            if (isClosing) return;
+            trayIcon.Visible = true;
+            Hide();
+            ShowInTaskbar = false;
+            if (!trayNoticeShown)
+            {
+                trayNoticeShown = true;
+                trayIcon.BalloonTipTitle = "ZSEC Browser is still running";
+                trayIcon.BalloonTipText = "Use the notification-area menu to restore or exit cleanly.";
+                trayIcon.ShowBalloonTip(3500);
+            }
+        }
+
+        private void RestoreFromTray()
+        {
+            if (isClosing) return;
+            ShowInTaskbar = true;
+            Show();
+            WindowState = FormWindowState.Normal;
+            Activate();
+            BringToFront();
+        }
+
+        private void BrowserWindowClosing(object sender, FormClosingEventArgs args)
+        {
+            if (!exitRequested && args.CloseReason == CloseReason.UserClosing && productData.Settings.CloseToTray)
+            {
+                args.Cancel = true;
+                HideToTray();
+                return;
+            }
+            isClosing = true;
+            trayIcon.Visible = false;
+            if (productData.Settings.ClearHistoryOnExit && CanPersistProductData(false))
+            {
+                try
+                {
+                    productStore.ClearHistory(productData);
+                }
+                catch
+                {
+                    // Shutdown must continue; no security state is relaxed by a history cleanup failure.
+                }
+            }
+        }
+
+        private void ExitBrowser()
+        {
+            exitRequested = true;
+            trayIcon.Visible = false;
+            Close();
+        }
+
+        private static string GetStartupDestination(BrowserSettings settings)
+        {
+            if (settings != null && settings.StartupMode == "new_tab") return Program.NewTabUri;
+            if (settings != null && settings.StartupMode == "custom") return settings.CustomStartupUrl;
+            return Program.DefaultStartPage;
         }
 
         private void PositionNewTabButton()
@@ -806,6 +1308,10 @@ namespace TalkToAI.ZsecBrowserPreview
                 ClearStartupFailureEvidence();
                 WriteRuntimeEvidence(runtimeVersion);
                 WriteStartupStage("runtime_evidence_ready");
+                if (!String.IsNullOrWhiteSpace(productDataWarning))
+                {
+                    runtimeStatus.Text = Truncate(productDataWarning, 140);
+                }
             }
             catch (Exception exception)
             {
@@ -1183,7 +1689,11 @@ namespace TalkToAI.ZsecBrowserPreview
             };
             core.SourceChanged += delegate
             {
-                if (view == ActiveView) address.Text = view.Source.ToString();
+                if (view == ActiveView)
+                {
+                    UpdateAddressFromActiveView();
+                    UpdateBookmarkButton();
+                }
             };
             core.DocumentTitleChanged += delegate
             {
@@ -1220,6 +1730,8 @@ namespace TalkToAI.ZsecBrowserPreview
                         CoreWebView2Environment.GetAvailableBrowserVersionString();
                 lastNavigationHttps = view.Source != null &&
                     String.Equals(view.Source.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
+                TryRecordHistory(view, core.DocumentTitle);
+                if (view == ActiveView) UpdateBookmarkButton();
                 WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
             };
             core.NewWindowRequested += delegate(object sender, CoreWebView2NewWindowRequestedEventArgs args)
@@ -1461,6 +1973,27 @@ namespace TalkToAI.ZsecBrowserPreview
             WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
         }
 
+        private void TryRecordHistory(WebView2 view, string title)
+        {
+            if (!CanPersistProductData(false)) return;
+            if (view == null || view.Source == null) return;
+            string url = view.Source.AbsoluteUri;
+            if (!IsAllowedWebUri(url, true) ||
+                String.Equals(url, Program.NewTabUri, StringComparison.OrdinalIgnoreCase) ||
+                IsExpectedShieldsSettingsUri(url))
+            {
+                return;
+            }
+            try
+            {
+                productStore.AddHistory(productData, title, url);
+            }
+            catch (Exception exception)
+            {
+                runtimeStatus.Text = "History was not saved: " + Truncate(exception.Message, 90);
+            }
+        }
+
         private void HandleDownloadStarting(object sender, CoreWebView2DownloadStartingEventArgs args)
         {
             args.Handled = true;
@@ -1479,16 +2012,60 @@ namespace TalkToAI.ZsecBrowserPreview
                 return;
             }
 
-            SaveFileDialog picker = new SaveFileDialog();
-            picker.FileName = suggestedName;
-            picker.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\Downloads";
-            picker.OverwritePrompt = true;
-            if (picker.ShowDialog(this) != DialogResult.OK)
+            if (productData.Settings.AskDownloadLocation)
             {
-                args.Cancel = true;
-                return;
+                SaveFileDialog picker = new SaveFileDialog();
+                picker.FileName = suggestedName;
+                picker.InitialDirectory = Directory.Exists(productData.Settings.DownloadDirectory)
+                    ? productData.Settings.DownloadDirectory
+                    : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                picker.OverwritePrompt = true;
+                if (picker.ShowDialog(this) != DialogResult.OK)
+                {
+                    args.Cancel = true;
+                    return;
+                }
+                args.ResultFilePath = picker.FileName;
             }
-            args.ResultFilePath = picker.FileName;
+            else
+            {
+                try
+                {
+                    args.ResultFilePath = GetAvailableDownloadPath(
+                        productData.Settings.DownloadDirectory,
+                        suggestedName
+                    );
+                }
+                catch (Exception exception)
+                {
+                    args.Cancel = true;
+                    MessageBox.Show(
+                        "The approved download was cancelled because the configured folder is unavailable.\r\n\r\n" +
+                            exception.Message,
+                        "ZSEC Browser",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
+                }
+            }
+        }
+
+        private static string GetAvailableDownloadPath(string directory, string fileName)
+        {
+            string root = Path.GetFullPath(directory);
+            Directory.CreateDirectory(root);
+            RejectReparseDirectory(root);
+            string safeName = SanitizeFileName(fileName);
+            string candidate = Path.Combine(root, safeName);
+            if (!File.Exists(candidate) && !Directory.Exists(candidate)) return candidate;
+            string stem = Path.GetFileNameWithoutExtension(safeName);
+            string extension = Path.GetExtension(safeName);
+            for (int index = 1; index <= 9999; index++)
+            {
+                candidate = Path.Combine(root, stem + " (" + index.ToString() + ")" + extension);
+                if (!File.Exists(candidate) && !Directory.Exists(candidate)) return candidate;
+            }
+            throw new IOException("No available download file name could be allocated.");
         }
 
         private void AddressKeyDown(object sender, KeyEventArgs args)
@@ -1563,6 +2140,57 @@ namespace TalkToAI.ZsecBrowserPreview
                 if (ActiveView != null) ActiveView.Reload();
                 return true;
             }
+            if (keyData == (Keys.Control | Keys.D))
+            {
+                AddActiveBookmark(this, EventArgs.Empty);
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.Shift | Keys.B))
+            {
+                ToggleBookmarksBar(this, EventArgs.Empty);
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.Shift | Keys.O))
+            {
+                ShowBookmarksManager();
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.H))
+            {
+                ShowHistory();
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.Shift | Keys.Delete))
+            {
+                ClearBrowsingHistory();
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.Oemcomma))
+            {
+                BeginInvoke(new Action(async delegate { await ShowSettingsAsync(); }));
+                return true;
+            }
+            if (keyData == (Keys.Alt | Keys.F))
+            {
+                ShowMainMenu();
+                return true;
+            }
+            if (keyData == Keys.F6)
+            {
+                address.Focus();
+                address.SelectAll();
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.Tab))
+            {
+                SelectRelativeTab(1);
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.Shift | Keys.Tab))
+            {
+                SelectRelativeTab(-1);
+                return true;
+            }
             if (keyData == (Keys.Alt | Keys.Left))
             {
                 if (ActiveView != null && ActiveView.CanGoBack) ActiveView.GoBack();
@@ -1574,6 +2202,14 @@ namespace TalkToAI.ZsecBrowserPreview
                 return true;
             }
             return base.ProcessCmdKey(ref message, keyData);
+        }
+
+        private void SelectRelativeTab(int delta)
+        {
+            if (tabs.TabPages.Count <= 1) return;
+            int current = Math.Max(0, tabs.SelectedIndex);
+            int next = (current + delta + tabs.TabPages.Count) % tabs.TabPages.Count;
+            tabs.SelectedIndex = next;
         }
 
         private void Navigate(string destination)
@@ -1598,7 +2234,25 @@ namespace TalkToAI.ZsecBrowserPreview
 
         private void ToggleHighRiskMode(object sender, EventArgs args)
         {
-            highRiskMode = !highRiskMode;
+            if (!CanPersistProductData(true)) return;
+            bool requested = !highRiskMode;
+            productData.Settings.NativeStrictMode = requested;
+            try
+            {
+                productStore.Save(productData);
+                highRiskMode = requested;
+            }
+            catch (Exception exception)
+            {
+                productData.Settings.NativeStrictMode = highRiskMode;
+                MessageBox.Show(
+                    "The native guard setting was not changed.\r\n\r\n" + exception.Message,
+                    "ZSEC Browser",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return;
+            }
             highRiskButton.Text = highRiskMode ? "Native guard: Strict" : "Native guard: Standard";
             highRiskButton.Checked = highRiskMode;
             highRiskButton.BackColor = highRiskMode ? Color.FromArgb(210, 74, 54) : PanelBackground;
@@ -1614,10 +2268,12 @@ namespace TalkToAI.ZsecBrowserPreview
             MessageBox.Show(
                 "ZSEC Browser Community " + Program.ProductVersion + "\r\n\r\n" +
                 "Engine: Microsoft Edge WebView2 (Chromium) " + runtime + "\r\n" +
-                "Protection: Browser Shields MV3 + native High-Risk policy\r\n" +
+                "Protection: Browser Shields MV3 + separate native strict policy\r\n" +
                 "Policy provenance: " + trackerDomains.Count + " reviewed domains, " + trackingParameters.Count + " tracking parameters\r\n" +
                 "Tracking prevention: Balanced\r\n" +
                 "YouTube UI assist: enabled (best effort)\r\n" +
+                "Bookmarks/history: local per-user storage; no ZSEC cloud sync\r\n" +
+                "Tray: native notification-area lifecycle with explicit exit\r\n" +
                 "Profile: separate app data under LocalAppData\r\n" +
                 "Permissions: default deny\r\n" +
                 "Host objects/web messaging: disabled\r\n\r\n" +
@@ -1663,8 +2319,14 @@ namespace TalkToAI.ZsecBrowserPreview
         {
             if (ActiveView != null && ActiveView.Source != null)
             {
-                address.Text = ActiveView.Source.ToString();
+                string source = ActiveView.Source.AbsoluteUri;
+                address.Text = String.Equals(source, Program.NewTabUri, StringComparison.OrdinalIgnoreCase) ||
+                    IsExpectedShieldsSettingsUri(source)
+                    ? String.Empty
+                    : source;
             }
+            else address.Clear();
+            UpdateBookmarkButton();
         }
 
         private static bool IsSameSite(string first, string second)
@@ -1849,6 +2511,15 @@ namespace TalkToAI.ZsecBrowserPreview
                 "last_tab_action=" + lastTabAction,
                 "last_new_tab_command_source=" + lastNewTabCommandSource,
                 "high_risk_mode=" + highRiskMode.ToString().ToLowerInvariant(),
+                "bookmarks_count=" + productData.Bookmarks.Count.ToString(),
+                "history_count=" + productData.History.Count.ToString(),
+                "history_recording_enabled=" + productData.Settings.RecordHistory.ToString().ToLowerInvariant(),
+                "clear_history_on_exit=" + productData.Settings.ClearHistoryOnExit.ToString().ToLowerInvariant(),
+                "bookmarks_bar_visible=" + bookmarksBar.Visible.ToString().ToLowerInvariant(),
+                "minimize_to_tray_enabled=" + productData.Settings.MinimizeToTray.ToString().ToLowerInvariant(),
+                "close_to_tray_enabled=" + productData.Settings.CloseToTray.ToString().ToLowerInvariant(),
+                "download_location_prompt=" + productData.Settings.AskDownloadLocation.ToString().ToLowerInvariant(),
+                "default_browser_registration_supported=false",
                 "blocked_request_count=" + blockedRequestCount.ToString(),
                 "tracking_cleanup_count=" + trackingCleanupCount.ToString(),
                 "last_navigation_https=" + lastNavigationHttps.ToString().ToLowerInvariant(),
@@ -1900,8 +2571,12 @@ namespace TalkToAI.ZsecBrowserPreview
 
         private void DisposeBrowserViews(object sender, FormClosedEventArgs args)
         {
+            trayIcon.Visible = false;
+            trayIcon.Dispose();
+            mainMenu.Dispose();
             foreach (WebView2 view in browserViews.ToArray()) view.Dispose();
             browserViews.Clear();
+            tabMutationGate.Dispose();
         }
     }
 }

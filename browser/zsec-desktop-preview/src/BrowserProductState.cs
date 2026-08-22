@@ -1,0 +1,456 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Web;
+using System.Web.Script.Serialization;
+
+namespace TalkToAI.ZsecBrowserPreview
+{
+    internal sealed class BrowserBookmark
+    {
+        public string Title { get; set; }
+        public string Url { get; set; }
+        public string CreatedAtUtc { get; set; }
+    }
+
+    internal sealed class BrowserHistoryEntry
+    {
+        public string Title { get; set; }
+        public string Url { get; set; }
+        public string VisitedAtUtc { get; set; }
+    }
+
+    internal sealed class BrowserSettings
+    {
+        public string StartupMode { get; set; }
+        public string CustomStartupUrl { get; set; }
+        public bool RecordHistory { get; set; }
+        public bool ClearHistoryOnExit { get; set; }
+        public bool ShowBookmarksBar { get; set; }
+        public bool MinimizeToTray { get; set; }
+        public bool CloseToTray { get; set; }
+        public bool AskDownloadLocation { get; set; }
+        public string DownloadDirectory { get; set; }
+        public bool NativeStrictMode { get; set; }
+
+        internal static BrowserSettings CreateDefault()
+        {
+            return new BrowserSettings
+            {
+                StartupMode = "home",
+                CustomStartupUrl = "https://talktoai.org/zero-browser/",
+                RecordHistory = true,
+                ClearHistoryOnExit = false,
+                ShowBookmarksBar = true,
+                MinimizeToTray = true,
+                CloseToTray = false,
+                AskDownloadLocation = true,
+                DownloadDirectory = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    "Downloads"
+                ),
+                NativeStrictMode = false
+            };
+        }
+
+        internal BrowserSettings Copy()
+        {
+            return new BrowserSettings
+            {
+                StartupMode = StartupMode,
+                CustomStartupUrl = CustomStartupUrl,
+                RecordHistory = RecordHistory,
+                ClearHistoryOnExit = ClearHistoryOnExit,
+                ShowBookmarksBar = ShowBookmarksBar,
+                MinimizeToTray = MinimizeToTray,
+                CloseToTray = CloseToTray,
+                AskDownloadLocation = AskDownloadLocation,
+                DownloadDirectory = DownloadDirectory,
+                NativeStrictMode = NativeStrictMode
+            };
+        }
+    }
+
+    internal sealed class BrowserProductData
+    {
+        public int SchemaVersion { get; set; }
+        public List<BrowserBookmark> Bookmarks { get; set; }
+        public List<BrowserHistoryEntry> History { get; set; }
+        public BrowserSettings Settings { get; set; }
+
+        internal static BrowserProductData CreateDefault()
+        {
+            return new BrowserProductData
+            {
+                SchemaVersion = 1,
+                Bookmarks = new List<BrowserBookmark>(),
+                History = new List<BrowserHistoryEntry>(),
+                Settings = BrowserSettings.CreateDefault()
+            };
+        }
+    }
+
+    internal sealed class BrowserDataStore
+    {
+        internal const int MaximumBookmarks = 1000;
+        internal const int MaximumHistoryEntries = 5000;
+        internal const int MaximumStateBytes = 4 * 1024 * 1024;
+        internal const int MaximumImportBytes = 8 * 1024 * 1024;
+
+        private static readonly Regex BookmarkAnchor = new Regex(
+            "<a\\b[^>]*\\bhref\\s*=\\s*(?:\\\"(?<double>[^\\\"]*)\\\"|'(?<single>[^']*)')[^>]*>(?<title>.*?)</a>",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant
+        );
+        private static readonly Regex HtmlTag = new Regex(
+            @"<[^>]+>",
+            RegexOptions.Singleline | RegexOptions.CultureInvariant
+        );
+
+        private readonly string root;
+        private readonly string statePath;
+        private readonly JavaScriptSerializer serializer;
+
+        internal BrowserDataStore(string productRoot)
+        {
+            if (String.IsNullOrWhiteSpace(productRoot))
+            {
+                throw new ArgumentException("A product data root is required.", "productRoot");
+            }
+            root = Path.GetFullPath(productRoot);
+            statePath = Path.Combine(root, "browser-data.json");
+            serializer = new JavaScriptSerializer();
+            serializer.MaxJsonLength = MaximumStateBytes;
+        }
+
+        internal string StatePath
+        {
+            get { return statePath; }
+        }
+
+        internal BrowserProductData Load()
+        {
+            if (!Directory.Exists(root)) return BrowserProductData.CreateDefault();
+            RejectReparseDirectory(root);
+            if (!File.Exists(statePath)) return BrowserProductData.CreateDefault();
+            FileInfo file = new FileInfo(statePath);
+            if ((file.Attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                throw new InvalidOperationException("ZSEC refused a reparse-point browser data file.");
+            }
+            if (file.Length <= 0 || file.Length > MaximumStateBytes)
+            {
+                throw new InvalidDataException("The ZSEC browser data file has an invalid size.");
+            }
+            BrowserProductData data = serializer.Deserialize<BrowserProductData>(
+                File.ReadAllText(statePath, Encoding.UTF8)
+            );
+            return Normalize(data);
+        }
+
+        internal void Save(BrowserProductData data)
+        {
+            BrowserProductData normalized = Normalize(data);
+            EnsureRoot();
+            string json = serializer.Serialize(normalized);
+            byte[] bytes = new UTF8Encoding(false).GetBytes(json + Environment.NewLine);
+            if (bytes.Length > MaximumStateBytes)
+            {
+                throw new InvalidOperationException("The ZSEC browser data file exceeds its safety bound.");
+            }
+            string temporary = statePath + ".tmp-" + Guid.NewGuid().ToString("N");
+            try
+            {
+                File.WriteAllBytes(temporary, bytes);
+                if (File.Exists(statePath)) File.Replace(temporary, statePath, null);
+                else File.Move(temporary, statePath);
+            }
+            finally
+            {
+                if (File.Exists(temporary)) File.Delete(temporary);
+            }
+        }
+
+        internal bool AddBookmark(BrowserProductData data, string title, string url)
+        {
+            Uri parsed;
+            if (!TryNormalizeWebUrl(url, out parsed)) return false;
+            string normalizedUrl = parsed.AbsoluteUri;
+            BrowserBookmark existing = data.Bookmarks.FirstOrDefault(item =>
+                String.Equals(item.Url, normalizedUrl, StringComparison.OrdinalIgnoreCase)
+            );
+            string safeTitle = NormalizeTitle(title, parsed.Host);
+            if (existing != null)
+            {
+                existing.Title = safeTitle;
+                Save(data);
+                return false;
+            }
+            data.Bookmarks.Insert(0, new BrowserBookmark
+            {
+                Title = safeTitle,
+                Url = normalizedUrl,
+                CreatedAtUtc = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+            });
+            if (data.Bookmarks.Count > MaximumBookmarks)
+            {
+                data.Bookmarks.RemoveRange(MaximumBookmarks, data.Bookmarks.Count - MaximumBookmarks);
+            }
+            Save(data);
+            return true;
+        }
+
+        internal bool RemoveBookmark(BrowserProductData data, string url)
+        {
+            int removed = data.Bookmarks.RemoveAll(item =>
+                String.Equals(item.Url, url, StringComparison.OrdinalIgnoreCase)
+            );
+            if (removed > 0) Save(data);
+            return removed > 0;
+        }
+
+        internal void AddHistory(BrowserProductData data, string title, string url)
+        {
+            if (!data.Settings.RecordHistory) return;
+            Uri parsed;
+            if (!TryNormalizeWebUrl(url, out parsed)) return;
+            data.History.Insert(0, new BrowserHistoryEntry
+            {
+                Title = NormalizeTitle(title, parsed.Host),
+                Url = parsed.AbsoluteUri,
+                VisitedAtUtc = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+            });
+            if (data.History.Count > MaximumHistoryEntries)
+            {
+                data.History.RemoveRange(
+                    MaximumHistoryEntries,
+                    data.History.Count - MaximumHistoryEntries
+                );
+            }
+            Save(data);
+        }
+
+        internal void ClearHistory(BrowserProductData data)
+        {
+            data.History.Clear();
+            Save(data);
+        }
+
+        internal int ImportBookmarksHtml(BrowserProductData data, string path)
+        {
+            FileInfo file = GetRegularBoundedFile(path, MaximumImportBytes);
+            string html = File.ReadAllText(file.FullName, Encoding.UTF8);
+            int added = 0;
+            foreach (Match match in BookmarkAnchor.Matches(html))
+            {
+                if (data.Bookmarks.Count >= MaximumBookmarks) break;
+                string candidate = match.Groups["double"].Success
+                    ? match.Groups["double"].Value
+                    : match.Groups["single"].Value;
+                candidate = HttpUtility.HtmlDecode(candidate);
+                Uri parsed;
+                if (!TryNormalizeWebUrl(candidate, out parsed)) continue;
+                if (data.Bookmarks.Any(item =>
+                    String.Equals(item.Url, parsed.AbsoluteUri, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+                string title = HttpUtility.HtmlDecode(
+                    HtmlTag.Replace(match.Groups["title"].Value, String.Empty)
+                );
+                data.Bookmarks.Add(new BrowserBookmark
+                {
+                    Title = NormalizeTitle(title, parsed.Host),
+                    Url = parsed.AbsoluteUri,
+                    CreatedAtUtc = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                });
+                added++;
+            }
+            if (added > 0) Save(data);
+            return added;
+        }
+
+        internal void ExportBookmarksHtml(BrowserProductData data, string path)
+        {
+            string fullPath = Path.GetFullPath(path);
+            string parent = Path.GetDirectoryName(fullPath);
+            if (String.IsNullOrWhiteSpace(parent) || !Directory.Exists(parent))
+            {
+                throw new DirectoryNotFoundException("The bookmark export directory does not exist.");
+            }
+            StringBuilder output = new StringBuilder();
+            output.AppendLine("<!DOCTYPE NETSCAPE-Bookmark-file-1>");
+            output.AppendLine("<meta charset=\"UTF-8\">");
+            output.AppendLine("<title>ZSEC Browser Bookmarks</title>");
+            output.AppendLine("<h1>ZSEC Browser Bookmarks</h1>");
+            output.AppendLine("<dl><p>");
+            foreach (BrowserBookmark bookmark in data.Bookmarks)
+            {
+                Uri parsed;
+                if (!TryNormalizeWebUrl(bookmark.Url, out parsed)) continue;
+                output.Append("  <dt><a href=\"");
+                output.Append(HttpUtility.HtmlAttributeEncode(parsed.AbsoluteUri));
+                output.Append("\">");
+                output.Append(HttpUtility.HtmlEncode(NormalizeTitle(bookmark.Title, parsed.Host)));
+                output.AppendLine("</a>");
+            }
+            output.AppendLine("</dl><p>");
+            string temporary = fullPath + ".tmp-" + Guid.NewGuid().ToString("N");
+            try
+            {
+                File.WriteAllText(temporary, output.ToString(), new UTF8Encoding(false));
+                if (File.Exists(fullPath)) File.Replace(temporary, fullPath, null);
+                else File.Move(temporary, fullPath);
+            }
+            finally
+            {
+                if (File.Exists(temporary)) File.Delete(temporary);
+            }
+        }
+
+        internal static bool TryNormalizeWebUrl(string candidate, out Uri parsed)
+        {
+            parsed = null;
+            if (String.IsNullOrWhiteSpace(candidate) || candidate.Length > 4096) return false;
+            Uri value;
+            if (!Uri.TryCreate(candidate.Trim(), UriKind.Absolute, out value)) return false;
+            if (value.Scheme != Uri.UriSchemeHttps && value.Scheme != Uri.UriSchemeHttp) return false;
+            if (String.IsNullOrWhiteSpace(value.Host)) return false;
+            parsed = value;
+            return true;
+        }
+
+        private BrowserProductData Normalize(BrowserProductData data)
+        {
+            if (data == null) data = BrowserProductData.CreateDefault();
+            data.SchemaVersion = 1;
+            if (data.Settings == null) data.Settings = BrowserSettings.CreateDefault();
+            NormalizeSettings(data.Settings);
+            if (data.Bookmarks == null) data.Bookmarks = new List<BrowserBookmark>();
+            if (data.History == null) data.History = new List<BrowserHistoryEntry>();
+
+            data.Bookmarks = data.Bookmarks
+                .Where(item => item != null)
+                .Select(NormalizeBookmark)
+                .Where(item => item != null)
+                .GroupBy(item => item.Url, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .Take(MaximumBookmarks)
+                .ToList();
+            data.History = data.History
+                .Where(item => item != null)
+                .Select(NormalizeHistory)
+                .Where(item => item != null)
+                .Take(MaximumHistoryEntries)
+                .ToList();
+            return data;
+        }
+
+        private static BrowserBookmark NormalizeBookmark(BrowserBookmark item)
+        {
+            Uri parsed;
+            if (!TryNormalizeWebUrl(item.Url, out parsed)) return null;
+            return new BrowserBookmark
+            {
+                Title = NormalizeTitle(item.Title, parsed.Host),
+                Url = parsed.AbsoluteUri,
+                CreatedAtUtc = NormalizeTimestamp(item.CreatedAtUtc)
+            };
+        }
+
+        private static BrowserHistoryEntry NormalizeHistory(BrowserHistoryEntry item)
+        {
+            Uri parsed;
+            if (!TryNormalizeWebUrl(item.Url, out parsed)) return null;
+            return new BrowserHistoryEntry
+            {
+                Title = NormalizeTitle(item.Title, parsed.Host),
+                Url = parsed.AbsoluteUri,
+                VisitedAtUtc = NormalizeTimestamp(item.VisitedAtUtc)
+            };
+        }
+
+        private static void NormalizeSettings(BrowserSettings settings)
+        {
+            string mode = (settings.StartupMode ?? String.Empty).Trim().ToLowerInvariant();
+            if (mode != "home" && mode != "new_tab" && mode != "custom") mode = "home";
+            settings.StartupMode = mode;
+            Uri custom;
+            if (!TryNormalizeWebUrl(settings.CustomStartupUrl, out custom) ||
+                custom.Scheme != Uri.UriSchemeHttps)
+            {
+                settings.CustomStartupUrl = "https://talktoai.org/zero-browser/";
+            }
+            else
+            {
+                settings.CustomStartupUrl = custom.AbsoluteUri;
+            }
+            string downloads = settings.DownloadDirectory;
+            if (String.IsNullOrWhiteSpace(downloads) || downloads.IndexOf('"') >= 0)
+            {
+                downloads = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    "Downloads"
+                );
+            }
+            settings.DownloadDirectory = Path.GetFullPath(downloads);
+        }
+
+        private static string NormalizeTitle(string title, string fallback)
+        {
+            string value = String.IsNullOrWhiteSpace(title) ? fallback : title.Trim();
+            value = value.Replace("\r", " ").Replace("\n", " ").Replace("\t", " ");
+            while (value.Contains("  ")) value = value.Replace("  ", " ");
+            if (value.Length > 240) value = value.Substring(0, 240);
+            return value;
+        }
+
+        private static string NormalizeTimestamp(string value)
+        {
+            DateTimeOffset parsed;
+            return DateTimeOffset.TryParse(value, out parsed)
+                ? parsed.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+                : DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
+        }
+
+        private static FileInfo GetRegularBoundedFile(string path, int maximumBytes)
+        {
+            FileInfo file = new FileInfo(Path.GetFullPath(path));
+            if (!file.Exists || (file.Attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                throw new InvalidOperationException("ZSEC requires a regular import file.");
+            }
+            if (file.Length <= 0 || file.Length > maximumBytes)
+            {
+                throw new InvalidDataException("The import file has an invalid size.");
+            }
+            return file;
+        }
+
+        private void EnsureRoot()
+        {
+            Directory.CreateDirectory(root);
+            RejectReparseDirectory(root);
+        }
+
+        private static void RejectReparseDirectory(string path)
+        {
+            DirectoryInfo directory = new DirectoryInfo(path);
+            if ((directory.Attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                throw new InvalidOperationException("ZSEC refused a reparse-point browser data root.");
+            }
+        }
+    }
+
+    internal sealed class BrowserRuntimeSnapshot
+    {
+        internal string RuntimeVersion { get; set; }
+        internal bool ShieldsExtensionLoaded { get; set; }
+        internal bool DnrProbePassed { get; set; }
+        internal string TrackingPrevention { get; set; }
+        internal bool RuntimeUpdateAvailable { get; set; }
+    }
+}
