@@ -2,33 +2,37 @@
 
 Last reviewed: 22 August 2026.
 
-ZSEC Antivirus Community currently means a cross-platform command-line scanner
-plus an installable, per-user automatic post-change companion. It does not mean a
-privileged system service, pre-access real-time provider, signed installer, or
-primary-antivirus replacement.
+ZSEC Antivirus Community 0.3.9 means a Windows graphical protection control plane
+plus a cross-platform command-line scanner and installable, per-user automatic
+post-change companion. On Windows, Microsoft Defender may supply the supported
+real-time/on-access enforcement only when the live status contract verifies it.
+ZSEC itself is not a privileged system service, pre-access provider, signed
+installer, or registered primary-antivirus replacement.
 
 ## Release/source distinction
 
 | Surface | Version/status | What it contains |
 | --- | --- | --- |
-| [Latest public GitHub release](https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.1.2) | `0.1.2` prerelease | Earlier on-demand scanner, feed and status implementation plus unsigned native CLI archives |
-| Current development branch | `0.3.6` Community | 0.3.5 feature set plus a responsive animated Windows protection centre and transactional automatic companion install, upgrade, health verification and rollback; ZSEC Browser remains independently versioned |
-| `main` branch | May lag the draft branch | The canonical public source only after reviewed changes merge |
+| Community release represented by this source | `0.3.9` | Defender-backed Windows control plane, bounded local scanning, post-change monitoring, encrypted quarantine, signed data-only feeds, and browser controls described below |
+| Historical source checkpoint | [`v0.3.8`](https://github.com/ResearchForumOnline/ZSEC-Shield/tree/v0.3.8) | Source tag only; it was not published as an accepted GitHub Release because its bundled release-status documentation failed the pre-publication audit |
+| Browser Shields package | `0.5.2` | Separately versioned Manifest V3 data rules and local controls for compatible Chromium-family browsers |
 
-Do not publish or distribute the current feature set under `0.1.2`; that version
-and tag already identify different bytes. A passing draft pull request does not
-make `0.3.6` released.
+Version names do not identify accepted bytes by themselves. Require the exact tag
+revision, platform manifest, SHA-256, authenticated release asset, and relevant
+installed-runtime evidence. A tag, workflow run, draft release, or locally built
+archive is not a published accepted release on its own.
 
 ## Current public native-archive matrix
 
-The `0.1.2` release exposes these self-contained PyInstaller one-directory CLI
-archives. This table describes artifacts, not production desktop support.
+The 0.3.9 release workflow builds these self-contained PyInstaller one-directory
+CLI archives. This table describes bounded artifacts, not production desktop
+support or a platform antivirus certification.
 
-| Artifact family | Architecture | Delivery | Automatic companion | Key protection in 0.3.6 Community code | Publisher identity | Status |
+| Artifact family | Architecture | Delivery | Automatic companion | Key protection in 0.3.9 Community code | Publisher identity | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| Windows | x86-64 | ZIP CLI | Per-user Scheduled Task scripts | CurrentUser DPAPI | No Authenticode signature | Automatic post-change companion candidate |
-| macOS | Apple silicon (`arm64`) | `tar.gz` CLI | Per-user LaunchAgent scripts | `filesystem-0600-preview`; not production Keychain custody | No Developer ID signature/notarization | Native validation still required |
-| Linux | x86-64 | `tar.gz` CLI | systemd-user scripts | `filesystem-0600-preview`; not production Secret Service/TPM custody | No signed DEB/RPM package or repository | Native validation still required |
+| Windows | x86-64 | ZIP CLI | Per-user startup launcher scripts | CurrentUser DPAPI | No Authenticode signature | Workflow-built and smoke-tested; post-change companion, not primary AV |
+| macOS | Workflow manifest identifies native architecture | `tar.gz` CLI | Per-user LaunchAgent scripts | `filesystem-0600-preview`; not production Keychain custody | No Developer ID signature/notarization | Workflow-built and smoke-tested; physical-hardware GUI/provider qualification absent |
+| Linux | x86-64 | `tar.gz` CLI | systemd-user scripts | `filesystem-0600-preview`; not production Secret Service/TPM custody | No signed DEB/RPM package or repository | Workflow-built and smoke-tested; distro package/provider qualification absent |
 
 The GitHub release workflow builds a Windows x86-64 target on `windows-2022`, a
 machine-native macOS target on `macos-14`, and Linux x86-64 on `ubuntu-22.04`.
@@ -41,9 +45,8 @@ Python test suite on GitHub-hosted Windows, macOS, and Linux with Python 3.11 an
 3.13. That is useful core compatibility evidence; it is not a support promise
 for every OS version, CPU, filesystem, desktop, or security configuration.
 
-The development candidate's `watch` command is a foreground process using native
-filesystem notifications with a disclosed polling fallback. It is not present in
-the published `0.1.2` bytes. It performs post-change scans and has
+The 0.3.9 `watch` command is a foreground process using native filesystem
+notifications with a disclosed polling fallback. It performs post-change scans and has
 `pre_access_enforcement: false` and `real_time_protection: false`; the existing
 platform/endpoint provider must remain active.
 
@@ -65,20 +68,24 @@ platform/endpoint provider must remain active.
 
 ## Browser desktop application
 
-ZSEC Browser Community 0.3.6 is a Windows x64 application with its own
+ZSEC Browser Community 0.3.9 is an unsigned Windows x64 application with its own
 native ZSEC window and isolated profile. Microsoft maintains the Evergreen
 WebView2 Chromium engine; ZSEC maintains the shell, UI and data-only policy
-adapter. The local acceptance run verifies application hashes, the Microsoft
-runtime signature, dedicated profile, HTTPS navigation, tracking-parameter
-cleanup, a reviewed tracker-domain block and absence of prohibited weakening
-flags in the observed runtime processes.
+adapter. It includes managed tabs, tray controls, bookmarks, local typed-history
+suggestions, seven selectable search providers, all-resource native filtering, a
+bounded exact-host YouTube protection hook, and a Journalist preset. The installed
+acceptance run verifies application hashes, the Microsoft runtime signature,
+dedicated profile, HTTPS navigation, tracking cleanup, configured policy, an
+actual blocked local script-subresource probe, YouTube hook loading, and absence
+of prohibited weakening flags in observed runtime processes.
 
-It is not a direct Chromium fork, Brave replacement, public signed installer or
-antivirus. The ZSEC executable is unsigned, WebView2's full sandbox/Site
-Isolation configuration has not been independently attested, no ZSEC binary
-updater has shipped, and macOS/Linux desktop shells do not exist. Public and
-cross-platform distribution remain blocked on signing, rollback-resistant
-updates, privacy review and a sustained browser security-patch operation.
+It is not a direct Chromium fork, a proven Brave replacement, publisher-signed
+installer, antivirus, spyware detector, or exploit-immunity product. YouTube and
+other sites can change around blocking logic. The ZSEC executable is unsigned,
+WebView2's full sandbox/Site Isolation configuration has not been independently
+attested, no ZSEC binary updater has shipped, and macOS/Linux graphical browser
+shells do not exist. A high-risk user must keep WebView2 and Windows patched and
+use specialist incident response when compromise is suspected.
 
 ## Platform boundaries
 

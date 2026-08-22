@@ -17,9 +17,11 @@ Security invariants for this project:
 - no “system is clean” claim from a limited scan;
 - no secrets or private signing keys committed to the repository.
 
-ZSEC Shield v0.1.2 is the latest formal GitHub prerelease. TalkToAI currently hosts
-unsigned evaluation artifacts for ZSEC Antivirus 0.3 and ZSEC Browser Shields 0.4
-from draft pull request #5. ZSEC Browser Community 0.3.0 is an unsigned source and
-local-evidence build at revision `9b60c31d246a851a5dc325cf384fb529c2759a07`.
-Test evaluation builds only with disposable data or browser profiles and keep
-existing security controls active.
+Community 0.3.9 source covers the cross-platform ZSEC Shield core, the Windows ZSEC
+Antivirus control plane, and ZSEC Browser Community. Browser Shields Community
+0.5.2 remains separately versioned. All ZSEC desktop and native Community binaries
+are unsigned: a version name, tag, adjacent checksum, or passing workflow alone is
+not publisher identity or release acceptance. Verify the exact published revision,
+artifact SHA-256, manifest, and platform/runtime evidence on the authenticated
+release page. Test with disposable data or browser profiles and keep an operating-
+system or supported endpoint protection provider active.
