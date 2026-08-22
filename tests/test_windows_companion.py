@@ -15,11 +15,12 @@ INSTALLER = COMPANION_ROOT / "Install-ZsecAntivirusCompanion.ps1"
 LAUNCHER = COMPANION_ROOT / "Start-ZsecAntivirusCompanion.ps1"
 STATUS = COMPANION_ROOT / "Get-ZsecAntivirusCompanionStatus.ps1"
 UNINSTALLER = COMPANION_ROOT / "Uninstall-ZsecAntivirusCompanion.ps1"
+SYNC = COMPANION_ROOT / "Sync-ZsecAntivirusCompanion.ps1"
 
 
 class WindowsCompanionStaticTests(unittest.TestCase):
     def test_all_companion_scripts_and_review_document_are_present(self) -> None:
-        for path in (INSTALLER, LAUNCHER, STATUS, UNINSTALLER, COMPANION_ROOT / "README.md"):
+        for path in (INSTALLER, LAUNCHER, STATUS, UNINSTALLER, SYNC, COMPANION_ROOT / "README.md"):
             self.assertTrue(path.is_file(), path)
 
     def test_installer_is_limited_per_user_single_instance_and_bounded(self) -> None:
@@ -43,7 +44,7 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn('(Join-Path $env:USERPROFILE "Downloads")', content)
         self.assertIn('[Environment]::GetFolderPath("Desktop")', content)
         self.assertIn('[Environment]::GetFolderPath("MyDocuments")', content)
-        self.assertIn('[IO.Path]::GetTempPath()', content)
+        self.assertNotIn('[IO.Path]::GetTempPath()', content)
         self.assertIn("Test-Path -LiteralPath $_ -PathType Container", content)
         self.assertIn("[IO.FileAttributes]::ReparsePoint", content)
         self.assertIn("between one and eight distinct protected roots", content)
@@ -116,7 +117,11 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn("Remove-ItemProperty", content)
         self.assertIn("$runAtRemoval.value_data -ne $expectedRunData", content)
         self.assertIn("HKCU Run value data changed", content)
-        self.assertIn("Remove-Item -LiteralPath $installRoot -Recurse", content)
+        self.assertIn("Remove-OwnedCompanionDirectory -Path $installRoot", content)
+        self.assertIn("Remove-Item -LiteralPath $Path -Recurse", content)
+        self.assertIn("function Remove-OwnedCompanionDirectory", content)
+        self.assertIn("AddSeconds(10)", content)
+        self.assertIn("catch [IO.IOException]", content)
         self.assertIn('(Join-Path $state "feed")', content)
         self.assertIn('(Join-Path $state "quarantine")', content)
         self.assertIn(

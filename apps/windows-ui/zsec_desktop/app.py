@@ -40,16 +40,22 @@ RED = "#f97066"
 class ModernStatusCard(tk.Canvas):
     """Rounded evidence card rendered with native Tk primitives."""
 
-    def __init__(self, parent: tk.Misc, title: str) -> None:
+    def __init__(
+        self,
+        parent: tk.Misc,
+        title: str,
+        motion_enabled: Callable[[], bool],
+    ) -> None:
         super().__init__(
             parent,
             height=124,
             bg=BACKGROUND,
             highlightthickness=0,
             borderwidth=0,
-            takefocus=0,
+            takefocus=1,
         )
         self.title = title
+        self.motion_enabled = motion_enabled
         self.value = "Loading…"
         self.accent = CYAN
         self.hover_progress = 0.0
@@ -58,6 +64,9 @@ class ModernStatusCard(tk.Canvas):
         self.bind("<Configure>", self._render)
         self.bind("<Enter>", lambda _event: self._set_hover(1.0))
         self.bind("<Leave>", lambda _event: self._set_hover(0.0))
+        self.bind("<FocusIn>", lambda _event: self._set_hover(1.0))
+        self.bind("<FocusOut>", lambda _event: self._set_hover(0.0))
+        self.bind("<Destroy>", self._cancel_animation)
 
     def set_value(self, value: str, accent: str) -> None:
         self.value = value
@@ -66,8 +75,22 @@ class ModernStatusCard(tk.Canvas):
 
     def _set_hover(self, target: float) -> None:
         self.hover_target = target
+        if not self.motion_enabled():
+            if self.hover_job is not None:
+                with contextlib.suppress(tk.TclError):
+                    self.after_cancel(self.hover_job)
+                self.hover_job = None
+            self.hover_progress = target
+            self._render()
+            return
         if self.hover_job is None:
             self._animate_hover()
+
+    def _cancel_animation(self, _event: tk.Event[tk.Misc] | None = None) -> None:
+        if self.hover_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.after_cancel(self.hover_job)
+            self.hover_job = None
 
     def _animate_hover(self) -> None:
         delta = self.hover_target - self.hover_progress
@@ -118,14 +141,15 @@ class ModernStatusCard(tk.Canvas):
         return int(self.create_polygon(points, smooth=True, splinesteps=24, **options))
 
     def _render(self, _event: tk.Event[tk.Misc] | None = None) -> None:
-        width = max(self.winfo_width(), 260)
+        width = max(self.winfo_width(), 1)
+        height = max(self.winfo_height(), 124)
         self.delete("all")
         shadow = int(14 + 18 * self.hover_progress)
         self._rounded_rectangle(
             5,
             7,
             width - 1,
-            122,
+            height - 2,
             18,
             fill=f"#{shadow:02x}{shadow + 8:02x}{shadow + 18:02x}",
             outline="",
@@ -134,13 +158,13 @@ class ModernStatusCard(tk.Canvas):
             2,
             2,
             width - 2,
-            120,
+            height - 4,
             18,
             fill=SURFACE,
             outline=self.accent if self.hover_progress > 0.55 else SURFACE_ALT,
             width=2 + int(self.hover_progress),
         )
-        self.create_rectangle(2, 24, 6, 96, fill=self.accent, outline=self.accent)
+        self.create_rectangle(2, 24, 6, height - 26, fill=self.accent, outline=self.accent)
         self.create_text(
             22,
             23,
@@ -154,7 +178,7 @@ class ModernStatusCard(tk.Canvas):
             61,
             text=self.value,
             anchor=tk.W,
-            width=max(width - 46, 180),
+            width=max(width - 46, 20),
             fill=self.accent,
             font=("Segoe UI Semibold", 12),
         )
@@ -326,7 +350,7 @@ class ZsecDesktop:
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
         ttk.Label(
             title_row,
-            text="COMMUNITY 0.3.5",
+            text="COMMUNITY 0.3.6",
             style="Subtitle.TLabel",
             foreground=AMBER,
         ).pack(
@@ -470,14 +494,25 @@ class ZsecDesktop:
             style="Muted.TLabel",
             wraplength=900,
         ).pack(anchor=tk.W, pady=(5, 0))
-        cards = ttk.Frame(self.overview_tab)
-        cards.pack(fill=tk.X)
-        for column in range(4):
-            cards.columnconfigure(column, weight=1)
-        self.scan_card = self._overview_card(cards, 0, "Last scan")
-        self.feed_card = self._overview_card(cards, 1, "Signed rule feed")
-        self.quarantine_card = self._overview_card(cards, 2, "Encrypted quarantine")
-        self.companion_card = self._overview_card(cards, 3, "Automatic companion")
+        self.overview_cards_frame = ttk.Frame(self.overview_tab)
+        self.overview_cards_frame.pack(fill=tk.X)
+        self.scan_card = self._overview_card(self.overview_cards_frame, "Last scan")
+        self.feed_card = self._overview_card(self.overview_cards_frame, "Signed rule feed")
+        self.quarantine_card = self._overview_card(
+            self.overview_cards_frame, "Encrypted quarantine"
+        )
+        self.companion_card = self._overview_card(
+            self.overview_cards_frame, "Automatic companion"
+        )
+        self.overview_cards = [
+            self.scan_card,
+            self.feed_card,
+            self.quarantine_card,
+            self.companion_card,
+        ]
+        self.overview_card_columns = 0
+        self.overview_cards_frame.bind("<Configure>", self._layout_overview_cards)
+        self.root.after_idle(self._layout_overview_cards)
         actions = self._panel(self.overview_tab)
         actions.pack(fill=tk.X, pady=(12, 0))
         ttk.Label(actions, text="Quick actions", style="Section.TLabel").pack(anchor=tk.W)
@@ -504,15 +539,29 @@ class ZsecDesktop:
             ),
         ).pack(side=tk.LEFT)
 
-    def _overview_card(self, parent: ttk.Frame, column: int, title: str) -> ModernStatusCard:
-        card = ModernStatusCard(parent, title)
-        card.grid(
-            row=0,
-            column=column,
-            sticky="nsew",
-            padx=(0 if column == 0 else 6, 0 if column == 3 else 6),
-        )
-        return card
+    def _overview_card(self, parent: ttk.Frame, title: str) -> ModernStatusCard:
+        return ModernStatusCard(parent, title, lambda: not self.reduce_motion.get())
+
+    def _layout_overview_cards(self, event: tk.Event[tk.Misc] | None = None) -> None:
+        width = int(event.width) if event is not None else self.overview_cards_frame.winfo_width()
+        columns = 4 if width >= 1040 else 2 if width >= 520 else 1
+        if columns == self.overview_card_columns:
+            return
+        self.overview_card_columns = columns
+        for column in range(4):
+            self.overview_cards_frame.columnconfigure(column, weight=0)
+        for column in range(columns):
+            self.overview_cards_frame.columnconfigure(column, weight=1, uniform="overview")
+        for index, card in enumerate(self.overview_cards):
+            card.grid_forget()
+            row, column = divmod(index, columns)
+            card.grid(
+                row=row,
+                column=column,
+                sticky="nsew",
+                padx=(0 if column == 0 else 6, 0 if column == columns - 1 else 6),
+                pady=(0 if row == 0 else 6, 6),
+            )
 
     def _build_scan(self) -> None:
         panel = self._panel(self.scan_tab)

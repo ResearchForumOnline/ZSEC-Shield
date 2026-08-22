@@ -23,7 +23,7 @@ an **unsigned direct Community build**, not a publisher-signed Store installer.
 
 - Separate profile under `%LOCALAPPDATA%\TalkToAI\ZSEC Browser\User Data`.
 - HTTPS upgrades for plaintext addresses; High-Risk mode blocks plaintext HTTP.
-- Automatically loaded, exact-ID ZSEC Browser Shields 0.5.1 MV3 engine with
+- Automatically loaded, exact-ID ZSEC Browser Shields 0.5.2 MV3 engine with
   49,464 pinned EasyList network rules, 39 focused privacy blockers, two
   link-cleaning rules and a bounded YouTube UI assist. Acceptable Ads is not
   bundled. The native shell independently removes 21 selected tracking parameters.
@@ -40,7 +40,7 @@ an **unsigned direct Community build**, not a publisher-signed Store installer.
 - A visible New tab control, Ctrl+T, tab close controls, true WebView2 popup
   binding, transactional failure cleanup and a 32-tab resource bound.
 - Non-web schemes are rejected; remote debugging and developer tools are off.
-- The UI labels the product as `Community 0.3.5` and exposes the exact runtime
+- The UI labels the product as `Community 0.3.6` and exposes the exact runtime
   and policy boundary in its About dialog.
 
 The YouTube UI assist hides selected known promotional slots and activates a

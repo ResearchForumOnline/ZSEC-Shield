@@ -8,6 +8,10 @@ import {
   buildHighRiskRulesForSettings,
   highRiskRuleIds
 } from "../src/high-risk-browsing.js";
+import {
+  EXPECTED_RULESET_IDS,
+  PACKAGED_STATIC_RULE_COUNT
+} from "../src/runtime-health.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
@@ -30,8 +34,8 @@ if (manifest.manifest_version !== 3) throw new Error("Manifest V3 is required");
 if (manifest.name !== "ZSEC Browser Shields" || manifest.short_name !== "ZSEC Shields") {
   throw new Error("Public extension branding is stale");
 }
-if (manifest.version !== "0.5.1" || packageJson.version !== manifest.version) {
-  throw new Error("Manifest/package release version must match the reviewed 0.5.1 release");
+if (manifest.version !== "0.5.2" || packageJson.version !== manifest.version) {
+  throw new Error("Manifest/package release version must match the reviewed 0.5.2 release");
 }
 const resources = manifest.declarative_net_request?.rule_resources || [];
 if (resources.length !== 3) throw new Error("Expected EasyList, privacy and link-cleaning rulesets");
@@ -82,14 +86,15 @@ if (blockingRules.some((rule) => rule.action?.type !== "block")) throw new Error
 if (linkRules.some((rule) => rule.action?.type !== "redirect")) throw new Error("Link ruleset must only redirect");
 if (linkRules.some((rule) => rule.condition?.resourceTypes?.join() !== "main_frame")) throw new Error("Link cleaning must be limited to top-level navigation");
 if (linkRules.some((rule) => !rule.action?.redirect?.transform?.queryTransform?.removeParams?.length)) throw new Error("Link rules must only remove declared parameters");
-if (!popup.includes(`${totalRules.toLocaleString("en-US")} bundled network rules`)) {
-  throw new Error("Popup rule count is stale");
-}
+if (PACKAGED_STATIC_RULE_COUNT !== totalRules) throw new Error("Runtime-health rule count is stale");
+if (!popupScript.includes("details.packagedStaticRuleCount.toLocaleString()")) throw new Error("Popup runtime coverage count is missing");
 if (!popup.includes("ZSEC Browser") || popup.includes("ZeroQ Shields")) throw new Error("Popup branding is stale");
 if (!popup.includes("https://talktoai.org/zero-browser/privacy/")) throw new Error("Privacy URL missing");
 if (!serviceWorker.includes("runtimeHealth")) throw new Error("Runtime health reporting missing");
 if (serviceWorker.includes(".catch(() => undefined)")) throw new Error("Initialization errors are hidden");
-if (!serviceWorker.includes('"privacy_rules", "link_cleanup", "easylist_ads"')) throw new Error("Protection toggle does not cover every ruleset");
+if (EXPECTED_RULESET_IDS.join() !== resources.map((resource) => resource.id).join()) throw new Error("Runtime ruleset identity is stale");
+if (!serviceWorker.includes("verifyDnrRuntime(chrome, candidate.protectionEnabled, expectedDynamicRuleIds)")) throw new Error("DNR runtime verification is not enforced");
+if (!serviceWorker.includes("expectedDynamicRuleIds")) throw new Error("Dynamic rule identity verification is missing");
 if (!serviceWorker.includes("buildHighRiskRulesForSettings(normalized)")) throw new Error("High-risk rules are not gated by normalized local settings");
 if (!serviceWorker.includes("buildPauseRules(normalized.protectionEnabled ? normalized.pausedSites : [])")) throw new Error("Pause rules are not gated by the master protection control");
 if (!serviceWorker.includes('highRiskActive ? "HIGH"')) throw new Error("High-risk badge state is not explicit");

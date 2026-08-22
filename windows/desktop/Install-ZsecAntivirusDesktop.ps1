@@ -127,6 +127,8 @@ Test-ManifestFiles -Root $package -Manifest $manifest
 $versionRoot = Get-NormalizedPath (Join-Path (Join-Path $productRoot "App") ([string]$manifest.version))
 $desktopExe = Join-Path $versionRoot "App\ZSEC Antivirus.exe"
 $engineExe = Join-Path $versionRoot "Engine\zsec-shield.exe"
+$companionSync = Join-Path $versionRoot "Tools\Sync-ZsecAntivirusCompanion.ps1"
+$companionUninstall = Join-Path $versionRoot "Tools\Uninstall-ZsecAntivirusCompanion.ps1"
 $currentPath = Join-Path $productRoot "current.json"
 $desktopShortcut = Join-Path ([Environment]::GetFolderPath("Desktop")) "ZSEC Antivirus.lnk"
 $startMenuDirectory = Join-Path ([Environment]::GetFolderPath("Programs")) "ZSEC"
@@ -142,6 +144,7 @@ $plan = [ordered]@{
     start_menu_shortcut = $startMenuShortcut
     existing_provider_must_remain_active = $true
     security_products_modified = $false
+    automatic_companion_lifecycle = $true
     plan_only = [bool]$PlanOnly
 }
 if ($PlanOnly) {
@@ -157,6 +160,8 @@ $rollbackRoot = $null
 $currentBackup = $null
 $desktopShortcutBackup = $null
 $startMenuShortcutBackup = $null
+$previousEngineForRollback = $null
+$companionSynchronized = $false
 try {
     if (Test-Path -LiteralPath $productRoot) {
         Assert-RegularDirectory $productRoot
@@ -168,6 +173,8 @@ try {
     Test-ManifestFiles -Root $versionRoot -Manifest $manifest
     Assert-RegularFile $desktopExe
     Assert-RegularFile $engineExe
+    Assert-RegularFile $companionSync
+    Assert-RegularFile $companionUninstall
 
     New-Item -ItemType Directory -Force -Path $productRoot | Out-Null
     $rollbackRoot = Get-NormalizedPath (Join-Path $productRoot (".install-transaction-" + [Guid]::NewGuid().ToString("N")))
@@ -182,6 +189,16 @@ try {
     if (Test-Path -LiteralPath $currentPath) {
         Assert-RegularFile $currentPath
         Copy-Item -LiteralPath $currentPath -Destination $currentBackup -ErrorAction Stop
+        $previousDesktop = Get-Content -LiteralPath $currentBackup -Raw -Encoding UTF8 |
+            ConvertFrom-Json
+        if (
+            $previousDesktop.schema -ne "zsec.antivirus.windows-desktop-installation.v1" -or
+            [string]::IsNullOrWhiteSpace([string]$previousDesktop.engine_executable)
+        ) {
+            throw "The previous desktop activation record is invalid."
+        }
+        $previousEngineForRollback = Get-NormalizedPath ([string]$previousDesktop.engine_executable)
+        Assert-RegularFile $previousEngineForRollback
     }
     if (Test-Path -LiteralPath $desktopShortcut) {
         Assert-RegularFile $desktopShortcut
@@ -205,6 +222,7 @@ try {
         manifest_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $versionRoot "DESKTOP-MANIFEST.json")).Hash.ToLowerInvariant()
         security_products_modified = $false
         existing_provider_must_remain_active = $true
+        automatic_companion_lifecycle = $true
     }
 
     New-Item -ItemType Directory -Force -Path $startMenuDirectory | Out-Null
@@ -232,6 +250,23 @@ try {
         Assert-RegularFile $destination
     }
 
+    $companionOutput = & $companionSync -CliPath $engineExe
+    try {
+        $companionResult = ($companionOutput -join [Environment]::NewLine) | ConvertFrom-Json
+    }
+    catch {
+        throw "The automatic companion lifecycle command returned invalid JSON."
+    }
+    if (
+        $companionResult.schema -ne "zsec.antivirus.windows-companion-sync-result.v1" -or
+        $companionResult.activation_verified -ne $true -or
+        $companionResult.decision -notin @("healthy_companion", "initializing") -or
+        $companionResult.existing_provider_must_remain_active -ne $true
+    ) {
+        throw "The automatic companion did not pass post-install health verification."
+    }
+    $companionSynchronized = $true
+
     $result = [ordered]@{
         schema = "zsec.antivirus.windows-desktop-install-result.v1"
         installed = $true
@@ -245,6 +280,11 @@ try {
         signed = ((Get-AuthenticodeSignature -FilePath $desktopExe).Status -eq "Valid")
         security_products_modified = $false
         existing_provider_must_remain_active = $true
+        automatic_companion_lifecycle = $true
+        companion_mode = [string]$companionResult.mode
+        companion_activation_verified = $true
+        companion_healthy = [bool]$companionResult.healthy
+        companion_decision = [string]$companionResult.decision
     }
     $result | ConvertTo-Json -Depth 8
     if ($Open) {
@@ -258,6 +298,32 @@ try {
 catch {
     $installationError = $_
     try {
+        if ($companionSynchronized) {
+            if (-not [string]::IsNullOrWhiteSpace($previousEngineForRollback)) {
+                $companionRollbackOutput = & $companionSync -CliPath $previousEngineForRollback
+                $companionRollback = ($companionRollbackOutput -join [Environment]::NewLine) |
+                    ConvertFrom-Json
+                if (
+                    $companionRollback.schema -ne
+                        "zsec.antivirus.windows-companion-sync-result.v1" -or
+                    $companionRollback.activation_verified -ne $true
+                ) {
+                    throw "The prior automatic companion failed rollback verification."
+                }
+            }
+            else {
+                $companionRemovalOutput = & $companionUninstall -Confirm:$false
+                $companionRemoval = ($companionRemovalOutput -join [Environment]::NewLine) |
+                    ConvertFrom-Json
+                if (
+                    $companionRemoval.schema -ne
+                        "zsec.antivirus.windows-companion-uninstall-result.v1" -or
+                    $companionRemoval.removed -ne $true
+                ) {
+                    throw "The fresh automatic companion failed rollback verification."
+                }
+            }
+        }
         if ($null -ne $rollbackRoot -and (Test-Path -LiteralPath $rollbackRoot)) {
             Assert-RegularDirectory $rollbackRoot
             if ($null -ne $currentBackup -and (Test-Path -LiteralPath $currentBackup -PathType Leaf)) {

@@ -23,6 +23,7 @@ ICON_SOURCE = PROJECT_ROOT / "assets" / "brand" / "zeroq-icon.png"
 PRODUCT = "ZSEC Antivirus"
 
 TOOLS: tuple[Path, ...] = (
+    PROJECT_ROOT / "windows" / "companion" / "Sync-ZsecAntivirusCompanion.ps1",
     PROJECT_ROOT / "windows" / "companion" / "Install-ZsecAntivirusCompanion.ps1",
     PROJECT_ROOT / "windows" / "companion" / "Start-ZsecAntivirusCompanion.ps1",
     PROJECT_ROOT / "windows" / "companion" / "Get-ZsecAntivirusCompanionStatus.ps1",
@@ -139,6 +140,7 @@ def _write_manifest(root: Path, version: str) -> dict[str, Any]:
             "windows_security_provider": False,
             "existing_provider_must_remain_active": True,
             "automatic_provider_removal": False,
+            "automatic_companion_lifecycle": True,
             "telemetry": False,
         },
         "distribution": {
@@ -182,7 +184,15 @@ def build(output_dir: Path) -> dict[str, Any]:
     if archive.exists() or checksum.exists():
         raise DesktopReleaseError(f"refusing to overwrite existing artifact: {archive.name}")
 
-    build_root = PROJECT_ROOT / "build" / "windows-desktop"
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if not local_app_data:
+        raise DesktopReleaseError("LOCALAPPDATA is required for the isolated Windows build cache")
+    build_root = (
+        Path(local_app_data).resolve()
+        / "TalkToAI"
+        / "ZSEC Antivirus Build"
+        / version
+    )
     build_root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="build-", dir=build_root) as temporary_name:
         temporary = Path(temporary_name)

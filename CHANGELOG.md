@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.6 - 2026-08-22
+
+- Added a responsive, keyboard-accessible animated Windows protection-centre
+  dashboard with reduced-motion behavior and one-, two-, or four-column status
+  cards sized to the actual window.
+- Added transactional automatic Windows companion provisioning, upgrade,
+  30-second health verification, and prior-version rollback while preserving
+  the existing antivirus provider.
+- Hardened ZSEC Browser new-tab and Shields-control navigation with serialized
+  mutations, navigation-ID correlated completion, failed-tab rollback,
+  extension-origin locking, truthful failure
+  status, and Chromium runtime-update awareness.
+- Added exact Browser Shields ruleset, regex, dynamic-rule and settings
+  transaction verification; Browser Shields is now 0.5.2 and ZSEC Browser is
+  0.3.6.
+
 ## 0.3.5 - 2026-08-22
 
 - timestamp raw filesystem events at the observer boundary so debounce time is

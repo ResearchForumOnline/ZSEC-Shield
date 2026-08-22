@@ -3,7 +3,7 @@
   "name": "ZSEC Browser Shields",
   "short_name": "ZSEC Shields",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4/W89i3Y8llKADH37aszkPAhBlEjgFkCzWUUq+3WZIIiQ+UwCrtSQqoBArhet5srgX/MD/ERBPVK9Mf1k8NvxkRfR/ppuvrp0ZXnLlFVS7ajq5eST5+RD8ju5ZR6Grktkt00ba85uz2oBPZ3kg+iKIUhzP0JLbzhLc9BNKoizJ3qBbLZEyXhvQFZgfh8NOfZSDlv+tqK2wKOfLAi6Y0xTKKoZ5ip2xpx3DT2ZxQmJe6PaEHEy8B1DhrmU34JdLNS10zq7GQyez4j+QqDfqHMCYHTClV0O7PxqTNC/y7avbHO2wq3F3Gdvdz6sBrDzQqy/iaY+R/KAnrMFKWf7zjFPQIDAQAB",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Pinned EasyList-derived network filtering, selected packaged cosmetic rules, privacy controls, link cleanup and an opt-in high-risk browsing profile.",
   "minimum_chrome_version": "127",
   "permissions": [

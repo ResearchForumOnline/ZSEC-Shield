@@ -128,7 +128,7 @@ servers; it never opens the normal user profile. See the
 for the exact enforced decision points and non-claims.
 
 The native Windows Community desktop source lives in
-[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.5
+[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.6
 provides a modern rounded dark interface, managed tabs and popups, an address
 and search bar, and a separate WebView2 profile,
 default-deny site permissions, certificate-error cancellation, explicit downloads,

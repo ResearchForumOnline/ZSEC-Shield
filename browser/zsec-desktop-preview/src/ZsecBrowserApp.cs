@@ -22,18 +22,18 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.5.0")]
-[assembly: AssemblyFileVersion("0.3.5.0")]
-[assembly: AssemblyInformationalVersion("0.3.5-community")]
+[assembly: AssemblyVersion("0.3.6.0")]
+[assembly: AssemblyFileVersion("0.3.6.0")]
+[assembly: AssemblyInformationalVersion("0.3.6-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.5";
+        internal const string ProductVersion = "0.3.6";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
-        internal const string NewTabHtml = @"<!doctype html><html><head><meta charset='utf-8'><meta name='color-scheme' content='dark'><title>ZSEC New Tab</title><style>html,body{height:100%;margin:0;background:#040c12;color:#e8f0f5;font-family:'Segoe UI',sans-serif}body{display:grid;place-items:center;background:radial-gradient(circle at 50% 36%,#123845 0,#07151d 36%,#040c12 72%)}main{text-align:center;max-width:720px;padding:48px}.mark{width:76px;height:76px;margin:0 auto 24px;border:1px solid #2acdbb;border-radius:24px;display:grid;place-items:center;color:#00e5aa;font-size:36px;font-weight:800;box-shadow:0 0 42px rgba(0,229,170,.18)}h1{font-size:34px;margin:0 0 12px}p{color:#9fb5c0;font-size:16px;line-height:1.6}.hint{display:inline-block;margin-top:20px;padding:12px 18px;border:1px solid #294b59;border-radius:18px;background:#0d2029;color:#cce3ea}</style></head><body><main><div class='mark'>Z</div><h1>Private by design.</h1><p>This tab is local to ZSEC Browser. Type a web address or search in the address bar.</p><div class='hint'>Ctrl+L focuses search · Ctrl+T opens another local tab</div></main></body></html>";
+        internal const string NewTabUri = "https://newtab.zsec.local/index.html";
 
         [STAThread]
         private static void Main(string[] args)
@@ -171,6 +171,89 @@ namespace TalkToAI.ZsecBrowserPreview
         }
     }
 
+    internal sealed class RoundedActionButton : Button
+    {
+        private bool hovered;
+        private bool pressed;
+
+        internal Color SurfaceColor { get; set; }
+        internal Color HoverColor { get; set; }
+        internal Color PressedColor { get; set; }
+        internal Color BorderColor { get; set; }
+        internal int CornerRadius { get; set; }
+
+        internal RoundedActionButton()
+        {
+            SetStyle(
+                ControlStyles.UserPaint |
+                ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.OptimizedDoubleBuffer |
+                ControlStyles.ResizeRedraw,
+                true
+            );
+            FlatStyle = FlatStyle.Flat;
+            FlatAppearance.BorderSize = 0;
+            SurfaceColor = Color.FromArgb(15, 34, 43);
+            HoverColor = Color.FromArgb(24, 52, 63);
+            PressedColor = Color.FromArgb(30, 74, 83);
+            BorderColor = Color.FromArgb(42, 75, 88);
+            CornerRadius = 10;
+            Cursor = Cursors.Hand;
+            TabStop = true;
+        }
+
+        protected override void OnMouseEnter(EventArgs args)
+        {
+            hovered = true;
+            Invalidate();
+            base.OnMouseEnter(args);
+        }
+
+        protected override void OnMouseLeave(EventArgs args)
+        {
+            hovered = false;
+            pressed = false;
+            Invalidate();
+            base.OnMouseLeave(args);
+        }
+
+        protected override void OnMouseDown(MouseEventArgs args)
+        {
+            if (args.Button == MouseButtons.Left) pressed = true;
+            Invalidate();
+            base.OnMouseDown(args);
+        }
+
+        protected override void OnMouseUp(MouseEventArgs args)
+        {
+            pressed = false;
+            Invalidate();
+            base.OnMouseUp(args);
+        }
+
+        protected override void OnPaint(PaintEventArgs args)
+        {
+            args.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            Rectangle bounds = new Rectangle(1, 1, Math.Max(1, Width - 3), Math.Max(1, Height - 3));
+            Color fill = pressed ? PressedColor : hovered ? HoverColor : SurfaceColor;
+            using (GraphicsPath path = ModernUi.RoundedRectangle(bounds, CornerRadius))
+            using (SolidBrush brush = new SolidBrush(fill))
+            using (Pen border = new Pen(Focused ? Color.FromArgb(0, 229, 170) : BorderColor, Focused ? 1.5F : 1F))
+            {
+                args.Graphics.FillPath(brush, path);
+                args.Graphics.DrawPath(border, path);
+            }
+            TextRenderer.DrawText(
+                args.Graphics,
+                Text,
+                Font,
+                ClientRectangle,
+                ForeColor,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix
+            );
+        }
+    }
+
     internal sealed class ProtectionPulse : Control
     {
         private readonly System.Windows.Forms.Timer timer;
@@ -191,7 +274,6 @@ namespace TalkToAI.ZsecBrowserPreview
                 phase = (phase + 12) % 360;
                 Invalidate();
             };
-            if (SystemInformation.IsMenuAnimationEnabled) timer.Start();
         }
 
         internal bool Active
@@ -200,6 +282,15 @@ namespace TalkToAI.ZsecBrowserPreview
             set
             {
                 active = value;
+                if (active && SystemInformation.IsMenuAnimationEnabled)
+                {
+                    timer.Start();
+                }
+                else
+                {
+                    timer.Stop();
+                    phase = 0;
+                }
                 Invalidate();
             }
         }
@@ -249,6 +340,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private const int DwmRound = 2;
         private const int MaximumTabs = 32;
         private const string ExpectedShieldsExtensionId = "ddjbjhnlhapggenanpmcidieimaomiif";
+        private const string ShieldsSettingsBaseUri = "chrome-extension://ddjbjhnlhapggenanpmcidieimaomiif/popup/index.html";
         private static readonly IDictionary<string, string> ExpectedMicrosoftSystemExtensions =
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -266,11 +358,14 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly string profileRoot;
         private readonly string policyRoot;
         private readonly string extensionRoot;
+        private readonly string newTabRoot;
         private readonly string extensionManifestSha256;
         private readonly HashSet<string> trackerDomains;
         private readonly HashSet<string> trackingParameters;
         private readonly List<WebView2> browserViews;
         private readonly TabControl tabs;
+        private readonly Panel tabHost;
+        private readonly RoundedActionButton newTabButton;
         private readonly TextBox address;
         private readonly ToolStripControlHost addressHost;
         private readonly Label shieldStatus;
@@ -286,6 +381,8 @@ namespace TalkToAI.ZsecBrowserPreview
         private bool lastNavigationHttps;
         private bool shieldsExtensionEnabled;
         private bool dnrRuntimeVerified;
+        private bool runtimeUpdateAvailable;
+        private bool isClosing;
         private string installedShieldsExtensionId = "unavailable";
         private string effectiveTrackingPrevention = "unavailable";
         private Task extensionInstallTask;
@@ -297,6 +394,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private string lastNewTabCommandSource = "none";
         private readonly bool runtimeNewTabTest;
         private readonly TaskCompletionSource<bool> environmentReady;
+        private readonly SemaphoreSlim tabMutationGate;
 
         [DllImport("dwmapi.dll", PreserveSig = true)]
         private static extern int DwmSetWindowAttribute(
@@ -319,13 +417,17 @@ namespace TalkToAI.ZsecBrowserPreview
             profileRoot = Path.Combine(productRoot, "User Data");
             policyRoot = Path.Combine(applicationRoot, "policy");
             extensionRoot = Path.Combine(applicationRoot, "extension");
+            newTabRoot = Path.Combine(applicationRoot, "new-tab");
             extensionManifestSha256 = ComputeSha256RegularFile(
                 Path.Combine(extensionRoot, "manifest.json")
             );
             trackerDomains = LoadRequiredLines(Path.Combine(policyRoot, "tracker-domains.txt"));
             trackingParameters = LoadRequiredLines(Path.Combine(policyRoot, "tracking-parameters.txt"));
             browserViews = new List<WebView2>();
-            environmentReady = new TaskCompletionSource<bool>();
+            environmentReady = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously
+            );
+            tabMutationGate = new SemaphoreSlim(1, 1);
 
             Text = "ZSEC Browser";
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
@@ -361,7 +463,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.5";
+            channel.Text = "COMMUNITY 0.3.6";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
@@ -373,7 +475,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(protectionPulse);
 
             shieldStatus = new Label();
-            shieldStatus.Text = "  FILTERING: VERIFYING  ";
+            shieldStatus.Text = "  SHIELDS: VERIFYING  ";
             shieldStatus.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
             shieldStatus.ForeColor = Background;
             shieldStatus.BackColor = Color.FromArgb(245, 185, 66);
@@ -403,8 +505,6 @@ namespace TalkToAI.ZsecBrowserPreview
             ToolStripButton forwardButton = CreateButton("›", "Forward (Alt+Right)", delegate { if (ActiveView != null && ActiveView.CanGoForward) ActiveView.GoForward(); });
             ToolStripButton reloadButton = CreateButton("↻", "Reload (Ctrl+R)", delegate { if (ActiveView != null) ActiveView.Reload(); });
             ToolStripButton homeButton = CreateButton("⌂", "ZSEC home", delegate { Navigate(Program.DefaultStartPage); });
-            ToolStripButton newTabButton = CreateButton("＋  New tab", "New tab (Ctrl+T)", async delegate { await CreateNewTabCommandAsync("button"); });
-            ToolStripButton closeTabButton = CreateButton("×", "Close tab (Ctrl+W)", delegate { if (tabs.TabPages.Count > 1) CloseActiveTab(); });
 
             RoundedSurface addressSurface = new RoundedSurface();
             addressSurface.Size = new Size(660, 36);
@@ -428,8 +528,9 @@ namespace TalkToAI.ZsecBrowserPreview
             addressHost.Height = 38;
             addressHost.Margin = new Padding(7, 0, 7, 0);
 
-            highRiskButton = CreateButton("Shield: Standard", "Toggle stricter High-Risk browsing", ToggleHighRiskMode);
+            highRiskButton = CreateButton("Native guard: Standard", "Toggle stricter native navigation policy", ToggleHighRiskMode);
             highRiskButton.CheckOnClick = false;
+            ToolStripButton shieldsButton = CreateButton("Shields", "Open ZSEC Browser Shields controls", async delegate { await OpenShieldsSettingsAsync(); });
             ToolStripButton aboutButton = CreateButton("⋯", "About ZSEC Browser", ShowAbout);
 
             navigation.Items.AddRange(new ToolStripItem[]
@@ -438,17 +539,15 @@ namespace TalkToAI.ZsecBrowserPreview
                 forwardButton,
                 reloadButton,
                 homeButton,
-                newTabButton,
-                closeTabButton,
-                new ToolStripSeparator(),
                 addressHost,
                 new ToolStripSeparator(),
                 highRiskButton,
+                shieldsButton,
                 aboutButton
             });
             navigation.Resize += delegate
             {
-                int reserved = 640;
+                int reserved = 520;
                 addressHost.Width = Math.Max(280, navigation.ClientSize.Width - reserved);
                 addressSurface.Width = addressHost.Width;
             };
@@ -463,7 +562,27 @@ namespace TalkToAI.ZsecBrowserPreview
             tabs.HotTrack = true;
             tabs.DrawItem += DrawBrowserTab;
             tabs.MouseDown += BrowserTabMouseDown;
-            tabs.SelectedIndexChanged += delegate { UpdateAddressFromActiveView(); };
+            tabs.SelectedIndexChanged += delegate
+            {
+                UpdateAddressFromActiveView();
+                PositionNewTabButton();
+            };
+
+            tabHost = new Panel();
+            tabHost.Dock = DockStyle.Fill;
+            tabHost.BackColor = Background;
+            tabHost.Controls.Add(tabs);
+            newTabButton = new RoundedActionButton();
+            newTabButton.Text = "+";
+            newTabButton.Font = new Font("Segoe UI", 15F, FontStyle.Regular);
+            newTabButton.ForeColor = Color.White;
+            newTabButton.Size = new Size(38, 30);
+            newTabButton.AccessibleName = "New tab";
+            newTabButton.AccessibleDescription = "Open a protected local new tab (Ctrl+T)";
+            newTabButton.Click += async delegate { await CreateNewTabCommandAsync("tab_strip"); };
+            tabHost.Controls.Add(newTabButton);
+            newTabButton.BringToFront();
+            tabHost.Resize += delegate { PositionNewTabButton(); };
 
             StatusStrip status = new StatusStrip();
             status.BackColor = PanelBackground;
@@ -489,12 +608,13 @@ namespace TalkToAI.ZsecBrowserPreview
             status.Items.Add(blockedLabel);
             status.Items.Add(new ToolStripStatusLabel("Profile: separate app data"));
 
-            Controls.Add(tabs);
+            Controls.Add(tabHost);
             Controls.Add(status);
             Controls.Add(navigation);
             Controls.Add(brandBar);
 
             Load += InitializeBrowserAsync;
+            FormClosing += delegate { isClosing = true; };
             FormClosed += DisposeBrowserViews;
             KeyDown += BrowserKeyDown;
             WriteStartupStage("window_constructed");
@@ -544,6 +664,22 @@ namespace TalkToAI.ZsecBrowserPreview
             button.AccessibleName = toolTip;
             button.Click += handler;
             return button;
+        }
+
+        private void PositionNewTabButton()
+        {
+            if (newTabButton == null || tabHost == null) return;
+            int desiredLeft = 10;
+            if (tabs.TabPages.Count > 0 && tabs.IsHandleCreated)
+            {
+                Rectangle last = tabs.GetTabRect(tabs.TabPages.Count - 1);
+                desiredLeft = last.Right + 7;
+            }
+            newTabButton.Location = new Point(
+                Math.Max(8, Math.Min(desiredLeft, Math.Max(8, tabHost.ClientSize.Width - newTabButton.Width - 12))),
+                4
+            );
+            newTabButton.BringToFront();
         }
 
         private void DrawBrowserTab(object sender, DrawItemEventArgs args)
@@ -632,19 +768,35 @@ namespace TalkToAI.ZsecBrowserPreview
                 RejectReparseDirectory(productRoot);
                 RejectReparseDirectory(profileRoot);
                 RejectReparseDirectory(extensionRoot);
+                RejectReparseDirectory(newTabRoot);
                 AssertRequiredRegularFile(Path.Combine(extensionRoot, "manifest.json"));
+                AssertRequiredRegularFile(Path.Combine(newTabRoot, "index.html"));
 
                 CoreWebView2EnvironmentOptions options = new CoreWebView2EnvironmentOptions();
                 options.AdditionalBrowserArguments = "--enable-features=HttpsUpgrades";
                 options.EnableTrackingPrevention = true;
                 options.AreBrowserExtensionsEnabled = true;
                 environment = await CoreWebView2Environment.CreateAsync(null, profileRoot, options);
+                environment.NewBrowserVersionAvailable += delegate
+                {
+                    runtimeUpdateAvailable = true;
+                    if (!IsDisposed && IsHandleCreated)
+                    {
+                        BeginInvoke(new Action(delegate
+                        {
+                            runtimeStatus.Text = "Security runtime update ready - restart ZSEC Browser";
+                            WriteRuntimeEvidence(
+                                CoreWebView2Environment.GetAvailableBrowserVersionString()
+                            );
+                        }));
+                    }
+                };
                 WriteStartupStage("chromium_environment_ready");
                 string runtimeVersion = CoreWebView2Environment.GetAvailableBrowserVersionString();
                 runtimeStatus.Text = "Microsoft Chromium runtime " + runtimeVersion;
                 await CreateTab(initialDestination, true);
                 WriteStartupStage("protected_tab_ready");
-                shieldStatus.Text = "  FILTERING: STANDARD  ";
+                shieldStatus.Text = "  SHIELDS: INSTALLED  ";
                 shieldStatus.BackColor = Accent;
                 environmentReady.TrySetResult(true);
                 if (runtimeNewTabTest)
@@ -703,7 +855,8 @@ namespace TalkToAI.ZsecBrowserPreview
             string destination,
             bool select,
             bool navigate = true,
-            bool deferRequestPolicy = false
+            bool deferRequestPolicy = false,
+            bool allowShieldsSettings = false
         )
         {
             if (environment == null)
@@ -725,6 +878,7 @@ namespace TalkToAI.ZsecBrowserPreview
             page.Controls.Add(view);
             tabs.TabPages.Add(page);
             browserViews.Add(view);
+            PositionNewTabButton();
             if (select)
             {
                 tabs.SelectedTab = page;
@@ -733,7 +887,15 @@ namespace TalkToAI.ZsecBrowserPreview
             try
             {
                 await view.EnsureCoreWebView2Async(environment);
-                await ConfigureWebViewAsync(view, page);
+                if (isClosing)
+                {
+                    throw new OperationCanceledException("The browser window is closing.");
+                }
+                await ConfigureWebViewAsync(view, page, allowShieldsSettings);
+                if (isClosing)
+                {
+                    throw new OperationCanceledException("The browser window is closing.");
+                }
                 if (!deferRequestPolicy) AttachRequestPolicy(view);
                 if (navigate) NavigateView(view, destination);
                 lastTabAction = "opened";
@@ -744,6 +906,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 RecordTabCreationFailure("open_failed");
                 browserViews.Remove(view);
                 tabs.TabPages.Remove(page);
+                PositionNewTabButton();
                 view.Dispose();
                 page.Dispose();
                 throw;
@@ -752,13 +915,23 @@ namespace TalkToAI.ZsecBrowserPreview
 
         private async Task CreateNewTabCommandAsync(string source)
         {
+            WebView2 createdView = null;
+            TabPage previousTab = null;
+            await tabMutationGate.WaitAsync();
             try
             {
+                if (isClosing) return;
+                previousTab = tabs.SelectedTab;
+                newTabButton.Enabled = false;
                 runtimeStatus.Text = "Preparing protected tab...";
                 protectionPulse.Active = true;
                 await environmentReady.Task;
-                WebView2 view = await CreateTab(Program.DefaultStartPage, true, navigate: false);
-                view.CoreWebView2.NavigateToString(Program.NewTabHtml);
+                createdView = await CreateTab(Program.DefaultStartPage, true, navigate: false);
+                await NavigateUriAndWaitAsync(
+                    createdView,
+                    Program.NewTabUri,
+                    "The packaged protected new tab"
+                );
                 address.Clear();
                 address.Focus();
                 lastTabAction = "new_tab_ready";
@@ -767,6 +940,8 @@ namespace TalkToAI.ZsecBrowserPreview
             }
             catch (Exception exception)
             {
+                RollBackFailedTab(createdView, previousTab);
+                if (createdView != null) RecordTabCreationFailure("new_tab_navigation_failed");
                 if (environment != null)
                 {
                     WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
@@ -774,13 +949,175 @@ namespace TalkToAI.ZsecBrowserPreview
                 navigationProgress.Visible = false;
                 protectionPulse.Active = false;
                 runtimeStatus.Text = "New tab failed safely";
-                MessageBox.Show(
-                    "ZSEC Browser could not open the new tab.\r\n\r\n" + exception.Message,
-                    "ZSEC Browser",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
+                if (!isClosing)
+                {
+                    MessageBox.Show(
+                        "ZSEC Browser could not open the new tab.\r\n\r\n" + exception.Message,
+                        "ZSEC Browser",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
+                }
             }
+            finally
+            {
+                if (!IsDisposed) newTabButton.Enabled = true;
+                tabMutationGate.Release();
+            }
+        }
+
+        private async Task OpenShieldsSettingsAsync()
+        {
+            WebView2 createdView = null;
+            TabPage previousTab = null;
+            await tabMutationGate.WaitAsync();
+            try
+            {
+                if (isClosing) return;
+                previousTab = tabs.SelectedTab;
+                string settingsUri = BuildShieldsSettingsUri();
+                runtimeStatus.Text = "Opening verified Shields controls...";
+                protectionPulse.Active = true;
+                await environmentReady.Task;
+                createdView = await CreateTab(
+                    Program.DefaultStartPage,
+                    true,
+                    navigate: false,
+                    deferRequestPolicy: false,
+                    allowShieldsSettings: true
+                );
+                await NavigateUriAndWaitAsync(
+                    createdView,
+                    settingsUri,
+                    "The verified Shields controls"
+                );
+                lastTabAction = "shields_controls_opened";
+                WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
+            }
+            catch (Exception exception)
+            {
+                RollBackFailedTab(createdView, previousTab);
+                if (createdView != null)
+                {
+                    RecordTabCreationFailure("shields_controls_navigation_failed");
+                }
+                navigationProgress.Visible = false;
+                protectionPulse.Active = false;
+                runtimeStatus.Text = "Shields controls failed safely";
+                if (!isClosing)
+                {
+                    MessageBox.Show(
+                        "ZSEC Browser could not open the verified Shields controls.\r\n\r\n" + exception.Message,
+                        "ZSEC Browser",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
+                }
+            }
+            finally
+            {
+                tabMutationGate.Release();
+            }
+        }
+
+        private static async Task NavigateUriAndWaitAsync(
+            WebView2 view,
+            string uri,
+            string description
+        )
+        {
+            await NavigateAndWaitAsync(
+                view,
+                delegate { view.CoreWebView2.Navigate(uri); },
+                description
+            );
+        }
+
+        private static async Task NavigateAndWaitAsync(
+            WebView2 view,
+            Action navigate,
+            string description
+        )
+        {
+            ulong? expectedNavigationId = null;
+            bool navigationIssued = false;
+            TaskCompletionSource<CoreWebView2NavigationCompletedEventArgs> completion =
+                new TaskCompletionSource<CoreWebView2NavigationCompletedEventArgs>(
+                    TaskCreationOptions.RunContinuationsAsynchronously
+                );
+            EventHandler<CoreWebView2NavigationStartingEventArgs> startingHandler = null;
+            startingHandler = delegate(object sender, CoreWebView2NavigationStartingEventArgs args)
+            {
+                if (navigationIssued && !expectedNavigationId.HasValue)
+                {
+                    expectedNavigationId = args.NavigationId;
+                }
+            };
+            EventHandler<CoreWebView2NavigationCompletedEventArgs> completedHandler = null;
+            completedHandler = delegate(object sender, CoreWebView2NavigationCompletedEventArgs args)
+            {
+                if (expectedNavigationId.HasValue && args.NavigationId == expectedNavigationId.Value)
+                {
+                    completion.TrySetResult(args);
+                }
+            };
+            view.CoreWebView2.NavigationStarting += startingHandler;
+            view.CoreWebView2.NavigationCompleted += completedHandler;
+            try
+            {
+                navigationIssued = true;
+                navigate();
+                Task finished = await Task.WhenAny(completion.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+                if (finished != completion.Task)
+                {
+                    throw new TimeoutException(description + " did not become ready in time.");
+                }
+                CoreWebView2NavigationCompletedEventArgs result = await completion.Task;
+                if (!result.IsSuccess)
+                {
+                    throw new InvalidOperationException(
+                        description + " failed to load: " + result.WebErrorStatus
+                    );
+                }
+            }
+            finally
+            {
+                view.CoreWebView2.NavigationStarting -= startingHandler;
+                view.CoreWebView2.NavigationCompleted -= completedHandler;
+            }
+        }
+
+        private void RollBackFailedTab(WebView2 view, TabPage previousTab)
+        {
+            if (view != null)
+            {
+                TabPage page = view.Parent as TabPage;
+                browserViews.Remove(view);
+                if (page != null && tabs.TabPages.Contains(page)) tabs.TabPages.Remove(page);
+                view.Dispose();
+                if (page != null) page.Dispose();
+            }
+            if (previousTab != null && tabs.TabPages.Contains(previousTab))
+            {
+                tabs.SelectedTab = previousTab;
+            }
+            PositionNewTabButton();
+        }
+
+        private string BuildShieldsSettingsUri()
+        {
+            string site = "";
+            WebView2 current = ActiveView;
+            Uri source;
+            if (current != null && current.Source != null &&
+                Uri.TryCreate(current.Source.ToString(), UriKind.Absolute, out source) &&
+                (source.Scheme == Uri.UriSchemeHttps || source.Scheme == Uri.UriSchemeHttp))
+            {
+                site = source.Host.TrimEnd('.').ToLowerInvariant();
+            }
+            string query = "?surface=tab";
+            if (!String.IsNullOrWhiteSpace(site)) query += "&site=" + Uri.EscapeDataString(site);
+            return ShieldsSettingsBaseUri + query;
         }
 
         private void RecordTabCreationFailure(string action)
@@ -793,9 +1130,18 @@ namespace TalkToAI.ZsecBrowserPreview
             }
         }
 
-        private async Task ConfigureWebViewAsync(WebView2 view, TabPage page)
+        private async Task ConfigureWebViewAsync(
+            WebView2 view,
+            TabPage page,
+            bool allowShieldsSettings
+        )
         {
             CoreWebView2 core = view.CoreWebView2;
+            core.SetVirtualHostNameToFolderMapping(
+                "newtab.zsec.local",
+                newTabRoot,
+                CoreWebView2HostResourceAccessKind.DenyCors
+            );
             CoreWebView2Settings settings = core.Settings;
             settings.AreHostObjectsAllowed = false;
             settings.IsWebMessageEnabled = false;
@@ -818,11 +1164,22 @@ namespace TalkToAI.ZsecBrowserPreview
                 navigationProgress.Visible = true;
                 protectionPulse.Active = true;
                 runtimeStatus.Text = "Opening protected page...";
-                HandleNavigationStarting(view, args);
+                HandleNavigationStarting(view, args, allowShieldsSettings);
             };
             core.FrameNavigationStarting += delegate(object sender, CoreWebView2NavigationStartingEventArgs args)
             {
-                if (!IsAllowedWebUri(args.Uri, false) && !IsAboutBlank(args.Uri)) args.Cancel = true;
+                if (allowShieldsSettings)
+                {
+                    if (!IsAboutBlank(args.Uri) && !IsExpectedShieldsSettingsUri(args.Uri))
+                    {
+                        args.Cancel = true;
+                    }
+                    return;
+                }
+                if (!IsAllowedWebUri(args.Uri, false) && !IsAboutBlank(args.Uri))
+                {
+                    args.Cancel = true;
+                }
             };
             core.SourceChanged += delegate
             {
@@ -839,11 +1196,28 @@ namespace TalkToAI.ZsecBrowserPreview
                     WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
                 }
             };
-            core.NavigationCompleted += delegate
+            core.NavigationCompleted += delegate(
+                object sender,
+                CoreWebView2NavigationCompletedEventArgs args
+            )
             {
                 navigationProgress.Visible = false;
                 protectionPulse.Active = false;
-                runtimeStatus.Text = "Runtime ready · Browser Shields loaded · Microsoft Chromium " + CoreWebView2Environment.GetAvailableBrowserVersionString();
+                if (!args.IsSuccess)
+                {
+                    runtimeStatus.Text = "Navigation failed safely · " + args.WebErrorStatus;
+                    lastNavigationHttps = false;
+                    lastTabAction = "navigation_failed_" + args.WebErrorStatus.ToString().ToLowerInvariant();
+                    WriteRuntimeEvidence(
+                        CoreWebView2Environment.GetAvailableBrowserVersionString()
+                    );
+                    return;
+                }
+                runtimeStatus.Text = dnrRuntimeVerified
+                    ? "Runtime ready · local DNR probe passed · Microsoft Chromium " +
+                        CoreWebView2Environment.GetAvailableBrowserVersionString()
+                    : "Runtime ready · Shields extension installed · Microsoft Chromium " +
+                        CoreWebView2Environment.GetAvailableBrowserVersionString();
                 lastNavigationHttps = view.Source != null &&
                     String.Equals(view.Source.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
                 WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
@@ -984,7 +1358,11 @@ namespace TalkToAI.ZsecBrowserPreview
                 String.Equals(extension.Name, expectedName, StringComparison.Ordinal);
         }
 
-        private void HandleNavigationStarting(WebView2 view, CoreWebView2NavigationStartingEventArgs args)
+        private void HandleNavigationStarting(
+            WebView2 view,
+            CoreWebView2NavigationStartingEventArgs args,
+            bool allowShieldsSettings
+        )
         {
             Uri uri;
             if (!Uri.TryCreate(args.Uri, UriKind.Absolute, out uri))
@@ -996,6 +1374,15 @@ namespace TalkToAI.ZsecBrowserPreview
 
             if (IsAboutBlank(args.Uri))
             {
+                return;
+            }
+
+            if (allowShieldsSettings)
+            {
+                if (IsExpectedShieldsSettingsUri(args.Uri)) return;
+                args.Cancel = true;
+                navigationProgress.Visible = false;
+                ShowBlockedNotice("The verified Shields controls tab is locked to its extension origin.");
                 return;
             }
 
@@ -1212,11 +1599,12 @@ namespace TalkToAI.ZsecBrowserPreview
         private void ToggleHighRiskMode(object sender, EventArgs args)
         {
             highRiskMode = !highRiskMode;
-            highRiskButton.Text = highRiskMode ? "Shield: High-Risk" : "Shield: Standard";
+            highRiskButton.Text = highRiskMode ? "Native guard: Strict" : "Native guard: Standard";
             highRiskButton.Checked = highRiskMode;
             highRiskButton.BackColor = highRiskMode ? Color.FromArgb(210, 74, 54) : PanelBackground;
-            shieldStatus.Text = highRiskMode ? "  FILTERING: HIGH-RISK  " : "  FILTERING: STANDARD  ";
-            shieldStatus.BackColor = highRiskMode ? Color.FromArgb(255, 179, 71) : Accent;
+            runtimeStatus.Text = highRiskMode
+                ? "Strict native navigation policy enabled"
+                : "Standard native navigation policy enabled";
             WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
         }
 
@@ -1259,6 +1647,7 @@ namespace TalkToAI.ZsecBrowserPreview
             }
             tabs.TabPages.RemoveAt(index);
             page.Dispose();
+            PositionNewTabButton();
             if (environment != null)
             {
                 lastTabAction = "closed";
@@ -1303,6 +1692,34 @@ namespace TalkToAI.ZsecBrowserPreview
         private static bool IsAboutBlank(string candidate)
         {
             return String.Equals(candidate, "about:blank", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsExpectedShieldsSettingsUri(string candidate)
+        {
+            Uri uri;
+            if (!Uri.TryCreate(candidate, UriKind.Absolute, out uri)) return false;
+            if (!String.Equals(uri.Scheme, "chrome-extension", StringComparison.OrdinalIgnoreCase) ||
+                !String.Equals(uri.Host, ExpectedShieldsExtensionId, StringComparison.Ordinal) ||
+                !String.Equals(uri.AbsolutePath, "/popup/index.html", StringComparison.Ordinal) ||
+                !String.IsNullOrEmpty(uri.Fragment))
+            {
+                return false;
+            }
+            System.Collections.Specialized.NameValueCollection query = HttpUtility.ParseQueryString(uri.Query);
+            if (!String.Equals(query["surface"], "tab", StringComparison.Ordinal)) return false;
+            foreach (string key in query.AllKeys)
+            {
+                if (!String.Equals(key, "surface", StringComparison.Ordinal) &&
+                    !String.Equals(key, "site", StringComparison.Ordinal))
+                {
+                    return false;
+                }
+            }
+            string site = query["site"];
+            return String.IsNullOrEmpty(site) ||
+                (site.Length <= 253 &&
+                 site.IndexOf("..", StringComparison.Ordinal) < 0 &&
+                 site.All(character => Char.IsLetterOrDigit(character) || character == '.' || character == '-'));
         }
 
         private string RemoveTrackingParameters(Uri uri)
@@ -1415,6 +1832,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 "browser_shields_installed_id=" + installedShieldsExtensionId,
                 "browser_shields_manifest_sha256=" + extensionManifestSha256,
                 "dnr_runtime_test_status=" + (dnrRuntimeVerified ? "passed" : "not_run"),
+                "runtime_update_available=" + runtimeUpdateAvailable.ToString().ToLowerInvariant(),
                 "tracking_prevention_requested=balanced",
                 "tracking_prevention_effective=" + effectiveTrackingPrevention,
                 "youtube_ui_assist=" + (shieldsExtensionEnabled ? "enabled_best_effort" : "unavailable"),

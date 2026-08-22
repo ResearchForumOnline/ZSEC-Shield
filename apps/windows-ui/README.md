@@ -51,7 +51,10 @@ non-link file and never invokes a command shell.
 | Recovery self-test | `recovery-drill --json` / `zsec.antivirus.recovery-drill.v1` | Uses isolated synthetic data only; a strict GUI contract rejects any independent-certification overclaim. |
 | Settings | Local UI scan bounds and resolved command/state paths | No secrets, provider changes, remote URLs, or persistent quarantine default. |
 
-The Windows companion's supported read-only status script additionally validates
+The Windows installer automatically provisions, verifies and starts the per-user
+companion. Upgrades migrate it transactionally and restore the prior healthy
+companion if activation fails. The Windows companion's supported read-only
+status script additionally validates
 its owned supervisor registration, launcher/runtime hashes, heartbeat freshness,
 process identity, post-change policy, and Windows Security Center aggregate
 antivirus health. Raw `SecurityCenter2.productState` values are never decoded as

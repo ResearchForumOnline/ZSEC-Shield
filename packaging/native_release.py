@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import tomllib
 import zipfile
 from collections.abc import Iterable
@@ -618,9 +619,20 @@ def _create_archive(bundle_root: Path, archive: Path, target_os: str) -> None:
                     continue
                 if path.is_symlink():
                     raise ReleaseError("Windows ZIP bundle unexpectedly contains a symbolic link")
-                output.write(
-                    path, (Path(bundle_root.name) / path.relative_to(bundle_root)).as_posix()
-                )
+                archive_name = (
+                    Path(bundle_root.name) / path.relative_to(bundle_root)
+                ).as_posix()
+                for attempt in range(20):
+                    try:
+                        output.write(path, archive_name)
+                        break
+                    except PermissionError:
+                        if attempt == 19:
+                            raise
+                        # Endpoint protection can hold a newly staged runtime file
+                        # momentarily. Retry the exact immutable input without
+                        # weakening manifest or hash verification.
+                        time.sleep(0.1)
         return
     with tarfile.open(archive, mode="x:gz", compresslevel=9, format=tarfile.PAX_FORMAT) as output:
         output.add(bundle_root, arcname=bundle_root.name, recursive=True)

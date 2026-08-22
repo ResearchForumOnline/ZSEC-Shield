@@ -5,8 +5,7 @@ param(
     [string[]]$ProtectedRoot = (@(
             (Join-Path $env:USERPROFILE "Downloads"),
             ([Environment]::GetFolderPath("Desktop")),
-            ([Environment]::GetFolderPath("MyDocuments")),
-            ([IO.Path]::GetTempPath())
+            ([Environment]::GetFolderPath("MyDocuments"))
         ) | Where-Object {
             -not [string]::IsNullOrWhiteSpace($_) -and
             (Test-Path -LiteralPath $_ -PathType Container) -and

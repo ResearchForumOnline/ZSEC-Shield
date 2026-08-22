@@ -6,7 +6,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$ProductVersion = "0.3.5"
+$ProductVersion = "0.3.6"
 $WebView2Version = "1.0.4129.50"
 $WebView2Uri = "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/$WebView2Version/microsoft.web.webview2.$WebView2Version.nupkg"
 $WebView2Sha256 = "d3934f482d484b89fb4825df720c710664e1143a1e90f7b3a60794ef33f473d2"
@@ -111,6 +111,13 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $LauncherPath -PathType
 Copy-Item -LiteralPath $CoreDll -Destination (Join-Path $AppRoot "Microsoft.Web.WebView2.Core.dll") -Force
 Copy-Item -LiteralPath $WinFormsDll -Destination (Join-Path $AppRoot "Microsoft.Web.WebView2.WinForms.dll") -Force
 Copy-Item -LiteralPath $LoaderDll -Destination (Join-Path $AppRoot "WebView2Loader.dll") -Force
+$NewTabSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\assets\new-tab\index.html"
+if (-not (Test-Path -LiteralPath $NewTabSource -PathType Leaf)) {
+    throw "The packaged ZSEC Browser new-tab page is absent."
+}
+$NewTabRoot = Join-Path $AppRoot "new-tab"
+New-Item -ItemType Directory -Path $NewTabRoot -Force | Out-Null
+Copy-Item -LiteralPath $NewTabSource -Destination (Join-Path $NewTabRoot "index.html") -Force
 $ExtensionRoot = Join-Path $AppRoot "extension"
 $ExtensionFiles = @(
     "manifest.json",
@@ -124,6 +131,8 @@ $ExtensionFiles = @(
     "rules/privacy.json",
     "src/high-risk-browsing.js",
     "src/policy.js",
+    "src/runtime-health.js",
+    "src/settings-transaction.js",
     "src/service-worker.js",
     "src/youtube-cosmetic-rules.js",
     "src/youtube-cleanup.js",

@@ -1,5 +1,13 @@
 # ZSEC Antivirus Windows companion
 
+The Windows desktop package runs `Sync-ZsecAntivirusCompanion.ps1` as part of
+its activation transaction. A fresh install provisions and starts the owned
+per-user supervisor automatically. An upgrade preserves reviewed nonvolatile roots and
+quarantine preference, migrates the companion to the new immutable engine,
+waits for verified registration, integrity, process identity and a fresh heartbeat,
+then reports either baseline-in-progress or healthy. It restores the prior companion if verification
+fails. This lifecycle does not modify or remove an existing antivirus provider.
+
 Status: reversible per-user automation for the existing foreground post-change
 engine. It is not a Windows service, kernel minifilter, AMSI/ELAM provider,
 Windows Security provider, or primary antivirus. Keep Malwarebytes, Microsoft
@@ -22,8 +30,10 @@ powershell.exe -NoLogo -NoProfile -ExecutionPolicy RemoteSigned `
   -PlanOnly
 ```
 
-The secure Windows default monitors each existing current-user Downloads,
-Desktop, Documents and temporary directory. A standard folder that Windows
+The secure Windows default monitors each existing current-user Desktop,
+Downloads and Documents folder. The volatile Windows Temp directory is not a
+default root because applications routinely hold transient files with exclusive
+locks; those incomplete reads would correctly degrade the session. A standard folder that Windows
 resolves to an absent or reparse-point location is skipped instead of making an
 automatic install fail. Pass one to eight `-ProtectedRoot` values to use a
 different bounded set of existing, regular, non-reparse directories. The installer deduplicates exact

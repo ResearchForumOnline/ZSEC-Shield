@@ -1,7 +1,8 @@
 # ZSEC Browser Shields
 
 ZSEC Browser Shields is the open-source Manifest V3 protection engine for ZSEC
-Browser. Version 0.5.1 adds 49,464 pinned EasyList network rules compiled by
+Browser. Version 0.5.2 adds verified runtime ruleset/regex health, transactional
+settings rollback, and 49,464 pinned EasyList network rules compiled by
 eyeo's Adblock Plus release pipeline, while omitting the Acceptable Ads
 allowlist. It also blocks a focused local set of analytics, fingerprinting and
 session-replay domains; removes common campaign identifiers
