@@ -130,7 +130,9 @@ npm run test:runtime
 The runtime test uses an isolated temporary Chromium profile and local-only test
 servers; it never opens the normal user profile. See the
 [bounded mercenary-spyware defence analysis](docs/MERCENARY_SPYWARE_DEFENCE.md)
-for the exact enforced decision points and non-claims.
+for the exact enforced decision points and non-claims, and the
+[journalist and high-risk user profile](docs/JOURNALIST_HIGH_RISK_PROFILE.md)
+for the implemented-now versus release-gated protection programme.
 
 The native Windows Community desktop source lives in
 [`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.6
