@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "browser" / "zsec-desktop-preview" / "src" / "ZsecBrowserApp.cs"
@@ -18,6 +21,7 @@ PRODUCT_TESTS = (
 )
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="C# harness requires Windows PowerShell")
 def test_product_state_harness_passes() -> None:
     completed = subprocess.run(
         [
