@@ -150,9 +150,15 @@ if ($PSVersionTable.PSEdition -eq "Core" -and -not $IsWindows) {
 }
 
 if ([string]::IsNullOrWhiteSpace($PayloadRoot)) {
+    $siblingPackageRoot = $PSScriptRoot
     $siblingPayload = Join-Path $PSScriptRoot "payload"
     $repoPayload = Join-Path $PSScriptRoot "..\..\dist\browser-desktop-preview\$ProductVersion\payload"
-    if (Test-Path -LiteralPath $siblingPayload -PathType Container) {
+    if (Test-Path -LiteralPath (Join-Path $siblingPackageRoot "App\ZSEC Browser.exe") -PathType Leaf) {
+        # The public Community archive flattens payload/App to App beside this
+        # installer. Prefer that self-contained layout before developer paths.
+        $PayloadRoot = $siblingPackageRoot
+    }
+    elseif (Test-Path -LiteralPath $siblingPayload -PathType Container) {
         $PayloadRoot = $siblingPayload
     }
     else {

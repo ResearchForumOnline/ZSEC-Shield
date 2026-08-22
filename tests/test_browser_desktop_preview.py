@@ -324,6 +324,7 @@ def test_community_package_uses_release_grade_script_names() -> None:
     build = BUILD.read_text(encoding="utf-8")
     packager = PACKAGER.read_text(encoding="utf-8")
     readme = README.read_text(encoding="utf-8")
+    installer = INSTALLER.read_text(encoding="utf-8")
 
     for name in (
         "Install-ZsecBrowser.ps1",
@@ -335,3 +336,8 @@ def test_community_package_uses_release_grade_script_names() -> None:
     assert "Install-ZsecBrowser.ps1" in packager
     assert "Install-ZsecBrowserPreview.ps1" not in packager
     assert "Install-ZsecBrowserPreview.ps1" not in readme
+    assert 'Join-Path $siblingPackageRoot "App\\ZSEC Browser.exe"' in installer
+    assert "$PayloadRoot = $siblingPackageRoot" in installer
+    assert installer.index("$PayloadRoot = $siblingPackageRoot") < installer.index(
+        "$PayloadRoot = $repoPayload"
+    )
