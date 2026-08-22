@@ -746,6 +746,26 @@ class ForegroundProtectionWatcher:
         unresolved: set[str] = set()
         observed = 0
         unchanged = 0
+        next_progress_heartbeat = self._clock() + self.config.heartbeat_seconds
+
+        def emit_progress_heartbeat() -> None:
+            nonlocal next_progress_heartbeat
+            now = self._clock()
+            if now < next_progress_heartbeat:
+                return
+            progress_stats = self._stats_snapshot()
+            progress_stats["reconciliation_files_observed"] = observed
+            progress_stats["reconciliation_files_unchanged"] = unchanged
+            self._emit(
+                "health_heartbeat",
+                backend_active=self._active_backend,
+                roots=[str(root.path) for root in self.roots],
+                operational_incomplete=self._operational_incomplete,
+                reconciliation_phase=trigger,
+                stats=progress_stats,
+                policy=watch_policy(self.config.quarantine),
+            )
+            next_progress_heartbeat = now + self.config.heartbeat_seconds
 
         def changed_since_last_reconciliation(path: Path, metadata: os.stat_result) -> bool:
             nonlocal observed, unchanged
@@ -756,6 +776,7 @@ class ForegroundProtectionWatcher:
             if not changed:
                 unchanged += 1
                 current[key] = fingerprint
+            emit_progress_heartbeat()
             return changed
 
         def record_successful_hash(
@@ -766,6 +787,7 @@ class ForegroundProtectionWatcher:
                 current[key] = _file_fingerprint(metadata)
             else:
                 unresolved.add(key)
+            emit_progress_heartbeat()
 
         self._scan_paths(
             [root.path for root in self.roots],

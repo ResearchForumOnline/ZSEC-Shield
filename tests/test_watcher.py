@@ -389,6 +389,35 @@ class WatchEngineTests(unittest.TestCase):
         self.assertFalse(heartbeats[0]["policy"]["real_time_protection"])
         self.assertFalse(heartbeats[0]["policy"]["pre_access_enforcement"])
 
+    def test_initial_baseline_emits_progress_heartbeat_before_completion(self) -> None:
+        for index in range(5):
+            (self.scan_root / f"baseline-{index}.bin").write_bytes(b"bounded baseline")
+        records: list[dict[str, Any]] = []
+        now = [0.0]
+
+        def advancing_clock() -> float:
+            now[0] += 0.06
+            return now[0]
+
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(heartbeat_seconds=0.1),
+            on_record=records.append,
+            polling_observer_factory=FakeObserver,
+            clock=advancing_clock,
+        )
+        watcher.run(duration_seconds=0.1)
+        progress = [
+            record
+            for record in records
+            if record["event"] == "health_heartbeat"
+            and record.get("reconciliation_phase") == "initial_baseline"
+        ]
+        self.assertTrue(progress)
+        self.assertGreaterEqual(
+            progress[-1]["stats"]["reconciliation_files_observed"], 1
+        )
+
     def test_metadata_reconciliation_does_not_rehash_unchanged_files(self) -> None:
         target = self.scan_root / "stable.bin"
         target.write_bytes(b"stable reconciliation test")
