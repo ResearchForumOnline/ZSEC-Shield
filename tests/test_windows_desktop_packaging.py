@@ -155,7 +155,7 @@ def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
     assert "Desktop Preview" not in app
     assert "DESKTOP PREVIEW" not in app
     assert 'self.root.title("ZSEC Antivirus")' in app
-    assert 'text="COMMUNITY 0.3.17"' in app
+    assert 'text="COMMUNITY 0.3.18"' in app
 
 
 def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None:
@@ -171,6 +171,9 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     assert 'style.layout("Content.TNotebook.Tab", [])' in app
     assert "_layout_overview_cards" in app
     assert "lambda: not self.reduce_motion.get()" in app
+    assert "self.status_emphasis" in app
+    assert "_animate_status_emphasis" in app
+    assert "if changed and self.motion_enabled()" in app
     assert "width >= 1040" in app
     assert "width >= 520" in app
     assert "width=240" in app

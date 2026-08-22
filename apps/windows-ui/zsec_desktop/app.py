@@ -73,6 +73,8 @@ class ModernStatusCard(tk.Canvas):
         self.hover_progress = 0.0
         self.hover_target = 0.0
         self.hover_job: str | None = None
+        self.status_emphasis = 0.0
+        self.status_job: str | None = None
         self.bind("<Configure>", self._render)
         self.bind("<Enter>", lambda _event: self._set_hover(1.0))
         self.bind("<Leave>", lambda _event: self._set_hover(0.0))
@@ -81,9 +83,25 @@ class ModernStatusCard(tk.Canvas):
         self.bind("<Destroy>", self._cancel_animation)
 
     def set_value(self, value: str, accent: str) -> None:
+        changed = value != self.value or accent != self.accent
         self.value = value
         self.accent = accent
+        if changed and self.motion_enabled():
+            self.status_emphasis = 1.0
+            if self.status_job is None:
+                self.status_job = self.after(40, self._animate_status_emphasis)
+        else:
+            self.status_emphasis = 0.0
         self._render()
+
+    def _animate_status_emphasis(self) -> None:
+        self.status_emphasis = max(0.0, self.status_emphasis - 0.12)
+        self._render()
+        if self.status_emphasis > 0.0 and self.motion_enabled():
+            self.status_job = self.after(40, self._animate_status_emphasis)
+        else:
+            self.status_emphasis = 0.0
+            self.status_job = None
 
     def _set_hover(self, target: float) -> None:
         self.hover_target = target
@@ -103,6 +121,10 @@ class ModernStatusCard(tk.Canvas):
             with contextlib.suppress(tk.TclError):
                 self.after_cancel(self.hover_job)
             self.hover_job = None
+        if self.status_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.after_cancel(self.status_job)
+            self.status_job = None
 
     def _animate_hover(self) -> None:
         delta = self.hover_target - self.hover_progress
@@ -173,8 +195,12 @@ class ModernStatusCard(tk.Canvas):
             height - 4,
             18,
             fill=SURFACE,
-            outline=self.accent if self.hover_progress > 0.55 else SURFACE_ALT,
-            width=2 + int(self.hover_progress),
+            outline=(
+                self.accent
+                if self.hover_progress > 0.55 or self.status_emphasis > 0.0
+                else SURFACE_ALT
+            ),
+            width=2 + int(max(self.hover_progress, self.status_emphasis)),
         )
         self.create_rectangle(2, 24, 6, height - 26, fill=self.accent, outline=self.accent)
         self.create_text(
@@ -396,7 +422,7 @@ class ZsecDesktop:
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
         ttk.Label(
             title_row,
-            text="COMMUNITY 0.3.17",
+            text="COMMUNITY 0.3.18",
             style="Subtitle.TLabel",
             foreground=AMBER,
         ).pack(
@@ -1127,7 +1153,7 @@ class ZsecDesktop:
         self.yubikey_status = ttk.Label(
             panel,
             text=(
-                "Hardware-key recovery is not enabled in Community 0.3.17. When "
+                "Hardware-key recovery is not enabled in Community 0.3.18. When "
                 "quarantine is explicitly enabled, encryption remains automatic, "
                 "authenticated and device-bound."
             ),

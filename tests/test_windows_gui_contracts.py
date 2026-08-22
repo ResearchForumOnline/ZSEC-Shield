@@ -363,6 +363,38 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     assert baseline_view.state == "baselining"
     assert baseline_view.accent == "cyan"
 
+    degraded_with_defender = valid_companion()
+    degraded_with_defender.update(
+        {"decision": "degraded", "installed": True, "healthy": False}
+    )
+    degraded_view = companion_presentation(
+        validate_companion_status(degraded_with_defender)
+    )
+    assert degraded_view.state == "degraded"
+    assert degraded_view.accent == "amber"
+    assert "Windows protection active" in degraded_view.headline
+    assert "automatic companion is degraded" in degraded_view.detail
+
+    degraded_without_verified_primary = copy.deepcopy(degraded_with_defender)
+    degraded_without_verified_primary["existing_primary_protection"][
+        "aggregate_good"
+    ] = False
+    red_view = companion_presentation(
+        validate_companion_status(degraded_without_verified_primary)
+    )
+    assert red_view.state == "degraded"
+    assert red_view.accent == "red"
+
+    degraded_integrity_failure = copy.deepcopy(degraded_with_defender)
+    degraded_integrity_failure["integrity"] = {
+        "cli_hash_verified": True,
+        "runtime_hash_verified": False,
+        "launcher_hash_verified": True,
+    }
+    integrity_view = companion_presentation(degraded_integrity_failure)
+    assert integrity_view.state == "degraded"
+    assert integrity_view.accent == "red"
+
     contradictory_baseline = valid_baselining_companion()
     contradictory_baseline["integrity"]["runtime_hash_verified"] = False
     with pytest.raises(ContractError, match="baseline companion"):

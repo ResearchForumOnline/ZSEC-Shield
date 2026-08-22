@@ -721,6 +721,28 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
             accent="cyan",
         )
     reasons = "; ".join(payload["reasons"][:3])
+    primary_protection_healthy = bool(
+        payload["existing_primary_protection"]["aggregate_good"]
+    )
+    integrity = payload.get("integrity")
+    integrity_failed = isinstance(integrity, dict) and any(
+        integrity.get(field) is False
+        for field in (
+            "cli_hash_verified",
+            "runtime_hash_verified",
+            "launcher_hash_verified",
+        )
+    )
+    if primary_protection_healthy and not integrity_failed:
+        return CompanionPresentation(
+            state="degraded",
+            headline="Windows protection active · monitoring needs attention",
+            detail=(
+                "The ZSEC automatic companion is degraded: "
+                + (reasons or "protection evidence is incomplete.")
+            ),
+            accent="amber",
+        )
     return CompanionPresentation(
         state="degraded",
         headline="Automatic companion degraded",
