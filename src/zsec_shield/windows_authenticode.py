@@ -110,7 +110,7 @@ def verify_authenticode(path: Path, expected: os.stat_result) -> dict[str, Any] 
         0,
         None,
     )
-    win_verify_trust = ctypes.windll.wintrust.WinVerifyTrust  # type: ignore[attr-defined]
+    win_verify_trust = ctypes.windll.wintrust.WinVerifyTrust  # type: ignore[attr-defined,unused-ignore]
     win_verify_trust.argtypes = [ctypes.c_void_p, ctypes.POINTER(GUID), ctypes.c_void_p]
     win_verify_trust.restype = ctypes.c_long
     status = int(
