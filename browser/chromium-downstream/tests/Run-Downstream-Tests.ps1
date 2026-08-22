@@ -157,9 +157,10 @@ index 1111111..2222222 100644
 @@ -1 +1,2 @@
  existing();
 +reviewable_change();
--- 
+--{{SP}}
 2.50.0
 '@
+    $patchText = $patchText.Replace('--{{SP}}', '-- ')
     Set-Content -LiteralPath $testPatchPath -Value $patchText -Encoding UTF8 -NoNewline
     $patchHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $testPatchPath).Hash.ToLowerInvariant()
     $testSeries = Read-ZsecDownstreamJson -Path $seriesPath
