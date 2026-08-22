@@ -23,6 +23,7 @@ from zsec_desktop.contracts import (  # noqa: E402
     validate_quarantine_list,
     validate_readiness,
     validate_recovery_drill,
+    validate_scan_report,
     validate_status,
     validate_watch_event,
 )
@@ -38,6 +39,7 @@ def valid_status() -> dict[str, object]:
         "definitions": "built-in:0.3.1;feed:absent",
         "last_scan": "2026-08-21T19:00:00Z",
         "findings": 0,
+        "observations": 0,
         "last_scan_outcome": "no_configured_rule_matches",
         "last_scan_errors": 0,
         "last_scan_files_hashed": 1,
@@ -46,7 +48,7 @@ def valid_status() -> dict[str, object]:
         "quarantine_count": 0,
         "scanner_mode": "on-demand",
         "content_worker": {
-            "mode": "bounded_out_of_process_exact_rules",
+            "mode": "bounded_out_of_process_rules_and_review_providers",
             "path_disclosure": False,
             "broker_digest_verification": True,
             "reduced_privilege": False,
@@ -199,6 +201,39 @@ def test_status_contract_never_turns_incomplete_or_inconsistent_evidence_green()
     overclaim["real_time_protection"] = True
     with pytest.raises(ContractError, match="real-time protection"):
         validate_status(overclaim)
+
+
+def test_scan_contract_keeps_review_observations_ineligible_for_quarantine() -> None:
+    payload = {
+        "schema": "zsec.shield.report.v1",
+        "outcome": "review_observations",
+        "policy": {
+            "real_time_protection": False,
+            "heuristic_observations_quarantine_eligible": False,
+        },
+        "scan": {
+            "findings": [],
+            "observations": [
+                {
+                    "path": r"C:\Users\example\Downloads\review.ps1",
+                    "provider": "script",
+                    "category": "download_execute_chain",
+                    "severity": "high",
+                    "summary": "Conservative review signal",
+                    "evidence": {},
+                    "quarantine_eligible": False,
+                }
+            ],
+            "issues": [],
+            "stats": {},
+        },
+        "quarantine": [],
+    }
+    validate_scan_report(payload)
+
+    payload["scan"]["observations"][0]["quarantine_eligible"] = True  # type: ignore[index]
+    with pytest.raises(ContractError, match="cannot authorize quarantine"):
+        validate_scan_report(payload)
 
 
 def test_replacement_and_companion_contracts_are_hard_interlocks() -> None:

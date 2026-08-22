@@ -17,7 +17,8 @@ explicitly selected match into recoverable encrypted quarantine. The Community
 channel can also remain in the foreground and automatically scan file create and
 change events, with a disclosed polling fallback, anti-starvation debounce,
 verified-file metadata reconciliation, and cache-independent full sweeps.
-The CLI routes exact-rule content work through a bounded, path-free child process;
+The CLI routes exact-rule and conservative review-provider work through a bounded,
+path-free child process;
 the broker streams bytes from its already validated descriptor and independently
 checks the SHA-256 result. This limits worker crash/state persistence and fails
 closed on protocol or digest disagreement. The child currently retains the
@@ -38,7 +39,7 @@ claimed by a mock dashboard. See the [Windows programme](docs/FULL_ANTIVIRUS_PRO
 
 | Layer | Current evidence | Replacement-antivirus gate |
 | --- | --- | --- |
-| Scan engine | Broker-verified streaming SHA-256, exact byte/digest rules in a bounded path-free child process, EICAR wiring test, deterministic JSON | AppContainer/sandboxed PE/script/document/archive engines, locked malware and cleanware evaluation |
+| Scan engine | Broker-verified streaming SHA-256 and exact byte/digest rules plus bounded review-only PE metadata, script-chain and ZIP central-directory checks; cache-only Windows Authenticode evidence; deterministic JSON | AppContainer/sandboxed hostile-format and document engines, locked malware and cleanware evaluation |
 | Quarantine | Per-object AES-256-GCM, automatic Windows DPAPI key sealing, authenticated ZBA metadata, tamper-fail restore | Windows service key isolation, TPM/CNG root, crash and recovery certification |
 | Updates | Strict Ed25519 signed data-only feed with expiry and rollback checks | Authenticode plus threshold TUF metadata, staged binary/rule/driver rollback |
 | Automatic file monitoring | Per-user Windows Scheduled Task, macOS LaunchAgent and Linux systemd-user packages; native events, baseline, anti-starvation debounce, bounded raw/pending work, verified-file metadata reconciliation, cache-independent full sweeps, heartbeat and rollback | Windows FltMgr/AMSI/ELAM; macOS Endpoint Security; Linux fanotify—with platform-specific deadline and failure tests |
@@ -64,12 +65,16 @@ unsigned privileged package, or security-control bypass belongs on a real machin
 - Recursive scans stay on the starting filesystem by default.
 - Files larger than 64 MiB are skipped by default; the limit is explicit and
   reported.
-- Exact-rule content inspection uses a versioned 1 MiB-bounded process protocol,
+- Content inspection uses a versioned 1 MiB-bounded process protocol,
   a bounded response deadline and periodic worker replacement. Crash, timeout, malformed
   output, digest disagreement and unavailable-worker outcomes are incomplete;
   there is no in-process compatibility fallback. The worker is not yet
   AppContainer/restricted-token isolated and may retain current-user filesystem
   and network authority.
+- PE, script and ZIP observations are conservative review evidence only. ZIPs are
+  never extracted, inspection retains at most 16 MiB, and these observations can
+  never authorize quarantine. Informational metadata alone does not turn a scan
+  into a review outcome.
 - Quarantine is disabled unless `--quarantine` is present.
 - New quarantine objects use a fresh random AES-256 key, AES-GCM authentication,
   an automatically DPAPI-sealed device root on Windows, and a MAC over operational

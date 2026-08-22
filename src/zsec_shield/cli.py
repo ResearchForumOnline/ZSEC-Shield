@@ -332,6 +332,8 @@ def _command_check(args: argparse.Namespace) -> int:
         outcome = "incomplete"
     elif result.findings:
         outcome = "configured_rule_matches_detected"
+    elif result.observations:
+        outcome = "review_observations"
     else:
         outcome = "no_configured_rule_matches"
     try:
@@ -342,6 +344,7 @@ def _command_check(args: argparse.Namespace) -> int:
             issues=len(result.issues),
             files_hashed=result.stats.files_hashed,
             bytes_hashed=result.stats.bytes_hashed,
+            observations=len(result.observations),
             outcome=outcome,
         )
     except OSError as exc:
@@ -357,10 +360,11 @@ def _command_check(args: argparse.Namespace) -> int:
         "outcome": outcome,
         "policy": {
             "scanner_mode": "on-demand",
-            "content_worker": "bounded_out_of_process_exact_rules",
+            "content_worker": "bounded_out_of_process_rules_and_review_providers",
             "content_worker_reduced_privilege": False,
             "feed_behavior": "data-only rules; no commands or actions are accepted",
             "quarantine_requested": bool(args.quarantine),
+            "heuristic_observations_quarantine_eligible": False,
             "real_time_protection": False,
         },
         "inventory": collect_inventory(),
@@ -392,7 +396,7 @@ def _command_check(args: argparse.Namespace) -> int:
         _print_check_summary(report, args.report)
     if incomplete:
         return EXIT_INCOMPLETE
-    return EXIT_FINDINGS if result.findings else EXIT_OK
+    return EXIT_FINDINGS if result.findings or result.observations else EXIT_OK
 
 
 def _print_check_summary(report: dict[str, Any], report_path: Path | None) -> None:
@@ -407,6 +411,12 @@ def _print_check_summary(report: dict[str, Any], report_path: Path | None) -> No
     for finding in report["scan"]["findings"]:
         names = ", ".join(match["id"] for match in finding["matches"])
         print(f"MATCH [{finding['severity'].upper()}] {finding['path']} ({names})")
+    for observation in report["scan"]["observations"]:
+        print(
+            "REVIEW "
+            f"[{observation['severity'].upper()}] {observation['path']} "
+            f"({observation['provider']}:{observation['category']}; no auto-quarantine)"
+        )
     for issue in report["scan"]["issues"]:
         print(f"INCOMPLETE {issue['path']}: {issue['code']}: {issue['message']}", file=sys.stderr)
     if report["quarantine"]:
@@ -504,7 +514,7 @@ def _command_watch(args: argparse.Namespace) -> int:
             "total": len(scanner.rules),
         },
         "content_worker": {
-            "mode": "bounded_out_of_process_exact_rules",
+            "mode": "bounded_out_of_process_rules_and_review_providers",
             "reduced_privilege": False,
             "hostile_format_parser_gate_met": False,
         },
@@ -630,6 +640,7 @@ def _command_status(args: argparse.Namespace) -> int:
         "definitions": definitions,
         "last_scan": last_scan["completed_at"] if last_scan else None,
         "findings": last_scan["findings"] if last_scan else 0,
+        "observations": last_scan["observations"] if last_scan else 0,
         "last_scan_outcome": last_scan["outcome"] if last_scan else None,
         "last_scan_errors": last_scan["issues"] if last_scan else 0,
         "last_scan_files_hashed": last_scan["files_hashed"] if last_scan else None,
@@ -638,7 +649,7 @@ def _command_status(args: argparse.Namespace) -> int:
         "quarantine_count": len(entries),
         "scanner_mode": "on-demand",
         "content_worker": {
-            "mode": "bounded_out_of_process_exact_rules",
+            "mode": "bounded_out_of_process_rules_and_review_providers",
             "path_disclosure": False,
             "broker_digest_verification": True,
             "reduced_privilege": False,

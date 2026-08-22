@@ -21,6 +21,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
+from zsec_shield.content_inspection import MAX_INSPECTION_BYTES, inspect_content
 from zsec_shield.errors import ScanWorkerError
 from zsec_shield.models import Rule
 
@@ -35,6 +36,7 @@ class WorkerScan:
     sha256: str
     bytes_read: int
     literal_rule_ids: frozenset[str]
+    observations: tuple[dict[str, Any], ...]
 
 
 def _encode(value: dict[str, Any]) -> bytes:
@@ -129,6 +131,7 @@ def _scan_stream(
     matches: set[str] = set()
     maximum_literal = max((len(value) for _identifier, value in literal_rules), default=0)
     tail = b""
+    inspection = bytearray()
     bytes_read = 0
     while bytes_read < expected_size:
         try:
@@ -141,6 +144,8 @@ def _scan_stream(
         if bytes_read > expected_size or bytes_read > max_file_bytes:
             raise ScanWorkerError("file grew beyond the content worker size policy")
         digest.update(chunk)
+        if len(inspection) < MAX_INSPECTION_BYTES:
+            inspection.extend(chunk[: MAX_INSPECTION_BYTES - len(inspection)])
         window = tail + chunk
         for identifier, literal in literal_rules:
             if identifier not in matches and literal in window:
@@ -153,6 +158,7 @@ def _scan_stream(
         "sha256": digest.hexdigest(),
         "bytes_read": bytes_read,
         "literal_rule_ids": sorted(matches),
+        "observations": inspect_content(bytes(inspection), expected_size),
     }
 
 
@@ -366,6 +372,7 @@ class BoundedScanWorker:
         digest = response.get("sha256")
         bytes_read = response.get("bytes_read")
         identifiers = response.get("literal_rule_ids")
+        observations = response.get("observations")
         _require_fields(
             response,
             {
@@ -375,6 +382,7 @@ class BoundedScanWorker:
                 "sha256",
                 "bytes_read",
                 "literal_rule_ids",
+                "observations",
             },
         )
         if (
@@ -385,13 +393,54 @@ class BoundedScanWorker:
             or bytes_read != expected_size
             or not isinstance(identifiers, list)
             or not all(isinstance(identifier, str) for identifier in identifiers)
+            or not isinstance(observations, list)
+            or len(observations) > 32
         ):
             raise ScanWorkerError("content worker response schema was invalid")
         allowed = {rule.rule_id for rule in self._rules if rule.kind == "literal"}
         returned = frozenset(identifiers)
         if len(returned) != len(identifiers) or not returned.issubset(allowed):
             raise ScanWorkerError("content worker returned an unknown or duplicate rule ID")
-        return WorkerScan(digest, bytes_read, returned)
+        validated_observations: list[dict[str, Any]] = []
+        allowed_severities = {"info", "low", "medium", "high", "critical"}
+        for observation in observations:
+            if not isinstance(observation, dict) or set(observation) != {
+                "provider",
+                "category",
+                "severity",
+                "summary",
+                "evidence",
+                "quarantine_eligible",
+            }:
+                raise ScanWorkerError("content worker observation schema was invalid")
+            provider = observation.get("provider")
+            category = observation.get("category")
+            severity = observation.get("severity")
+            summary = observation.get("summary")
+            evidence = observation.get("evidence")
+            if (
+                not isinstance(provider, str)
+                or not 1 <= len(provider) <= 40
+                or not isinstance(category, str)
+                or not 1 <= len(category) <= 80
+                or severity not in allowed_severities
+                or not isinstance(summary, str)
+                or not 1 <= len(summary) <= 300
+                or not isinstance(evidence, dict)
+                or len(evidence) > 16
+                or observation.get("quarantine_eligible") is not False
+            ):
+                raise ScanWorkerError("content worker observation fields were invalid")
+            if not all(
+                isinstance(key, str)
+                and 1 <= len(key) <= 80
+                and isinstance(value, (str, int, bool))
+                and (not isinstance(value, str) or len(value) <= 500)
+                for key, value in evidence.items()
+            ):
+                raise ScanWorkerError("content worker observation evidence was invalid")
+            validated_observations.append(observation)
+        return WorkerScan(digest, bytes_read, returned, tuple(validated_observations))
 
     def close(self) -> None:
         process = self._process

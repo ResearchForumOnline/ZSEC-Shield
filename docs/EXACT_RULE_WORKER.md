@@ -1,4 +1,4 @@
-# Bounded exact-rule worker protocol
+# Bounded rule and review-provider worker protocol
 
 Status: implemented Community process-separation layer. This is not the
 reduced-privilege hostile-parser sandbox required for primary-antivirus
@@ -19,7 +19,8 @@ The broker and worker independently calculate SHA-256. A usable response must:
 - contain no missing, duplicate or unknown fields;
 - fit the one MiB control/response ceiling;
 - report exactly the declared byte count;
-- contain only configured literal-rule IDs; and
+- contain only configured literal-rule IDs and at most 32 strictly bounded,
+  explicitly quarantine-ineligible observations; and
 - agree with the broker's SHA-256 calculation.
 
 Unknown protocol versions, malformed UTF-8/JSON, duplicate keys, oversized
@@ -44,16 +45,22 @@ result. The broker does not retry the file in-process.
 - The child never performs feed installation, file enumeration, quarantine,
   restore, inventory, update or GUI operations.
 
-## Exact non-claims
+## Review-only providers and exact non-claims
 
 The child currently inherits the invoking user's security authority. The Python
 multiprocessing transport is process separation, not Windows AppContainer,
 restricted-token, Job Object, macOS sandbox/XPC or Linux namespace/seccomp
 confinement. It does not satisfy the `parser_isolation` replacement-readiness
-gate and does not add PE, archive, document, macro, script, behavioral, memory or
-pre-access inspection.
+gate. The current worker adds bounded PE metadata, conservative script-chain and
+ZIP central-directory checks. It retains at most 16 MiB for these providers,
+never extracts an archive, and never executes inspected content. Windows PE paths
+may also receive a broker-side, cache-only WinVerifyTrust check after file identity
+validation. Informational metadata is not a review result. No provider observation
+is eligible for automatic quarantine. There is still no document/macro, behavioral,
+memory or pre-access inspection.
 
-Before a complex hostile-format parser is added, Windows requires a one-shot
+Before a complex hostile-format parser or auto-remediation provider is added,
+Windows requires a one-shot
 native launcher with capability-free AppContainer isolation, Job Object process
 and memory limits, child-process prohibition, explicit handle inheritance,
 compatible process mitigations, a minimal environment and negative network/

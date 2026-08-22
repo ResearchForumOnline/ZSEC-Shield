@@ -25,6 +25,13 @@ from typing import Any
 
 from zsec_desktop.bridge import BridgeError, CommandResult, WatchSession, ZsecBridge
 from zsec_desktop.contracts import companion_presentation, status_presentation
+from zsec_desktop.settings import (
+    DesktopSettings,
+    StartupRegistration,
+    load_settings,
+    save_settings,
+)
+from zsec_desktop.tray import TrayController
 
 BACKGROUND = "#08111f"
 SURFACE = "#101c2d"
@@ -192,7 +199,7 @@ def _default_state_dir() -> Path:
 
 
 class ZsecDesktop:
-    def __init__(self, root: tk.Tk, bridge: ZsecBridge) -> None:
+    def __init__(self, root: tk.Tk, bridge: ZsecBridge, *, startup: bool = False) -> None:
         self.root = root
         self.bridge = bridge
         self.executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="zsec-ui")
@@ -201,7 +208,26 @@ class ZsecDesktop:
         self.watch_session: WatchSession | None = None
         self.quarantine_rows: dict[str, dict[str, Any]] = {}
         self.report_rows: dict[str, Path] = {}
-        self.reduce_motion = tk.BooleanVar(value=False)
+        loaded_settings, self.settings_load_error = load_settings(bridge.state_dir)
+        self.startup_registration = StartupRegistration()
+        registered_startup, registration_error = self.startup_registration.current()
+        if registration_error is not None:
+            self.settings_load_error = "; ".join(
+                value
+                for value in (self.settings_load_error, registration_error)
+                if value is not None
+            )
+        elif loaded_settings.start_with_windows != registered_startup:
+            loaded_settings = DesktopSettings(
+                close_to_tray=loaded_settings.close_to_tray,
+                start_with_windows=registered_startup,
+                reduce_motion=loaded_settings.reduce_motion,
+                max_file_mebibytes=loaded_settings.max_file_mebibytes,
+            )
+        self.desktop_settings = loaded_settings
+        self.reduce_motion = tk.BooleanVar(value=loaded_settings.reduce_motion)
+        self.close_to_tray = tk.BooleanVar(value=loaded_settings.close_to_tray)
+        self.start_with_windows = tk.BooleanVar(value=loaded_settings.start_with_windows)
         self.animation_phase = 0
         self.animation_job: str | None = None
         self.busy_operations = 0
@@ -211,19 +237,33 @@ class ZsecDesktop:
         self.watch_last_sequence = 0
         self.watch_last_heartbeat_monotonic: float | None = None
         self.watch_watchdog_job: str | None = None
+        self.tray_scan_status = "Local engine starting"
+        self.tray_companion_status = "Companion evidence pending"
 
         self.root.title("ZSEC Antivirus")
         self.root.geometry("1180x760")
         self.root.minsize(960, 640)
         self.root.configure(bg=BACKGROUND)
-        self.root.protocol("WM_DELETE_WINDOW", self._close)
+        self.root.protocol("WM_DELETE_WINDOW", self._window_close)
+        self.root.bind("<Unmap>", self._window_unmapped)
         self.root.after(0, self._apply_windows_chrome)
         self._configure_style()
         self._build_header()
         self._build_tabs()
+        self.tray = TrayController(
+            dispatch=lambda callback: self._post(callback),
+            open_window=self._open_window,
+            scan_downloads=self._tray_scan_downloads,
+            open_settings=self._open_settings,
+            exit_application=self._exit_application,
+        )
+        self.tray.start()
+        self._update_tray_status()
         self._animate_activity()
         self.root.after(120, self.refresh_all)
         self.companion_refresh_job = self.root.after(30_000, self._periodic_companion_refresh)
+        if startup and self.tray.active:
+            self.root.after_idle(self.root.withdraw)
 
     def _configure_style(self) -> None:
         style = ttk.Style(self.root)
@@ -950,7 +990,7 @@ class ZsecDesktop:
         ttk.Label(grid, text="Maximum file size", style="Surface.TLabel").grid(
             row=2, column=0, sticky=tk.W, pady=6
         )
-        self.max_file_mebibytes = tk.IntVar(value=64)
+        self.max_file_mebibytes = tk.IntVar(value=self.desktop_settings.max_file_mebibytes)
         max_box = ttk.Spinbox(
             grid, from_=1, to=16384, textvariable=self.max_file_mebibytes, width=12
         )
@@ -964,6 +1004,45 @@ class ZsecDesktop:
             variable=self.reduce_motion,
             command=self._motion_preference_changed,
         ).grid(row=3, column=1, sticky=tk.W, padx=(14, 0), pady=6)
+        ttk.Label(grid, text="Window close button", style="Surface.TLabel").grid(
+            row=4, column=0, sticky=tk.W, pady=6
+        )
+        ttk.Checkbutton(
+            grid,
+            text="Keep protection available in the notification area",
+            variable=self.close_to_tray,
+        ).grid(row=4, column=1, sticky=tk.W, padx=(14, 0), pady=6)
+        ttk.Label(grid, text="Windows sign-in", style="Surface.TLabel").grid(
+            row=5, column=0, sticky=tk.W, pady=6
+        )
+        ttk.Checkbutton(
+            grid,
+            text="Start ZSEC Antivirus in the notification area",
+            variable=self.start_with_windows,
+        ).grid(row=5, column=1, sticky=tk.W, padx=(14, 0), pady=6)
+        actions = ttk.Frame(panel, style="Surface.TFrame")
+        actions.pack(fill=tk.X, pady=(18, 0))
+        ttk.Button(
+            actions,
+            text="Save settings",
+            style="Primary.TButton",
+            command=self._save_desktop_settings,
+        ).pack(side=tk.LEFT)
+        ttk.Button(
+            actions,
+            text="Restore safe defaults",
+            command=self._restore_default_settings,
+        ).pack(side=tk.LEFT, padx=(8, 0))
+        self.settings_status = ttk.Label(
+            panel,
+            text=(
+                f"Settings recovery notice: {self.settings_load_error}"
+                if self.settings_load_error
+                else "Settings loaded from local protected application state."
+            ),
+            style="Warning.TLabel" if self.settings_load_error else "Muted.TLabel",
+        )
+        self.settings_status.pack(anchor=tk.W, pady=(14, 0))
         ttk.Label(
             panel,
             text=(
@@ -1024,6 +1103,90 @@ class ZsecDesktop:
             self.animation_job = None
         self.animation_phase = 0
         self._animate_activity()
+
+    def _save_desktop_settings(self) -> None:
+        try:
+            maximum = int(self.max_file_mebibytes.get())
+            if not 1 <= maximum <= 16384:
+                raise ValueError("Maximum file size must be between 1 and 16384 MiB.")
+            requested = DesktopSettings(
+                close_to_tray=bool(self.close_to_tray.get()),
+                start_with_windows=bool(self.start_with_windows.get()),
+                reduce_motion=bool(self.reduce_motion.get()),
+                max_file_mebibytes=maximum,
+            )
+            previous_startup, startup_error = self.startup_registration.current()
+            if startup_error is not None and requested.start_with_windows:
+                raise OSError(startup_error)
+            self.startup_registration.set_enabled(requested.start_with_windows)
+            try:
+                save_settings(self.bridge.state_dir, requested)
+            except BaseException:
+                with contextlib.suppress(OSError):
+                    self.startup_registration.set_enabled(previous_startup)
+                raise
+            self.desktop_settings = requested
+            self.settings_status.configure(
+                text="Settings saved and Windows startup ownership verified.",
+                foreground=GREEN,
+            )
+            self._motion_preference_changed()
+        except (OSError, ValueError, tk.TclError) as exc:
+            self.settings_status.configure(text=f"Settings not saved: {exc}", foreground=RED)
+
+    def _restore_default_settings(self) -> None:
+        defaults = DesktopSettings()
+        self.close_to_tray.set(defaults.close_to_tray)
+        self.start_with_windows.set(defaults.start_with_windows)
+        self.reduce_motion.set(defaults.reduce_motion)
+        self.max_file_mebibytes.set(defaults.max_file_mebibytes)
+        self._save_desktop_settings()
+
+    def _open_window(self) -> None:
+        self.root.deiconify()
+        self.root.lift()
+        self.root.focus_force()
+
+    def _open_settings(self) -> None:
+        self._open_window()
+        self._select_tab(self.settings_tab)
+
+    def _window_unmapped(self, _event: tk.Event[tk.Misc]) -> None:
+        if self.closing or not hasattr(self, "tray") or not self.tray.active:
+            return
+        self.root.after(80, self._hide_if_minimized)
+
+    def _hide_if_minimized(self) -> None:
+        if not self.closing and self.root.state() == "iconic" and self.tray.active:
+            self.root.withdraw()
+
+    def _window_close(self) -> None:
+        if bool(self.close_to_tray.get()) and self.tray.active:
+            self.root.withdraw()
+            self.tray.notify(
+                "ZSEC Antivirus is still running. Use the tray menu to scan, open, or exit."
+            )
+            return
+        self._exit_application()
+
+    def _update_tray_status(self) -> None:
+        if hasattr(self, "tray"):
+            self.tray.set_status(f"{self.tray_scan_status}; {self.tray_companion_status}")
+
+    def _tray_scan_downloads(self) -> None:
+        if self.scan_cancel is not None:
+            self.tray.notify("A scan is already running.")
+            return
+        downloads = Path.home() / "Downloads"
+        if not downloads.is_dir():
+            self.tray.notify("The Downloads folder is unavailable.")
+            return
+        self.scan_path.set(str(downloads))
+        self.scan_quarantine.set(False)
+        self.scan_cross_fs.set(False)
+        self._start_scan()
+        self.tray_scan_status = "Scanning Downloads"
+        self._update_tray_status()
 
     def _animate_activity(self) -> None:
         if self.closing:
@@ -1093,10 +1256,14 @@ class ZsecDesktop:
         self.feed_card.set_value("Evidence unavailable", RED)
         self.quarantine_card.set_value("Evidence unavailable", RED)
         self.feed_status_label.configure(text=f"Status error: {exc}", foreground=RED)
+        self.tray_scan_status = "Scan evidence unavailable"
+        self._update_tray_status()
 
     def _render_status(self, result: CommandResult) -> None:
         status = result.payload
         presentation = status_presentation(status)
+        self.tray_scan_status = presentation.headline
+        self._update_tray_status()
         self.scan_card.set_value(presentation.headline, presentation.accent)
         feed = status["feed"]
         feed_text = f"{feed['state'].upper()} — {feed.get('rules_count', 0)} verified rule(s)"
@@ -1113,7 +1280,7 @@ class ZsecDesktop:
         )
         self.feed_status_label.configure(text=feed_text, foreground=feed_colour)
         detail = f"Definitions: {status['definitions']}"
-        detail += " | worker: bounded out-of-process exact rules"
+        detail += " | worker: bounded rules plus review-only PE/script/archive providers"
         if feed.get("expires_at"):
             detail += f" | expires {feed['expires_at']}"
         if feed.get("error"):
@@ -1137,6 +1304,7 @@ class ZsecDesktop:
             "last_scan_outcome": status["last_scan_outcome"],
             "last_scan_errors": status["last_scan_errors"],
             "findings": status["findings"],
+            "observations": status["observations"],
             "feed": status["feed"],
             "quarantine": status["quarantine"],
             "inventory": status["inventory"],
@@ -1209,16 +1377,29 @@ class ZsecDesktop:
             f"Files hashed: {scan['stats'].get('files_hashed', 0)}\n"
             f"Bytes hashed: {scan['stats'].get('bytes_hashed', 0)}\n"
             f"Findings: {len(scan['findings'])}\n"
+            f"Review-only observations: {len(scan['observations'])}\n"
             f"Issues: {len(scan['issues'])}\n\n"
         )
         for finding in scan["findings"]:
             summary += f"MATCH {finding.get('severity', 'unknown').upper()} {finding.get('path')}\n"
+        for observation in scan["observations"]:
+            summary += (
+                f"REVIEW {observation.get('severity', 'unknown').upper()} "
+                f"{observation.get('path')} — {observation.get('provider')}:"
+                f"{observation.get('category')} (never auto-quarantined)\n"
+            )
         for issue in scan["issues"]:
             summary += (
                 f"INCOMPLETE {issue.get('path')}: {issue.get('code')}: {issue.get('message')}\n"
             )
         self._set_text(self.scan_output, summary)
-        colour = GREEN if report["outcome"] == "no_configured_rule_matches" else RED
+        colour = (
+            GREEN
+            if report["outcome"] == "no_configured_rule_matches"
+            else AMBER
+            if report["outcome"] == "review_observations"
+            else RED
+        )
         self.scan_result_label.configure(
             text=report["outcome"].replace("_", " "), foreground=colour
         )
@@ -1226,6 +1407,11 @@ class ZsecDesktop:
         self.refresh_status()
         self.refresh_quarantine()
         self.refresh_reports()
+        self.tray.notify(
+            f"Downloads scan finished: {report['outcome'].replace('_', ' ')}."
+            if "Downloads" in str(scan.get("roots", []))
+            else f"Scan finished: {report['outcome'].replace('_', ' ')}."
+        )
 
     def _scan_failed(self, exc: BaseException) -> None:
         self.scan_start_button.configure(state=tk.NORMAL)
@@ -1235,6 +1421,9 @@ class ZsecDesktop:
         self._set_text(
             self.scan_output, f"Scan did not complete: {exc}\nNo clean state is available.\n"
         )
+        self.tray_scan_status = "Scan incomplete"
+        self._update_tray_status()
+        self.tray.notify("Scan did not complete; open ZSEC Antivirus for details.")
 
     def _cancel_scan(self) -> None:
         if self.scan_cancel is not None:
@@ -1311,6 +1500,11 @@ class ZsecDesktop:
                 self.watch_state_label.configure(
                     text="Configured rule matches detected — review required",
                     foreground=RED,
+                )
+            elif outcome == "review_observations":
+                self.watch_state_label.configure(
+                    text="Review-only PE, script, or archive observations found",
+                    foreground=AMBER,
                 )
             else:
                 self.watch_state_label.configure(
@@ -1411,6 +1605,8 @@ class ZsecDesktop:
             return
         payload = result.payload
         presentation = companion_presentation(payload)
+        self.tray_companion_status = presentation.headline
+        self._update_tray_status()
         colour = {"green": GREEN, "amber": AMBER, "red": RED}[presentation.accent]
         self.companion_status_label.configure(
             text=f"{presentation.headline} — {presentation.detail}", foreground=colour
@@ -1424,6 +1620,8 @@ class ZsecDesktop:
             text=f"Companion evidence unavailable: {exc}", foreground=RED
         )
         self.companion_card.set_value("Evidence unavailable", RED)
+        self.tray_companion_status = "Companion evidence unavailable"
+        self._update_tray_status()
 
     def refresh_quarantine(self) -> None:
         self._run_async(
@@ -1644,8 +1842,10 @@ class ZsecDesktop:
         except (RuntimeError, tk.TclError):
             return
 
-    def _close(self) -> None:
+    def _exit_application(self) -> None:
         self.closing = True
+        if hasattr(self, "tray"):
+            self.tray.stop()
         if self.animation_job is not None:
             with contextlib.suppress(tk.TclError):
                 self.root.after_cancel(self.animation_job)
@@ -1671,6 +1871,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--state-dir", type=Path, default=_default_state_dir())
     parser.add_argument("--cli", type=Path, help="reviewed zero-security/zsec-shield executable")
     parser.add_argument("--companion-status-script", type=Path)
+    parser.add_argument("--startup", action="store_true", help="start hidden in notification area")
     return parser
 
 
@@ -1689,7 +1890,7 @@ def main(argv: list[str] | None = None) -> int:
         root.destroy()
         return 2
     root = tk.Tk()
-    ZsecDesktop(root, bridge)
+    ZsecDesktop(root, bridge, startup=bool(args.startup))
     root.mainloop()
     return 0
 

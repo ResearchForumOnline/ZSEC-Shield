@@ -29,6 +29,8 @@ classifiers = [
 dependencies = [
   "cryptography>=42,<50",
   "watchdog==6.0.0",
+  "Pillow>=10,<13",
+  "pystray==0.19.5",
 ]
 
 [project.optional-dependencies]

@@ -8,7 +8,8 @@ from typing import Any
 from zsec_shield.errors import FeedError
 from zsec_shield.util import atomic_write_json, strict_json_loads
 
-LAST_SCAN_SCHEMA = "zsec.shield.last-scan.v2"
+LAST_SCAN_SCHEMA = "zsec.shield.last-scan.v3"
+V2_LAST_SCAN_SCHEMA = "zsec.shield.last-scan.v2"
 LEGACY_LAST_SCAN_SCHEMA = "zsec.shield.last-scan.v1"
 
 
@@ -25,6 +26,7 @@ def save_last_scan(
     files_hashed: int,
     bytes_hashed: int,
     outcome: str,
+    observations: int = 0,
 ) -> None:
     atomic_write_json(
         last_scan_path(state_dir),
@@ -35,6 +37,7 @@ def save_last_scan(
             "issues": issues,
             "files_hashed": files_hashed,
             "bytes_hashed": bytes_hashed,
+            "observations": observations,
             "outcome": outcome,
         },
         mode=0o600,
@@ -56,6 +59,16 @@ def load_last_scan(state_dir: Path) -> tuple[dict[str, Any] | None, str | None]:
     schema = value.get("schema")
     if schema == LEGACY_LAST_SCAN_SCHEMA:
         expected_fields = {"schema", "completed_at", "findings", "issues", "outcome"}
+    elif schema == V2_LAST_SCAN_SCHEMA:
+        expected_fields = {
+            "schema",
+            "completed_at",
+            "findings",
+            "issues",
+            "files_hashed",
+            "bytes_hashed",
+            "outcome",
+        }
     elif schema == LAST_SCAN_SCHEMA:
         expected_fields = {
             "schema",
@@ -64,6 +77,7 @@ def load_last_scan(state_dir: Path) -> tuple[dict[str, Any] | None, str | None]:
             "issues",
             "files_hashed",
             "bytes_hashed",
+            "observations",
             "outcome",
         }
     else:
@@ -74,9 +88,12 @@ def load_last_scan(state_dir: Path) -> tuple[dict[str, Any] | None, str | None]:
     issues = value.get("issues")
     files_hashed = value.get("files_hashed")
     bytes_hashed = value.get("bytes_hashed")
+    observations = value.get("observations")
     counters: tuple[Any, ...] = (findings, issues)
-    if schema == LAST_SCAN_SCHEMA:
+    if schema in {V2_LAST_SCAN_SCHEMA, LAST_SCAN_SCHEMA}:
         counters += (files_hashed, bytes_hashed)
+    if schema == LAST_SCAN_SCHEMA:
+        counters += (observations,)
     if any(
         isinstance(counter, bool) or not isinstance(counter, int) or counter < 0
         for counter in counters
@@ -89,14 +106,28 @@ def load_last_scan(state_dir: Path) -> tuple[dict[str, Any] | None, str | None]:
     allowed_outcomes = {
         "no_configured_rule_matches",
         "configured_rule_matches_detected",
+        "review_observations",
         "incomplete",
     }
     if not isinstance(outcome, str) or outcome not in allowed_outcomes:
         return None, "last-scan summary outcome is invalid"
-    if outcome == "no_configured_rule_matches" and (findings != 0 or issues != 0):
+    if outcome == "no_configured_rule_matches" and (
+        findings != 0 or issues != 0 or (schema == LAST_SCAN_SCHEMA and observations != 0)
+    ):
         return None, "last-scan summary clean outcome is inconsistent"
     if outcome == "configured_rule_matches_detected" and (findings == 0 or issues != 0):
         return None, "last-scan summary finding outcome is inconsistent"
+    if outcome == "review_observations" and (
+        schema != LAST_SCAN_SCHEMA or findings != 0 or issues != 0 or observations == 0
+    ):
+        return None, "last-scan summary observation outcome is inconsistent"
     if schema == LEGACY_LAST_SCAN_SCHEMA:
-        value = {**value, "files_hashed": None, "bytes_hashed": None}
+        value = {
+            **value,
+            "files_hashed": None,
+            "bytes_hashed": None,
+            "observations": 0,
+        }
+    elif schema == V2_LAST_SCAN_SCHEMA:
+        value = {**value, "observations": 0}
     return value, None
