@@ -49,9 +49,10 @@ DOWNLOAD_PAGES: dict[str, DownloadPolicy] = {
     },
     "zero-browser/download": {
         "canonical": "https://talktoai.org/zero-browser/download/",
-        "fingerprints": 1,
+        "fingerprints": 2,
         "artifacts": {
-            "/downloads/zero-browser/zsec-browser-shields-0.4.0-chromium-mv3.zip",
+            "/downloads/zero-browser/zsec-browser-community-0.3.1-windows-x64-unsigned.zip",
+            "/downloads/zero-browser/zsec-browser-shields-0.4.1-chromium-mv3.zip",
         },
     },
 }

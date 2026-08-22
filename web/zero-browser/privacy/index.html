@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ZSEC Browser Shields 0.4 Privacy Policy</title>
-  <meta name="description" content="Privacy policy for ZSEC Browser Shields Community 0.4: packaged and optional local rules, local settings, no history upload and no spyware verdicts.">
+  <title>ZSEC Browser and Browser Shields Privacy Policy</title>
+  <meta name="description" content="Privacy policy for ZSEC Browser Community 0.3.1 and Browser Shields 0.4.1: local profiles and rules, no ZSEC history upload and no spyware verdicts.">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#07101f">
@@ -21,14 +21,14 @@
         <span class="brand-mark" aria-hidden="true">Z</span>
         <span>TalkToAI</span>
         <span class="brand-product">ZSEC Browser</span>
-        <span class="preview-chip">Community 0.4</span>
+        <span class="preview-chip">Privacy contract</span>
       </a>
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="../">Product</a>
         <a href="../#security">Security</a>
         <a href="../high-risk-browsing/">High-Risk</a>
         <a href="../download/">Install</a>
-        <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/47d937df74a2170a17df6563d47af929a4c234f9/browser/zeroq-shields">Source</a>
+        <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/ad25e80a9dee998e87ea89ca0dde6350db96f142/browser/zeroq-shields">Source</a>
       </nav>
       <details class="mobile-nav">
         <summary>Menu</summary>
@@ -37,7 +37,7 @@
           <a href="../#security">Security</a>
           <a href="../high-risk-browsing/">High-Risk</a>
           <a href="../download/">Install</a>
-          <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/47d937df74a2170a17df6563d47af929a4c234f9/browser/zeroq-shields">Source</a>
+          <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/ad25e80a9dee998e87ea89ca0dde6350db96f142/browser/zeroq-shields">Source</a>
         </nav>
       </details>
     </div>
@@ -46,10 +46,10 @@
   <main id="main-content">
     <section class="hero" aria-labelledby="privacy-title">
       <div class="container narrow">
-          <p class="hero-kicker">ZSEC Browser · ZSEC Browser Shields Community 0.4</p>
+          <p class="hero-kicker">ZSEC Browser 0.3.1 · Browser Shields 0.4.1</p>
         <h1 id="privacy-title">Privacy should be a testable contract.</h1>
-        <p class="lede">ZSEC Browser Shields evaluates packaged rules, the optional High-Risk Browsing profile and site-pause choices inside the browser. Community 0.4 has no analytics, advertising, account, crash-upload, cloud-reputation, spyware-verdict or remote-control endpoint.</p>
-        <p class="microcopy"><strong>Effective and last reviewed:</strong> <time datetime="2026-08-21">21 August 2026</time>. This policy's Community 0.4 statements apply to the website evaluation Manifest V3 extension. The separate ZSEC Browser Community 0.3.0 section documents an unsigned local build that is not included in the extension ZIP and is not offered as a public native download.</p>
+        <p class="lede">ZSEC Browser uses a separate local profile and Browser Shields evaluates packaged rules, optional High-Risk Browsing and site-pause choices inside the browser. The Community packages have no ZSEC analytics, advertising, account, crash-upload, cloud-reputation, spyware-verdict or remote-control endpoint.</p>
+        <p class="microcopy"><strong>Effective and last reviewed:</strong> <time datetime="2026-08-22">22 August 2026</time>. This policy covers the separately distributed unsigned ZSEC Browser Community 0.3.1 Windows package and Browser Shields Community 0.4.1 Manifest V3 package.</p>
       </div>
     </section>
 
@@ -92,7 +92,7 @@
         <h2 id="permissions-title">Why broad site access exists</h2>
         <p>A network blocker must be able to evaluate requests across websites, and the interface-cleanup script must run on the sites it supports. That access is not permission to build a browsing profile or transmit page contents. The extension uses Manifest V3 packaged code and rules; it does not download or execute remote code.</p>
         <p>High-Risk Browsing uses Chromium Manifest V3's <a href="https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest"><code>declarativeNetRequest</code> mechanism</a> to apply two fixed local request rules. It does not decrypt TLS, inspect response bodies, upload full URLs, classify a request as spyware or produce a forensic request log. A blocked request means only that it matched one of the disclosed local rules.</p>
-        <p>The global protection choice, High-Risk Browsing choice and paused domains remain in the browser extension's local storage. Paused domains may remain stored while High-Risk Browsing is active, but the pause control cannot override the stricter rules. Removing the extension removes its local settings through the browser's normal extension lifecycle. Community 0.4 creates no ZSEC server-side account record to delete.</p>
+        <p>The global protection choice, High-Risk Browsing choice and paused domains remain in the browser extension's local storage. Paused domains may remain stored while High-Risk Browsing is active, but the pause control cannot override the stricter rules. Removing the extension removes its local settings through the browser's normal extension lifecycle. Community 0.4.1 creates no ZSEC server-side account record to delete.</p>
       </div>
     </section>
 
@@ -101,12 +101,12 @@
         <article class="panel panel-positive">
           <p class="section-label">Windows Community client</p>
           <h2 id="desktop-privacy-title">A separate local profile, with no ZSEC telemetry.</h2>
-          <p>ZSEC Browser Community 0.3.0 stores cookies, history, cache, permissions and other browser state under the user's dedicated <code>LocalAppData\TalkToAI\ZSEC Browser</code> profile. It does not reuse Chrome, Edge or Brave profiles and adds no ZSEC analytics, account, browsing-history upload or remote-control endpoint.</p>
+          <p>ZSEC Browser Community 0.3.1 stores cookies, history, cache, permissions and other browser state under the user's dedicated <code>LocalAppData\TalkToAI\ZSEC Browser</code> profile. It does not reuse Chrome, Edge or Brave profiles and adds no ZSEC analytics, account, browsing-history upload or remote-control endpoint.</p>
         </article>
         <article class="panel panel-private">
           <p class="section-label">Microsoft runtime boundary</p>
           <h2>WebView2 and SmartScreen are not ZSEC services.</h2>
-          <p>Microsoft's Evergreen WebView2 runtime supplies the engine and updates. WebView2 diagnostics and SmartScreen may send information to Microsoft under Microsoft's terms and Windows diagnostic settings; see <a href="https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/data-privacy">Microsoft's WebView2 data and privacy documentation</a>. The ZSEC developer build adds no ZSEC analytics, account, browsing-history upload or remote-control endpoint. It does not claim that all browser data is encrypted by ZMath or hidden from the engine provider.</p>
+          <p>Microsoft's Evergreen WebView2 runtime supplies the engine and updates. WebView2 diagnostics and SmartScreen may send information to Microsoft under Microsoft's terms and Windows diagnostic settings; see <a href="https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/data-privacy">Microsoft's WebView2 data and privacy documentation</a>. The ZSEC Community application adds no ZSEC analytics, account, browsing-history upload or remote-control endpoint. It does not claim that all browser data is encrypted by ZMath or hidden from the engine provider.</p>
         </article>
       </div>
     </section>
@@ -132,7 +132,7 @@
           <span class="brand-mark" aria-hidden="true">Z</span>
           <span>ZSEC Browser</span>
         </a>
-        <p>Local-first browser privacy from TalkToAI. Website evaluation package: Manifest V3 Community 0.4 extension. Windows desktop shell: source/local-evidence unsigned developer build.</p>
+        <p>Local-first browser privacy from TalkToAI. ZSEC Browser Community 0.3.1 for Windows and Browser Shields Community 0.4.1 for compatible Chromium-family browsers.</p>
       </div>
       <div>
         <p class="footer-title">Policy</p>
@@ -147,14 +147,14 @@
         <ul class="footer-links">
           <li><a href="../">ZSEC Browser</a></li>
           <li><a href="../../zero-security/">ZSEC Antivirus</a></li>
-          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/47d937df74a2170a17df6563d47af929a4c234f9/browser/zeroq-shields">Immutable Shields 0.4 source</a></li>
+          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/ad25e80a9dee998e87ea89ca0dde6350db96f142/browser/zeroq-shields">Immutable Shields 0.4.1 source</a></li>
           <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield">GitHub repository</a></li>
         </ul>
       </div>
     </div>
     <div class="container footer-bottom">
-      <p>© 2026 TalkToAI. ZSEC Browser Community 0.4.</p>
-      <p>Policy version 1.2 · 21 August 2026.</p>
+      <p>© 2026 TalkToAI. ZSEC Browser Community packages.</p>
+      <p>Policy version 1.3 · 22 August 2026.</p>
     </div>
   </footer>
 </body>
