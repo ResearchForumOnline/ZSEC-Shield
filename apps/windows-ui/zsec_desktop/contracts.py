@@ -91,6 +91,14 @@ class CompanionPresentation:
     accent: str
 
 
+@dataclass(frozen=True, slots=True)
+class WindowsCutoverPresentation:
+    state: str
+    headline: str
+    detail: str
+    accent: str
+
+
 def validate_status(payload: Any) -> dict[str, Any]:
     root = _schema(payload, "zsec.shield.status.v2")
     if root.get("contract_version") != 2:
@@ -398,10 +406,168 @@ def validate_companion_status(payload: Any) -> dict[str, Any]:
         raise ContractError("companion decision is unknown")
     _list(root.get("reasons"), "reasons")
     existing = _object(root.get("existing_primary_protection"), "existing_primary_protection")
+    if existing.get("method") != "WscGetSecurityProviderHealth(WSC_SECURITY_PROVIDER_ANTIVIRUS)":
+        raise ContractError("existing protection uses an unsupported health source")
     aggregate_good = _bool(
         existing.get("aggregate_good"),
         "existing_primary_protection.aggregate_good",
     )
+    if existing.get("aggregate_health") not in {
+        "GOOD",
+        "NOTMONITORED",
+        "POOR",
+        "SNOOZE",
+        "UNKNOWN",
+    }:
+        raise ContractError("Windows Security Center aggregate health is unknown")
+    registrations = _list(
+        existing.get("registered_products"),
+        "existing_primary_protection.registered_products",
+    )
+    if len(registrations) > 64:
+        raise ContractError("registered antivirus inventory exceeds its bound")
+    seen_products: set[tuple[str, str]] = set()
+    for index, value in enumerate(registrations):
+        registration = _object(value, f"registered_products[{index}]")
+        name = _string(
+            registration.get("display_name"),
+            f"registered_products[{index}].display_name",
+            maximum=256,
+        )
+        guid = _string(
+            registration.get("instance_guid"),
+            f"registered_products[{index}].instance_guid",
+            maximum=128,
+        )
+        _integer(
+            registration.get("product_state_raw"),
+            f"registered_products[{index}].product_state_raw",
+        )
+        if _bool(
+            registration.get("product_state_interpreted"),
+            f"registered_products[{index}].product_state_interpreted",
+        ):
+            raise ContractError("raw SecurityCenter2 productState cannot be interpreted")
+        identity = (name.casefold(), guid.casefold())
+        if identity in seen_products:
+            raise ContractError("registered antivirus inventory contains a duplicate")
+        seen_products.add(identity)
+    _bool(
+        existing.get("registration_inventory_complete"),
+        "existing_primary_protection.registration_inventory_complete",
+    )
+    _optional_string(
+        existing.get("registration_inventory_error"),
+        "existing_primary_protection.registration_inventory_error",
+        maximum=1000,
+    )
+    services = _list(
+        existing.get("security_services"),
+        "existing_primary_protection.security_services",
+    )
+    expected_services = {
+        "WinDefend",
+        "WdNisSvc",
+        "MDCoreSvc",
+        "wscsvc",
+        "SecurityHealthService",
+    }
+    actual_services: set[str] = set()
+    for index, value in enumerate(services):
+        service = _object(value, f"security_services[{index}]")
+        name = _string(service.get("name"), f"security_services[{index}].name", maximum=80)
+        if name not in expected_services or name in actual_services:
+            raise ContractError("Windows security service inventory is inconsistent")
+        actual_services.add(name)
+        _bool(service.get("available"), f"security_services[{index}].available")
+        _string(service.get("status"), f"security_services[{index}].status", maximum=80)
+    if actual_services != expected_services:
+        raise ContractError("Windows security service inventory is incomplete")
+
+    defender = _object(existing.get("defender"), "existing_primary_protection.defender")
+    if defender.get("source") != "Get-MpComputerStatus":
+        raise ContractError("Defender evidence uses an unsupported source")
+    defender_available = _bool(defender.get("available"), "defender.available")
+    for field in (
+        "antivirus_enabled",
+        "real_time_protection_enabled",
+        "antispyware_enabled",
+        "service_enabled",
+        "behavior_monitor_enabled",
+        "ioav_protection_enabled",
+        "on_access_protection_enabled",
+        "network_inspection_enabled",
+        "reboot_required",
+    ):
+        value = defender.get(field)
+        if value is not None:
+            _bool(value, f"defender.{field}")
+    if defender.get("tamper_protection") not in {"enabled", "disabled", "unknown"}:
+        raise ContractError("Defender tamper-protection state is unknown")
+    confirmed_active = _bool(defender.get("confirmed_active"), "defender.confirmed_active")
+    baseline_confirmed = _bool(
+        defender.get("baseline_features_confirmed"),
+        "defender.baseline_features_confirmed",
+    )
+    signatures_current = _bool(
+        defender.get("signatures_current"),
+        "defender.signatures_current",
+    )
+    update_recommended = _bool(
+        defender.get("update_recommended"),
+        "defender.update_recommended",
+    )
+    if confirmed_active and not defender_available:
+        raise ContractError("Defender active state contradicts provider availability")
+    required_active = (
+        defender.get("antivirus_enabled") is True
+        and defender.get("real_time_protection_enabled") is True
+        and defender.get("service_enabled") is True
+    )
+    if confirmed_active != required_active:
+        raise ContractError("Defender active state contradicts its feature evidence")
+    required_baseline = (
+        confirmed_active
+        and defender.get("behavior_monitor_enabled") is True
+        and defender.get("ioav_protection_enabled") is True
+        and defender.get("on_access_protection_enabled") is True
+        and defender.get("network_inspection_enabled") is True
+    )
+    if baseline_confirmed != required_baseline:
+        raise ContractError("Defender baseline state contradicts its feature evidence")
+    signatures = _object(defender.get("signatures"), "defender.signatures")
+    for field in (
+        "engine_version",
+        "product_version",
+        "antivirus_version",
+        "antivirus_last_updated",
+    ):
+        _optional_string(signatures.get(field), f"defender.signatures.{field}", maximum=160)
+    age = signatures.get("antivirus_age_days")
+    if age is not None:
+        _integer(age, "defender.signatures.antivirus_age_days")
+    reported_out_of_date = signatures.get("defender_reports_out_of_date")
+    if reported_out_of_date is not None:
+        out_of_date = _bool(
+            reported_out_of_date,
+            "defender.signatures.defender_reports_out_of_date",
+        )
+        signature_material_present = (
+            signatures.get("antivirus_version") is not None
+            and signatures.get("antivirus_last_updated") is not None
+        )
+        expected_current = not out_of_date and signature_material_present
+        expected_update = out_of_date or not signature_material_present
+        if signatures_current != expected_current or update_recommended != expected_update:
+            raise ContractError("Defender signature summary contradicts provider evidence")
+    scans = _object(defender.get("scans"), "defender.scans")
+    for field in ("quick_scan_age_days", "full_scan_age_days"):
+        value = scans.get(field)
+        if value is not None:
+            _integer(value, f"defender.scans.{field}")
+    for field in ("quick_scan_end", "full_scan_end"):
+        _optional_string(scans.get(field), f"defender.scans.{field}", maximum=160)
+    _string(defender.get("note"), "defender.note", maximum=1000)
 
     if decision == "not_installed":
         if installed or healthy:
@@ -430,6 +596,60 @@ def validate_companion_status(payload: Any) -> dict[str, Any]:
     return root
 
 
+def validate_windows_protection_action(payload: Any) -> dict[str, Any]:
+    root = _schema(payload, "zsec.antivirus.windows-protection-action.v1")
+    if root.get("product") != "ZSEC Antivirus":
+        raise ContractError("Windows protection action has an unexpected product")
+    if root.get("provider") != "Microsoft Defender Antivirus":
+        raise ContractError("Windows protection action has an unexpected provider")
+    if root.get("action") not in {"UpdateSignatures", "QuickScan", "FullScan"}:
+        raise ContractError("Windows protection action is unsupported")
+    _string(root.get("started_at"), "started_at", maximum=80)
+    _string(root.get("completed_at"), "completed_at", maximum=80)
+    for field in (
+        "provider_configuration_changed",
+        "exclusions_changed",
+        "security_center_registration_changed",
+        "existing_provider_removed",
+    ):
+        if _bool(root.get(field), field):
+            raise ContractError(f"Windows protection action unexpectedly asserts {field}")
+    outcome = root.get("outcome")
+    if outcome not in {"completed", "failed"}:
+        raise ContractError("Windows protection action outcome is unknown")
+    error = _optional_string(root.get("error"), "error", maximum=1000)
+    evidence_value = root.get("evidence")
+    if outcome == "failed":
+        if error is None or evidence_value is not None:
+            raise ContractError("failed Windows protection action has contradictory evidence")
+        return root
+    if error is not None:
+        raise ContractError("completed Windows protection action unexpectedly has an error")
+    evidence = _object(evidence_value, "evidence")
+    if evidence.get("source") != "Get-MpComputerStatus":
+        raise ContractError("Windows protection evidence uses an unsupported source")
+    for field in (
+        "antivirus_enabled",
+        "real_time_protection_enabled",
+        "service_enabled",
+        "behavior_monitor_enabled",
+        "ioav_protection_enabled",
+        "on_access_protection_enabled",
+    ):
+        _bool(evidence.get(field), f"evidence.{field}")
+    out_of_date = evidence.get("signatures_out_of_date")
+    if out_of_date is not None:
+        _bool(out_of_date, "evidence.signatures_out_of_date")
+    for field in (
+        "signature_version",
+        "signature_last_updated",
+        "quick_scan_end",
+        "full_scan_end",
+    ):
+        _optional_string(evidence.get(field), f"evidence.{field}", maximum=160)
+    return root
+
+
 def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
     decision = payload["decision"]
     if decision == "healthy_companion":
@@ -454,6 +674,73 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
         state="degraded",
         headline="Automatic companion degraded",
         detail=reasons or "Protection evidence is incomplete.",
+        accent="red",
+    )
+
+
+def windows_cutover_presentation(payload: dict[str, Any]) -> WindowsCutoverPresentation:
+    """Derive a read-only Malwarebytes-to-Defender handoff state from evidence."""
+
+    existing = payload["existing_primary_protection"]
+    defender = existing["defender"]
+    registered_names = [
+        str(product["display_name"]) for product in existing["registered_products"]
+    ]
+    malwarebytes_present = any("malwarebytes" in name.casefold() for name in registered_names)
+    defender_ready = (
+        existing["aggregate_good"] is True
+        and existing["registration_inventory_complete"] is True
+        and defender["available"] is True
+        and defender["confirmed_active"] is True
+        and defender["baseline_features_confirmed"] is True
+        and defender["signatures_current"] is True
+        and defender["tamper_protection"] == "enabled"
+        and defender["reboot_required"] is False
+    )
+    if malwarebytes_present and defender_ready:
+        return WindowsCutoverPresentation(
+            state="eligible_operator_cutover",
+            headline="Eligible for operator cutover",
+            detail=(
+                "Defender is active with baseline controls, current security intelligence, "
+                "tamper protection, and no pending reboot; Defender must remain the "
+                "enforcement provider. ZSEC does not remove Malwarebytes."
+            ),
+            accent="amber",
+        )
+    if not malwarebytes_present and defender_ready:
+        return WindowsCutoverPresentation(
+            state="cutover_verified",
+            headline="Defender-backed cutover verified",
+            detail=(
+                "Malwarebytes is absent from the complete registration inventory and Defender "
+                "enforcement is active with baseline controls, current intelligence, tamper "
+                "protection, and no pending reboot."
+            ),
+            accent="green",
+        )
+
+    blockers: list[str] = []
+    if existing["registration_inventory_complete"] is not True:
+        blockers.append("provider inventory incomplete")
+    if existing["aggregate_good"] is not True:
+        blockers.append("Windows Security aggregate not GOOD")
+    if defender["confirmed_active"] is not True:
+        blockers.append("Defender real-time enforcement inactive")
+    if defender["baseline_features_confirmed"] is not True:
+        blockers.append("Defender baseline controls incomplete")
+    if defender["signatures_current"] is not True:
+        blockers.append("Defender intelligence not confirmed current")
+    if defender["tamper_protection"] != "enabled":
+        blockers.append("Defender tamper protection not confirmed enabled")
+    if defender["reboot_required"] is not False:
+        blockers.append("Defender reboot state is unknown or pending")
+    if malwarebytes_present:
+        blockers.insert(0, "Malwarebytes remains registered")
+    return WindowsCutoverPresentation(
+        state="blocked",
+        headline="Malwarebytes removal blocked",
+        detail="; ".join(blockers) or "required Defender handoff evidence is incomplete",
         accent="red",
     )
 
@@ -493,6 +780,7 @@ __all__ = [
     "CompanionPresentation",
     "ContractError",
     "ScanPresentation",
+    "WindowsCutoverPresentation",
     "companion_presentation",
     "status_presentation",
     "validate_companion_status",
@@ -502,4 +790,6 @@ __all__ = [
     "validate_scan_report",
     "validate_status",
     "validate_watch_event",
+    "validate_windows_protection_action",
+    "windows_cutover_presentation",
 ]

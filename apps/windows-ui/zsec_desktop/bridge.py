@@ -33,6 +33,7 @@ from zsec_desktop.contracts import (
     validate_scan_report,
     validate_status,
     validate_watch_event,
+    validate_windows_protection_action,
 )
 
 MAX_STDOUT_BYTES = 16 * 1024 * 1024
@@ -159,10 +160,12 @@ class ZsecBridge:
         state_dir: Path,
         cli: Path | None = None,
         companion_status_script: Path | None = None,
+        windows_protection_action_script: Path | None = None,
     ) -> None:
         self.state_dir = state_dir.expanduser().absolute()
         self.cli_prefix = discover_cli(cli)
         self.companion_status_script = companion_status_script
+        self.windows_protection_action_script = windows_protection_action_script
 
     def _argv(self, *arguments: str, with_state: bool = True) -> tuple[str, ...]:
         prefix = list(self.cli_prefix)
@@ -485,6 +488,62 @@ class ZsecBridge:
             timeout=60,
             validator=validate_companion_status,
         )
+
+    def windows_protection_action(self, action: str) -> CommandResult:
+        if action not in {"UpdateSignatures", "QuickScan", "FullScan"}:
+            raise BridgeError("unsupported Windows protection action")
+        if os.name != "nt":
+            raise BridgeError("Windows protection actions are available only on Windows")
+        script = self.windows_protection_action_script
+        if script is None:
+            if getattr(sys, "frozen", False) and os.name == "nt":
+                script = (
+                    Path(sys.executable).absolute().parent.parent
+                    / "Tools"
+                    / "Invoke-ZsecWindowsProtectionAction.ps1"
+                )
+            else:
+                project_root = Path(__file__).resolve().parents[3]
+                script = (
+                    project_root
+                    / "windows"
+                    / "companion"
+                    / "Invoke-ZsecWindowsProtectionAction.ps1"
+                )
+        script = _regular_file(script, "Windows protection action script")
+        system_root = os.environ.get("SYSTEMROOT")
+        if not system_root:
+            raise BridgeError("SystemRoot is unavailable")
+        powershell = _regular_file(
+            Path(system_root) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe",
+            "Windows PowerShell",
+        )
+        timeout = {
+            "UpdateSignatures": 15 * 60,
+            "QuickScan": 2 * 60 * 60,
+            "FullScan": 24 * 60 * 60,
+        }[action]
+        argv = (
+            str(powershell),
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "RemoteSigned",
+            "-File",
+            str(script),
+            "-Action",
+            action,
+        )
+        result = self._run_json(
+            argv,
+            expected_codes=frozenset({0, 2}),
+            timeout=timeout,
+            validator=validate_windows_protection_action,
+        )
+        if (result.payload["outcome"] == "completed") != (result.exit_code == 0):
+            raise BridgeError("Windows protection action exit code and outcome disagree")
+        return result
 
     def start_watch(
         self,

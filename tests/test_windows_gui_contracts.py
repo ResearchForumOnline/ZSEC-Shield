@@ -26,6 +26,8 @@ from zsec_desktop.contracts import (  # noqa: E402
     validate_scan_report,
     validate_status,
     validate_watch_event,
+    validate_windows_protection_action,
+    windows_cutover_presentation,
 )
 
 
@@ -110,7 +112,58 @@ def valid_companion() -> dict[str, object]:
         "reasons": ["installation marker is absent"],
         "existing_primary_protection": {
             "method": "WscGetSecurityProviderHealth(WSC_SECURITY_PROVIDER_ANTIVIRUS)",
+            "aggregate_health": "GOOD",
             "aggregate_good": True,
+            "registered_products": [
+                {
+                    "display_name": "Example AV",
+                    "product_state_raw": 397568,
+                    "product_state_interpreted": False,
+                    "instance_guid": "{00000000-0000-0000-0000-000000000001}",
+                }
+            ],
+            "registration_inventory_complete": True,
+            "registration_inventory_error": None,
+            "security_services": [
+                {"name": "WinDefend", "available": True, "status": "Stopped"},
+                {"name": "WdNisSvc", "available": True, "status": "Stopped"},
+                {"name": "MDCoreSvc", "available": True, "status": "Stopped"},
+                {"name": "wscsvc", "available": True, "status": "Running"},
+                {"name": "SecurityHealthService", "available": True, "status": "Running"},
+            ],
+            "defender": {
+                "available": True,
+                "source": "Get-MpComputerStatus",
+                "antivirus_enabled": False,
+                "real_time_protection_enabled": False,
+                "antispyware_enabled": False,
+                "service_enabled": False,
+                "behavior_monitor_enabled": False,
+                "ioav_protection_enabled": False,
+                "on_access_protection_enabled": False,
+                "network_inspection_enabled": False,
+                "tamper_protection": "enabled",
+                "reboot_required": False,
+                "signatures": {
+                    "engine_version": "1.1.25080.5",
+                    "product_version": "4.18.25080.5",
+                    "antivirus_version": "1.437.1.0",
+                    "antivirus_last_updated": "2026-08-22T05:00:00Z",
+                    "antivirus_age_days": 0,
+                    "defender_reports_out_of_date": False,
+                },
+                "scans": {
+                    "quick_scan_age_days": 1,
+                    "quick_scan_end": "2026-08-21T05:00:00Z",
+                    "full_scan_age_days": 4,
+                    "full_scan_end": "2026-08-18T05:00:00Z",
+                },
+                "confirmed_active": False,
+                "baseline_features_confirmed": False,
+                "signatures_current": True,
+                "update_recommended": False,
+                "note": "Defender is installed but not active.",
+            },
         },
     }
 
@@ -162,6 +215,37 @@ def valid_recovery_drill() -> dict[str, object]:
             )
         ],
         "summary": {"passed": 5, "failed": 0, "total": 5},
+    }
+
+
+def valid_windows_protection_action() -> dict[str, object]:
+    return {
+        "schema": "zsec.antivirus.windows-protection-action.v1",
+        "product": "ZSEC Antivirus",
+        "provider": "Microsoft Defender Antivirus",
+        "action": "QuickScan",
+        "started_at": "2026-08-22T05:00:00Z",
+        "completed_at": "2026-08-22T05:01:00Z",
+        "outcome": "completed",
+        "provider_configuration_changed": False,
+        "exclusions_changed": False,
+        "security_center_registration_changed": False,
+        "existing_provider_removed": False,
+        "evidence": {
+            "source": "Get-MpComputerStatus",
+            "antivirus_enabled": True,
+            "real_time_protection_enabled": True,
+            "service_enabled": True,
+            "behavior_monitor_enabled": True,
+            "ioav_protection_enabled": True,
+            "on_access_protection_enabled": True,
+            "signature_version": "1.437.1.0",
+            "signature_last_updated": "2026-08-22T05:00:00Z",
+            "signatures_out_of_date": False,
+            "quick_scan_end": "2026-08-22T05:01:00Z",
+            "full_scan_end": None,
+        },
+        "error": None,
     }
 
 
@@ -334,6 +418,82 @@ def test_recovery_drill_contract_rejects_certification_and_counter_overclaims() 
         validate_recovery_drill(missing_control)
 
 
+def test_windows_protection_action_is_fixed_bounded_and_non_mutating() -> None:
+    payload = valid_windows_protection_action()
+    assert validate_windows_protection_action(payload)["outcome"] == "completed"
+
+    for field in (
+        "provider_configuration_changed",
+        "exclusions_changed",
+        "security_center_registration_changed",
+        "existing_provider_removed",
+    ):
+        mutated = copy.deepcopy(payload)
+        mutated[field] = True
+        with pytest.raises(ContractError, match=field):
+            validate_windows_protection_action(mutated)
+
+    failed = copy.deepcopy(payload)
+    failed.update({"outcome": "failed", "evidence": None, "error": "Defender unavailable"})
+    assert validate_windows_protection_action(failed)["outcome"] == "failed"
+
+    contradictory = copy.deepcopy(failed)
+    contradictory["error"] = None
+    with pytest.raises(ContractError, match="contradictory"):
+        validate_windows_protection_action(contradictory)
+
+
+def test_windows_cutover_state_is_derived_from_provider_and_defender_evidence() -> None:
+    blocked = validate_companion_status(valid_companion())
+    blocked_view = windows_cutover_presentation(blocked)
+    assert blocked_view.state == "blocked"
+    assert "Defender real-time enforcement inactive" in blocked_view.detail
+
+    eligible = valid_companion()
+    existing = eligible["existing_primary_protection"]  # type: ignore[index]
+    existing["registered_products"][0]["display_name"] = "Malwarebytes"  # type: ignore[index]
+    defender = existing["defender"]  # type: ignore[index]
+    defender.update(  # type: ignore[union-attr]
+        {
+            "antivirus_enabled": True,
+            "real_time_protection_enabled": True,
+            "service_enabled": True,
+            "behavior_monitor_enabled": True,
+            "ioav_protection_enabled": True,
+            "on_access_protection_enabled": True,
+            "network_inspection_enabled": True,
+            "confirmed_active": True,
+            "baseline_features_confirmed": True,
+        }
+    )
+    eligible_view = windows_cutover_presentation(validate_companion_status(eligible))
+    assert eligible_view.state == "eligible_operator_cutover"
+    assert "Defender must remain" in eligible_view.detail
+
+    verified = copy.deepcopy(eligible)
+    verified["existing_primary_protection"]["registered_products"] = []  # type: ignore[index]
+    verified_view = windows_cutover_presentation(validate_companion_status(verified))
+    assert verified_view.state == "cutover_verified"
+
+
+def test_missing_defender_signature_material_cannot_be_current() -> None:
+    missing = valid_companion()
+    defender = missing["existing_primary_protection"]["defender"]  # type: ignore[index]
+    signatures = defender["signatures"]  # type: ignore[index]
+    signatures["antivirus_version"] = None  # type: ignore[index]
+    signatures["antivirus_last_updated"] = None  # type: ignore[index]
+    defender["signatures_current"] = False  # type: ignore[index]
+    defender["update_recommended"] = True  # type: ignore[index]
+    validate_companion_status(missing)
+
+    contradictory = copy.deepcopy(missing)
+    contradictory["existing_primary_protection"]["defender"][  # type: ignore[index]
+        "signatures_current"
+    ] = True
+    with pytest.raises(ContractError, match="signature summary"):
+        validate_companion_status(contradictory)
+
+
 def test_recovery_drill_bridge_binds_exit_code_to_validated_outcome(tmp_path: Path) -> None:
     bridge = _source_bridge(tmp_path / "state")
     payload = validate_recovery_drill(valid_recovery_drill())
@@ -343,6 +503,29 @@ def test_recovery_drill_bridge_binds_exit_code_to_validated_outcome(tmp_path: Pa
         pytest.raises(BridgeError, match="exit code and validated outcome disagree"),
     ):
         bridge.recovery_drill()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows PowerShell path validation")
+def test_windows_action_bridge_binds_exit_code_to_validated_outcome(tmp_path: Path) -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "windows"
+        / "companion"
+        / "Invoke-ZsecWindowsProtectionAction.ps1"
+    )
+    prefix = (sys.executable, "-m", "zsec_shield")
+    with patch("zsec_desktop.bridge.discover_cli", return_value=prefix):
+        bridge = ZsecBridge(
+            state_dir=tmp_path / "state",
+            windows_protection_action_script=script,
+        )
+    payload = validate_windows_protection_action(valid_windows_protection_action())
+    contradictory = CommandResult(("powershell.exe",), 2, payload, "")
+    with (
+        patch.object(bridge, "_run_json", return_value=contradictory),
+        pytest.raises(BridgeError, match="exit code and outcome disagree"),
+    ):
+        bridge.windows_protection_action("QuickScan")
 
 
 def test_quarantine_contract_rejects_noncanonical_or_duplicate_entries() -> None:
@@ -434,13 +617,17 @@ def test_bridge_scan_writes_and_revalidates_only_bounded_local_reports(
         bridge.read_report(report_path)
 
 
-def test_bridge_has_no_remote_feed_or_provider_removal_surface() -> None:
+def test_bridge_has_no_remote_feed_or_provider_removal_surface(tmp_path: Path) -> None:
     public_methods = {name for name in dir(ZsecBridge) if not name.startswith("_")}
     assert "update_feed_file" in public_methods
+    assert "windows_protection_action" in public_methods
     assert "update_feed_url" not in public_methods
     assert not any(
         "uninstall" in name or "disable" in name or "exclusion" in name for name in public_methods
     )
+    bridge = _source_bridge(tmp_path / "state")
+    with pytest.raises(BridgeError, match="unsupported Windows protection action"):
+        bridge.windows_protection_action("DisableDefender")
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows packaged-layout discovery")

@@ -24,7 +24,11 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Any
 
 from zsec_desktop.bridge import BridgeError, CommandResult, WatchSession, ZsecBridge
-from zsec_desktop.contracts import companion_presentation, status_presentation
+from zsec_desktop.contracts import (
+    companion_presentation,
+    status_presentation,
+    windows_cutover_presentation,
+)
 from zsec_desktop.settings import (
     DesktopSettings,
     StartupRegistration,
@@ -450,6 +454,7 @@ class ZsecDesktop:
         self.scan_tab = self._tab("Scan")
         self.monitor_tab = self._tab("Automatic monitoring")
         self.quarantine_tab = self._tab("Quarantine")
+        self.windows_protection_tab = self._tab("Windows protection")
         self.feeds_tab = self._tab("Feeds")
         self.reports_tab = self._tab("Reports")
         self.health_tab = self._tab("Health")
@@ -460,6 +465,7 @@ class ZsecDesktop:
         self._build_scan()
         self._build_monitor()
         self._build_quarantine()
+        self._build_windows_protection()
         self._build_feeds()
         self._build_reports()
         self._build_health()
@@ -472,6 +478,7 @@ class ZsecDesktop:
             (self.scan_tab, "Scan"),
             (self.monitor_tab, "Automatic monitoring"),
             (self.quarantine_tab, "Quarantine"),
+            (self.windows_protection_tab, "Windows protection"),
             (self.feeds_tab, "Signed feeds"),
             (self.reports_tab, "Reports"),
             (self.health_tab, "Evidence health"),
@@ -544,11 +551,15 @@ class ZsecDesktop:
         self.companion_card = self._overview_card(
             self.overview_cards_frame, "Automatic companion"
         )
+        self.windows_card = self._overview_card(
+            self.overview_cards_frame, "Windows enforcement"
+        )
         self.overview_cards = [
             self.scan_card,
             self.feed_card,
             self.quarantine_card,
             self.companion_card,
+            self.windows_card,
         ]
         self.overview_card_columns = 0
         self.overview_cards_frame.bind("<Configure>", self._layout_overview_cards)
@@ -767,6 +778,82 @@ class ZsecDesktop:
         ttk.Button(panel, text="Restore selected…", command=self._restore_selected).pack(
             anchor=tk.E, pady=(10, 0)
         )
+
+    def _build_windows_protection(self) -> None:
+        panel = self._panel(self.windows_protection_tab)
+        panel.pack(fill=tk.BOTH, expand=True)
+        header = ttk.Frame(panel, style="Surface.TFrame")
+        header.pack(fill=tk.X)
+        ttk.Label(
+            header,
+            text="Windows protection control plane",
+            style="Section.TLabel",
+        ).pack(side=tk.LEFT)
+        ttk.Button(header, text="Refresh evidence", command=self.refresh_companion).pack(
+            side=tk.RIGHT
+        )
+        ttk.Label(
+            panel,
+            text=(
+                "ZSEC verifies Windows Security Center and Microsoft Defender evidence. "
+                "Defender or another registered provider remains the enforcement layer; "
+                "these controls never disable a provider, add exclusions, or change "
+                "Windows Security registration."
+            ),
+            style="Muted.TLabel",
+            wraplength=900,
+        ).pack(anchor=tk.W, pady=(5, 10))
+        self.windows_provider_status = ttk.Label(
+            panel,
+            text="Windows provider evidence is loading…",
+            style="Status.TLabel",
+            wraplength=900,
+        )
+        self.windows_provider_status.pack(anchor=tk.W, pady=(0, 10))
+
+        columns = ("control", "evidence")
+        self.windows_protection_tree = ttk.Treeview(
+            panel,
+            columns=columns,
+            show="headings",
+            height=10,
+        )
+        self.windows_protection_tree.heading("control", text="Protection control")
+        self.windows_protection_tree.heading("evidence", text="Current evidence")
+        self.windows_protection_tree.column("control", width=275, stretch=False)
+        self.windows_protection_tree.column("evidence", width=660)
+        self.windows_protection_tree.pack(fill=tk.BOTH, expand=True)
+
+        actions = ttk.Frame(panel, style="Surface.TFrame")
+        actions.pack(fill=tk.X, pady=(12, 0))
+        self.defender_update_button = ttk.Button(
+            actions,
+            text="Update Defender intelligence",
+            state=tk.DISABLED,
+            command=lambda: self._run_windows_protection_action("UpdateSignatures"),
+        )
+        self.defender_update_button.pack(side=tk.LEFT)
+        self.defender_quick_scan_button = ttk.Button(
+            actions,
+            text="Run Defender quick scan",
+            state=tk.DISABLED,
+            command=lambda: self._run_windows_protection_action("QuickScan"),
+        )
+        self.defender_quick_scan_button.pack(side=tk.LEFT, padx=8)
+        self.defender_full_scan_button = ttk.Button(
+            actions,
+            text="Run Defender full scan…",
+            state=tk.DISABLED,
+            command=lambda: self._run_windows_protection_action("FullScan"),
+        )
+        self.defender_full_scan_button.pack(side=tk.LEFT)
+        self.windows_action_status = ttk.Label(
+            panel,
+            text="No Windows protection action has run in this session.",
+            style="Muted.TLabel",
+            wraplength=900,
+        )
+        self.windows_action_status.pack(anchor=tk.W, pady=(10, 0))
 
     def _build_feeds(self) -> None:
         panel = self._panel(self.feeds_tab)
@@ -1612,6 +1699,154 @@ class ZsecDesktop:
             text=f"{presentation.headline} — {presentation.detail}", foreground=colour
         )
         self.companion_card.set_value(presentation.headline, colour)
+        self._render_windows_protection(payload)
+
+    def _render_windows_protection(self, payload: dict[str, Any]) -> None:
+        evidence = payload["existing_primary_protection"]
+        defender = evidence["defender"]
+        aggregate_good = bool(evidence["aggregate_good"])
+        defender_active = bool(defender["confirmed_active"])
+        if aggregate_good and defender_active:
+            headline = "Windows Security reports GOOD; Defender real-time controls are confirmed."
+            colour = GREEN
+            self.windows_card.set_value("Defender enforcement verified", GREEN)
+        elif aggregate_good:
+            headline = (
+                "Windows Security reports GOOD; Defender is not the confirmed active "
+                "real-time provider."
+            )
+            colour = AMBER
+            self.windows_card.set_value("Registered antivirus reports healthy", GREEN)
+        else:
+            headline = "Windows antivirus aggregate health is not confirmed GOOD."
+            colour = RED
+            self.windows_card.set_value("Provider health unconfirmed", RED)
+        self.windows_provider_status.configure(text=headline, foreground=colour)
+
+        products = evidence["registered_products"]
+        product_names = ", ".join(item["display_name"] for item in products) or "None observed"
+        services = ", ".join(
+            f"{service['name']}={service['status']}" for service in evidence["security_services"]
+        )
+        signatures = defender["signatures"]
+        scans = defender["scans"]
+        cutover = windows_cutover_presentation(payload)
+
+        def enabled(value: Any) -> str:
+            if value is None:
+                return "Unavailable"
+            return "Enabled" if value is True else "Disabled"
+
+        def yes_no(value: Any) -> str:
+            if value is None:
+                return "Unavailable"
+            return "Yes" if value is True else "No"
+
+        signature_detail = (
+            f"Version {signatures['antivirus_version'] or 'unavailable'}; "
+            f"updated {signatures['antivirus_last_updated'] or 'unavailable'}; "
+            f"provider reports out-of-date: "
+            f"{yes_no(signatures['defender_reports_out_of_date'])}"
+        )
+        rows = (
+            ("Windows Security aggregate", evidence["aggregate_health"]),
+            (
+                "Registered antivirus products",
+                product_names + " (raw registrations; active selection is not inferred)",
+            ),
+            (
+                "Defender real-time enforcement",
+                "Confirmed active" if defender_active else "Not confirmed active",
+            ),
+            (
+                "Defender baseline features",
+                (
+                    f"Behavior {enabled(defender['behavior_monitor_enabled'])}; "
+                    f"download/attachment {enabled(defender['ioav_protection_enabled'])}; "
+                    f"on-access {enabled(defender['on_access_protection_enabled'])}; "
+                    f"network inspection {enabled(defender['network_inspection_enabled'])}"
+                ),
+            ),
+            ("Defender tamper protection", defender["tamper_protection"].capitalize()),
+            ("Defender security intelligence", signature_detail),
+            (
+                "Last Defender quick scan",
+                scans["quick_scan_end"] or "No supported timestamp available",
+            ),
+            (
+                "Last Defender full scan",
+                scans["full_scan_end"] or "No supported timestamp available",
+            ),
+            ("Windows security services", services),
+            (
+                "Provider handoff interlock",
+                f"{cutover.headline} — {cutover.detail}",
+            ),
+        )
+        for item in self.windows_protection_tree.get_children():
+            self.windows_protection_tree.delete(item)
+        for control, value in rows:
+            self.windows_protection_tree.insert("", tk.END, values=(control, value))
+        self.defender_update_button.configure(
+            state=tk.NORMAL if defender["available"] else tk.DISABLED
+        )
+        scan_state = tk.NORMAL if defender_active else tk.DISABLED
+        self.defender_quick_scan_button.configure(state=scan_state)
+        self.defender_full_scan_button.configure(state=scan_state)
+
+    def _run_windows_protection_action(self, action: str) -> None:
+        if action == "FullScan" and not messagebox.askyesno(
+            "Run a Defender full scan?",
+            (
+                "A full scan can take considerable time and CPU. It does not change the "
+                "active antivirus provider. Continue?"
+            ),
+            parent=self.root,
+        ):
+            return
+        labels = {
+            "UpdateSignatures": "Updating Microsoft Defender security intelligence…",
+            "QuickScan": "Microsoft Defender quick scan is running…",
+            "FullScan": "Microsoft Defender full scan is running…",
+        }
+        self.windows_action_status.configure(text=labels[action], foreground=CYAN)
+        for button in (
+            self.defender_update_button,
+            self.defender_quick_scan_button,
+            self.defender_full_scan_button,
+        ):
+            button.configure(state=tk.DISABLED)
+        self._run_async(
+            lambda: self.bridge.windows_protection_action(action),
+            self._render_windows_protection_action,
+            failure=self._windows_protection_action_failure,
+        )
+
+    def _render_windows_protection_action(self, result: CommandResult) -> None:
+        payload = result.payload
+        if payload["outcome"] == "completed":
+            action_name = {
+                "UpdateSignatures": "Defender intelligence update",
+                "QuickScan": "Defender quick scan",
+                "FullScan": "Defender full scan",
+            }[payload["action"]]
+            self.windows_action_status.configure(
+                text=f"{action_name} completed; refreshing provider evidence.",
+                foreground=GREEN,
+            )
+        else:
+            self.windows_action_status.configure(
+                text=f"Windows protection action failed: {payload['error']}",
+                foreground=RED,
+            )
+        self.refresh_companion()
+
+    def _windows_protection_action_failure(self, exc: BaseException) -> None:
+        self.windows_action_status.configure(
+            text=f"Windows protection action could not be verified: {exc}",
+            foreground=RED,
+        )
+        self.refresh_companion()
 
     def _companion_failure(self, exc: BaseException, generation: int) -> None:
         if generation != self.companion_refresh_generation:
@@ -1620,6 +1855,16 @@ class ZsecDesktop:
             text=f"Companion evidence unavailable: {exc}", foreground=RED
         )
         self.companion_card.set_value("Evidence unavailable", RED)
+        self.windows_card.set_value("Evidence unavailable", RED)
+        self.windows_provider_status.configure(
+            text=f"Windows provider evidence unavailable: {exc}", foreground=RED
+        )
+        for button in (
+            self.defender_update_button,
+            self.defender_quick_scan_button,
+            self.defender_full_scan_button,
+        ):
+            button.configure(state=tk.DISABLED)
         self.tray_companion_status = "Companion evidence unavailable"
         self._update_tray_status()
 
@@ -1871,6 +2116,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--state-dir", type=Path, default=_default_state_dir())
     parser.add_argument("--cli", type=Path, help="reviewed zero-security/zsec-shield executable")
     parser.add_argument("--companion-status-script", type=Path)
+    parser.add_argument("--windows-protection-action-script", type=Path)
     parser.add_argument("--startup", action="store_true", help="start hidden in notification area")
     return parser
 
@@ -1882,6 +2128,7 @@ def main(argv: list[str] | None = None) -> int:
             state_dir=args.state_dir,
             cli=args.cli,
             companion_status_script=args.companion_status_script,
+            windows_protection_action_script=args.windows_protection_action_script,
         )
     except BridgeError as exc:
         root = tk.Tk()
