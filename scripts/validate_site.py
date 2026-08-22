@@ -41,7 +41,7 @@ DOWNLOAD_PAGES: dict[str, DownloadPolicy] = {
         "fingerprints": 3,
         "artifacts": {
             "/downloads/zero-security/zsec-shield-0.3.0-windows-x86_64.zip",
-            "/downloads/zero-security/zsec-antivirus-desktop-0.3.1-windows-x86_64.zip",
+            "/downloads/zero-security/zsec-antivirus-desktop-0.3.2-windows-x86_64.zip",
             "/downloads/zero-security/zsec-shield-0.3.0-macos-arm64.tar.gz",
             "/downloads/zero-security/zsec-shield-0.3.0-linux-x86_64.tar.gz",
             "/downloads/zero-security/zsec_shield-0.3.0-py3-none-any.whl",

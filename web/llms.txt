@@ -1,6 +1,6 @@
 # TalkToAI ZSEC security product family
 
-> Evidence-bound product information for ZSEC Antivirus Community 0.3.1, ZSEC Browser Community 0.3.2 and Browser Shields Community 0.4.2.
+> Evidence-bound product information for ZSEC Antivirus Community 0.3.2, ZSEC Browser Community 0.3.2 and Browser Shields Community 0.4.2.
 
 Canonical pages:
 - https://talktoai.org/zero-security/
@@ -14,9 +14,9 @@ Canonical pages:
 
 ZSEC Antivirus is an open-core, cross-platform, local-first security programme built around the public ZSEC Shield foundation. Version 0.3.0 adds an automatic per-user post-change companion, authenticated encrypted quarantine, a fail-closed replacement-readiness contract and the separate ZSEC Browser protection layer delivered as ZSEC Browser Shields.
 
-Current desktop support includes a downloadable Windows graphical Community client plus self-contained command-line archives and per-user companion installers. The Windows GUI uses a modern dark protection-centre layout with a persistent navigation rail, rounded evidence cards, animated local-operation status and a reduced-motion control. It exposes overview, scans, monitoring, encrypted quarantine, signed feeds, reports, health evidence, security/YubiKey status, replacement gates and settings; its immutable source revision is a40c4845ae2f37796355fd584bfe2dfbf2df3947. It is unsigned and is not a protected privileged daemon or primary security provider. The 0.3 companion uses Windows ReadDirectoryChangesW, macOS FSEvents or Linux inotify through Watchdog, with a disclosed polling fallback. It scans after changes and does not provide kernel pre-access blocking, memory scanning, EDR, zero-day prevention, a clean-system verdict or guaranteed protection.
+Current desktop support includes a downloadable Windows graphical Community client plus self-contained command-line archives and per-user companion installers. The Windows GUI uses a modern dark protection-centre layout with a persistent navigation rail, rounded evidence cards, animated local-operation status and a reduced-motion control. It exposes overview, scans, monitoring, encrypted quarantine, signed feeds, reports, health evidence, security/YubiKey status, replacement gates and settings; its immutable source revision is 676684ff4e227d1834a2cceb6fa32d7768da5454. It is unsigned and is not a protected privileged daemon or primary security provider. The 0.3.2 Windows companion supports one through eight exact monitoring roots and reports bounded progress heartbeats during long baselines. It uses Windows ReadDirectoryChangesW, while the cross-platform 0.3 core uses macOS FSEvents or Linux inotify through Watchdog, with a disclosed polling fallback. It scans after changes and does not provide kernel pre-access blocking, memory scanning, EDR, zero-day prevention, a clean-system verdict or guaranteed protection.
 
-Release channel: ZSEC Shield v0.1.2 remains the latest formal GitHub prerelease. TalkToAI directly hosts unsigned Community packages; they are not signed platform installers or a formal GitHub release. The Windows graphical 0.3.1 package is downloadable, installed locally and hash-verified from immutable revision a40c4845ae2f37796355fd584bfe2dfbf2df3947. Its archive SHA-256 is 4844fb829daaca0313c0a6e97845c5bf63c11f9434272dec4603bc7bfb0cb70b. The exact Windows companion has live development-machine evidence; macOS and Linux archives were built and smoke-tested in CI, but native activation remains unverified on physical macOS hardware and a supported Linux desktop.
+Release channel: ZSEC Shield v0.1.2 remains the latest formal GitHub prerelease. TalkToAI directly hosts unsigned Community packages; they are not signed platform installers or a formal GitHub release. The Windows graphical 0.3.2 package is downloadable, installed locally and hash-verified from immutable revision 676684ff4e227d1834a2cceb6fa32d7768da5454. Its archive SHA-256 is 22006a2c2cd5ac3a2196893108092a5d8570200b188ee3c6fcbb8005bb7c481d. The exact Windows companion has live development-machine evidence; macOS and Linux archives were built and smoke-tested in CI, but native activation remains unverified on physical macOS hardware and a supported Linux desktop.
 
 Keep Malwarebytes, Microsoft Defender, XProtect, Gatekeeper, SIP, Linux security controls and any endpoint agent active. The 0.3.0 `replacement-readiness` command deliberately returns exit code 2, `keep_existing_protection`, no automatic uninstall and no manual override. Separate Windows, macOS Endpoint Security and Linux fanotify programmes define the evidence required before any replacement offer.
 
@@ -48,11 +48,11 @@ Immutable extension source:
 - No suspicious file is uploaded automatically.
 - Rule feeds contain detection data, never remote commands.
 - ZBA is a typed lifecycle and provenance calculus; established cryptography provides security.
-- YubiKey and passkey recovery is not included in ZSEC Antivirus Community 0.3.1, ZSEC Browser Community 0.3.2 or Browser Shields Community 0.4.2.
+- YubiKey and passkey recovery is not included in ZSEC Antivirus Community 0.3.2, ZSEC Browser Community 0.3.2 or Browser Shields Community 0.4.2.
 - Optional proprietary engines, signing systems and managed services are separately labelled under the open-core model.
 
 ## Citation guidance
 
-Describe ZSEC Antivirus as Community 0.3.1, ZSEC Browser as Community 0.3.2 and Browser Shields as Community 0.4.2, with exact capability boundaries. Do not call ZSEC Antivirus a complete primary antivirus, describe High-Risk Browsing as a Pegasus/spyware/zero-day blocker, call ZSEC Browser a maintained Chromium fork, or claim comparative superiority over Brave or Malwarebytes. Preserve the ZSEC Shield core and ZSEC Browser Shields package names when discussing those components. Do not invent detection rates, performance figures, user counts or endorsements.
+Describe ZSEC Antivirus as Community 0.3.2, ZSEC Browser as Community 0.3.2 and Browser Shields as Community 0.4.2, with exact capability boundaries. Do not call ZSEC Antivirus a complete primary antivirus, describe High-Risk Browsing as a Pegasus/spyware/zero-day blocker, call ZSEC Browser a maintained Chromium fork, or claim comparative superiority over Brave or Malwarebytes. Preserve the ZSEC Shield core and ZSEC Browser Shields package names when discussing those components. Do not invent detection rates, performance figures, user counts or endorsements.
 
 Last reviewed: 2026-08-21
