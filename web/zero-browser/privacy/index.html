@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ZSEC Browser and Browser Shields Privacy Policy</title>
-  <meta name="description" content="Privacy policy for ZSEC Browser Community 0.3.12 and Browser Shields 0.5.2: local history suggestions and filtering with no ZSEC history upload.">
+  <meta name="description" content="Privacy policy for ZSEC Browser Community 0.3.15 and Browser Shields 0.5.2: local browser data and encrypted vault with no ZSEC upload.">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#07101f">
@@ -46,10 +46,10 @@
   <main id="main-content">
     <section class="hero" aria-labelledby="privacy-title">
       <div class="container narrow">
-          <p class="hero-kicker">ZSEC Browser 0.3.12 · Browser Shields 0.5.2</p>
+          <p class="hero-kicker">ZSEC Browser 0.3.15 · Browser Shields 0.5.2</p>
         <h1 id="privacy-title">Privacy should be a testable contract.</h1>
-        <p class="lede">ZSEC Browser uses a separate local profile, bounded local bookmarks/history/settings data and local request controls. Browser Shields evaluates 49,505 packaged network rules, optional High-Risk Browsing and site-pause choices inside the browser. The Community packages have no ZSEC analytics, advertising, account, crash-upload, cloud-reputation, spyware-verdict or remote-control endpoint.</p>
-        <p class="microcopy"><strong>Effective and last reviewed:</strong> <time datetime="2026-08-22">22 August 2026</time>. This policy covers the accepted unsigned ZSEC Browser Community 0.3.12 Windows package and the separately distributed Browser Shields Community 0.5.2 Manifest V3 package. The <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.12/zsec-browser-community-0.3.12-windows-x64-unsigned.zip">4,206,951-byte Windows archive</a> has SHA-256 <code>09c16fe915923db98e9ed6f2936e7d1d2b48c7b3fb31aa27865fdd064cee8c61</code> at source revision <code>ece60f377b2d4cfc594ad4a29b619be7617ed45f</code>; its <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.12/zsec-browser-community-0.3.12-windows-x64-unsigned.zip.json">2,123-byte metadata JSON</a> has SHA-256 <code>f1b6781030cd5ba751eff1c381b0c953f13c9839eac547284f479b0fc76d9962</code>.</p>
+        <p class="lede">ZSEC Browser uses a separate local profile, bounded local bookmarks/history/settings data, a separate user-operated encrypted password vault and local request controls. Browser Shields evaluates 49,505 packaged network rules, optional High-Risk Browsing and site-pause choices inside the browser. The Community packages have no ZSEC analytics, advertising, account, crash-upload, cloud-reputation, spyware-verdict, vault-sync or remote-control endpoint.</p>
+        <p class="microcopy"><strong>Effective and last reviewed:</strong> <time datetime="2026-08-22">22 August 2026</time>. This policy covers the accepted unsigned ZSEC Browser Community 0.3.15 Windows package and the separately distributed Browser Shields Community 0.5.2 Manifest V3 package. The <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.15/zsec-browser-community-0.3.15-windows-x64-unsigned.zip">4,221,524-byte Windows archive</a> has SHA-256 <code>fd784d60478b457eaa48b7b0dc5301db6d2a1233c0f1a554fad2309652838990</code> at source revision <code>b2618b7ee0db02a158e083efcc49746992de398d</code>; its <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.15/zsec-browser-community-0.3.15-windows-x64-unsigned.zip.json">2,123-byte metadata JSON</a> has SHA-256 <code>d49d4eca2a0190d98c467e16d0396b5c121b9fcf58bfd7ceedc1135b7dbc6ef0</code>.</p>
       </div>
     </section>
 
@@ -102,7 +102,9 @@
         <article class="panel panel-positive">
           <p class="section-label">Windows Community client</p>
           <h2 id="desktop-privacy-title">A separate local profile, with no ZSEC telemetry.</h2>
-          <p>ZSEC Browser Community 0.3.12 stores cookies, cache, permissions and other engine state under the user's dedicated <code>LocalAppData\TalkToAI\ZSEC Browser</code> profile. A separate bounded <code>browser-data.json</code> stores bookmarks, app history and Community settings atomically for this Windows account. Repeat history is consolidated, explicitly typed addresses can influence local suggestions, and the chosen search provider is stored locally. History recording can be disabled, cleared immediately or cleared on a clean exit. ZSEC does not reuse Chrome, Edge or Brave profiles and adds no ZSEC analytics, account, history upload or remote-control endpoint.</p>
+          <p>ZSEC Browser Community 0.3.15 stores cookies, cache, permissions and other engine state under the user's dedicated <code>LocalAppData\TalkToAI\ZSEC Browser</code> profile. A separate bounded <code>browser-data.json</code> stores bookmarks, app history and Community settings atomically for this Windows account. Repeat history is consolidated, explicitly typed addresses can influence local suggestions, and the chosen search provider is stored locally. History recording can be disabled, cleared immediately or cleared on a clean exit. ZSEC does not reuse Chrome, Edge or Brave profiles and adds no ZSEC analytics, account, history upload or remote-control endpoint.</p>
+          <p>The optional password manager stores website origins, usernames, passwords and notes under a separate <code>password-vault</code> directory for the current Windows account. Windows DPAPI CurrentUser protects a random device key; an independently random vault master key and per-record keys protect authenticated encrypted records. Passwords stay concealed in the manager list. The vault locks after five idle minutes, and a copied username or password is cleared after 30 seconds if the clipboard still contains that exact copied value.</p>
+          <p>The vault is opened and operated by the user. It does not inject credentials into pages, capture login forms, enable WebView2 password autosave, upload or synchronise entries, or claim protection from malware running as the unlocked Windows user, keylogging, page compromise, a stolen interactive session or browser-process memory access. ZMath supplies a domain-separated commitment label only; it is not the vault cipher or a security proof.</p>
           <p>Clearing the app-history list does not delete WebView2 cookies, cache, IndexedDB, service workers, permissions, DNS/operating-system records or logs held by sites, networks or other providers. The Journalist preset is therefore not an ephemeral or “nothing retained” mode.</p>
         </article>
         <article class="panel panel-private">
@@ -134,7 +136,7 @@
           <span class="brand-mark" aria-hidden="true">Z</span>
           <span>ZSEC Browser</span>
         </a>
-        <p>Local-first browser privacy from TalkToAI. The accepted unsigned ZSEC Browser Community 0.3.12 Windows package and Browser Shields Community 0.5.2 for compatible Chromium-family browsers.</p>
+        <p>Local-first browser privacy from TalkToAI. The accepted unsigned ZSEC Browser Community 0.3.15 Windows package and Browser Shields Community 0.5.2 for compatible Chromium-family browsers.</p>
       </div>
       <div>
         <p class="footer-title">Policy</p>
@@ -150,7 +152,7 @@
           <li><a href="../">ZSEC Browser</a></li>
           <li><a href="../../zero-security/">ZSEC Antivirus</a></li>
           <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/eacd53438695946e5af5a063cacae6ada3dac51d/browser/zeroq-shields">Immutable Shields 0.5.2 source</a></li>
-          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.12">Community 0.3.12 release</a></li>
+          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.15">Community 0.3.15 release</a></li>
           <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield">GitHub repository</a></li>
         </ul>
       </div>
