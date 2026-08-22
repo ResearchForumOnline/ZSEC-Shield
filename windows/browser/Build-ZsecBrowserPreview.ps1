@@ -6,11 +6,56 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$ProductVersion = "0.3.10"
+$ProductVersion = "0.3.11"
 $WebView2Version = "1.0.4129.50"
 $WebView2Uri = "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/$WebView2Version/microsoft.web.webview2.$WebView2Version.nupkg"
 $WebView2Sha256 = "d3934f482d484b89fb4825df720c710664e1143a1e90f7b3a60794ef33f473d2"
 $WebView2Sha512Base64 = "9TM9AZpDUiAb6OJB9s6thxl63BJFgbINcp047Zy+oiz9+cjgLhFrMRZ5Be+5wVHGvMJR3z1rmPWeJipo4g0sJw=="
+$CompilerToolsetVersion = "4.14.0"
+$CompilerToolsetUri = "https://api.nuget.org/v3-flatcontainer/microsoft.net.compilers.toolset/$CompilerToolsetVersion/microsoft.net.compilers.toolset.$CompilerToolsetVersion.nupkg"
+$CompilerToolsetSha256 = "941a9cf3ea618d88d01a3dd6b1a45a06bcf07716a9f81ce4031caa3edd24a845"
+$CompilerToolsetSha512Base64 = "h5GExC3fx0fm0qHw8rQ6y5c0uk6cCiAsorLl9Hq/9VlotEvsv/oW60RNo8HOYApv66kNqJq4Bg/TkSAsgQAwbQ=="
+$CompilerSourcePathMap = "/_/src"
+
+function Assert-PinnedNuGetPackage {
+    param(
+        [Parameter(Mandatory = $true)][string]$PackagePath,
+        [Parameter(Mandatory = $true)][string]$ExpectedSha256,
+        [Parameter(Mandatory = $true)][string]$ExpectedSha512Base64,
+        [Parameter(Mandatory = $true)][string]$PackageLabel
+    )
+    if (-not (Test-Path -LiteralPath $PackagePath -PathType Leaf)) {
+        throw "The pinned $PackageLabel package is absent."
+    }
+    $actualSha256 = (
+        Get-FileHash -Algorithm SHA256 -LiteralPath $PackagePath
+    ).Hash.ToLowerInvariant()
+    if ($actualSha256 -ne $ExpectedSha256) {
+        throw "The pinned $PackageLabel package failed its SHA-256 check."
+    }
+    $sha512 = [Security.Cryptography.SHA512]::Create()
+    $stream = $null
+    try {
+        $stream = [IO.File]::Open(
+            $PackagePath,
+            [IO.FileMode]::Open,
+            [IO.FileAccess]::Read,
+            [IO.FileShare]::Read
+        )
+        $actualSha512Base64 = [Convert]::ToBase64String(
+            $sha512.ComputeHash($stream)
+        )
+    }
+    finally {
+        if ($null -ne $stream) {
+            $stream.Dispose()
+        }
+        $sha512.Dispose()
+    }
+    if ($actualSha512Base64 -ne $ExpectedSha512Base64) {
+        throw "The pinned $PackageLabel package failed the NuGet catalog SHA-512 check."
+    }
+}
 
 function Remove-OwnedPackageExtraction {
     param(
@@ -155,11 +200,11 @@ function Expand-PinnedPackageToFreshStaging {
         }
         catch {
             throw (
-                "The pinned Microsoft WebView2 SDK package extraction failed and " +
+                "The pinned NuGet package extraction failed and " +
                 "staging cleanup could not be verified."
             )
         }
-        throw "The pinned Microsoft WebView2 SDK package could not be extracted."
+        throw "The pinned NuGet package could not be extracted."
     }
 }
 
@@ -183,11 +228,12 @@ $ExtensionSource = Join-Path $RepoRoot "browser\zeroq-shields"
 $IconSource = Join-Path $RepoRoot "assets\brand\zeroq-icon.png"
 $IconPath = Join-Path $OutputDirectory "zsec-browser.ico"
 $LauncherPath = Join-Path $AppRoot "ZSEC Browser.exe"
-$CscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 $PackageCache = Join-Path $env:LOCALAPPDATA "TalkToAI\ZSEC Browser Build\packages\Microsoft.Web.WebView2\$WebView2Version"
 $PackagePath = Join-Path $PackageCache "microsoft.web.webview2.$WebView2Version.nupkg"
+$CompilerPackageCache = Join-Path $env:LOCALAPPDATA "TalkToAI\ZSEC Browser Build\packages\Microsoft.Net.Compilers.Toolset\$CompilerToolsetVersion"
+$CompilerPackagePath = Join-Path $CompilerPackageCache "microsoft.net.compilers.toolset.$CompilerToolsetVersion.nupkg"
 
-foreach ($path in @($LauncherSource, $ProductStateSource, $ProductPolicySource, $ProductDialogsSource, $YoutubeProtectionSource, $IconSource, $CscPath)) {
+foreach ($path in @($LauncherSource, $ProductStateSource, $ProductPolicySource, $ProductDialogsSource, $YoutubeProtectionSource, $IconSource)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Required build input is absent: $path"
     }
@@ -197,37 +243,48 @@ if (-not (Test-Path -LiteralPath (Join-Path $ExtensionSource "manifest.json") -P
 }
 
 New-Item -ItemType Directory -Path $PackageCache -Force | Out-Null
+New-Item -ItemType Directory -Path $CompilerPackageCache -Force | Out-Null
 if (-not (Test-Path -LiteralPath $PackagePath -PathType Leaf)) {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Invoke-WebRequest -UseBasicParsing -Uri $WebView2Uri -OutFile $PackagePath
 }
+if (-not (Test-Path -LiteralPath $CompilerPackagePath -PathType Leaf)) {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest `
+        -UseBasicParsing `
+        -Uri $CompilerToolsetUri `
+        -OutFile $CompilerPackagePath
+}
+Assert-PinnedNuGetPackage `
+    -PackagePath $PackagePath `
+    -ExpectedSha256 $WebView2Sha256 `
+    -ExpectedSha512Base64 $WebView2Sha512Base64 `
+    -PackageLabel "Microsoft WebView2 SDK"
+Assert-PinnedNuGetPackage `
+    -PackagePath $CompilerPackagePath `
+    -ExpectedSha256 $CompilerToolsetSha256 `
+    -ExpectedSha512Base64 $CompilerToolsetSha512Base64 `
+    -PackageLabel "Microsoft.Net.Compilers.Toolset"
 
-$actualSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $PackagePath).Hash.ToLowerInvariant()
-if ($actualSha256 -ne $WebView2Sha256) {
-    throw "The pinned Microsoft WebView2 SDK package failed its SHA-256 check."
-}
-$sha512 = [Security.Cryptography.SHA512]::Create()
-try {
-    $actualSha512Base64 = [Convert]::ToBase64String($sha512.ComputeHash([IO.File]::ReadAllBytes($PackagePath)))
-}
-finally {
-    $sha512.Dispose()
-}
-if ($actualSha512Base64 -ne $WebView2Sha512Base64) {
-    throw "The pinned Microsoft WebView2 SDK package failed the NuGet catalog SHA-512 check."
-}
-
-$PackageExtract = Expand-PinnedPackageToFreshStaging `
+$WebViewPackageExtract = Expand-PinnedPackageToFreshStaging `
     -PackagePath $PackagePath `
     -CacheRoot $PackageCache
 try {
-$CoreDll = Join-Path $PackageExtract "lib\net462\Microsoft.Web.WebView2.Core.dll"
-$WinFormsDll = Join-Path $PackageExtract "lib\net462\Microsoft.Web.WebView2.WinForms.dll"
-$LoaderDll = Join-Path $PackageExtract "runtimes\win-x64\native\WebView2Loader.dll"
+$CompilerPackageExtract = Expand-PinnedPackageToFreshStaging `
+    -PackagePath $CompilerPackagePath `
+    -CacheRoot $CompilerPackageCache
+try {
+$CoreDll = Join-Path $WebViewPackageExtract "lib\net462\Microsoft.Web.WebView2.Core.dll"
+$WinFormsDll = Join-Path $WebViewPackageExtract "lib\net462\Microsoft.Web.WebView2.WinForms.dll"
+$LoaderDll = Join-Path $WebViewPackageExtract "runtimes\win-x64\native\WebView2Loader.dll"
+$CscPath = Join-Path $CompilerPackageExtract "tasks\net472\csc.exe"
 foreach ($path in @($CoreDll, $WinFormsDll, $LoaderDll)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "The pinned Microsoft WebView2 package is incomplete: $path"
     }
+}
+if (-not (Test-Path -LiteralPath $CscPath -PathType Leaf)) {
+    throw "The pinned Microsoft.Net.Compilers.Toolset package is incomplete."
 }
 
 New-Item -ItemType Directory -Path $AppRoot -Force | Out-Null
@@ -245,10 +302,13 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $compilerArguments = @(
+    "/noconfig",
     "/nologo",
     "/target:winexe",
     "/optimize+",
+    "/deterministic+",
     "/platform:x64",
+    "/pathmap:$RepoRoot=$CompilerSourcePathMap",
     "/reference:System.dll",
     "/reference:System.Core.dll",
     "/reference:System.Drawing.dll",
@@ -347,16 +407,22 @@ $result = [ordered]@{
     standalone_chromium_fork = $false
     signed_zsec_binary = $false
     default_browser_changed = $false
-    launcher = $LauncherPath
+    launcher = "App/ZSEC Browser.exe"
     launcher_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $LauncherPath).Hash.ToLowerInvariant()
     webview2_sdk_version = $WebView2Version
     webview2_nuget_sha256 = $WebView2Sha256
     webview2_nuget_sha512_base64 = $WebView2Sha512Base64
+    compiler_distribution = "Microsoft.Net.Compilers.Toolset"
+    compiler_version = $CompilerToolsetVersion
+    compiler_nuget_sha256 = $CompilerToolsetSha256
+    compiler_nuget_sha512_base64 = $CompilerToolsetSha512Base64
+    compiler_deterministic = $true
+    compiler_source_pathmap = $CompilerSourcePathMap
     tracker_domain_count = [int]$policy.outputs.tracker_domain_count
     tracking_parameter_count = [int]$policy.outputs.tracking_parameter_count
     source_extension_version = [string]$policy.source_extension.version
     source_extension_id = "ddjbjhnlhapggenanpmcidieimaomiif"
-    payload_root = $PayloadRoot
+    payload_root = "payload"
     files = $fileManifest
 }
 $encoding = New-Object System.Text.UTF8Encoding($false)
@@ -368,7 +434,14 @@ $encoding = New-Object System.Text.UTF8Encoding($false)
 }
 finally {
     Remove-OwnedPackageExtraction `
-        -Path $PackageExtract `
+        -Path $CompilerPackageExtract `
+        -CacheRoot $CompilerPackageCache `
+        -PackagePath $CompilerPackagePath
+}
+}
+finally {
+    Remove-OwnedPackageExtraction `
+        -Path $WebViewPackageExtract `
         -CacheRoot $PackageCache `
         -PackagePath $PackagePath
 }

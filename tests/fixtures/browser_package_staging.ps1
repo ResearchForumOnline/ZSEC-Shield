@@ -147,6 +147,136 @@ if (-not $legacyPreserved) {
     throw "The poisoned legacy cache was read from or modified by staging cleanup."
 }
 
+$nestedWebViewCache = Join-Path $CacheRoot "nested-webview"
+$nestedCompilerCache = Join-Path $CacheRoot "nested-compiler"
+New-Item -ItemType Directory -Path $nestedWebViewCache -ErrorAction Stop | Out-Null
+New-Item -ItemType Directory -Path $nestedCompilerCache -ErrorAction Stop | Out-Null
+
+$webViewStage = $null
+$compilerStage = $null
+$nestedSuccessReached = $false
+try {
+    $webViewStage = Expand-PinnedPackageToFreshStaging `
+        -PackagePath $ValidPackage `
+        -CacheRoot $nestedWebViewCache
+    try {
+        $compilerStage = Expand-PinnedPackageToFreshStaging `
+            -PackagePath $ValidPackage `
+            -CacheRoot $nestedCompilerCache
+        $nestedSuccessReached = $true
+    }
+    finally {
+        if ($null -ne $compilerStage) {
+            Remove-OwnedPackageExtraction `
+                -Path $compilerStage `
+                -CacheRoot $nestedCompilerCache `
+                -PackagePath $ValidPackage
+        }
+    }
+}
+finally {
+    if ($null -ne $webViewStage) {
+        Remove-OwnedPackageExtraction `
+            -Path $webViewStage `
+            -CacheRoot $nestedWebViewCache `
+            -PackagePath $ValidPackage
+    }
+}
+if (-not $nestedSuccessReached) {
+    throw "The nested package success path did not run."
+}
+
+$webViewStage = $null
+$compilerStage = $null
+$buildFailureCaught = $false
+try {
+    try {
+        $webViewStage = Expand-PinnedPackageToFreshStaging `
+            -PackagePath $ValidPackage `
+            -CacheRoot $nestedWebViewCache
+        try {
+            $compilerStage = Expand-PinnedPackageToFreshStaging `
+                -PackagePath $ValidPackage `
+                -CacheRoot $nestedCompilerCache
+            throw "deliberate nested build failure"
+        }
+        finally {
+            if ($null -ne $compilerStage) {
+                Remove-OwnedPackageExtraction `
+                    -Path $compilerStage `
+                    -CacheRoot $nestedCompilerCache `
+                    -PackagePath $ValidPackage
+            }
+        }
+    }
+    finally {
+        if ($null -ne $webViewStage) {
+            Remove-OwnedPackageExtraction `
+                -Path $webViewStage `
+                -CacheRoot $nestedWebViewCache `
+                -PackagePath $ValidPackage
+        }
+    }
+}
+catch {
+    if ($_.Exception.Message -eq "deliberate nested build failure") {
+        $buildFailureCaught = $true
+    }
+    else {
+        throw
+    }
+}
+if (-not $buildFailureCaught) {
+    throw "The deliberate nested build failure did not propagate."
+}
+
+$webViewStage = $null
+$compilerStage = $null
+$compilerFailureCaught = $false
+try {
+    try {
+        $webViewStage = Expand-PinnedPackageToFreshStaging `
+            -PackagePath $ValidPackage `
+            -CacheRoot $nestedWebViewCache
+        try {
+            $compilerStage = Expand-PinnedPackageToFreshStaging `
+                -PackagePath $PartialPackage `
+                -CacheRoot $nestedCompilerCache
+        }
+        finally {
+            if ($null -ne $compilerStage) {
+                Remove-OwnedPackageExtraction `
+                    -Path $compilerStage `
+                    -CacheRoot $nestedCompilerCache `
+                    -PackagePath $PartialPackage
+            }
+        }
+    }
+    finally {
+        if ($null -ne $webViewStage) {
+            Remove-OwnedPackageExtraction `
+                -Path $webViewStage `
+                -CacheRoot $nestedWebViewCache `
+                -PackagePath $ValidPackage
+        }
+    }
+}
+catch {
+    $compilerFailureCaught = $true
+}
+if (-not $compilerFailureCaught) {
+    throw "The deliberate compiler-package extraction failure did not propagate."
+}
+$nestedStagesRemaining = @(
+    Get-ChildItem -LiteralPath @($nestedWebViewCache, $nestedCompilerCache) `
+        -Directory `
+        -Force |
+        Where-Object { $_.Name -match '^extract-[0-9a-f]{32}$' }
+)
+if ($nestedStagesRemaining.Count -ne 0) {
+    throw "A nested compiler or WebView staging path remained after cleanup."
+}
+
 [ordered]@{
     schema = "zsec.tests.browser-package-staging.v1"
     legacy_cache_ignored = $true
@@ -154,4 +284,7 @@ if (-not $legacyPreserved) {
     fresh_stage_used = $true
     partial_stage_not_reused = $true
     unexpected_nested_object_failed_closed = $true
+    nested_success_cleanup_verified = $nestedSuccessReached
+    nested_build_failure_cleanup_verified = $buildFailureCaught
+    compiler_extraction_failure_cleanup_verified = $compilerFailureCaught
 } | ConvertTo-Json -Depth 3

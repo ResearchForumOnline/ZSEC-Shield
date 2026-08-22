@@ -190,8 +190,8 @@ appear in product copy.
 
 The public core includes the scanner, data-only feed format and verifier, ZSV2
 quarantine and ZBA profile, browser extension/rules that are actually released,
-tests, threat models, and reproducible packaging. A useful offline/local product
-must remain available without a commercial account.
+tests, threat models, and packaging source plus verification contracts. A useful
+offline/local product must remain available without a commercial account.
 
 Separately licensed components may include OEM engines/signatures, managed
 reputation and sync services, enterprise fleet controls, customer-support systems,

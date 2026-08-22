@@ -1,6 +1,6 @@
 # Public claims policy
 
-## Allowed for Community 0.3.10
+## Allowed for Community 0.3.11
 
 - Open-source, deterministic, local, on-demand scanner.
 - Foreground post-change protection or automatic file-event monitoring, when

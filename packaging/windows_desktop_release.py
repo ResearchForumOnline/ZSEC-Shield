@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from importlib import import_module
 from pathlib import Path
 from typing import Any
 
@@ -118,6 +119,78 @@ def _copy_required(source: Path, destination: Path) -> None:
     shutil.copyfile(source, destination)
 
 
+def _windows_fixed_version_tuple(info: Any, prefix: str) -> tuple[int, int, int, int]:
+    high = int(getattr(info.ffi, f"{prefix}VersionMS"))
+    low = int(getattr(info.ffi, f"{prefix}VersionLS"))
+    return high >> 16, high & 0xFFFF, low >> 16, low & 0xFFFF
+
+
+def _read_windows_version_strings(executable: Path) -> tuple[Any, dict[str, str]]:
+    try:
+        versioninfo = import_module("PyInstaller.utils.win32.versioninfo")
+        reader = getattr(versioninfo, "read_version_info_from_executable", None)
+        if not callable(reader):
+            raise TypeError("PyInstaller version-information reader is unavailable")
+        info = reader(str(executable))
+    except Exception as exc:
+        raise DesktopReleaseError(
+            f"Windows version information could not be read: {executable.name}"
+        ) from exc
+    if info is None:
+        raise DesktopReleaseError(
+            f"Windows version information is absent: {executable.name}"
+        )
+    values: dict[str, str] = {}
+    for file_info in info.kids:
+        for table in getattr(file_info, "kids", ()):  # StringFileInfo only
+            for entry in getattr(table, "kids", ()):  # StringTable only
+                name = getattr(entry, "name", None)
+                value = getattr(entry, "val", None)
+                if isinstance(name, str) and isinstance(value, str):
+                    previous = values.setdefault(name, value)
+                    if previous != value:
+                        raise DesktopReleaseError(
+                            f"conflicting Windows version value for {name}: "
+                            f"{executable.name}"
+                        )
+    return info, values
+
+
+def _assert_windows_pe_identity(
+    executable: Path,
+    *,
+    version: str,
+    original_filename: str,
+    internal_name: str,
+    product_name: str,
+    file_description: str,
+) -> None:
+    info, values = _read_windows_version_strings(executable)
+    expected_strings = {
+        "OriginalFilename": original_filename,
+        "InternalName": internal_name,
+        "ProductName": product_name,
+        "FileDescription": file_description,
+        "FileVersion": f"{version}.0",
+        "ProductVersion": f"{version}.0",
+    }
+    for name, expected in expected_strings.items():
+        if values.get(name) != expected:
+            raise DesktopReleaseError(
+                f"unexpected Windows {name} for {executable.name}: "
+                f"{values.get(name)!r}"
+            )
+    expected_fixed = native.windows_version_tuple(version)
+    if _windows_fixed_version_tuple(info, "file") != expected_fixed:
+        raise DesktopReleaseError(
+            f"unexpected fixed file version for {executable.name}"
+        )
+    if _windows_fixed_version_tuple(info, "product") != expected_fixed:
+        raise DesktopReleaseError(
+            f"unexpected fixed product version for {executable.name}"
+        )
+
+
 def _write_manifest(root: Path, version: str) -> dict[str, Any]:
     files = native._manifest_files(root)
     manifest: dict[str, Any] = {
@@ -197,9 +270,11 @@ def build(output_dir: Path) -> dict[str, Any]:
     build_root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="build-", dir=build_root) as temporary_name:
         temporary = Path(temporary_name)
-        version_file = temporary / "windows-version-info.txt"
+        engine_version_file = temporary / "zsec-shield-version-info.txt"
+        gui_version_file = temporary / "zsec-antivirus-version-info.txt"
         icon_file = temporary / "zsec-antivirus.ico"
-        _write_windows_version_file(version_file, version)
+        native.write_windows_version_file(engine_version_file, version)
+        _write_windows_version_file(gui_version_file, version)
         subprocess.run(
             [
                 sys.executable,
@@ -215,8 +290,8 @@ def build(output_dir: Path) -> dict[str, Any]:
         environment.update(
             {
                 "PYTHONHASHSEED": "0",
-                "ZSEC_SHIELD_WINDOWS_VERSION_FILE": str(version_file),
-                "ZSEC_GUI_WINDOWS_VERSION_FILE": str(version_file),
+                "ZSEC_SHIELD_WINDOWS_VERSION_FILE": str(engine_version_file),
+                "ZSEC_GUI_WINDOWS_VERSION_FILE": str(gui_version_file),
                 "ZSEC_GUI_WINDOWS_ICON": str(icon_file),
             }
         )
@@ -244,6 +319,22 @@ def build(output_dir: Path) -> dict[str, Any]:
         gui_executable = gui_root / "ZSEC Antivirus.exe"
         if not cli_executable.is_file() or not gui_executable.is_file():
             raise DesktopReleaseError("PyInstaller did not create both required executables")
+        _assert_windows_pe_identity(
+            gui_executable,
+            version=version,
+            original_filename="ZSEC Antivirus.exe",
+            internal_name="zsec-antivirus-desktop",
+            product_name="ZSEC Antivirus",
+            file_description="ZSEC Antivirus desktop client",
+        )
+        _assert_windows_pe_identity(
+            cli_executable,
+            version=version,
+            original_filename="zsec-shield.exe",
+            internal_name="zsec-shield",
+            product_name="ZSEC Shield",
+            file_description="ZSEC Shield file scanner",
+        )
         native._smoke_test(cli_executable, temporary / "smoke-state", version)
         subprocess.run([str(gui_executable), "--help"], check=True, timeout=30)
 

@@ -32,6 +32,43 @@ def test_desktop_builder_is_syntax_valid_and_records_coexistence_policy() -> Non
     assert 'os.environ.get("LOCALAPPDATA")' in source
 
 
+def test_desktop_builder_separates_and_verifies_gui_and_engine_pe_identity() -> None:
+    source = (ROOT / "packaging" / "windows_desktop_release.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'engine_version_file = temporary / "zsec-shield-version-info.txt"' in source
+    assert 'gui_version_file = temporary / "zsec-antivirus-version-info.txt"' in source
+    assert "native.write_windows_version_file(engine_version_file, version)" in source
+    assert "_write_windows_version_file(gui_version_file, version)" in source
+    assert '"ZSEC_SHIELD_WINDOWS_VERSION_FILE": str(engine_version_file)' in source
+    assert '"ZSEC_GUI_WINDOWS_VERSION_FILE": str(gui_version_file)' in source
+    assert '"ZSEC_SHIELD_WINDOWS_VERSION_FILE": str(gui_version_file)' not in source
+    assert '"ZSEC_GUI_WINDOWS_VERSION_FILE": str(engine_version_file)' not in source
+    assert 'import_module("PyInstaller.utils.win32.versioninfo")' in source
+    assert 'getattr(versioninfo, "read_version_info_from_executable", None)' in source
+    assert "if not callable(reader):" in source
+    assert "Windows version information could not be read" in source
+    assert "except Exception as exc:" in source
+    executable_gate = source.index(
+        "_assert_windows_pe_identity(",
+        source.index("if not cli_executable.is_file()"),
+    )
+    assert executable_gate < source.index("native._smoke_test(cli_executable")
+    for required in (
+        'original_filename="ZSEC Antivirus.exe"',
+        'internal_name="zsec-antivirus-desktop"',
+        'product_name="ZSEC Antivirus"',
+        'file_description="ZSEC Antivirus desktop client"',
+        'original_filename="zsec-shield.exe"',
+        'internal_name="zsec-shield"',
+        'product_name="ZSEC Shield"',
+        'file_description="ZSEC Shield file scanner"',
+        '"FileVersion": f"{version}.0"',
+        '"ProductVersion": f"{version}.0"',
+    ):
+        assert required in source
+
+
 def test_desktop_installer_has_no_security_provider_mutation_surface() -> None:
     installer = (ROOT / "windows" / "desktop" / "Install-ZsecAntivirusDesktop.ps1").read_text(
         encoding="utf-8"
@@ -106,7 +143,7 @@ def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
     assert "Desktop Preview" not in app
     assert "DESKTOP PREVIEW" not in app
     assert 'self.root.title("ZSEC Antivirus")' in app
-    assert 'text="COMMUNITY 0.3.10"' in app
+    assert 'text="COMMUNITY 0.3.11"' in app
 
 
 def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None:
