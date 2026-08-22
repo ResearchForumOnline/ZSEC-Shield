@@ -26,6 +26,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: zsec-production-update-service
@@ -98,3 +100,23 @@ jobs:
           git add web/zsec intelligence/desktop-advisories.json intelligence/desktop-advisories.state.json
           git commit -m "data(updates): publish signed sequence ${SEQUENCE}"
           git push origin HEAD:main
+
+  deploy-pages:
+    needs: publish
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: web
+      - name: Deploy signed update endpoints and site
+        id: deployment
+        uses: actions/deploy-pages@v5
