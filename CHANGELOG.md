@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.2 - 2026-08-22
+
+- expanded the reversible Windows companion installer from one protected root to
+  one through eight exact roots, with safe existing-folder defaults and strict
+  state-directory/reparse-point exclusion;
+- added bounded heartbeat progress evidence during mandatory baseline and
+  reconciliation scans so long scans do not look like a dead protection process;
+- preserved the post-change Community boundary, existing-provider coexistence,
+  opt-in encrypted quarantine, and the fail-closed Malwarebytes replacement gate;
+  and
+- advanced the new desktop bytes to a distinct side-by-side version instead of
+  rewriting the published 0.3.1 artifact.
+
 ## 0.3.1 - 2026-08-22
 
 - added the path-free bounded exact-rule content worker used by CLI scan and

@@ -29,15 +29,15 @@ release = load_release_module()
 
 class NativePackagingTests(unittest.TestCase):
     def test_source_version_and_pyinstaller_pin_are_explicit(self) -> None:
-        self.assertEqual("0.3.1", release.project_version())
+        self.assertEqual("0.3.2", release.project_version())
         self.assertEqual("6.21.0", release.expected_pyinstaller_version())
 
     def test_release_tag_must_exactly_match_source_version(self) -> None:
-        self.assertEqual("0.3.1", release.verify_release_tag("v0.3.1"))
+        self.assertEqual("0.3.2", release.verify_release_tag("v0.3.2"))
         with self.assertRaises(release.ReleaseError):
             release.verify_release_tag("v0.1.0")
         with self.assertRaises(release.ReleaseError):
-            release.verify_release_tag("preview-0.3.1")
+            release.verify_release_tag("preview-0.3.2")
 
     def test_python_license_uses_checksum_pinned_vendored_fallback(self) -> None:
         with TemporaryDirectory() as temporary:
