@@ -18,7 +18,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "190914b85b20524bd3daccb2f01d3e8534148b21708b830dc3e95c3d4a4503b7",
+        "source_body_sha256": "288eedd436ff7fe57e55027f032719b7cd25ffd5793933e8a3abfbd0a57af75f",
         "source_record_id": "USN-8658-2"
       },
       "published_at": "2026-08-21T22:02:41Z",
@@ -30,7 +30,7 @@
       "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - Open vSwitch; - SCTP protocol; (CVE-2026-53224, CVE-2026-53246, CVE-2026-64531)",
       "title": "USN-8658-2: Linux kernel (IBM) vulnerabilities",
       "zba": {
-        "commitment": "64ccd5164b0b7cdac624095ae00a17d674088b4d8fc147fa1d5e18981e5eebf2",
+        "commitment": "c9362d8349c4cad3313d28a3925176511b037049e85428f162035028e64f9fb5",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -73,7 +73,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "190914b85b20524bd3daccb2f01d3e8534148b21708b830dc3e95c3d4a4503b7",
+        "source_body_sha256": "288eedd436ff7fe57e55027f032719b7cd25ffd5793933e8a3abfbd0a57af75f",
         "source_record_id": "USN-8661-2"
       },
       "published_at": "2026-08-21T21:58:55Z",
@@ -85,7 +85,7 @@
       "summary": "Siebe Devroe, Héloïse Gollier, and Mathy Vanhoef discovered that the WiFi implementation in the Linux kernel did not properly handle aggregated frames in mesh networks, due to an incorrect fix for CVE-2020-24588. A physically proximate attacker could use this issue to inject packets. (CVE-2025-27558) Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - x86 architecture; - InfiniBand drivers; - Network drivers; - NVME drivers; - Ext4 file system; - SMB network file system; - IPv4 networking; - Network traffic control; - TCP network protocol; - Locking primitives; -…",
       "title": "USN-8661-2: Linux kernel (Low Latency) vulnerabilities",
       "zba": {
-        "commitment": "420a835f6a4baed74a20eb05beaaa23141e9365e1853137db68c358fd11781b9",
+        "commitment": "1ef6ec9c370160a7e68a106373067bd344ad01aa7177f41c78dfaf7cc76eb741",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -333,7 +333,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "190914b85b20524bd3daccb2f01d3e8534148b21708b830dc3e95c3d4a4503b7",
+        "source_body_sha256": "288eedd436ff7fe57e55027f032719b7cd25ffd5793933e8a3abfbd0a57af75f",
         "source_record_id": "USN-8669-1"
       },
       "published_at": "2026-08-21T19:59:28Z",
@@ -345,7 +345,7 @@
       "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - Foo-over-UDP (FOU); - ARM64 architecture; - x86 architecture; - Block layer subsystem; - Drivers core; - Null block device driver; - Bluetooth drivers; - Counter interface drivers; - DMA engine subsystem; - DPLL subsystem; - GPIO subsystem; - GPU drivers; - I2C subsystem; - IIO ADC drivers; - IIO subsystem; - InfiniBand drivers; - On-Chip Interconnect management framework; - IOMMU subsystem; - IRQ chip drivers; - Modular ISDN driver; - LED subsystem; - Multiple devices driver; - Media drivers; - UACCE accelerato…",
       "title": "USN-8669-1: Linux kernel (NVIDIA) vulnerabilities",
       "zba": {
-        "commitment": "cd05880a471a0d99057b91e503956566a1c47dd38accdfbce9b1a0355700c03c",
+        "commitment": "da454ce505c761072217a55c6322b35ac02a71bda209edbf54bbd57d2a61df61",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -370,7 +370,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "190914b85b20524bd3daccb2f01d3e8534148b21708b830dc3e95c3d4a4503b7",
+        "source_body_sha256": "288eedd436ff7fe57e55027f032719b7cd25ffd5793933e8a3abfbd0a57af75f",
         "source_record_id": "USN-8643-3"
       },
       "published_at": "2026-08-21T19:54:33Z",
@@ -382,7 +382,7 @@
       "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - Network drivers; - Open vSwitch; - SCTP protocol; (CVE-2026-53224, CVE-2026-53246, CVE-2026-53247, CVE-2026-64531)",
       "title": "USN-8643-3: Linux kernel (NVIDIA) vulnerabilities",
       "zba": {
-        "commitment": "51fb409aa7d7b5f3bf3130976b1fffce9e5d72377d3cbdc159c8e53e8b808684",
+        "commitment": "87eb6a5204c3dae6a4de8bfc81b73826109e273f1bde21936e9e4817cacc74e5",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -402,7 +402,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "190914b85b20524bd3daccb2f01d3e8534148b21708b830dc3e95c3d4a4503b7",
+        "source_body_sha256": "288eedd436ff7fe57e55027f032719b7cd25ffd5793933e8a3abfbd0a57af75f",
         "source_record_id": "USN-8659-2"
       },
       "published_at": "2026-08-21T19:49:55Z",
@@ -414,7 +414,7 @@
       "summary": "A security issue was discovered in the Linux kernel. An attacker could possibly use this to compromise the system. This update corrects flaws in the following subsystems: - Open vSwitch;",
       "title": "USN-8659-2: Linux kernel (HWE) vulnerability",
       "zba": {
-        "commitment": "8bdb188c0762e4df6e2d021828c03ba5f39242c1428949f64ec2b315fd9fa982",
+        "commitment": "a98ee9643e4be96e0b4372134b90bd2e8258610a278154454686dd79edc9b40d",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -691,7 +691,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "190914b85b20524bd3daccb2f01d3e8534148b21708b830dc3e95c3d4a4503b7",
+        "source_body_sha256": "288eedd436ff7fe57e55027f032719b7cd25ffd5793933e8a3abfbd0a57af75f",
         "source_record_id": "USN-8668-1"
       },
       "published_at": "2026-08-21T19:45:48Z",
@@ -703,7 +703,7 @@
       "summary": "Maxim Suhanov discovered that the NTFS file system implementation in the Linux kernel did not properly validate file name length in certain situations, leading to an out-of-bounds read. An attacker could use this to construct a malicious NTFS image that, when mounted and operated on, could expose sensitive information (kernel memory). (CVE-2023-45896) It was discovered that some AMD processors did not properly clear data in the floating point divider unit during speculative execution. A local attacker could use this to expose sensitive information. (CVE-2025-54505) It was discovered that some AMD Zen 2 processors did not properly isolate shared resources in the operation cache. A local atta…",
       "title": "USN-8668-1: Linux kernel (GCP) vulnerabilities",
       "zba": {
-        "commitment": "9430ff808d152e1b50244841b57af655dacdcca8143198800e814849c199448d",
+        "commitment": "a7c52a39bddfce287b00f2d9c0124175b97457eb6dd1f96ee521b0e426c011a8",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -762,7 +762,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "190914b85b20524bd3daccb2f01d3e8534148b21708b830dc3e95c3d4a4503b7",
+        "source_body_sha256": "288eedd436ff7fe57e55027f032719b7cd25ffd5793933e8a3abfbd0a57af75f",
         "source_record_id": "USN-8667-1"
       },
       "published_at": "2026-08-21T19:27:34Z",
@@ -774,7 +774,7 @@
       "summary": "Siebe Devroe, Héloïse Gollier, and Mathy Vanhoef discovered that the WiFi implementation in the Linux kernel did not properly handle aggregated frames in mesh networks, due to an incorrect fix for CVE-2020-24588. A physically proximate attacker could use this issue to inject packets. (CVE-2025-27558) Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - x86 architecture; - Cryptographic API; - InfiniBand drivers; - Media drivers; - NVIDIA Tegra memory controller driver; - Network drivers; - NVME drivers; - File systems infrastructure; - Ext4 file system; - Network…",
       "title": "USN-8667-1: Linux kernel (KVM) vulnerabilities",
       "zba": {
-        "commitment": "8659d6f87b26b11e2d0954488ed853c17b0746cc796adb61f172a44e1ee00db5",
+        "commitment": "3ded114482addb5acb65af0cb28a3eac24eadffd0ed3865671193edab3542ee9",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -811,7 +811,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "190914b85b20524bd3daccb2f01d3e8534148b21708b830dc3e95c3d4a4503b7",
+        "source_body_sha256": "288eedd436ff7fe57e55027f032719b7cd25ffd5793933e8a3abfbd0a57af75f",
         "source_record_id": "USN-8662-2"
       },
       "published_at": "2026-08-21T19:23:06Z",
@@ -823,7 +823,7 @@
       "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - x86 architecture; - Cryptographic API; - InfiniBand drivers; - Media drivers; - STMicroelectronics network drivers; - Network drivers; - Ext4 file system; - IPv4 networking; - TCP network protocol; - Locking primitives; - Ceph Core library; - IPv6 networking; - Multipath TCP; - Netfilter; - SCTP protocol; - SMC sockets; (CVE-2026-31405, CVE-2026-31414, CVE-2026-31448, CVE-2026-31649, CVE-2026-43198, CVE-2026-43493, CVE-2026-43499, CVE-2026-46266, CVE-2026-52955, CVE-2026-52982, CVE-2026-52986, CVE-2026-53006, CV…",
       "title": "USN-8662-2: Linux kernel (FIPS) vulnerabilities",
       "zba": {
-        "commitment": "019ce70fdf689388241ad59aa2b16e5b8746c8150a4b81ddb2de88f46245aaea",
+        "commitment": "48f8fa43f64162280b9c24787dd9b6c6e6f1fbd517ab394fbc771d5fee5ed6d0",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -877,7 +877,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "190914b85b20524bd3daccb2f01d3e8534148b21708b830dc3e95c3d4a4503b7",
+        "source_body_sha256": "288eedd436ff7fe57e55027f032719b7cd25ffd5793933e8a3abfbd0a57af75f",
         "source_record_id": "USN-8666-1"
       },
       "published_at": "2026-08-20T23:47:34Z",
@@ -889,7 +889,7 @@
       "summary": "Siebe Devroe, Héloïse Gollier, and Mathy Vanhoef discovered that the WiFi implementation in the Linux kernel did not properly handle aggregated frames in mesh networks, due to an incorrect fix for CVE-2020-24588. A physically proximate attacker could use this issue to inject packets. (CVE-2025-27558) Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - x86 architecture; - Cryptographic API; - InfiniBand drivers; - Media drivers; - NVIDIA Tegra memory controller driver; - Network drivers; - NVME drivers; - File systems infrastructure; - Ext4 file system; - IPv4 net…",
       "title": "USN-8666-1: Linux kernel vulnerabilities",
       "zba": {
-        "commitment": "4af10aaf91edec545b0057bb8b65c1c965bcdad6a6d2e27e0cc225aa3c820eb1",
+        "commitment": "dbcab2c5aaca22d5e4d65c8ece11c6bb355175948661c61f1453434152a5e578",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -1166,7 +1166,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "190914b85b20524bd3daccb2f01d3e8534148b21708b830dc3e95c3d4a4503b7",
+        "source_body_sha256": "288eedd436ff7fe57e55027f032719b7cd25ffd5793933e8a3abfbd0a57af75f",
         "source_record_id": "USN-8665-1"
       },
       "published_at": "2026-08-20T23:31:14Z",
@@ -1178,7 +1178,7 @@
       "summary": "It was discovered that some AMD processors did not properly clear data in the floating point divider unit during speculative execution. A local attacker could use this to expose sensitive information. (CVE-2025-54505) It was discovered that some AMD Zen 2 processors did not properly isolate shared resources in the operation cache. A local attacker could possibly use this issue to corrupt instructions executed at a higher privilege level, resulting in privilege escalation. (CVE-2025-54518) It was discovered that some AMD Zen 5 processors supporting RDSEED instruction did not properly handle entropy, potentially resulting in the consumption of insufficiently random values. A local attacker co…",
       "title": "USN-8665-1: Linux kernel (Raspberry Pi) vulnerabilities",
       "zba": {
-        "commitment": "bf6a424c7589d98537f29059142d264fb82d35c9f62f7d3bd78c3b7d78b69310",
+        "commitment": "919c2fa2d35b96f9f9e246bf53edc05579ca40d4284a556ca28e1ce86ff86442",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -37141,8 +37141,8 @@
     {
       "advisory_count": 10,
       "authority": "Canonical Ubuntu Security Team",
-      "body_sha256": "190914b85b20524bd3daccb2f01d3e8534148b21708b830dc3e95c3d4a4503b7",
-      "contribution_sha256": "9c2a0f859029597e7c7b335d9285eb0174872a36bec987ece62fbfee4d63cf91",
+      "body_sha256": "288eedd436ff7fe57e55027f032719b7cd25ffd5793933e8a3abfbd0a57af75f",
+      "contribution_sha256": "b89eac8651ce61e64efac426c0c0a5b35864ff567f37f9b3d5b7a9eca3e5c378",
       "parser": "ubuntu-usn-rss-v1",
       "semantic_sha256": "7c1942a03d19448a524d7b980742d74cd041d4f05ef801fedc85c8e5af2c5a39",
       "source_id": "ubuntu-usn",
