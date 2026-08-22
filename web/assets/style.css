@@ -448,6 +448,13 @@ code[data-linux-sha] {
   padding-block: clamp(5rem, 9vw, 8rem);
 }
 
+.hero-grid > *,
+.hero-copy,
+.hero-actions,
+.cta-actions {
+  min-width: 0;
+}
+
 .hero h1 {
   color: var(--white);
   overflow-wrap: anywhere;
@@ -472,9 +479,14 @@ code[data-linux-sha] {
 }
 
 .hero-kicker {
+  position: relative;
+  display: block;
+  width: fit-content;
   max-width: 100%;
   color: #91baff;
   overflow-wrap: anywhere;
+  padding-left: 1.05rem;
+  white-space: normal;
 }
 
 .product-browser .hero-kicker {
@@ -490,6 +502,12 @@ code[data-linux-sha] {
   background: currentcolor;
   box-shadow: 0 0 0 0.3rem rgb(19 107 255 / 11%);
   content: "";
+}
+
+.hero-kicker::before {
+  position: absolute;
+  top: 0.45em;
+  left: 0;
 }
 
 .product-browser .hero-kicker::before,
@@ -519,6 +537,8 @@ code[data-linux-sha] {
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
   background: var(--security);
@@ -529,6 +549,8 @@ code[data-linux-sha] {
   line-height: 1.2;
   text-align: center;
   text-decoration: none;
+  overflow-wrap: anywhere;
+  white-space: normal;
   transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
