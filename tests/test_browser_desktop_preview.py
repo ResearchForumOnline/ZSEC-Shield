@@ -139,6 +139,10 @@ def test_desktop_tabs_popups_and_modern_controls_are_wired() -> None:
     assert '"Microsoft Edge PDF Viewer"' in app
     assert 'lastTabAction = "closed"' in app
     assert 'schema=zsec.browser.startup-failure.v1' in app
+    assert "protected override bool ProcessCmdKey" in app
+    assert "keyData == (Keys.Control | Keys.T)" in app
+    assert "keyData == (Keys.Control | Keys.W)" in app
+    assert "view.KeyDown += BrowserKeyDown" in app
 
 
 def test_bundled_extension_has_stable_identity_and_bounded_youtube_assist() -> None:

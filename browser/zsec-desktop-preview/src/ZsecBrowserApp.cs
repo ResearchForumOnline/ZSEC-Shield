@@ -688,6 +688,8 @@ namespace TalkToAI.ZsecBrowserPreview
                 .ToLowerInvariant();
             await EnsureShieldsExtensionAsync(core.Profile);
 
+            view.KeyDown += BrowserKeyDown;
+
             core.NavigationStarting += delegate(object sender, CoreWebView2NavigationStartingEventArgs args)
             {
                 navigationProgress.Visible = true;
@@ -989,35 +991,76 @@ namespace TalkToAI.ZsecBrowserPreview
         {
             if (args.Control && args.KeyCode == Keys.L)
             {
-                address.Focus();
-                address.SelectAll();
                 args.SuppressKeyPress = true;
+                args.Handled = true;
+                BeginInvoke(new Action(delegate { address.Focus(); address.SelectAll(); }));
             }
             else if (args.Control && args.KeyCode == Keys.T)
             {
-                CreateTabFromKeyboardAsync();
                 args.SuppressKeyPress = true;
+                args.Handled = true;
+                BeginInvoke(new Action(delegate { CreateTabFromKeyboardAsync(); }));
             }
             else if (args.Control && args.KeyCode == Keys.R)
             {
-                if (ActiveView != null) ActiveView.Reload();
                 args.SuppressKeyPress = true;
+                args.Handled = true;
+                BeginInvoke(new Action(delegate { if (ActiveView != null) ActiveView.Reload(); }));
             }
             else if (args.Control && args.KeyCode == Keys.W && tabs.TabPages.Count > 1)
             {
-                CloseActiveTab();
                 args.SuppressKeyPress = true;
+                args.Handled = true;
+                BeginInvoke(new Action(CloseActiveTab));
             }
             else if (args.Alt && args.KeyCode == Keys.Left)
             {
-                if (ActiveView != null && ActiveView.CanGoBack) ActiveView.GoBack();
                 args.SuppressKeyPress = true;
+                args.Handled = true;
+                BeginInvoke(new Action(delegate { if (ActiveView != null && ActiveView.CanGoBack) ActiveView.GoBack(); }));
             }
             else if (args.Alt && args.KeyCode == Keys.Right)
             {
-                if (ActiveView != null && ActiveView.CanGoForward) ActiveView.GoForward();
                 args.SuppressKeyPress = true;
+                args.Handled = true;
+                BeginInvoke(new Action(delegate { if (ActiveView != null && ActiveView.CanGoForward) ActiveView.GoForward(); }));
             }
+        }
+
+        protected override bool ProcessCmdKey(ref Message message, Keys keyData)
+        {
+            if (keyData == (Keys.Control | Keys.L))
+            {
+                address.Focus();
+                address.SelectAll();
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.T))
+            {
+                CreateTabFromKeyboardAsync();
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.W))
+            {
+                if (tabs.TabPages.Count > 1) CloseActiveTab();
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.R))
+            {
+                if (ActiveView != null) ActiveView.Reload();
+                return true;
+            }
+            if (keyData == (Keys.Alt | Keys.Left))
+            {
+                if (ActiveView != null && ActiveView.CanGoBack) ActiveView.GoBack();
+                return true;
+            }
+            if (keyData == (Keys.Alt | Keys.Right))
+            {
+                if (ActiveView != null && ActiveView.CanGoForward) ActiveView.GoForward();
+                return true;
+            }
+            return base.ProcessCmdKey(ref message, keyData);
         }
 
         private void Navigate(string destination)
