@@ -25,6 +25,8 @@ internal static class BrowserProductStateTests
             TestDefaultsAndRoundTrip(Path.Combine(parent, "roundtrip"));
             TestBookmarksAndImportExport(Path.Combine(parent, "bookmarks"));
             TestHistoryPolicyAndBounds(Path.Combine(parent, "history"));
+            TestAddressSuggestionsAndSearch(Path.Combine(parent, "suggestions"));
+            TestNativeRequestPolicy();
             Console.WriteLine("Browser product state tests passed: " + assertions.ToString());
             return 0;
         }
@@ -43,12 +45,14 @@ internal static class BrowserProductStateTests
     {
         BrowserDataStore store = new BrowserDataStore(root);
         BrowserProductData data = store.Load();
-        Assert(data.SchemaVersion == 1, "Default schema version is wrong.");
+        Assert(data.SchemaVersion == 2, "Default schema version is wrong.");
         Assert(data.Settings.StartupMode == "home", "Default startup mode is wrong.");
         Assert(data.Settings.RecordHistory, "History should be enabled by default.");
         Assert(data.Settings.MinimizeToTray, "Minimize-to-tray should be available by default.");
         Assert(!data.Settings.CloseToTray, "The close button must default to a clean exit.");
         Assert(data.Settings.AskDownloadLocation, "Download location prompting should default on.");
+        Assert(data.Settings.BlockYoutubeAds, "YouTube ad protection should default on.");
+        Assert(data.Settings.SearchEngine == "brave", "Brave Search should be the default.");
 
         data.Settings.StartupMode = "custom";
         data.Settings.CustomStartupUrl = "https://example.com/start";
@@ -112,6 +116,9 @@ internal static class BrowserProductStateTests
         BrowserProductData data = store.Load();
         store.AddHistory(data, "Example", "https://example.com/");
         Assert(data.History.Count == 1, "History entry was not recorded.");
+        store.AddHistory(data, "Typed example", "https://example.com/", true);
+        Assert(data.History.Count == 1, "A repeat visit should consolidate one URL.");
+        Assert(data.History[0].TypedCount == 1, "Typed navigation count was not recorded.");
         data.Settings.RecordHistory = false;
         store.AddHistory(data, "Ignored", "https://example.org/");
         Assert(data.History.Count == 1, "Disabled history still recorded an entry.");
@@ -135,5 +142,80 @@ internal static class BrowserProductStateTests
         );
         store.ClearHistory(bounded);
         Assert(store.Load().History.Count == 0, "History clear did not persist.");
+    }
+
+    private static void TestAddressSuggestionsAndSearch(string root)
+    {
+        BrowserDataStore store = new BrowserDataStore(root);
+        BrowserProductData data = store.Load();
+        store.AddHistory(data, "Ordinary", "https://ordinary.example/path", false);
+        store.AddHistory(data, "Typed", "https://www.typed.example/article", true);
+        store.AddBookmark(data, "Saved", "https://saved.example/bookmark");
+        string[] suggestions = store.GetAddressSuggestions(data, String.Empty, 20).ToArray();
+        Assert(suggestions[0] == "https://www.typed.example/article", "Typed URL was not ranked first.");
+        Assert(suggestions.Contains("typed.example/article"), "Scheme-free typed URL suggestion is absent.");
+        Assert(suggestions.Contains("saved.example/bookmark"), "Bookmark suggestion is absent.");
+        Assert(
+            store.GetAddressSuggestions(data, "typed", 20).All(value =>
+                value.IndexOf("typed", StringComparison.OrdinalIgnoreCase) >= 0),
+            "Address suggestion filtering returned an unrelated URL."
+        );
+        Assert(
+            BrowserSearchProviders.BuildSearchUrl("duckduckgo", "free speech") ==
+                "https://duckduckgo.com/?q=free%20speech",
+            "DuckDuckGo search URL is wrong."
+        );
+        Assert(
+            BrowserSearchProviders.NormalizeKey("not-a-provider") == "brave",
+            "Unknown search providers must fail to the reviewed default."
+        );
+        Assert(BrowserSearchProviders.All.Count() == 7, "Search provider catalogue drifted.");
+    }
+
+    private static void TestNativeRequestPolicy()
+    {
+        const string Youtube = "https://www.youtube.com/watch?v=test";
+        Assert(
+            BrowserRequestPolicy.IsYoutubeAdRequest(
+                Youtube,
+                "https://www.youtube.com/pagead/interaction/"
+            ),
+            "YouTube page-ad endpoint was not classified."
+        );
+        Assert(
+            BrowserRequestPolicy.IsYoutubeAdRequest(
+                Youtube,
+                "https://static.doubleclick.net/instream/ad_status.js"
+            ),
+            "YouTube third-party ad endpoint was not classified."
+        );
+        Assert(
+            !BrowserRequestPolicy.IsYoutubeAdRequest(
+                Youtube,
+                "https://www.youtube.com/youtubei/v1/player"
+            ),
+            "The normal YouTube player endpoint must not be blocked."
+        );
+        string[] trackers = { "doubleclick.net", "tracker.example" };
+        Assert(
+            BrowserRequestPolicy.IsReviewedThirdPartyTracker(
+                "https://news.example/article",
+                "https://ads.doubleclick.net/pixel.js",
+                trackers
+            ),
+            "Reviewed third-party tracker was not classified."
+        );
+        Assert(
+            !BrowserRequestPolicy.IsReviewedThirdPartyTracker(
+                "https://news.example/article",
+                "https://cdn.news.example/app.js",
+                trackers
+            ),
+            "Same-site content was incorrectly classified as a tracker."
+        );
+        Assert(
+            !BrowserRequestPolicy.HostMatchesDomain("notdoubleclick.net", "doubleclick.net"),
+            "Tracker matching crossed a DNS label boundary."
+        );
     }
 }

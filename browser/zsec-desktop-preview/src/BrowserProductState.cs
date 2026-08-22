@@ -21,6 +21,7 @@ namespace TalkToAI.ZsecBrowserPreview
         public string Title { get; set; }
         public string Url { get; set; }
         public string VisitedAtUtc { get; set; }
+        public int TypedCount { get; set; }
     }
 
     internal sealed class BrowserSettings
@@ -35,6 +36,8 @@ namespace TalkToAI.ZsecBrowserPreview
         public bool AskDownloadLocation { get; set; }
         public string DownloadDirectory { get; set; }
         public bool NativeStrictMode { get; set; }
+        public bool BlockYoutubeAds { get; set; }
+        public string SearchEngine { get; set; }
 
         internal static BrowserSettings CreateDefault()
         {
@@ -52,7 +55,9 @@ namespace TalkToAI.ZsecBrowserPreview
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     "Downloads"
                 ),
-                NativeStrictMode = false
+                NativeStrictMode = false,
+                BlockYoutubeAds = true,
+                SearchEngine = "brave"
             };
         }
 
@@ -69,7 +74,9 @@ namespace TalkToAI.ZsecBrowserPreview
                 CloseToTray = CloseToTray,
                 AskDownloadLocation = AskDownloadLocation,
                 DownloadDirectory = DownloadDirectory,
-                NativeStrictMode = NativeStrictMode
+                NativeStrictMode = NativeStrictMode,
+                BlockYoutubeAds = BlockYoutubeAds,
+                SearchEngine = SearchEngine
             };
         }
     }
@@ -85,7 +92,7 @@ namespace TalkToAI.ZsecBrowserPreview
         {
             return new BrowserProductData
             {
-                SchemaVersion = 1,
+                SchemaVersion = 2,
                 Bookmarks = new List<BrowserBookmark>(),
                 History = new List<BrowserHistoryEntry>(),
                 Settings = BrowserSettings.CreateDefault()
@@ -213,14 +220,30 @@ namespace TalkToAI.ZsecBrowserPreview
 
         internal void AddHistory(BrowserProductData data, string title, string url)
         {
+            AddHistory(data, title, url, false);
+        }
+
+        internal void AddHistory(BrowserProductData data, string title, string url, bool typed)
+        {
             if (!data.Settings.RecordHistory) return;
             Uri parsed;
             if (!TryNormalizeWebUrl(url, out parsed)) return;
+            string normalizedUrl = parsed.AbsoluteUri;
+            BrowserHistoryEntry existing = data.History.FirstOrDefault(item =>
+                item != null && String.Equals(item.Url, normalizedUrl, StringComparison.OrdinalIgnoreCase)
+            );
+            int typedCount = typed ? 1 : 0;
+            if (existing != null)
+            {
+                typedCount += Math.Max(0, existing.TypedCount);
+                data.History.Remove(existing);
+            }
             data.History.Insert(0, new BrowserHistoryEntry
             {
                 Title = NormalizeTitle(title, parsed.Host),
-                Url = parsed.AbsoluteUri,
-                VisitedAtUtc = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                Url = normalizedUrl,
+                VisitedAtUtc = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                TypedCount = typedCount
             });
             if (data.History.Count > MaximumHistoryEntries)
             {
@@ -236,6 +259,40 @@ namespace TalkToAI.ZsecBrowserPreview
         {
             data.History.Clear();
             Save(data);
+        }
+
+        internal IReadOnlyList<string> GetAddressSuggestions(
+            BrowserProductData data,
+            string input,
+            int maximum
+        )
+        {
+            if (data == null || maximum <= 0) return new List<string>();
+            string term = (input ?? String.Empty).Trim();
+            IEnumerable<Tuple<string, int, int>> history = data.History
+                .Where(item => item != null)
+                .Select((item, index) => Tuple.Create(
+                    item.Url,
+                    Math.Max(0, item.TypedCount),
+                    index
+                ));
+            IEnumerable<Tuple<string, int, int>> bookmarks = data.Bookmarks
+                .Where(item => item != null)
+                .Select((item, index) => Tuple.Create(item.Url, 0, index + 100000));
+            return history.Concat(bookmarks)
+                .Where(item => !String.IsNullOrWhiteSpace(item.Item1))
+                .GroupBy(item => item.Item1, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group
+                    .OrderByDescending(item => item.Item2)
+                    .ThenBy(item => item.Item3)
+                    .First())
+                .Where(item => AddressSuggestionMatches(item.Item1, term))
+                .OrderByDescending(item => item.Item2)
+                .ThenBy(item => item.Item3)
+                .SelectMany(item => AddressSuggestionForms(item.Item1))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(Math.Min(maximum, 2000))
+                .ToList();
         }
 
         internal int ImportBookmarksHtml(BrowserProductData data, string path)
@@ -325,8 +382,10 @@ namespace TalkToAI.ZsecBrowserPreview
         private BrowserProductData Normalize(BrowserProductData data)
         {
             if (data == null) data = BrowserProductData.CreateDefault();
-            data.SchemaVersion = 1;
+            bool legacySchema = data.SchemaVersion < 2;
+            data.SchemaVersion = 2;
             if (data.Settings == null) data.Settings = BrowserSettings.CreateDefault();
+            else if (legacySchema) data.Settings.BlockYoutubeAds = true;
             NormalizeSettings(data.Settings);
             if (data.Bookmarks == null) data.Bookmarks = new List<BrowserBookmark>();
             if (data.History == null) data.History = new List<BrowserHistoryEntry>();
@@ -368,7 +427,8 @@ namespace TalkToAI.ZsecBrowserPreview
             {
                 Title = NormalizeTitle(item.Title, parsed.Host),
                 Url = parsed.AbsoluteUri,
-                VisitedAtUtc = NormalizeTimestamp(item.VisitedAtUtc)
+                VisitedAtUtc = NormalizeTimestamp(item.VisitedAtUtc),
+                TypedCount = Math.Max(0, item.TypedCount)
             };
         }
 
@@ -396,6 +456,30 @@ namespace TalkToAI.ZsecBrowserPreview
                 );
             }
             settings.DownloadDirectory = Path.GetFullPath(downloads);
+            settings.SearchEngine = BrowserSearchProviders.NormalizeKey(settings.SearchEngine);
+        }
+
+        private static bool AddressSuggestionMatches(string url, string term)
+        {
+            if (term.Length == 0) return true;
+            string lowered = term.ToLowerInvariant();
+            return url.IndexOf(lowered, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                AddressSuggestionForms(url).Any(value =>
+                    value.StartsWith(lowered, StringComparison.OrdinalIgnoreCase)
+                );
+        }
+
+        private static IEnumerable<string> AddressSuggestionForms(string url)
+        {
+            Uri parsed;
+            if (!TryNormalizeWebUrl(url, out parsed)) yield break;
+            yield return parsed.AbsoluteUri;
+            string host = parsed.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
+                ? parsed.Host.Substring(4)
+                : parsed.Host;
+            string display = host + parsed.PathAndQuery;
+            if (!String.IsNullOrEmpty(parsed.Fragment)) display += parsed.Fragment;
+            yield return display;
         }
 
         private static string NormalizeTitle(string title, string fallback)

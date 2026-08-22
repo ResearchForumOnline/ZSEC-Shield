@@ -22,7 +22,9 @@ $AppRoot = Join-Path $PayloadRoot "App"
 $PolicyRoot = Join-Path $AppRoot "policy"
 $LauncherSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\ZsecBrowserApp.cs"
 $ProductStateSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserProductState.cs"
+$ProductPolicySource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserProductPolicy.cs"
 $ProductDialogsSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserProductDialogs.cs"
+$YoutubeProtectionSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\assets\youtube-player-protection.js"
 $ExtensionSource = Join-Path $RepoRoot "browser\zeroq-shields"
 $IconSource = Join-Path $RepoRoot "assets\brand\zeroq-icon.png"
 $IconPath = Join-Path $OutputDirectory "zsec-browser.ico"
@@ -32,7 +34,7 @@ $PackageCache = Join-Path $env:LOCALAPPDATA "TalkToAI\ZSEC Browser Build\package
 $PackagePath = Join-Path $PackageCache "microsoft.web.webview2.$WebView2Version.nupkg"
 $PackageExtract = Join-Path $PackageCache "extracted"
 
-foreach ($path in @($LauncherSource, $ProductStateSource, $ProductDialogsSource, $IconSource, $CscPath)) {
+foreach ($path in @($LauncherSource, $ProductStateSource, $ProductPolicySource, $ProductDialogsSource, $YoutubeProtectionSource, $IconSource, $CscPath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Required build input is absent: $path"
     }
@@ -106,6 +108,7 @@ $compilerArguments = @(
     "/out:$LauncherPath",
     $LauncherSource,
     $ProductStateSource,
+    $ProductPolicySource,
     $ProductDialogsSource
 )
 & $CscPath @compilerArguments
@@ -116,13 +119,18 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $LauncherPath -PathType
 Copy-Item -LiteralPath $CoreDll -Destination (Join-Path $AppRoot "Microsoft.Web.WebView2.Core.dll") -Force
 Copy-Item -LiteralPath $WinFormsDll -Destination (Join-Path $AppRoot "Microsoft.Web.WebView2.WinForms.dll") -Force
 Copy-Item -LiteralPath $LoaderDll -Destination (Join-Path $AppRoot "WebView2Loader.dll") -Force
-$NewTabSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\assets\new-tab\index.html"
-if (-not (Test-Path -LiteralPath $NewTabSource -PathType Leaf)) {
-    throw "The packaged ZSEC Browser new-tab page is absent."
+Copy-Item -LiteralPath $YoutubeProtectionSource -Destination (Join-Path $AppRoot "youtube-player-protection.js") -Force
+$NewTabSourceRoot = Join-Path $RepoRoot "browser\zsec-desktop-preview\assets\new-tab"
+$NewTabSource = Join-Path $NewTabSourceRoot "index.html"
+if (-not (Test-Path -LiteralPath $NewTabSource -PathType Leaf) -or
+    -not (Test-Path -LiteralPath (Join-Path $NewTabSourceRoot "native-request-probe.html") -PathType Leaf)) {
+    throw "The packaged ZSEC Browser new-tab/probe pages are absent."
 }
 $NewTabRoot = Join-Path $AppRoot "new-tab"
 New-Item -ItemType Directory -Path $NewTabRoot -Force | Out-Null
-Copy-Item -LiteralPath $NewTabSource -Destination (Join-Path $NewTabRoot "index.html") -Force
+foreach ($newTabFile in @("index.html", "native-request-probe.html")) {
+    Copy-Item -LiteralPath (Join-Path $NewTabSourceRoot $newTabFile) -Destination (Join-Path $NewTabRoot $newTabFile) -Force
+}
 $ExtensionRoot = Join-Path $AppRoot "extension"
 $ExtensionFiles = @(
     "manifest.json",

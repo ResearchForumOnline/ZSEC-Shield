@@ -60,7 +60,9 @@ def test_desktop_preview_preserves_browser_security_controls() -> None:
     assert 'CoreWebView2ServerCertificateErrorAction.Cancel' in app
     assert 'settings.AreDevToolsEnabled = false' in app
     assert "CoreWebView2TrackingPreventionLevel.Balanced" in app
-    assert "CoreWebView2WebResourceRequestSourceKinds.Document" in app
+    assert "CoreWebView2WebResourceRequestSourceKinds.All" in app
+    assert "IsReviewedThirdPartyTracker" in app
+    assert "native_request_filter_source_kinds=all" in app
     assert "AreBrowserExtensionsEnabled = true" in app
     assert 'ExpectedShieldsExtensionId = "ddjbjhnlhapggenanpmcidieimaomiif"' in app
     assert 'system_security_products_modified = $false' in installer
@@ -192,7 +194,7 @@ def test_desktop_tabs_popups_and_modern_controls_are_wired() -> None:
     assert 'NewTabUri = "https://newtab.zsec.local/index.html"' in app
     assert "SetVirtualHostNameToFolderMapping" in app
     assert "CoreWebView2HostResourceAccessKind.DenyCors" in app
-    assert "new-tab\\index.html" in build
+    assert '"index.html", "native-request-probe.html"' in build
     assert "await completion.Task" in app
     assert "expectedNavigationId" in app
     assert "args.NavigationId == expectedNavigationId.Value" in app
@@ -211,6 +213,9 @@ def test_runtime_acceptance_retries_transient_evidence_file_locks() -> None:
     assert "$evidence['tab_creation_failure_count'] -eq 0" in runtime_test
     assert "$evidence['last_tab_action'] -eq 'new_tab_ready'" in runtime_test
     assert "$evidence['last_new_tab_command_source'] -eq 'runtime_acceptance'" in runtime_test
+    assert "$evidence['native_subresource_runtime_probe_status'] -eq 'passed'" in runtime_test
+    assert "$evidence['youtube_protection_hook_status'] -eq 'loaded'" in runtime_test
+    assert "no_ad_served_is_not_a_failure = $true" in runtime_test
 
 
 def test_bundled_extension_has_stable_identity_and_bounded_youtube_assist() -> None:
@@ -236,6 +241,7 @@ def test_bundled_extension_has_stable_identity_and_bounded_youtube_assist() -> N
         '"third_party/easylist-provenance.json"',
         '"src/popup-state.js"',
         '"src/youtube-cosmetic-rules.js"',
+        '"youtube-player-protection.js"',
     ):
         assert required_desktop_asset in build
     assert "window.top !== window" in assist
