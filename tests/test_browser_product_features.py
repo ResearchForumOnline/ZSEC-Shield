@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "browser" / "zsec-desktop-preview" / "src" / "ZsecBrowserApp.cs"
 STATE = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserProductState.cs"
 DIALOGS = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserProductDialogs.cs"
+LOGIN_DIALOGS = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserLoginDialogs.cs"
+VAULT_DIALOGS = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserVaultDialogs.cs"
 POLICY = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserProductPolicy.cs"
 YOUTUBE_PROTECTION = (
     ROOT / "browser" / "zsec-desktop-preview" / "assets" / "youtube-player-protection.js"
@@ -115,6 +117,27 @@ def test_settings_surface_is_complete_and_truthful() -> None:
     assert "Apply Journalist high-risk preset" in dialogs
     assert "Restore standard compatibility" in dialogs
     assert "Block YouTube advertising" in dialogs
+
+
+def test_password_workflow_ui_is_explicit_recoverable_and_accessible() -> None:
+    dialogs = DIALOGS.read_text(encoding="utf-8")
+    login_dialogs = LOGIN_DIALOGS.read_text(encoding="utf-8")
+    vault_dialogs = VAULT_DIALOGS.read_text(encoding="utf-8")
+
+    assert "Offer to save or update passwords after a login is submitted" in dialogs
+    assert "Automatically fill a saved login on its exact HTTPS website" in dialogs
+    assert "ZSEC does not submit the form" in dialogs
+    assert "Clear never-save list" in dialogs
+    assert "PasswordNeverSaveOrigins.Clear()" in dialogs
+    assert "Save settings and open ZSEC Passwords" in dialogs
+    assert "disabled WebView2 password storage" in dialogs
+    assert "No password value is displayed in this confirmation" in login_dialogs
+    assert "you can clear that list in Settings > Passwords" in login_dialogs
+    assert "BrowserLoginDialogText.SingleLineUsername" in login_dialogs
+    assert 'AccessibleName = "Saved usernames"' in login_dialogs
+    assert 'searchLabel.Text = "Search"' in vault_dialogs
+    assert "RefreshActionAvailability" in vault_dialogs
+    assert "Replace the password currently in this field" in vault_dialogs
 
 
 def test_all_source_native_filter_and_youtube_runtime_evidence_are_wired() -> None:

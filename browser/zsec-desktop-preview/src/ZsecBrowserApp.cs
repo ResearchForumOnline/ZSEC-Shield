@@ -22,16 +22,16 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.15.0")]
-[assembly: AssemblyFileVersion("0.3.15.0")]
-[assembly: AssemblyInformationalVersion("0.3.15-community")]
+[assembly: AssemblyVersion("0.3.16.0")]
+[assembly: AssemblyFileVersion("0.3.16.0")]
+[assembly: AssemblyInformationalVersion("0.3.16-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.15";
+        internal const string ProductVersion = "0.3.16";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
         internal const string NewTabUri = "https://newtab.zsec.local/index.html";
 
@@ -401,6 +401,9 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly BrowserDataStore productStore;
         private readonly BrowserProductData productData;
         private readonly IVaultService vaultService;
+        private readonly BrowserLoginAssistant loginAssistant;
+        private readonly Dictionary<WebView2, string> loginRequestIds;
+        private readonly BrowserCredentialRequestTracker loginRequestTracker;
         private readonly ContextMenuStrip mainMenu;
         private readonly NotifyIcon trayIcon;
         private CoreWebView2Environment environment;
@@ -469,6 +472,13 @@ namespace TalkToAI.ZsecBrowserPreview
                 productDataWarning = "Local bookmarks, history and settings could not be loaded: " +
                     exception.Message;
             }
+            loginRequestIds = new Dictionary<WebView2, string>();
+            loginRequestTracker = new BrowserCredentialRequestTracker();
+            loginAssistant = new BrowserLoginAssistant(
+                vaultService,
+                delegate { return productData.Settings; },
+                delegate { productStore.Save(productData); }
+            );
             initialDestination = explicitDestination
                 ? destination
                 : GetStartupDestination(productData.Settings);
@@ -536,7 +546,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.15";
+            channel.Text = "COMMUNITY 0.3.16";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
@@ -1110,11 +1120,6 @@ namespace TalkToAI.ZsecBrowserPreview
             using (SettingsDialog dialog = new SettingsDialog(productData.Settings, snapshot))
             {
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
-                if (dialog.OpenPasswordsRequested)
-                {
-                    ShowPasswords();
-                    return;
-                }
                 if (!CanPersistProductData(true))
                 {
                     if (dialog.OpenShieldsRequested) await OpenShieldsSettingsAsync();
@@ -1141,6 +1146,11 @@ namespace TalkToAI.ZsecBrowserPreview
                     productData.Settings = previous;
                     ApplyProductSettings();
                     ShowProductDataWriteFailure(exception);
+                    return;
+                }
+                if (dialog.OpenPasswordsRequested)
+                {
+                    ShowPasswords();
                     return;
                 }
                 if (dialog.OpenShieldsRequested) await OpenShieldsSettingsAsync();
@@ -1193,6 +1203,7 @@ namespace TalkToAI.ZsecBrowserPreview
             highRiskButton.BackColor = highRiskMode ? Color.FromArgb(210, 74, 54) : PanelBackground;
             bookmarksBar.Visible = productData.Settings.ShowBookmarksBar;
             trayIcon.Visible = productData.Settings.MinimizeToTray || productData.Settings.CloseToTray;
+            ApplyLoginAssistantSettings();
             RefreshBookmarksBar();
             if (environment != null)
             {
@@ -1546,6 +1557,7 @@ namespace TalkToAI.ZsecBrowserPreview
             catch
             {
                 RecordTabCreationFailure("open_failed");
+                ReleaseLoginRequest(view);
                 browserViews.Remove(view);
                 tabs.TabPages.Remove(page);
                 PositionNewTabButton();
@@ -1734,6 +1746,7 @@ namespace TalkToAI.ZsecBrowserPreview
             if (view != null)
             {
                 TabPage page = view.Parent as TabPage;
+                ReleaseLoginRequest(view);
                 browserViews.Remove(view);
                 if (page != null && tabs.TabPages.Contains(page)) tabs.TabPages.Remove(page);
                 view.Dispose();
@@ -1786,7 +1799,7 @@ namespace TalkToAI.ZsecBrowserPreview
             );
             CoreWebView2Settings settings = core.Settings;
             settings.AreHostObjectsAllowed = false;
-            settings.IsWebMessageEnabled = false;
+            settings.IsWebMessageEnabled = loginAssistant.Enabled;
             settings.IsPasswordAutosaveEnabled = false;
             settings.IsGeneralAutofillEnabled = false;
             settings.AreDefaultScriptDialogsEnabled = false;
@@ -1808,8 +1821,20 @@ namespace TalkToAI.ZsecBrowserPreview
 
             view.KeyDown += BrowserKeyDown;
 
+            core.WebMessageReceived += delegate(
+                object sender,
+                CoreWebView2WebMessageReceivedEventArgs args
+            )
+            {
+                HandleLoginMessage(view, args);
+            };
+
             core.NavigationStarting += delegate(object sender, CoreWebView2NavigationStartingEventArgs args)
             {
+                string previousLoginRequest;
+                if (loginRequestIds.TryGetValue(view, out previousLoginRequest))
+                    loginRequestTracker.Consume(previousLoginRequest);
+                loginRequestIds.Remove(view);
                 navigationProgress.Visible = true;
                 protectionPulse.Active = true;
                 runtimeStatus.Text = "Opening protected page...";
@@ -1877,6 +1902,13 @@ namespace TalkToAI.ZsecBrowserPreview
                 TryRecordHistory(view, core.DocumentTitle);
                 if (view == ActiveView) UpdateBookmarkButton();
                 WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
+                if (loginAssistant.Enabled && view == ActiveView)
+                {
+                    BeginInvoke(new Action(async delegate
+                    {
+                        await ConfigureLoginPageAsync(view);
+                    }));
+                }
                 if (view.Source != null && BrowserRequestPolicy.IsYoutubeSite(view.Source.Host))
                 {
                     BeginInvoke(new Action(async delegate
@@ -1946,6 +1978,163 @@ namespace TalkToAI.ZsecBrowserPreview
                 protectionPulse.Active = false;
                 runtimeStatus.Text = "Renderer/runtime failure detected - reload this tab";
             };
+        }
+
+        private async Task ConfigureLoginPageAsync(WebView2 view)
+        {
+            if (view == null || view.CoreWebView2 == null || view.Source == null ||
+                view != ActiveView || !loginAssistant.Enabled) return;
+            string origin;
+            try
+            {
+                origin = BrowserCredentialWorkflowPolicy.NormalizeSecureOrigin(view.Source);
+            }
+            catch (ArgumentException) { return; }
+            if (String.Equals(view.Source.Host, "newtab.zsec.local", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            if (productData.Settings.PasswordSaveEnabled &&
+                !BrowserCredentialWorkflowPolicy.IsNeverSaveOrigin(productData.Settings, origin))
+            {
+                string previous;
+                if (loginRequestIds.TryGetValue(view, out previous))
+                    loginRequestTracker.Consume(previous);
+                string requestId = loginRequestTracker.Issue();
+                loginRequestIds[view] = requestId;
+                await view.CoreWebView2.ExecuteScriptAsync(
+                    loginAssistant.BuildCaptureScript(requestId, origin)
+                );
+            }
+
+            if (!productData.Settings.PasswordAutofillEnabled) return;
+            IList<BrowserVaultEntry> candidates;
+            try { candidates = loginAssistant.CredentialsForOrigin(view.Source); }
+            catch (Exception exception)
+            {
+                runtimeStatus.Text = "Saved logins are unavailable: " + Truncate(exception.Message, 80);
+                return;
+            }
+            if (candidates.Count == 0) return;
+            BrowserVaultEntry selected = candidates[0];
+            if (candidates.Count > 1)
+            {
+                using (BrowserCredentialPickerDialog picker =
+                    new BrowserCredentialPickerDialog(origin, candidates))
+                {
+                    if (picker.ShowDialog(this) != DialogResult.OK) return;
+                    selected = picker.SelectedEntry;
+                }
+            }
+            if (selected == null || view.Source == null || view != ActiveView) return;
+            string currentOrigin;
+            try { currentOrigin = BrowserCredentialWorkflowPolicy.NormalizeSecureOrigin(view.Source); }
+            catch (ArgumentException) { return; }
+            if (!String.Equals(currentOrigin, origin, StringComparison.Ordinal)) return;
+            await view.CoreWebView2.ExecuteScriptAsync(
+                loginAssistant.BuildFillScript(selected, currentOrigin)
+            );
+            runtimeStatus.Text = "Saved login filled for this exact HTTPS site.";
+        }
+
+        private void HandleLoginMessage(
+            WebView2 view,
+            CoreWebView2WebMessageReceivedEventArgs args
+        )
+        {
+            if (view == null || view != ActiveView || view.Source == null ||
+                !productData.Settings.PasswordSaveEnabled) return;
+            string expected;
+            if (!loginRequestIds.TryGetValue(view, out expected)) return;
+            BrowserCredentialMessage message = loginAssistant.ParseCapture(
+                args.WebMessageAsJson,
+                args.Source,
+                view.Source.AbsoluteUri
+            );
+            if (message == null ||
+                !String.Equals(message.RequestId, expected, StringComparison.Ordinal) ||
+                !loginRequestTracker.Consume(message.RequestId)) return;
+            loginRequestIds.Remove(view);
+
+            BrowserCredentialPromptPlan plan;
+            try { plan = loginAssistant.EvaluateSave(message); }
+            catch (Exception exception)
+            {
+                runtimeStatus.Text = "Password prompt unavailable: " + Truncate(exception.Message, 80);
+                return;
+            }
+            if (plan.Kind == BrowserCredentialPromptKind.None) return;
+            bool update = plan.Kind == BrowserCredentialPromptKind.Update;
+            using (BrowserLoginSavePrompt prompt = new BrowserLoginSavePrompt(
+                plan.Origin,
+                message.Username,
+                update
+            ))
+            {
+                prompt.ShowDialog(this);
+                if (prompt.Decision == BrowserLoginSaveDecision.NeverForSite)
+                {
+                    try
+                    {
+                        loginAssistant.NeverForOrigin(plan.Origin);
+                        runtimeStatus.Text = "Password prompts disabled for this exact HTTPS site.";
+                    }
+                    catch (Exception exception)
+                    {
+                        runtimeStatus.Text = "Never-save preference failed: " +
+                            Truncate(exception.Message, 80);
+                    }
+                    return;
+                }
+                if (prompt.Decision != BrowserLoginSaveDecision.Save) return;
+            }
+            try
+            {
+                loginAssistant.Save(
+                    message,
+                    plan,
+                    update
+                        ? BrowserCredentialPromptDecision.Update
+                        : BrowserCredentialPromptDecision.Save
+                );
+                runtimeStatus.Text = update
+                    ? "Saved password updated after confirmation."
+                    : "Password saved after confirmation.";
+            }
+            catch (Exception exception)
+            {
+                runtimeStatus.Text = "Password was not saved: " + Truncate(exception.Message, 80);
+            }
+        }
+
+        private void ApplyLoginAssistantSettings()
+        {
+            foreach (WebView2 view in browserViews.ToArray())
+            {
+                if (view.CoreWebView2 == null) continue;
+                view.CoreWebView2.Settings.IsWebMessageEnabled = loginAssistant.Enabled;
+                if (!loginAssistant.Enabled)
+                {
+                    string requestId;
+                    if (loginRequestIds.TryGetValue(view, out requestId))
+                        loginRequestTracker.Consume(requestId);
+                    loginRequestIds.Remove(view);
+                }
+            }
+            if (loginAssistant.Enabled && ActiveView != null)
+            {
+                BeginInvoke(new Action(async delegate
+                {
+                    await ConfigureLoginPageAsync(ActiveView);
+                }));
+            }
+        }
+
+        private void ReleaseLoginRequest(WebView2 view)
+        {
+            string requestId;
+            if (view != null && loginRequestIds.TryGetValue(view, out requestId))
+                loginRequestTracker.Consume(requestId);
+            if (view != null) loginRequestIds.Remove(view);
         }
 
         private void AttachRequestPolicy(WebView2 view)
@@ -2581,6 +2770,7 @@ namespace TalkToAI.ZsecBrowserPreview
             WebView2 view = page.Controls.Count > 0 ? page.Controls[0] as WebView2 : null;
             if (view != null)
             {
+                ReleaseLoginRequest(view);
                 browserViews.Remove(view);
                 youtubeScriptRegistrations.Remove(view);
                 typedNavigationPending.Remove(view);
@@ -2844,7 +3034,9 @@ namespace TalkToAI.ZsecBrowserPreview
                 "tracking_cleanup_count=" + trackingCleanupCount.ToString(),
                 "last_navigation_https=" + lastNavigationHttps.ToString().ToLowerInvariant(),
                 "host_objects_allowed=false",
-                "web_messages_enabled=false",
+                "web_messages_enabled=" + (loginAssistant.Enabled
+                    ? "bounded_login_assistant_only"
+                    : "false"),
                 "password_autosave_enabled=false",
                 "general_autofill_enabled=false",
                 "permissions_default=deny",
@@ -2903,6 +3095,8 @@ namespace TalkToAI.ZsecBrowserPreview
             browserViews.Clear();
             youtubeScriptRegistrations.Clear();
             typedNavigationPending.Clear();
+            loginRequestIds.Clear();
+            loginRequestTracker.Clear();
             tabMutationGate.Dispose();
         }
     }

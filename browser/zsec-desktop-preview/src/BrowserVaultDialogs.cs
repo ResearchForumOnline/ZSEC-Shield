@@ -42,7 +42,13 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly TextBox search;
         private readonly DataGridView grid;
         private readonly Label status;
+        private readonly Button add;
+        private readonly Button edit;
+        private readonly Button remove;
+        private readonly Button copyUser;
+        private readonly Button copyPassword;
         private readonly Button unlock;
+        private readonly Button lockButton;
         private readonly Timer autoLockTimer;
         private readonly Timer clipboardTimer;
         private BrowserVaultEntryDialog activeEntryDialog;
@@ -77,7 +83,14 @@ namespace TalkToAI.ZsecBrowserPreview
             search.AccessibleName = "Search saved passwords";
             search.AccessibleDescription = "Search website addresses, usernames and notes.";
             search.TextChanged += delegate { Touch(); RefreshRows(); };
+            Label searchLabel = new Label();
+            searchLabel.Text = "Search";
+            searchLabel.Dock = DockStyle.Left;
+            searchLabel.Width = 64;
+            searchLabel.Padding = new Padding(0, 4, 8, 0);
+            searchLabel.ForeColor = BrowserDialogTheme.Foreground;
             searchPanel.Controls.Add(search);
+            searchPanel.Controls.Add(searchLabel);
 
             grid = BrowserDialogTheme.Grid();
             grid.AccessibleName = "Saved password entries";
@@ -92,7 +105,7 @@ namespace TalkToAI.ZsecBrowserPreview
             grid.Columns[2].FillWeight = 20;
             grid.Columns[3].Visible = false;
             grid.CellDoubleClick += delegate { EditSelected(); };
-            grid.SelectionChanged += delegate { Touch(); };
+            grid.SelectionChanged += delegate { Touch(); RefreshActionAvailability(); };
 
             FlowLayoutPanel commands = new FlowLayoutPanel();
             commands.Dock = DockStyle.Bottom;
@@ -100,13 +113,13 @@ namespace TalkToAI.ZsecBrowserPreview
             commands.Padding = new Padding(8);
             commands.WrapContents = true;
             commands.BackColor = BrowserDialogTheme.Background;
-            Button add = BrowserDialogTheme.Button("Add", "Add a password entry");
-            Button edit = BrowserDialogTheme.Button("Edit", "Edit selected password entry");
-            Button remove = BrowserDialogTheme.Button("Remove", "Remove selected password entry");
-            Button copyUser = BrowserDialogTheme.Button("Copy username", "Copy selected username for 30 seconds");
-            Button copyPassword = BrowserDialogTheme.Button("Copy password", "Copy selected password for 30 seconds");
+            add = BrowserDialogTheme.Button("Add", "Add a password entry");
+            edit = BrowserDialogTheme.Button("Edit", "Edit selected password entry");
+            remove = BrowserDialogTheme.Button("Remove", "Remove selected password entry");
+            copyUser = BrowserDialogTheme.Button("Copy username", "Copy selected username for 30 seconds");
+            copyPassword = BrowserDialogTheme.Button("Copy password", "Copy selected password for 30 seconds");
             unlock = BrowserDialogTheme.Button("Unlock", "Unlock the local password vault");
-            Button lockButton = BrowserDialogTheme.Button("Lock", "Lock the local password vault now");
+            lockButton = BrowserDialogTheme.Button("Lock", "Lock the local password vault now");
             Button close = BrowserDialogTheme.Button("Close", "Close and lock the password vault");
             add.Click += delegate { AddEntry(); };
             edit.Click += delegate { EditSelected(); };
@@ -228,6 +241,7 @@ namespace TalkToAI.ZsecBrowserPreview
             grid.Rows.Clear();
             status.Text = message;
             unlock.Enabled = SafeStatus().IsAvailable;
+            RefreshActionAvailability();
         }
 
         private void RefreshRows()
@@ -241,6 +255,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 {
                     status.Text = current.Message ?? "Vault is locked.";
                 }
+                RefreshActionAvailability();
                 return;
             }
             try
@@ -264,6 +279,20 @@ namespace TalkToAI.ZsecBrowserPreview
             {
                 status.Text = "Entries could not be read: " + exception.Message;
             }
+            RefreshActionAvailability();
+        }
+
+        private void RefreshActionAvailability()
+        {
+            BrowserVaultStatus current = SafeStatus();
+            bool unlocked = current.IsAvailable && current.IsUnlocked;
+            bool selected = unlocked && !String.IsNullOrWhiteSpace(SelectedId);
+            add.Enabled = unlocked;
+            edit.Enabled = selected;
+            remove.Enabled = selected;
+            copyUser.Enabled = selected;
+            copyPassword.Enabled = selected;
+            lockButton.Enabled = unlocked;
         }
 
         private void AddEntry()
@@ -561,6 +590,17 @@ namespace TalkToAI.ZsecBrowserPreview
 
         private void GeneratePassword()
         {
+            if (!String.IsNullOrEmpty(password.Text))
+            {
+                DialogResult replace = MessageBox.Show(
+                    "Replace the password currently in this field with a newly generated password?",
+                    "Replace password",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button2
+                );
+                if (replace != DialogResult.Yes) return;
+            }
             BrowserPasswordGenerationOptions options = new BrowserPasswordGenerationOptions
             {
                 Length = Decimal.ToInt32(generatedLength.Value),

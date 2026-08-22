@@ -46,9 +46,14 @@ Store installer.
 - Certificate errors are cancelled; there is no bypass path in the UI.
 - Downloads require a confirmation and destination choice and are never opened
   automatically by ZSEC.
-- Password autosave and general form autofill are disabled.
-- Host objects and web messaging are disabled, so remote pages receive no native
-  filesystem, process, registry, PowerShell, antivirus or application bridge.
+- WebView2's built-in password autosave and general form autofill are disabled.
+  Independent ZSEC local-vault save and fill options are off by default. When a
+  user opts in, save still requires confirmation, fill uses an exact top-level
+  HTTPS origin match, and ZSEC does not submit the login form.
+- Host objects remain disabled. Web messaging is enabled only while a ZSEC
+  credential option is on and accepts a bounded, exact-origin credential
+  contract; pages receive no generic filesystem, process, registry,
+  PowerShell, antivirus or application bridge.
 - A visible New tab control, Ctrl+T, tab close controls, true WebView2 popup
   binding, transactional failure cleanup and a 32-tab resource bound.
 - A Brave-style native main menu, bookmark star, local bookmarks bar and
@@ -71,7 +76,7 @@ Store installer.
 - Keyboard routes for bookmarks, history, settings, menu, tab selection and
   navigation, with accessible names on primary controls.
 - Non-web schemes are rejected; remote debugging and developer tools are off.
-- The UI labels the product as `Community 0.3.15` and exposes the exact runtime
+- The UI labels the product as `Community 0.3.16` and exposes the exact runtime
   and policy boundary in its About dialog.
 
 When enabled, native YouTube protection runs at document start only on exact
@@ -95,8 +100,10 @@ and stored navigation targets are restricted to HTTP/HTTPS. This file contains
 browsing metadata, not passwords or encryption keys. Password entries are stored
 separately under `password-vault` using the local encrypted vault and Windows
 DPAPI CurrentUser key protection; the manager never displays password values in
-its list. The WebView2 profile remains a separate Microsoft-runtime data store
-under `User Data`.
+its list. Save/fill settings and normalized never-save HTTPS origins are stored
+in `browser-data.json`, but submitted usernames and passwords are not. The
+never-save list can be cleared from Settings > Passwords. The WebView2 profile
+remains a separate Microsoft-runtime data store under `User Data`.
 
 Implemented shortcuts:
 

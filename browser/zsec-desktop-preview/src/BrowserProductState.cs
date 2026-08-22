@@ -38,6 +38,9 @@ namespace TalkToAI.ZsecBrowserPreview
         public bool NativeStrictMode { get; set; }
         public bool BlockYoutubeAds { get; set; }
         public string SearchEngine { get; set; }
+        public bool PasswordSaveEnabled { get; set; }
+        public bool PasswordAutofillEnabled { get; set; }
+        public List<string> PasswordNeverSaveOrigins { get; set; }
 
         internal static BrowserSettings CreateDefault()
         {
@@ -57,7 +60,10 @@ namespace TalkToAI.ZsecBrowserPreview
                 ),
                 NativeStrictMode = false,
                 BlockYoutubeAds = true,
-                SearchEngine = "brave"
+                SearchEngine = "brave",
+                PasswordSaveEnabled = false,
+                PasswordAutofillEnabled = false,
+                PasswordNeverSaveOrigins = new List<string>()
             };
         }
 
@@ -76,7 +82,12 @@ namespace TalkToAI.ZsecBrowserPreview
                 DownloadDirectory = DownloadDirectory,
                 NativeStrictMode = NativeStrictMode,
                 BlockYoutubeAds = BlockYoutubeAds,
-                SearchEngine = SearchEngine
+                SearchEngine = SearchEngine,
+                PasswordSaveEnabled = PasswordSaveEnabled,
+                PasswordAutofillEnabled = PasswordAutofillEnabled,
+                PasswordNeverSaveOrigins = new List<string>(
+                    PasswordNeverSaveOrigins ?? new List<string>()
+                )
             };
         }
     }
@@ -92,7 +103,7 @@ namespace TalkToAI.ZsecBrowserPreview
         {
             return new BrowserProductData
             {
-                SchemaVersion = 2,
+                SchemaVersion = 3,
                 Bookmarks = new List<BrowserBookmark>(),
                 History = new List<BrowserHistoryEntry>(),
                 Settings = BrowserSettings.CreateDefault()
@@ -383,7 +394,7 @@ namespace TalkToAI.ZsecBrowserPreview
         {
             if (data == null) data = BrowserProductData.CreateDefault();
             bool legacySchema = data.SchemaVersion < 2;
-            data.SchemaVersion = 2;
+            data.SchemaVersion = 3;
             if (data.Settings == null) data.Settings = BrowserSettings.CreateDefault();
             else if (legacySchema) data.Settings.BlockYoutubeAds = true;
             NormalizeSettings(data.Settings);
@@ -457,6 +468,10 @@ namespace TalkToAI.ZsecBrowserPreview
             }
             settings.DownloadDirectory = Path.GetFullPath(downloads);
             settings.SearchEngine = BrowserSearchProviders.NormalizeKey(settings.SearchEngine);
+            settings.PasswordNeverSaveOrigins =
+                BrowserCredentialWorkflowPolicy.NormalizeNeverSaveOrigins(
+                    settings.PasswordNeverSaveOrigins
+                );
         }
 
         private static bool AddressSuggestionMatches(string url, string term)

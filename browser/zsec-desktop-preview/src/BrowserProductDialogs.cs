@@ -369,6 +369,8 @@ namespace TalkToAI.ZsecBrowserPreview
         private CheckBox nativeStrictMode;
         private CheckBox blockYoutubeAds;
         private ComboBox searchEngine;
+        private CheckBox askToSavePasswords;
+        private CheckBox autofillPasswords;
 
         internal bool ClearHistoryRequested { get; private set; }
         internal bool OpenShieldsRequested { get; private set; }
@@ -544,20 +546,69 @@ namespace TalkToAI.ZsecBrowserPreview
             panel.Controls.Add(BrowserDialogTheme.Description(
                 "ZSEC Passwords stores website addresses, usernames, passwords and notes in the local encrypted vault for this Windows account. Passwords are never displayed in the manager list."
             ));
+            askToSavePasswords = BrowserDialogTheme.CheckBox(
+                "Offer to save or update passwords after a login is submitted",
+                "Offer to save or update passwords after login submission"
+            );
+            askToSavePasswords.AccessibleDescription =
+                "Shows a confirmation containing the exact HTTPS website and username. The password is not displayed.";
+            askToSavePasswords.Checked = working.PasswordSaveEnabled;
+            autofillPasswords = BrowserDialogTheme.CheckBox(
+                "Automatically fill a saved login on its exact HTTPS website",
+                "Automatically fill saved logins only on their exact HTTPS website"
+            );
+            autofillPasswords.AccessibleDescription =
+                "Fills a username and password on a matching top-level HTTPS page. ZSEC does not submit the form.";
+            autofillPasswords.Checked = working.PasswordAutofillEnabled;
+            panel.Controls.Add(askToSavePasswords);
+            panel.Controls.Add(autofillPasswords);
             Button open = BrowserDialogTheme.Button(
-                "Open ZSEC Passwords",
-                "Open the encrypted password vault"
+                "Save settings and open ZSEC Passwords",
+                "Save these settings and open the encrypted password vault"
             );
             open.Click += delegate
             {
-                OpenPasswordsRequested = true;
-                DialogResult = DialogResult.OK;
-                Close();
+                SaveSettings(open, EventArgs.Empty);
+                if (DialogResult == DialogResult.OK) OpenPasswordsRequested = true;
             };
             panel.Controls.Add(open);
-            panel.Controls.Add(BrowserDialogTheme.Description(
-                "The vault locks after five idle minutes. Copied usernames and passwords are cleared from the clipboard after 30 seconds when they have not been replaced by other clipboard content."
-            ));
+            int excludedCount = working.PasswordNeverSaveOrigins == null
+                ? 0
+                : working.PasswordNeverSaveOrigins.Count;
+            Label exclusions = BrowserDialogTheme.Description(
+                excludedCount == 0
+                    ? "Never-save list: no websites excluded."
+                    : "Never-save list: " + excludedCount.ToString() +
+                        (excludedCount == 1 ? " website excluded." : " websites excluded.")
+            );
+            exclusions.AccessibleName = "Password never-save list status";
+            Button clearExclusions = BrowserDialogTheme.Button(
+                "Clear never-save list",
+                "Allow password save prompts again for all excluded websites"
+            );
+            clearExclusions.Enabled = excludedCount > 0;
+            clearExclusions.Click += delegate
+            {
+                DialogResult answer = MessageBox.Show(
+                    "Allow password save prompts again for every website on the never-save list? This change takes effect only after you save Settings.",
+                    "Clear never-save list",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button2
+                );
+                if (answer != DialogResult.Yes) return;
+                working.PasswordNeverSaveOrigins.Clear();
+                exclusions.Text = "Never-save list: no websites excluded. Save Settings to apply.";
+                clearExclusions.Enabled = false;
+            };
+            panel.Controls.Add(exclusions);
+            panel.Controls.Add(clearExclusions);
+            Label credentialBoundary = BrowserDialogTheme.Description(
+                "Both options start off and require your opt-in. Passwords are never saved without confirmation, and ZSEC never submits login forms. Save and fill are limited to the current top-level exact HTTPS origin; HTTP pages, frames, internal pages and other origins are excluded."
+            );
+            credentialBoundary.Height = 64;
+            credentialBoundary.AccessibleName = "Password save and fill security boundary";
+            panel.Controls.Add(credentialBoundary);
             return Page("Passwords", panel);
         }
 
@@ -656,7 +707,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 "Default-browser registration is not implemented. This unsigned Community WebView2 shell does not change Windows default-browser settings."
             ));
             panel.Controls.Add(BrowserDialogTheme.Description(
-                "HTTPS upgrades, certificate-error blocking, separate profile storage, disabled password autofill, disabled host objects and disabled web messaging remain enforced and are not relaxed here."
+                "HTTPS upgrades, certificate-error blocking, separate profile storage, disabled WebView2 password storage and disabled host objects remain enforced. Optional ZSEC local-vault save and fill are controlled on the Passwords page."
             ));
             return Page("Default behavior", panel);
         }
@@ -703,6 +754,8 @@ namespace TalkToAI.ZsecBrowserPreview
             working.BlockYoutubeAds = blockYoutubeAds.Checked;
             BrowserSearchProvider selectedProvider = searchEngine.SelectedItem as BrowserSearchProvider;
             working.SearchEngine = selectedProvider == null ? "brave" : selectedProvider.Key;
+            working.PasswordSaveEnabled = askToSavePasswords.Checked;
+            working.PasswordAutofillEnabled = autofillPasswords.Checked;
             DialogResult = DialogResult.OK;
             Close();
         }

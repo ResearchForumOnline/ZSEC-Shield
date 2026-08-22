@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -32,6 +33,7 @@ internal static class BrowserProductStateTests
             TestPasswordVaultTamperFailsClosed(Path.Combine(parent, "password-vault-tamper"));
             TestPasswordVaultUiPolicy();
             TestPasswordVaultKeyFailure(Path.Combine(parent, "password-vault-key-failure"));
+            TestCredentialWorkflowPolicy(Path.Combine(parent, "credential-workflow"));
             TestResponsiveToolbarLayout();
             Console.WriteLine("Browser product state tests passed: " + assertions.ToString());
             return 0;
@@ -45,6 +47,227 @@ internal static class BrowserProductStateTests
         {
             if (Directory.Exists(parent)) Directory.Delete(parent, true);
         }
+    }
+
+    private static void TestCredentialWorkflowPolicy(string root)
+    {
+        string normalized = BrowserCredentialWorkflowPolicy.NormalizeSecureOrigin(
+            "https://EXAMPLE.com:443/login?next=one"
+        );
+        Assert(normalized == "https://example.com", "Secure origin did not normalize.");
+        Assert(
+            BrowserCredentialWorkflowPolicy.NormalizeSecureOrigin("https://example.com:8443/a") ==
+                "https://example.com:8443",
+            "Non-default origin port was lost."
+        );
+        bool insecureRejected = false;
+        try { BrowserCredentialWorkflowPolicy.NormalizeSecureOrigin("http://example.com/login"); }
+        catch (ArgumentException) { insecureRejected = true; }
+        Assert(insecureRejected, "Insecure credential origin was accepted.");
+
+        string request = Guid.NewGuid().ToString("N");
+        string json = "{\"schema\":\"zsec.browser.credential-save-candidate.v1\"," +
+            "\"request_id\":\"" + request + "\",\"origin\":\"https://example.com/login\"," +
+            "\"username\":\"reporter@example.com\",\"password\":\"test-secret\"}";
+        BrowserCredentialMessage message = BrowserCredentialMessage.Parse(
+            json, new Uri("https://example.com/account")
+        );
+        Assert(message.Origin == "https://example.com", "Message origin was not normalized.");
+        Assert(message.Kind == BrowserCredentialMessageKind.SaveCandidate, "Message kind is wrong.");
+        bool spoofRejected = false;
+        try { BrowserCredentialMessage.Parse(json, new Uri("https://evil.example/")); }
+        catch (InvalidDataException) { spoofRejected = true; }
+        Assert(spoofRejected, "Credential message source-origin spoofing was accepted.");
+        bool extraRejected = false;
+        try
+        {
+            BrowserCredentialMessage.Parse(
+                json.Substring(0, json.Length - 1) + ",\"command\":\"save\"}",
+                new Uri("https://example.com/")
+            );
+        }
+        catch (InvalidDataException) { extraRejected = true; }
+        Assert(extraRejected, "Unexpected credential-message field was accepted.");
+        string fillJson = "{\"schema\":\"zsec.browser.credential-fill-request.v1\"," +
+            "\"request_id\":\"" + Guid.NewGuid().ToString("N") +
+            "\",\"origin\":\"https://example.com/\"}";
+        BrowserCredentialMessage fillMessage = BrowserCredentialMessage.Parse(
+            fillJson, new Uri("https://example.com/login")
+        );
+        Assert(fillMessage.Kind == BrowserCredentialMessageKind.FillRequest, "Fill schema failed.");
+        Assert(fillMessage.Password == null, "Fill request unexpectedly carried a password.");
+        BrowserCredentialRequestTracker requests = new BrowserCredentialRequestTracker();
+        string issuedRequest = requests.Issue();
+        Assert(requests.Consume(issuedRequest), "Issued credential request was not accepted.");
+        Assert(!requests.Consume(issuedRequest), "Credential request replay was accepted.");
+
+        BrowserSettings settings = BrowserSettings.CreateDefault();
+        Assert(!settings.PasswordSaveEnabled, "Password saving must default off.");
+        Assert(!settings.PasswordAutofillEnabled, "Password autofill must default off.");
+        BrowserCredentialPromptPlan disabled = BrowserCredentialWorkflowPolicy.EvaluateSavePrompt(
+            settings, message, new BrowserVaultEntry[0]
+        );
+        Assert(disabled.Kind == BrowserCredentialPromptKind.None, "Disabled save policy prompted.");
+        settings.PasswordSaveEnabled = true;
+        BrowserCredentialPromptPlan save = BrowserCredentialWorkflowPolicy.EvaluateSavePrompt(
+            settings, message, new BrowserVaultEntry[0]
+        );
+        Assert(save.Kind == BrowserCredentialPromptKind.Save, "New credential did not request save.");
+        BrowserVaultEntry acceptedSave = BrowserCredentialWorkflowPolicy.BuildAcceptedSave(
+            message, save, BrowserCredentialPromptDecision.Save, null
+        );
+        Assert(
+            acceptedSave.Url == "https://example.com" && acceptedSave.Password == "test-secret",
+            "Accepted save did not produce the exact validated candidate."
+        );
+        BrowserVaultEntry existing = new BrowserVaultEntry
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Url = "https://example.com/other-path",
+            Username = message.Username,
+            Password = "old-secret"
+        };
+        BrowserCredentialPromptPlan update = BrowserCredentialWorkflowPolicy.EvaluateSavePrompt(
+            settings, message, new[] { existing }
+        );
+        Assert(update.Kind == BrowserCredentialPromptKind.Update, "Changed password did not request update.");
+        BrowserVaultEntry acceptedUpdate = BrowserCredentialWorkflowPolicy.BuildAcceptedSave(
+            message, update, BrowserCredentialPromptDecision.Update, existing
+        );
+        Assert(
+            acceptedUpdate.Id == existing.Id && acceptedUpdate.Password == "test-secret",
+            "Accepted update did not preserve identity and replace only the password."
+        );
+        bool mismatchedDecisionRejected = false;
+        try
+        {
+            BrowserCredentialWorkflowPolicy.BuildAcceptedSave(
+                message, update, BrowserCredentialPromptDecision.Save, existing
+            );
+        }
+        catch (InvalidOperationException) { mismatchedDecisionRejected = true; }
+        Assert(mismatchedDecisionRejected, "Mismatched save/update prompt decision was accepted.");
+        existing.Password = message.Password;
+        BrowserCredentialPromptPlan unchanged = BrowserCredentialWorkflowPolicy.EvaluateSavePrompt(
+            settings, message, new[] { existing }
+        );
+        Assert(unchanged.Kind == BrowserCredentialPromptKind.None, "Unchanged password prompted again.");
+        BrowserCredentialWorkflowPolicy.ApplyPromptDecision(
+            settings, message.Origin, BrowserCredentialPromptDecision.NeverForSite
+        );
+        Assert(
+            BrowserCredentialWorkflowPolicy.IsNeverSaveOrigin(settings, "https://example.com/path"),
+            "Never-save decision did not persist in settings."
+        );
+        Assert(
+            BrowserCredentialWorkflowPolicy.EvaluateSavePrompt(
+                settings, message, new BrowserVaultEntry[0]
+            ).Kind == BrowserCredentialPromptKind.None,
+            "Never-save site still prompted."
+        );
+
+        settings.PasswordAutofillEnabled = true;
+        BrowserVaultEntry subdomain = new BrowserVaultEntry
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Url = "https://sub.example.com/",
+            Username = "sub",
+            Password = "sub-secret"
+        };
+        IList<BrowserVaultEntry> fill = BrowserCredentialWorkflowPolicy.SelectAutofillEntries(
+            settings,
+            new Uri("https://example.com/login"),
+            true,
+            new[] { existing, subdomain }
+        );
+        Assert(fill.Count == 1 && fill[0].Id == existing.Id, "Autofill was not exact-origin scoped.");
+        Assert(
+            BrowserCredentialWorkflowPolicy.SelectAutofillEntries(
+                settings, new Uri("https://example.com/"), false, new[] { existing }
+            ).Count == 0,
+            "Autofill was allowed in a child frame."
+        );
+
+        BrowserSettings assistantSettings = BrowserSettings.CreateDefault();
+        assistantSettings.PasswordSaveEnabled = true;
+        assistantSettings.PasswordAutofillEnabled = true;
+        int persisted = 0;
+        BrowserVaultService assistantVault = new BrowserVaultService(root);
+        BrowserLoginAssistant assistant = new BrowserLoginAssistant(
+            assistantVault,
+            delegate { return assistantSettings; },
+            delegate { persisted++; }
+        );
+        string assistantRequest = Guid.NewGuid().ToString("N");
+        string captureScript = assistant.BuildCaptureScript(
+            assistantRequest,
+            "https://login.example/path"
+        );
+        Assert(
+            captureScript.Contains("zsec.browser.credential-save-candidate.v1") &&
+                captureScript.Contains(assistantRequest),
+            "Login capture script omitted its strict schema or request ID."
+        );
+        string assistantJson = "{\"schema\":\"zsec.browser.credential-save-candidate.v1\"," +
+            "\"request_id\":\"" + assistantRequest + "\",\"origin\":\"https://login.example\"," +
+            "\"username\":\"reporter\",\"password\":\"assistant-test-secret\"}";
+        BrowserCredentialMessage assistantMessage = assistant.ParseCapture(
+            assistantJson,
+            "https://login.example/form",
+            "https://login.example/account"
+        );
+        Assert(assistantMessage != null, "Exact-origin login capture was rejected.");
+        Assert(
+            assistant.ParseCapture(
+                assistantJson,
+                "https://login.example/form",
+                "https://different.example/account"
+            ) == null,
+            "Cross-origin login capture was accepted."
+        );
+        BrowserCredentialPromptPlan assistantPlan = assistant.EvaluateSave(assistantMessage);
+        Assert(assistantPlan.Kind == BrowserCredentialPromptKind.Save, "Login save was not planned.");
+        BrowserVaultEntry assistantSaved = assistant.Save(
+            assistantMessage,
+            assistantPlan,
+            BrowserCredentialPromptDecision.Save
+        );
+        Assert(assistantSaved.Id != null, "Confirmed login save did not reach the vault.");
+        Assert(
+            assistant.CredentialsForOrigin(new Uri("https://login.example/next")).Count == 1,
+            "Exact-origin saved login was not selected for autofill."
+        );
+        Assert(
+            assistant.CredentialsForOrigin(new Uri("https://sub.login.example/")).Count == 0,
+            "Subdomain received another origin's saved login."
+        );
+        assistant.NeverForOrigin("https://blocked.example/path");
+        Assert(persisted == 1, "Never-for-site did not request settings persistence.");
+        assistantVault.Dispose();
+
+        BrowserDataStore store = new BrowserDataStore(root);
+        BrowserProductData data = store.Load();
+        data.Settings.PasswordSaveEnabled = true;
+        data.Settings.PasswordAutofillEnabled = true;
+        data.Settings.PasswordNeverSaveOrigins = new List<string>
+        {
+            "https://EXAMPLE.com/path", "https://example.com", "http://unsafe.example"
+        };
+        store.Save(data);
+        BrowserProductData loaded = store.Load();
+        Assert(loaded.SchemaVersion == 3, "Credential-settings schema version is wrong.");
+        Assert(loaded.Settings.PasswordSaveEnabled, "Password-save opt-in did not persist.");
+        Assert(loaded.Settings.PasswordAutofillEnabled, "Autofill opt-in did not persist.");
+        Assert(
+            loaded.Settings.PasswordNeverSaveOrigins.SequenceEqual(new[] { "https://example.com" }),
+            "Never-save origins did not normalize and deduplicate."
+        );
+        BrowserSettings copied = loaded.Settings.Copy();
+        copied.PasswordNeverSaveOrigins.Add("https://copy.example");
+        Assert(
+            loaded.Settings.PasswordNeverSaveOrigins.Count == 1,
+            "Settings copy shared the mutable never-save origin list."
+        );
     }
 
     private static void TestPasswordVault(string root)
@@ -209,7 +432,7 @@ internal static class BrowserProductStateTests
     {
         BrowserDataStore store = new BrowserDataStore(root);
         BrowserProductData data = store.Load();
-        Assert(data.SchemaVersion == 2, "Default schema version is wrong.");
+        Assert(data.SchemaVersion == 3, "Default schema version is wrong.");
         Assert(data.Settings.StartupMode == "home", "Default startup mode is wrong.");
         Assert(data.Settings.RecordHistory, "History should be enabled by default.");
         Assert(data.Settings.MinimizeToTray, "Minimize-to-tray should be available by default.");

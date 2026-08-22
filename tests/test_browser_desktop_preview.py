@@ -36,9 +36,9 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
     assert "unsigned" in readme.lower() and "Community" in readme
-    assert 'internal const string ProductVersion = "0.3.15"' in app
-    assert '$ProductVersion = "0.3.15"' in build
-    assert '$ProductVersion = "0.3.15"' in installer
+    assert 'internal const string ProductVersion = "0.3.16"' in app
+    assert '$ProductVersion = "0.3.16"' in build
+    assert '$ProductVersion = "0.3.16"' in installer
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:
@@ -56,7 +56,9 @@ def test_desktop_preview_preserves_browser_security_controls() -> None:
         assert flag not in app
 
     assert 'settings.AreHostObjectsAllowed = false' in app
-    assert 'settings.IsWebMessageEnabled = false' in app
+    assert 'settings.IsWebMessageEnabled = loginAssistant.Enabled' in app
+    assert 'settings.IsPasswordAutosaveEnabled = false' in app
+    assert 'settings.IsGeneralAutofillEnabled = false' in app
     assert 'settings.IsPasswordAutosaveEnabled = false' in app
     assert 'settings.IsGeneralAutofillEnabled = false' in app
     assert 'CoreWebView2PermissionState.Deny' in app
@@ -413,7 +415,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
     launcher_sha = hashlib.sha256(launcher_file.read_bytes()).hexdigest()
     manifest = {
         "schema": "zsec.browser.desktop-preview-build.v2",
-        "version": "0.3.15",
+        "version": "0.3.16",
         "architecture": "windows-x64-webview2-shell",
         "engine_distribution": "Microsoft Evergreen WebView2 Chromium runtime",
         "engine_maintained_by": "Microsoft",
@@ -470,7 +472,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
             text=True,
         )
 
-    name = "zsec-browser-community-0.3.15-windows-x64-unsigned.zip"
+    name = "zsec-browser-community-0.3.16-windows-x64-unsigned.zip"
     archive_a = release_a / name
     archive_b = release_b / name
     assert archive_a.read_bytes() == archive_b.read_bytes()
@@ -489,7 +491,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
     with zipfile.ZipFile(archive_a) as archive:
         provenance = json.loads(
             archive.read(
-                "zsec-browser-community-0.3.15/release-provenance.json"
+                "zsec-browser-community-0.3.16/release-provenance.json"
             ).decode("utf-8")
         )
     assert provenance["source_revision"] == revision
@@ -508,7 +510,7 @@ def test_community_release_rejects_machine_specific_manifest_paths(
     launcher.write_bytes(b"synthetic browser")
     manifest = {
         "schema": "zsec.browser.desktop-preview-build.v2",
-        "version": "0.3.15",
+        "version": "0.3.16",
         "architecture": "windows-x64-webview2-shell",
         "engine_distribution": "Microsoft Evergreen WebView2 Chromium runtime",
         "engine_maintained_by": "Microsoft",

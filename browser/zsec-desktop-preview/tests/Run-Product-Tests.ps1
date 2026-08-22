@@ -9,13 +9,16 @@ $stateSource = Join-Path $packageRoot "src\BrowserProductState.cs"
 $policySource = Join-Path $packageRoot "src\BrowserProductPolicy.cs"
 $vaultContractsSource = Join-Path $packageRoot "src\BrowserVaultUiContracts.cs"
 $passwordVaultSource = Join-Path $packageRoot "src\BrowserPasswordVault.cs"
+$credentialWorkflowSource = Join-Path $packageRoot "src\BrowserCredentialWorkflowPolicy.cs"
+$loginAssistantSource = Join-Path $packageRoot "src\BrowserLoginAssistant.cs"
 $testSource = Join-Path $PSScriptRoot "BrowserProductStateTests.cs"
 $compiler = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 $temporary = Join-Path ([IO.Path]::GetTempPath()) ("zsec-browser-product-tests-" + [guid]::NewGuid().ToString("N"))
 $executable = Join-Path $temporary "BrowserProductStateTests.exe"
 
 foreach ($path in @(
-    $stateSource, $policySource, $vaultContractsSource, $passwordVaultSource, $testSource, $compiler
+    $stateSource, $policySource, $vaultContractsSource, $passwordVaultSource,
+    $credentialWorkflowSource, $loginAssistantSource, $testSource, $compiler
 )) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Required browser product test input is absent: $path"
@@ -38,6 +41,8 @@ try {
         $policySource `
         $vaultContractsSource `
         $passwordVaultSource `
+        $credentialWorkflowSource `
+        $loginAssistantSource `
         $testSource
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $executable -PathType Leaf)) {
         throw "The browser product state test harness did not compile."
