@@ -3,12 +3,19 @@
 param(
     [Parameter(Mandatory = $true)][string]$CliPath,
     [string]$StateDirectory = (Join-Path $env:LOCALAPPDATA "ZSEC\Shield"),
-    [string]$ToolsRoot = $PSScriptRoot,
+    [string]$ToolsRoot,
     [switch]$PlanOnly
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+# Resolve the sibling tools directory after parameter binding. Windows
+# PowerShell 5.1 may otherwise observe an empty $PSScriptRoot while evaluating
+# the default expression for a script launched with -File.
+if (-not $PSBoundParameters.ContainsKey("ToolsRoot")) {
+    $ToolsRoot = $PSScriptRoot
+}
 
 function Get-NormalizedPath {
     param([Parameter(Mandatory = $true)][string]$Path)
