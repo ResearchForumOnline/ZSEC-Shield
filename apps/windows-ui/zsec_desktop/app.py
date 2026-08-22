@@ -243,6 +243,7 @@ class ZsecDesktop:
         self.watch_watchdog_job: str | None = None
         self.tray_scan_status = "Local engine starting"
         self.tray_companion_status = "Companion evidence pending"
+        self.protected_roots: tuple[Path, ...] = ()
 
         self.root.title("ZSEC Antivirus")
         self.root.geometry("1180x760")
@@ -257,7 +258,7 @@ class ZsecDesktop:
         self.tray = TrayController(
             dispatch=lambda callback: self._post(callback),
             open_window=self._open_window,
-            scan_downloads=self._tray_scan_downloads,
+            scan_protected_folders=self._tray_scan_protected_folders,
             open_settings=self._open_settings,
             exit_application=self._exit_application,
         )
@@ -394,7 +395,7 @@ class ZsecDesktop:
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
         ttk.Label(
             title_row,
-            text="COMMUNITY 0.3.12",
+            text="COMMUNITY 0.3.13",
             style="Subtitle.TLabel",
             foreground=AMBER,
         ).pack(
@@ -415,8 +416,8 @@ class ZsecDesktop:
         ttk.Label(
             header,
             text=(
-                "On-demand scanning and post-change monitoring. Keep Malwarebytes "
-                "or the active Windows antivirus enabled."
+                "Microsoft Defender provides real-time enforcement. ZSEC adds automatic "
+                "post-change inspection, protected-folder scans and recovery evidence."
             ),
             style="Subtitle.TLabel",
         ).pack(anchor=tk.W, pady=(4, 0))
@@ -458,8 +459,8 @@ class ZsecDesktop:
         self.feeds_tab = self._tab("Feeds")
         self.reports_tab = self._tab("Reports")
         self.health_tab = self._tab("Health")
-        self.security_tab = self._tab("Security & YubiKey")
-        self.readiness_tab = self._tab("Replacement readiness")
+        self.security_tab = self._tab("Encryption & recovery")
+        self.readiness_tab = self._tab("Protection assurance")
         self.settings_tab = self._tab("Settings")
         self._build_overview()
         self._build_scan()
@@ -482,8 +483,8 @@ class ZsecDesktop:
             (self.feeds_tab, "Signed feeds"),
             (self.reports_tab, "Reports"),
             (self.health_tab, "Evidence health"),
-            (self.security_tab, "Security & YubiKey"),
-            (self.readiness_tab, "Replacement readiness"),
+            (self.security_tab, "Encryption & recovery"),
+            (self.readiness_tab, "Protection assurance"),
             (self.settings_tab, "Settings"),
         ):
             button = ttk.Button(
@@ -529,14 +530,15 @@ class ZsecDesktop:
     def _build_overview(self) -> None:
         banner = self._panel(self.overview_tab)
         banner.pack(fill=tk.X, pady=(0, 12))
-        ttk.Label(banner, text="Existing antivirus required", style="Danger.TLabel").pack(
+        ttk.Label(banner, text="Layered Windows protection", style="Status.TLabel").pack(
             anchor=tk.W
         )
         ttk.Label(
             banner,
             text=(
-                "This Community build does not mediate file access, register with Windows "
-                "Security, or authorize removal of another provider."
+                "Windows Defender remains the real-time, pre-access protection engine. "
+                "ZSEC automatically monitors everyday folders and adds local inspection, "
+                "signed rules, evidence and encrypted recovery."
             ),
             style="Muted.TLabel",
             wraplength=900,
@@ -572,19 +574,21 @@ class ZsecDesktop:
         ttk.Button(
             row, text="Refresh evidence", style="Primary.TButton", command=self.refresh_all
         ).pack(side=tk.LEFT)
+        self.scan_protected_button = ttk.Button(
+            row,
+            text="Scan protected folders now",
+            command=self._scan_protected_folders,
+            state=tk.DISABLED,
+        )
+        self.scan_protected_button.pack(side=tk.LEFT, padx=8)
         ttk.Button(
             row,
-            text="Scan a folder",
-            command=lambda: self.tabs.select(self.scan_tab),  # type: ignore[no-untyped-call]
-        ).pack(side=tk.LEFT, padx=8)
-        ttk.Button(
-            row,
-            text="Review automatic monitoring",
+            text="Protection details",
             command=lambda: self.tabs.select(self.monitor_tab),  # type: ignore[no-untyped-call]
         ).pack(side=tk.LEFT, padx=(0, 8))
         ttk.Button(
             row,
-            text="Review replacement blockers",
+            text="Protection assurance",
             command=lambda: self.tabs.select(  # type: ignore[no-untyped-call]
                 self.readiness_tab
             ),
@@ -685,9 +689,10 @@ class ZsecDesktop:
         ttk.Label(
             panel,
             text=(
-                "The Windows companion can start at user logon and scan changed files. "
-                "It is post-change user-mode monitoring, not pre-access or kernel "
-                "real-time protection."
+                "ZSEC starts automatically at sign-in, inspects changes in your protected "
+                "folders, reconciles metadata every 5 minutes and performs a complete "
+                "cache-independent reconciliation every 24 hours. Defender separately "
+                "provides real-time, pre-access protection."
             ),
             style="Warning.TLabel",
             wraplength=920,
@@ -701,10 +706,17 @@ class ZsecDesktop:
         ttk.Button(
             status_row, text="Check installed companion", command=self.refresh_companion
         ).pack(side=tk.RIGHT)
+        self.protected_roots_label = ttk.Label(
+            panel,
+            text="Protected folders: checking installed coverage…",
+            style="Muted.TLabel",
+            wraplength=920,
+        )
+        self.protected_roots_label.pack(anchor=tk.W, pady=(8, 0))
         ttk.Separator(panel).pack(fill=tk.X, pady=14)
         ttk.Label(
             panel,
-            text="Temporary monitored-folder session",
+            text="Advanced temporary monitoring session",
             style="Surface.TLabel",
             font=("Segoe UI Semibold", 11),
         ).pack(anchor=tk.W)
@@ -1008,8 +1020,9 @@ class ZsecDesktop:
         self.yubikey_status = ttk.Label(
             panel,
             text=(
-                "YubiKey feature state: NOT IMPLEMENTED — after each explicit "
-                "quarantine opt-in, encryption is automatic and device-bound."
+                "Hardware-key recovery is not enabled in Community 0.3.13. When "
+                "quarantine is explicitly enabled, encryption remains automatic, "
+                "authenticated and device-bound."
             ),
             style="Warning.TLabel",
         )
@@ -1021,7 +1034,7 @@ class ZsecDesktop:
         header = ttk.Frame(panel, style="Surface.TFrame")
         header.pack(fill=tk.X)
         ttk.Label(
-            header, text="Primary-antivirus replacement readiness", style="Section.TLabel"
+            header, text="Protection assurance", style="Section.TLabel"
         ).pack(side=tk.LEFT)
         ttk.Button(header, text="Refresh", command=self.refresh_readiness).pack(side=tk.RIGHT)
         ttk.Button(
@@ -1040,14 +1053,15 @@ class ZsecDesktop:
         ttk.Label(
             panel,
             text=(
-                "This is a hard interlock. There is no uninstall button, override, "
-                "provider-disable action, or exclusion wizard in this desktop."
+                "This page verifies the Windows protection chain and recovery controls. "
+                "ZSEC never silently disables Defender, removes providers or creates "
+                "security exclusions."
             ),
             style="Muted.TLabel",
             wraplength=900,
         ).pack(anchor=tk.W, pady=(0, 10))
         self.readiness_tree = ttk.Treeview(panel, columns=("title", "evidence"), show="headings")
-        self.readiness_tree.heading("title", text="Blocking gate")
+        self.readiness_tree.heading("title", text="Assurance control")
         self.readiness_tree.heading("evidence", text="Evidence required")
         self.readiness_tree.column("title", width=300)
         self.readiness_tree.column("evidence", width=650)
@@ -1260,20 +1274,26 @@ class ZsecDesktop:
         if hasattr(self, "tray"):
             self.tray.set_status(f"{self.tray_scan_status}; {self.tray_companion_status}")
 
-    def _tray_scan_downloads(self) -> None:
+    def _tray_scan_protected_folders(self) -> None:
+        self._scan_protected_folders(from_tray=True)
+
+    def _scan_protected_folders(self, *, from_tray: bool = False) -> None:
         if self.scan_cancel is not None:
             self.tray.notify("A scan is already running.")
             return
-        downloads = Path.home() / "Downloads"
-        if not downloads.is_dir():
-            self.tray.notify("The Downloads folder is unavailable.")
+        roots = tuple(path for path in self.protected_roots if path.is_dir())
+        if not roots:
+            self.tray.notify(
+                "Protected-folder evidence is not available yet. Open ZSEC and refresh."
+            )
             return
-        self.scan_path.set(str(downloads))
         self.scan_quarantine.set(False)
         self.scan_cross_fs.set(False)
-        self._start_scan()
-        self.tray_scan_status = "Scanning Downloads"
+        self._begin_scan(roots, "protected folders")
+        self.tray_scan_status = "Scanning protected folders"
         self._update_tray_status()
+        if not from_tray:
+            self._select_tab(self.scan_tab)
 
     def _animate_activity(self) -> None:
         if self.closing:
@@ -1412,6 +1432,9 @@ class ZsecDesktop:
 
     def _start_scan(self) -> None:
         path = Path(self.scan_path.get().strip())
+        self._begin_scan((path,), str(path))
+
+    def _begin_scan(self, paths: tuple[Path, ...], label: str) -> None:
         try:
             max_bytes = int(self.max_file_mebibytes.get()) * 1024 * 1024
         except (tk.TclError, ValueError):
@@ -1438,12 +1461,16 @@ class ZsecDesktop:
         self.scan_start_button.configure(state=tk.DISABLED)
         self.scan_cancel_button.configure(state=tk.NORMAL)
         self.scan_result_label.configure(text="Scanning…", foreground=CYAN)
-        self._set_text(self.scan_output, f"Scanning {path}\nReport target: {report_path}\n")
+        display_paths = "\n".join(f"  • {path}" for path in paths)
+        self._set_text(
+            self.scan_output,
+            f"Scanning {label}\n{display_paths}\nReport target: {report_path}\n",
+        )
 
         def operation() -> CommandResult:
             assert self.scan_cancel is not None
             return self.bridge.scan(
-                [path],
+                list(paths),
                 quarantine=quarantine,
                 max_file_bytes=max_bytes,
                 cross_filesystems=cross_filesystems,
@@ -1494,11 +1521,7 @@ class ZsecDesktop:
         self.refresh_status()
         self.refresh_quarantine()
         self.refresh_reports()
-        self.tray.notify(
-            f"Downloads scan finished: {report['outcome'].replace('_', ' ')}."
-            if "Downloads" in str(scan.get("roots", []))
-            else f"Scan finished: {report['outcome'].replace('_', ' ')}."
-        )
+        self.tray.notify(f"Scan finished: {report['outcome'].replace('_', ' ')}.")
 
     def _scan_failed(self, exc: BaseException) -> None:
         self.scan_start_button.configure(state=tk.NORMAL)
@@ -1699,6 +1722,29 @@ class ZsecDesktop:
             text=f"{presentation.headline} — {presentation.detail}", foreground=colour
         )
         self.companion_card.set_value(presentation.headline, colour)
+        record = payload.get("health", {}).get("last_record") or {}
+        roots = tuple(
+            Path(value)
+            for value in record.get("roots", [])
+            if isinstance(value, str) and value.strip()
+        )
+        self.protected_roots = roots
+        if roots:
+            folder_names = ", ".join(path.name or str(path) for path in roots)
+            self.protected_roots_label.configure(
+                text=(
+                    f"Protected automatically: {folder_names}. Changes are inspected; "
+                    "5-minute metadata reconciliation and a 24-hour complete "
+                    "reconciliation run without folder selection."
+                ),
+                foreground=GREEN if payload["healthy"] else AMBER,
+            )
+            self.scan_protected_button.configure(state=tk.NORMAL)
+        else:
+            self.protected_roots_label.configure(
+                text="Protected-folder coverage could not be verified.", foreground=RED
+            )
+            self.scan_protected_button.configure(state=tk.DISABLED)
         self._render_windows_protection(payload)
 
     def _render_windows_protection(self, payload: dict[str, Any]) -> None:

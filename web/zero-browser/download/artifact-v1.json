@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://talktoai.org/zero-browser/download/artifact-v1.json",
+  "title": "ZSEC Browser Shields artifact metadata v1",
+  "description": "Validation schema for immutable ZSEC Browser Shields Community artifact metadata.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact",
+    "easylist",
+    "installation_channel",
+    "manifest_version",
+    "minimum_chrome_version",
+    "product",
+    "schema",
+    "sha256",
+    "signed_store_package",
+    "source_dirty_at_build",
+    "source_revision",
+    "version"
+  ],
+  "properties": {
+    "artifact": { "type": "string", "pattern": "^[A-Za-z0-9._-]+\\.zip$" },
+    "installation_channel": { "const": "unpacked-community" },
+    "manifest_version": { "const": 3 },
+    "minimum_chrome_version": { "type": "string", "pattern": "^[0-9]+$" },
+    "product": { "const": "ZSEC Browser Shields" },
+    "schema": { "const": "https://talktoai.org/zero-browser/download/artifact-v1.json" },
+    "sha256": { "$ref": "#/$defs/sha256" },
+    "signed_store_package": { "const": false },
+    "source_dirty_at_build": { "type": "boolean" },
+    "source_revision": { "$ref": "#/$defs/gitRevision" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "easylist": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "acceptable_ads_included",
+        "enabled_by_default",
+        "files",
+        "network_filtering_only",
+        "output_sha256",
+        "retained_source_sha256",
+        "rule_count",
+        "ruleset_id",
+        "ruleset_version",
+        "security_rule_priority_floor",
+        "upstream_release_commit",
+        "upstream_release_tag"
+      ],
+      "properties": {
+        "acceptable_ads_included": { "const": false },
+        "enabled_by_default": { "type": "boolean" },
+        "network_filtering_only": { "type": "boolean" },
+        "output_sha256": { "$ref": "#/$defs/sha256" },
+        "retained_source_sha256": { "$ref": "#/$defs/sha256" },
+        "rule_count": { "type": "integer", "minimum": 1 },
+        "ruleset_id": { "type": "string", "minLength": 1 },
+        "ruleset_version": { "type": "string", "minLength": 1 },
+        "security_rule_priority_floor": { "type": "integer", "minimum": 1 },
+        "upstream_release_commit": { "$ref": "#/$defs/gitRevision" },
+        "upstream_release_tag": { "type": "string", "minLength": 1 },
+        "files": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/$defs/fileIdentity" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "gitRevision": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "fileIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bytes", "sha256"],
+      "properties": {
+        "bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

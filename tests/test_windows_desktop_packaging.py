@@ -36,6 +36,12 @@ def test_desktop_builder_is_syntax_valid_and_records_coexistence_policy() -> Non
     assert '"publisher_code_signing": "not-performed-by-this-build"' in source
     assert '"ZSEC Antivirus Build"' in source
     assert 'os.environ.get("LOCALAPPDATA")' in source
+    assert '"SOURCE_DATE_EPOCH": native._source_date_epoch()' in source
+    native_source = (ROOT / "packaging" / "native_release.py").read_text(
+        encoding="utf-8"
+    )
+    assert "datetime.fromtimestamp(int(_source_date_epoch()), UTC)" in native_source
+    assert "zipfile.ZipInfo(archive_name, date_time=zip_time)" in native_source
 
 
 def test_desktop_builder_separates_and_verifies_gui_and_engine_pe_identity() -> None:
@@ -149,7 +155,7 @@ def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
     assert "Desktop Preview" not in app
     assert "DESKTOP PREVIEW" not in app
     assert 'self.root.title("ZSEC Antivirus")' in app
-    assert 'text="COMMUNITY 0.3.12"' in app
+    assert 'text="COMMUNITY 0.3.13"' in app
 
 
 def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None:
@@ -168,7 +174,8 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     assert "width >= 1040" in app
     assert "width >= 520" in app
     assert "TrayController" in app
-    assert "_tray_scan_downloads" in app
+    assert "_tray_scan_protected_folders" in app
+    assert "Scan protected folders now" in app
     assert "_window_close" in app
     assert "Start ZSEC Antivirus in the notification area" in app
 

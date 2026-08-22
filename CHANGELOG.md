@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.13 - 2026-08-22
+
+- Reworked the Windows protection-centre workflow around automatic coverage:
+  the installed companion remains the source of truth for protected folders,
+  and the overview plus notification-area menu can scan that complete set in
+  one action without asking ordinary users to choose a directory.
+- Added a verified local Documents fallback when Windows redirects the system
+  Documents known-folder through a reparse point that the companion must reject;
+  the installer still deduplicates and refuses unsafe roots.
+- Added visible, evidence-backed coverage details for the automatic five-minute
+  metadata reconciliation and 24-hour cache-independent reconciliation.
+- Moved temporary folder watching behind an explicitly advanced section and
+  replaced development-style replacement and YubiKey labels with mature
+  protection-assurance and encrypted-recovery wording while preserving every
+  claim boundary.
+- Kept Microsoft Defender as the verified Windows real-time and pre-access
+  enforcement provider. ZSEC does not disable Defender, remove providers or
+  create exclusions.
+
 ## 0.3.12 - 2026-08-22
 
 - Moved the Windows desktop installer's implicit package-root resolution out of

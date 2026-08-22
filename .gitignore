@@ -11,6 +11,8 @@ build/
 dist/
 deploy/
 .venv/
+.deps/
+.pytest-*/
 reports/
 native-release/
 browser/zeroq-shields/_metadata/

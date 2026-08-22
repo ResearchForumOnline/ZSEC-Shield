@@ -13,13 +13,13 @@ class TrayController:
         *,
         dispatch: Callable[[Callable[[], None]], None],
         open_window: Callable[[], None],
-        scan_downloads: Callable[[], None],
+        scan_protected_folders: Callable[[], None],
         open_settings: Callable[[], None],
         exit_application: Callable[[], None],
     ) -> None:
         self._dispatch = dispatch
         self._open_window = open_window
-        self._scan_downloads = scan_downloads
+        self._scan_protected_folders = scan_protected_folders
         self._open_settings = open_settings
         self._exit_application = exit_application
         self._status = "Starting local evidence checks…"
@@ -51,7 +51,10 @@ class TrayController:
                 pystray.MenuItem("Open ZSEC Antivirus", dispatch(self._open_window), default=True),
                 pystray.MenuItem(lambda _item: f"Status: {self._status}", None, enabled=False),
                 pystray.Menu.SEPARATOR,
-                pystray.MenuItem("Scan Downloads", dispatch(self._scan_downloads)),
+                pystray.MenuItem(
+                    "Scan protected folders now",
+                    dispatch(self._scan_protected_folders),
+                ),
                 pystray.MenuItem("Settings", dispatch(self._open_settings)),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Exit ZSEC Antivirus", dispatch(self._exit_application)),

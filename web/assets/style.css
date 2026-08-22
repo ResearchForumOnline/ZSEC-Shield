@@ -460,6 +460,11 @@ code[data-linux-sha] {
   overflow-wrap: anywhere;
 }
 
+.product-security .hero h1,
+.product-browser .hero h1 {
+  font-size: clamp(2.65rem, 5.4vw, 4.6rem);
+}
+
 .hero-kicker,
 .section-label {
   display: inline-flex;
@@ -1421,7 +1426,7 @@ code[data-linux-sha] {
   }
 
   .hero-grid {
-    padding-block: 4rem;
+    padding-block: 2.75rem;
   }
 
   .hero-art {

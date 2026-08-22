@@ -100,7 +100,7 @@ def test_tray_menu_dispatches_ui_actions_and_updates_status(
     controller = TrayController(
         dispatch=lambda callback: dispatched.append(callback),
         open_window=lambda: callbacks.append("open"),
-        scan_downloads=lambda: callbacks.append("scan"),
+        scan_protected_folders=lambda: callbacks.append("scan"),
         open_settings=lambda: callbacks.append("settings"),
         exit_application=lambda: callbacks.append("exit"),
     )

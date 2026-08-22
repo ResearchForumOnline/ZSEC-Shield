@@ -290,6 +290,7 @@ def build(output_dir: Path) -> dict[str, Any]:
         environment.update(
             {
                 "PYTHONHASHSEED": "0",
+                "SOURCE_DATE_EPOCH": native._source_date_epoch(),
                 "ZSEC_SHIELD_WINDOWS_VERSION_FILE": str(engine_version_file),
                 "ZSEC_GUI_WINDOWS_VERSION_FILE": str(gui_version_file),
                 "ZSEC_GUI_WINDOWS_ICON": str(icon_file),

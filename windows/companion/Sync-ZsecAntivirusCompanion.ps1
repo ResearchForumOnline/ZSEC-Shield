@@ -239,7 +239,8 @@ function Get-MigratedProtectedRoots {
         @(
             ([Environment]::GetFolderPath("Desktop")),
             (Join-Path $env:USERPROFILE "Downloads"),
-            ([Environment]::GetFolderPath("MyDocuments"))
+            ([Environment]::GetFolderPath("MyDocuments")),
+            (Join-Path $env:USERPROFILE "Documents")
         )
     )) {
         if ([string]::IsNullOrWhiteSpace([string]$candidate)) { continue }

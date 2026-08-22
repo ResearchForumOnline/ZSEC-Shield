@@ -416,6 +416,40 @@ def _source_revision() -> str | None:
     return revision if REVISION_PATTERN.fullmatch(revision) else None
 
 
+def _source_date_epoch() -> str:
+    """Return a stable PE build timestamp for reproducible Windows artifacts."""
+    configured = os.environ.get("SOURCE_DATE_EPOCH", "")
+    if configured:
+        if not configured.isdecimal():
+            raise ReleaseError("SOURCE_DATE_EPOCH must be an unsigned integer")
+        return configured
+    try:
+        result = subprocess.run(
+            [
+                "git",
+                "-c",
+                f"safe.directory={PROJECT_ROOT.as_posix()}",
+                "show",
+                "-s",
+                "--format=%ct",
+                "HEAD",
+            ],
+            cwd=PROJECT_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        raise ReleaseError(
+            "SOURCE_DATE_EPOCH is required when the source commit time is unavailable"
+        ) from exc
+    epoch = result.stdout.strip()
+    if not epoch.isdecimal():
+        raise ReleaseError("the source commit time is not an unsigned integer")
+    return epoch
+
+
 def _source_tree_state() -> str:
     try:
         result = subprocess.run(
@@ -611,6 +645,17 @@ def _smoke_test(executable: Path, state_dir: Path, version: str) -> None:
 
 def _create_archive(bundle_root: Path, archive: Path, target_os: str) -> None:
     if target_os == "windows":
+        source_time = datetime.fromtimestamp(int(_source_date_epoch()), UTC)
+        if source_time.year < 1980:
+            source_time = datetime(1980, 1, 1, tzinfo=UTC)
+        zip_time = (
+            source_time.year,
+            source_time.month,
+            source_time.day,
+            source_time.hour,
+            source_time.minute,
+            source_time.second - (source_time.second % 2),
+        )
         with zipfile.ZipFile(
             archive, mode="x", compression=zipfile.ZIP_DEFLATED, compresslevel=9
         ) as output:
@@ -622,9 +667,13 @@ def _create_archive(bundle_root: Path, archive: Path, target_os: str) -> None:
                 archive_name = (
                     Path(bundle_root.name) / path.relative_to(bundle_root)
                 ).as_posix()
+                info = zipfile.ZipInfo(archive_name, date_time=zip_time)
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.create_system = 0
+                info.external_attr = 0x20
                 for attempt in range(20):
                     try:
-                        output.write(path, archive_name)
+                        output.writestr(info, path.read_bytes(), compresslevel=9)
                         break
                     except PermissionError:
                         if attempt == 19:
@@ -683,6 +732,7 @@ def build_native(output_dir: Path) -> dict[str, Any]:
         pyinstaller_work = temporary / "work"
         environment = os.environ.copy()
         environment["PYTHONHASHSEED"] = "0"
+        environment["SOURCE_DATE_EPOCH"] = _source_date_epoch()
         environment["PYINSTALLER_CONFIG_DIR"] = str(temporary / "pyinstaller-cache")
         if target_os == "windows":
             version_file = temporary / "windows-version-info.txt"

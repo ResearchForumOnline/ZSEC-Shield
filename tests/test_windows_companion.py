@@ -54,6 +54,7 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn('(Join-Path $env:USERPROFILE "Downloads")', content)
         self.assertIn('[Environment]::GetFolderPath("Desktop")', content)
         self.assertIn('[Environment]::GetFolderPath("MyDocuments")', content)
+        self.assertIn('(Join-Path $env:USERPROFILE "Documents")', content)
         self.assertNotIn('[IO.Path]::GetTempPath()', content)
         self.assertIn("Test-Path -LiteralPath $_ -PathType Container", content)
         self.assertIn("[IO.FileAttributes]::ReparsePoint", content)
