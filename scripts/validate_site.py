@@ -25,13 +25,13 @@ FAQ_COUNTS = {
 }
 COPY_REQUIREMENTS = {
     "zero-security": (
-        "ZSEC Antivirus Community 0.3.9",
+        "ZSEC Antivirus Community 0.3.10",
         "Microsoft Defender supplies supported Windows real-time enforcement",
         "ZSEC does not uninstall a provider",
         "is not registered as the primary provider",
     ),
     "zero-browser": (
-        "ZSEC Browser Community 0.3.9",
+        "ZSEC Browser Community 0.3.10",
         "all WebView2 resource-source kinds",
         "Journalist preset",
         "does not seek, accelerate or mute playback",
@@ -141,7 +141,7 @@ def validate_page(slug: str, canonical: str) -> None:
     require(len(parser.meta_descriptions) == 1, f"{slug}: meta description missing")
     require(80 <= len(parser.meta_descriptions[0]) <= 180, f"{slug}: meta description length")
     for required_copy in COPY_REQUIREMENTS[slug]:
-        require(required_copy in text, f"{slug}: required 0.3.9 claim boundary missing")
+        require(required_copy in text, f"{slug}: required 0.3.10 claim boundary missing")
 
     script_match = re.search(
         r'<script type="application/ld\+json">(?P<json>[\s\S]*?)</script>', text
@@ -193,12 +193,12 @@ def validate_privacy_page() -> None:
         "zero-browser/privacy: description length",
     )
     for required_copy in (
-        "ZSEC Browser Community 0.3.9",
+        "ZSEC Browser Community 0.3.10",
         "bounded <code>browser-data.json</code>",
         "The Journalist preset is therefore not an ephemeral",
         "ZSEC does not proxy searches",
     ):
-        require(required_copy in text, "zero-browser/privacy: 0.3.9 privacy boundary")
+        require(required_copy in text, "zero-browser/privacy: 0.3.10 privacy boundary")
     htaccess = (page.parent / ".htaccess").read_text(encoding="utf-8")
     require("script-src 'none'" in htaccess, "zero-browser/privacy: script CSP missing")
     require("frame-ancestors 'none'" in htaccess, "zero-browser/privacy: frame CSP missing")

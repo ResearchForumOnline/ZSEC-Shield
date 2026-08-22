@@ -92,6 +92,61 @@ function ConvertTo-OptionalEvidenceString {
     return $text
 }
 
+function ConvertTo-DefenderAgeEvidence {
+    param($Value)
+    if ($null -eq $Value -or $Value -is [bool]) {
+        return $null
+    }
+    [long]$parsed = 0
+    $text = [string]$Value
+    if (-not [long]::TryParse(
+            $text,
+            [Globalization.NumberStyles]::Integer,
+            [Globalization.CultureInfo]::InvariantCulture,
+            [ref]$parsed
+        )) {
+        return $null
+    }
+    if ($parsed -lt 0 -or $parsed -gt [int]::MaxValue) {
+        return $null
+    }
+    return [int]$parsed
+}
+
+function Set-DefenderAgeAndFeatureEvidence {
+    param(
+        [Parameter(Mandatory = $true)]$Defender,
+        [Parameter(Mandatory = $true)]$Status
+    )
+    $Defender.signatures.antivirus_age_days = ConvertTo-DefenderAgeEvidence (
+        Get-OptionalProperty -InputObject $Status -Name "AntivirusSignatureAge"
+    )
+    $Defender.scans.quick_scan_age_days = ConvertTo-DefenderAgeEvidence (
+        Get-OptionalProperty -InputObject $Status -Name "QuickScanAge"
+    )
+    $Defender.scans.quick_scan_end = ConvertTo-UtcEvidenceTimestamp (
+        Get-OptionalProperty -InputObject $Status -Name "QuickScanEndTime"
+    )
+    $Defender.scans.full_scan_age_days = ConvertTo-DefenderAgeEvidence (
+        Get-OptionalProperty -InputObject $Status -Name "FullScanAge"
+    )
+    $Defender.scans.full_scan_end = ConvertTo-UtcEvidenceTimestamp (
+        Get-OptionalProperty -InputObject $Status -Name "FullScanEndTime"
+    )
+    $Defender.confirmed_active = (
+        $Defender.antivirus_enabled -and
+        $Defender.real_time_protection_enabled -and
+        $Defender.service_enabled
+    )
+    $Defender.baseline_features_confirmed = (
+        $Defender.confirmed_active -and
+        $Defender.behavior_monitor_enabled -and
+        $Defender.ioav_protection_enabled -and
+        $Defender.on_access_protection_enabled -and
+        $Defender.network_inspection_enabled
+    )
+}
+
 function Get-SecurityServiceEvidence {
     $values = @()
     foreach ($serviceName in @(
@@ -218,10 +273,6 @@ public static class ZsecWscHealth {
         $defender.signatures.antivirus_last_updated = ConvertTo-UtcEvidenceTimestamp (
             Get-OptionalProperty -InputObject $mp -Name "AntivirusSignatureLastUpdated"
         )
-        $signatureAge = Get-OptionalProperty -InputObject $mp -Name "AntivirusSignatureAge"
-        if ($null -ne $signatureAge) {
-            $defender.signatures.antivirus_age_days = [int]$signatureAge
-        }
         $signaturesOutOfDate = Get-OptionalProperty `
             -InputObject $mp `
             -Name "DefenderSignaturesOutOfDate"
@@ -240,32 +291,9 @@ public static class ZsecWscHealth {
                 [bool]$signaturesOutOfDate -or -not $signatureMaterialPresent
             )
         }
-        $quickAge = Get-OptionalProperty -InputObject $mp -Name "QuickScanAge"
-        if ($null -ne $quickAge) {
-            $defender.scans.quick_scan_age_days = [int]$quickAge
-        }
-        $defender.scans.quick_scan_end = ConvertTo-UtcEvidenceTimestamp (
-            Get-OptionalProperty -InputObject $mp -Name "QuickScanEndTime"
-        )
-        $fullAge = Get-OptionalProperty -InputObject $mp -Name "FullScanAge"
-        if ($null -ne $fullAge) {
-            $defender.scans.full_scan_age_days = [int]$fullAge
-        }
-        $defender.scans.full_scan_end = ConvertTo-UtcEvidenceTimestamp (
-            Get-OptionalProperty -InputObject $mp -Name "FullScanEndTime"
-        )
-        $defender.confirmed_active = (
-            $defender.antivirus_enabled -and
-            $defender.real_time_protection_enabled -and
-            $defender.service_enabled
-        )
-        $defender.baseline_features_confirmed = (
-            $defender.confirmed_active -and
-            $defender.behavior_monitor_enabled -and
-            $defender.ioav_protection_enabled -and
-            $defender.on_access_protection_enabled -and
-            $defender.network_inspection_enabled
-        )
+        Set-DefenderAgeAndFeatureEvidence `
+            -Defender $defender `
+            -Status $mp
         $defender.note = $(if ($defender.confirmed_active) {
                 "Defender active state is confirmed by Get-MpComputerStatus."
             }
@@ -274,7 +302,10 @@ public static class ZsecWscHealth {
             })
     }
     catch {
-        $defender.note = "Get-MpComputerStatus was unavailable; no Defender-active inference made."
+        $defender.note = (
+            "Microsoft Defender status evidence could not be completed; " +
+            "no Defender-active inference made."
+        )
     }
     return [ordered]@{
         method = "WscGetSecurityProviderHealth(WSC_SECURITY_PROVIDER_ANTIVIRUS)"

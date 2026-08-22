@@ -6,17 +6,171 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$ProductVersion = "0.3.9"
+$ProductVersion = "0.3.10"
 $WebView2Version = "1.0.4129.50"
 $WebView2Uri = "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/$WebView2Version/microsoft.web.webview2.$WebView2Version.nupkg"
 $WebView2Sha256 = "d3934f482d484b89fb4825df720c710664e1143a1e90f7b3a60794ef33f473d2"
 $WebView2Sha512Base64 = "9TM9AZpDUiAb6OJB9s6thxl63BJFgbINcp047Zy+oiz9+cjgLhFrMRZ5Be+5wVHGvMJR3z1rmPWeJipo4g0sJw=="
+
+function Remove-OwnedPackageExtraction {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$CacheRoot,
+        [Parameter(Mandatory = $true)][string]$PackagePath
+    )
+    $resolvedCache = [IO.Path]::GetFullPath($CacheRoot).TrimEnd('\', '/')
+    $resolvedPath = [IO.Path]::GetFullPath($Path).TrimEnd('\', '/')
+    $parent = [IO.Path]::GetDirectoryName($resolvedPath)
+    $leaf = [IO.Path]::GetFileName($resolvedPath)
+    if (
+        -not [string]::Equals(
+            $parent,
+            $resolvedCache,
+            [StringComparison]::OrdinalIgnoreCase
+        ) -or
+        $leaf -notmatch '^extract-[0-9a-f]{32}$'
+    ) {
+        throw "Package-extraction cleanup refused a path outside its exact owned boundary."
+    }
+    $cacheItem = Get-Item -LiteralPath $resolvedCache -Force -ErrorAction Stop
+    if (-not $cacheItem.PSIsContainer -or
+        ($cacheItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw "Package-extraction cleanup refused an unsafe cache root."
+    }
+    if (-not (Test-Path -LiteralPath $resolvedPath)) {
+        return
+    }
+    $rootItem = Get-Item -LiteralPath $resolvedPath -Force -ErrorAction Stop
+    if (-not $rootItem.PSIsContainer -or
+        ($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw "Package-extraction cleanup refused an unexpected staging object."
+    }
+    Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop
+    $directories = @{}
+    $directories[$resolvedPath] = $true
+    $archive = [IO.Compression.ZipFile]::OpenRead($PackagePath)
+    try {
+        foreach ($entry in $archive.Entries) {
+            if ([string]::IsNullOrWhiteSpace($entry.FullName)) {
+                continue
+            }
+            $relative = $entry.FullName.Replace(
+                '/',
+                [IO.Path]::DirectorySeparatorChar
+            )
+            $candidate = [IO.Path]::GetFullPath((Join-Path $resolvedPath $relative))
+            $prefix = $resolvedPath + [IO.Path]::DirectorySeparatorChar
+            if (-not $candidate.StartsWith(
+                    $prefix,
+                    [StringComparison]::OrdinalIgnoreCase
+                )) {
+                throw "Package-extraction cleanup refused an archive path escape."
+            }
+            if (-not [string]::IsNullOrEmpty($entry.Name)) {
+                if (Test-Path -LiteralPath $candidate) {
+                    $fileItem = Get-Item -LiteralPath $candidate -Force -ErrorAction Stop
+                    if ($fileItem.PSIsContainer -or
+                        ($fileItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+                        throw "Package-extraction cleanup refused a changed archive file."
+                    }
+                    [IO.File]::Delete($candidate)
+                }
+                $directory = [IO.Path]::GetDirectoryName($candidate)
+            }
+            else {
+                $directory = $candidate.TrimEnd('\', '/')
+            }
+            while (-not [string]::IsNullOrWhiteSpace($directory)) {
+                if ($directory.StartsWith(
+                        $prefix,
+                        [StringComparison]::OrdinalIgnoreCase
+                    ) -or
+                    [string]::Equals(
+                        $directory,
+                        $resolvedPath,
+                        [StringComparison]::OrdinalIgnoreCase
+                    )) {
+                    $directories[$directory] = $true
+                }
+                else {
+                    break
+                }
+                if ([string]::Equals(
+                        $directory,
+                        $resolvedPath,
+                        [StringComparison]::OrdinalIgnoreCase
+                    )) {
+                    break
+                }
+                $directory = [IO.Path]::GetDirectoryName($directory)
+            }
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+    $orderedDirectories = @(
+        $directories.Keys | Sort-Object { $_.Length } -Descending
+    )
+    foreach ($directory in $orderedDirectories) {
+        if (-not (Test-Path -LiteralPath $directory)) {
+            continue
+        }
+        $directoryItem = Get-Item -LiteralPath $directory -Force -ErrorAction Stop
+        if (-not $directoryItem.PSIsContainer -or
+            ($directoryItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            throw "Package-extraction cleanup refused a changed archive directory."
+        }
+        [IO.Directory]::Delete($directory, $false)
+    }
+    if (Test-Path -LiteralPath $resolvedPath) {
+        throw "Package-extraction staging cleanup could not be verified."
+    }
+}
+
+function Expand-PinnedPackageToFreshStaging {
+    param(
+        [Parameter(Mandatory = $true)][string]$PackagePath,
+        [Parameter(Mandatory = $true)][string]$CacheRoot
+    )
+    if (-not (Test-Path -LiteralPath $PackagePath -PathType Leaf)) {
+        throw "The verified package is absent before extraction."
+    }
+    $leaf = "extract-$([Guid]::NewGuid().ToString('N'))"
+    $staging = Join-Path ([IO.Path]::GetFullPath($CacheRoot)) $leaf
+    if (Test-Path -LiteralPath $staging) {
+        throw "The fresh package-extraction staging path already exists."
+    }
+    try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop
+        [IO.Compression.ZipFile]::ExtractToDirectory($PackagePath, $staging)
+        return $staging
+    }
+    catch {
+        try {
+            Remove-OwnedPackageExtraction `
+                -Path $staging `
+                -CacheRoot $CacheRoot `
+                -PackagePath $PackagePath
+        }
+        catch {
+            throw (
+                "The pinned Microsoft WebView2 SDK package extraction failed and " +
+                "staging cleanup could not be verified."
+            )
+        }
+        throw "The pinned Microsoft WebView2 SDK package could not be extracted."
+    }
+}
 
 $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $RepoRoot "dist\browser-desktop-preview\$ProductVersion"
 }
 $OutputDirectory = [System.IO.Path]::GetFullPath($OutputDirectory)
+if (Test-Path -LiteralPath $OutputDirectory) {
+    throw "OutputDirectory must not already exist; use a fresh path for each build."
+}
 $PayloadRoot = Join-Path $OutputDirectory "payload"
 $AppRoot = Join-Path $PayloadRoot "App"
 $PolicyRoot = Join-Path $AppRoot "policy"
@@ -32,7 +186,6 @@ $LauncherPath = Join-Path $AppRoot "ZSEC Browser.exe"
 $CscPath = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 $PackageCache = Join-Path $env:LOCALAPPDATA "TalkToAI\ZSEC Browser Build\packages\Microsoft.Web.WebView2\$WebView2Version"
 $PackagePath = Join-Path $PackageCache "microsoft.web.webview2.$WebView2Version.nupkg"
-$PackageExtract = Join-Path $PackageCache "extracted"
 
 foreach ($path in @($LauncherSource, $ProductStateSource, $ProductPolicySource, $ProductDialogsSource, $YoutubeProtectionSource, $IconSource, $CscPath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
@@ -64,9 +217,10 @@ if ($actualSha512Base64 -ne $WebView2Sha512Base64) {
     throw "The pinned Microsoft WebView2 SDK package failed the NuGet catalog SHA-512 check."
 }
 
-if (-not (Test-Path -LiteralPath $PackageExtract -PathType Container)) {
-    Expand-Archive -LiteralPath $PackagePath -DestinationPath $PackageExtract
-}
+$PackageExtract = Expand-PinnedPackageToFreshStaging `
+    -PackagePath $PackagePath `
+    -CacheRoot $PackageCache
+try {
 $CoreDll = Join-Path $PackageExtract "lib\net462\Microsoft.Web.WebView2.Core.dll"
 $WinFormsDll = Join-Path $PackageExtract "lib\net462\Microsoft.Web.WebView2.WinForms.dll"
 $LoaderDll = Join-Path $PackageExtract "runtimes\win-x64\native\WebView2Loader.dll"
@@ -211,4 +365,11 @@ $encoding = New-Object System.Text.UTF8Encoding($false)
     (($result | ConvertTo-Json -Depth 8) + [Environment]::NewLine),
     $encoding
 )
+}
+finally {
+    Remove-OwnedPackageExtraction `
+        -Path $PackageExtract `
+        -CacheRoot $PackageCache `
+        -PackagePath $PackagePath
+}
 $result | ConvertTo-Json -Depth 8
