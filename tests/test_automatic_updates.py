@@ -60,6 +60,34 @@ def envelope(
     ).encode()
 
 
+def application_envelope(
+    private_key: Ed25519PrivateKey,
+    release: dict[str, object],
+    now: datetime,
+    sequence: int = 12,
+) -> bytes:
+    payload = {
+        "schema": "zsec.application-update.payload.v1",
+        "sequence": sequence,
+        "generated_at": now.isoformat().replace("+00:00", "Z"),
+        "expires_at": (now + timedelta(days=7)).isoformat().replace("+00:00", "Z"),
+        "channel": "stable",
+        "notification_only": True,
+        "auto_install_allowed": False,
+        "release": release,
+    }
+    signature = private_key.sign(canonical_json_bytes(payload) + b"\n")
+    return json.dumps(
+        {
+            "schema": "zsec.signed-envelope.v1",
+            "algorithm": "ed25519",
+            "key_id": "test:primary",
+            "payload": payload,
+            "signature": base64.b64encode(signature).decode("ascii"),
+        }
+    ).encode()
+
+
 class AutomaticUpdateTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = TemporaryDirectory()
@@ -139,35 +167,48 @@ class AutomaticUpdateTests(unittest.TestCase):
 
     def test_application_manifest_is_verified_notification_only(self) -> None:
         release = json.loads((ROOT / "updates" / "application-release.json").read_text())
-        payload = {
-            "schema": "zsec.application-update.payload.v1",
-            "sequence": 12,
-            "generated_at": self.now.isoformat().replace("+00:00", "Z"),
-            "expires_at": (self.now + timedelta(days=7)).isoformat().replace("+00:00", "Z"),
-            "channel": "stable",
-            "notification_only": True,
-            "auto_install_allowed": False,
-            "release": release,
-        }
-        signed = {
-            "schema": "zsec.signed-envelope.v1",
-            "algorithm": "ed25519",
-            "key_id": "test:primary",
-            "payload": payload,
-            "signature": base64.b64encode(
-                self.private_key.sign(canonical_json_bytes(payload) + b"\n")
-            ).decode("ascii"),
-        }
+        raw = application_envelope(self.private_key, release, self.now)
         notice = verify_application_update_envelope(
-            json.dumps(signed).encode(), self.keyring, now=self.now
+            raw, self.keyring, now=self.now
         )
         self.assertFalse(notice["automatic_install"])
         self.assertEqual(release["version"], notice["version"])
-        payload["auto_install_allowed"] = True
+        signed = json.loads(raw)
+        signed["payload"]["auto_install_allowed"] = True
         with self.assertRaisesRegex(FeedError, "signature"):
             verify_application_update_envelope(
                 json.dumps(signed).encode(), self.keyring, now=self.now
             )
+
+    def test_application_manifest_rejects_expiry_truncation_and_wrong_key(self) -> None:
+        release = json.loads((ROOT / "updates" / "application-release.json").read_text())
+        raw = application_envelope(self.private_key, release, self.now)
+        with self.assertRaisesRegex(FeedError, "validity"):
+            verify_application_update_envelope(
+                raw, self.keyring, now=self.now + timedelta(days=8)
+            )
+        with self.assertRaises((FeedError, json.JSONDecodeError)):
+            verify_application_update_envelope(raw[: len(raw) // 2], self.keyring, now=self.now)
+
+        wrong_root = self.root / "wrong"
+        wrong_root.mkdir()
+        wrong_private, _wrong_keyring = make_signing_material(wrong_root)
+        wrong_raw = application_envelope(wrong_private, release, self.now)
+        with self.assertRaisesRegex(FeedError, "signature"):
+            verify_application_update_envelope(wrong_raw, self.keyring, now=self.now)
+
+    def test_resigned_application_manifest_cannot_authorize_provider_changes(self) -> None:
+        release = json.loads((ROOT / "updates" / "application-release.json").read_text())
+        release["provider_action"] = "disable-existing-antivirus"
+        raw = application_envelope(self.private_key, release, self.now)
+        with self.assertRaisesRegex(FeedError, "release fields"):
+            verify_application_update_envelope(raw, self.keyring, now=self.now)
+
+        release.pop("provider_action")
+        release["auto_install_allowed"] = True
+        raw = application_envelope(self.private_key, release, self.now)
+        with self.assertRaisesRegex(FeedError, "not notification-only"):
+            verify_application_update_envelope(raw, self.keyring, now=self.now)
 
 
 if __name__ == "__main__":

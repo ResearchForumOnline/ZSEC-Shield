@@ -964,6 +964,26 @@ class ZsecDesktop:
             wraplength=850,
         )
         self.feed_update_source_label.pack(anchor=tk.W)
+        update_controls = ttk.Frame(update_panel, style="Alt.TFrame")
+        update_controls.pack(fill=tk.X, pady=(12, 0))
+        self.feed_update_refresh_button = ttk.Button(
+            update_controls,
+            text="Refresh update evidence",
+            command=self.refresh_status,
+        )
+        self.feed_update_refresh_button.pack(side=tk.LEFT)
+        ttk.Label(
+            update_controls,
+            text=(
+                "Signed intelligence updates activate automatically after verification. "
+                "Application releases remain notification-only and require a reviewed "
+                "installer; this interface never treats an unsigned package as trusted."
+            ),
+            style="Muted.TLabel",
+            background=SURFACE_ALT,
+            wraplength=650,
+            justify=tk.LEFT,
+        ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(14, 0))
 
         ttk.Separator(panel).pack(fill=tk.X, pady=18)
         ttk.Label(
@@ -1443,9 +1463,13 @@ class ZsecDesktop:
         self.refresh_companion()
 
     def refresh_status(self) -> None:
+        if hasattr(self, "feed_update_refresh_button"):
+            self.feed_update_refresh_button.configure(state=tk.DISABLED)
         self._run_async(self.bridge.status, self._render_status, failure=self._status_failure)
 
     def _status_failure(self, exc: BaseException) -> None:
+        if hasattr(self, "feed_update_refresh_button"):
+            self.feed_update_refresh_button.configure(state=tk.NORMAL)
         self.scan_card.set_value("Evidence unavailable", RED)
         self.feed_card.set_value("Evidence unavailable", RED)
         self.quarantine_card.set_value("Evidence unavailable", RED)
@@ -1461,6 +1485,8 @@ class ZsecDesktop:
         self._update_tray_status()
 
     def _render_status(self, result: CommandResult) -> None:
+        if hasattr(self, "feed_update_refresh_button"):
+            self.feed_update_refresh_button.configure(state=tk.NORMAL)
         status = result.payload
         presentation = status_presentation(status)
         self.tray_scan_status = presentation.headline

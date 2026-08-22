@@ -186,6 +186,10 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     assert '"Signed advisory update needs attention"' in app
     assert "_window_close" in app
     assert "Start ZSEC Antivirus in the notification area" in app
+    assert "Refresh update evidence" in app
+    assert "Application releases remain notification-only" in app
+    assert "never treats an unsigned package as trusted" in app
+    assert "self.feed_update_refresh_button.configure(state=tk.DISABLED)" in app
 
 
 def test_companion_sync_is_bounded_verified_and_rolls_back() -> None:

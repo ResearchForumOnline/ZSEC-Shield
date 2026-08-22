@@ -3,37 +3,19 @@
     {
       "architecture": "x86_64",
       "authenticode": "unsigned",
-      "filename": "zsec-antivirus-desktop-0.3.14-windows-x86_64.zip",
+      "filename": "zsec-antivirus-desktop-0.3.17-windows-x86_64.zip",
       "operating_system": "windows",
-      "sha256": "c75dc396c3768fdb0af58331b495ecdfcbd272950e75e303e7354f478a1e1605",
-      "size": 45261418,
-      "url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.14/zsec-antivirus-desktop-0.3.14-windows-x86_64.zip"
-    },
-    {
-      "architecture": "x86_64",
-      "authenticode": "not-applicable",
-      "filename": "zsec-shield-0.3.14-linux-x86_64.tar.gz",
-      "operating_system": "linux",
-      "sha256": "2d947e8788039aef57bafa8bcd161e9dba891e5a36c6adacc9dc5d868f7f0517",
-      "size": 24240917,
-      "url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.14/zsec-shield-0.3.14-linux-x86_64.tar.gz"
-    },
-    {
-      "architecture": "arm64",
-      "authenticode": "not-applicable",
-      "filename": "zsec-shield-0.3.14-macos-arm64.tar.gz",
-      "operating_system": "macos",
-      "sha256": "81d28ff2f7077bf779e67363ba28dd107d66d3982d38d8463d197ff10faea950",
-      "size": 12805932,
-      "url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.14/zsec-shield-0.3.14-macos-arm64.tar.gz"
+      "sha256": "3b330f160cbe9859d2fc6c0c45808deeba92809fdf6b3273324bcc87c7c1f76d",
+      "size": 34016568,
+      "url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.17/zsec-antivirus-desktop-0.3.17-windows-x86_64.zip"
     }
   ],
   "auto_install_allowed": false,
   "channel": "stable",
   "minimum_supported_version": "0.3.13",
   "notification_only": true,
-  "release_notes_url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.14",
+  "release_notes_url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.17",
   "schema": "zsec.application-release-source.v1",
-  "source_revision": "57557ae4dd03765a59b05a3a0e0006edc13b7bd4",
-  "version": "0.3.14"
+  "source_revision": "3d877c1f2fd25dd5eb75ac145fc34b41cb75db0d",
+  "version": "0.3.17"
 }

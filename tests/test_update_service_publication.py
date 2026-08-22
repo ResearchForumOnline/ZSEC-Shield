@@ -106,3 +106,33 @@ def test_sequence_cannot_be_reused_for_different_bytes(tmp_path: Path) -> None:
             expires_at="2026-09-05T19:00:00Z",
             expected_public_key=_public_b64(_key()),
         )
+
+
+def test_verification_rejects_partial_endpoint_and_audit_digest_mismatch(tmp_path: Path) -> None:
+    output = tmp_path / "out"
+    _build(output)
+    stable = output / "updates/v1/stable.json"
+    stable.write_bytes(stable.read_bytes()[:64])
+    with pytest.raises((PublishError, json.JSONDecodeError)):
+        verify_tree(output, _key().public_key(), expected_sequence=7)
+
+    output = tmp_path / "digest-mismatch"
+    _build(output)
+    feed = output / "intelligence/v1/feed.json"
+    document = json.loads(feed.read_text(encoding="utf-8"))
+    document["payload"]["catalog"]["entries"] = []
+    # Re-signing the endpoint proves the independently signed audit digest is
+    # also required; a valid endpoint signature alone cannot rewrite history.
+    payload = document["payload"]
+    document["signature"] = base64.b64encode(
+        _key().sign(
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+            + b"\n"
+        )
+    ).decode()
+    feed.write_text(
+        json.dumps(document, ensure_ascii=False, separators=(",", ":"), sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(PublishError, match="audit intelligence digest"):
+        verify_tree(output, _key().public_key(), expected_sequence=7)

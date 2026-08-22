@@ -23,6 +23,37 @@ sequence to both endpoint digests. The complete catalog is not duplicated daily,
 which prevents unbounded repository growth. GitHub Pages deploys the complete `web`
 artifact atomically.
 
+Application metadata does not select, disable, uninstall, register, or reconfigure
+an antivirus provider. The current unsigned Windows application remains
+notification-only: the verifier accepts no command, argument, provider-action, or
+automatic-install field. Microsoft Defender or another active Windows Security
+provider must remain active across an update check, a failed download, and an
+application restart.
+
+## Failure and rollback invariants
+
+- Verify the pinned Ed25519 key, exact envelope fields, validity window, sequence,
+  artifact SHA-256 and artifact size before treating metadata as current.
+- A truncated response, unknown field, wrong key, invalid signature, expired
+  envelope, digest mismatch, or audit mismatch is an update failure—not an empty
+  feed and never a clean-device result.
+- Preserve the last verified intelligence catalog and its greatest accepted
+  sequence after every failed check. Never replace it with partially downloaded
+  bytes.
+- Reject a lower sequence. Accepting an equal sequence is permitted only when its
+  canonical signed bytes are identical to the already accepted document.
+- Download application packages to a fresh non-executable staging name, verify the
+  declared byte count and SHA-256, then activate atomically. A partial download must
+  be deleted and must not become a future resume source unless a separately designed
+  authenticated chunk protocol is introduced.
+- Before activation, retain the exact prior installed version. Failed activation or
+  failed post-install health checks must restore that version without touching
+  quarantine, reports, settings, device keys, rollback state, or the active Windows
+  protection provider.
+- Do not label application auto-update production-ready until the downloader,
+  staging, activation, health gate and rollback path have executable adversarial
+  tests. Signed metadata by itself is not a safe binary updater.
+
 ## Production key setup
 
 Generate the Ed25519 key once in an offline administrative environment. Store the
