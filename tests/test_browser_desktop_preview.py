@@ -134,6 +134,11 @@ def test_desktop_tabs_popups_and_modern_controls_are_wired() -> None:
     assert "DrawMode = TabDrawMode.OwnerDrawFixed" in app
     assert "RoundedSurface" in app
     assert "Profile: isolated" not in app
+    assert "ExpectedMicrosoftSystemExtensions" in app
+    assert '"Microsoft Clipboard Extension"' in app
+    assert '"Microsoft Edge PDF Viewer"' in app
+    assert 'lastTabAction = "closed"' in app
+    assert 'schema=zsec.browser.startup-failure.v1' in app
 
 
 def test_bundled_extension_has_stable_identity_and_bounded_youtube_assist() -> None:

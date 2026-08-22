@@ -176,6 +176,12 @@ namespace TalkToAI.ZsecBrowserPreview
         private const int DwmRound = 2;
         private const int MaximumTabs = 32;
         private const string ExpectedShieldsExtensionId = "ddjbjhnlhapggenanpmcidieimaomiif";
+        private static readonly IDictionary<string, string> ExpectedMicrosoftSystemExtensions =
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                { "dgiklkfkllikcanfonkcabmbdfmgleag", "Microsoft Clipboard Extension" },
+                { "mhjfbmdgcfjbbpaeojofohoefgiehjai", "Microsoft Edge PDF Viewer" }
+            };
         private static readonly string[] ActiveHighRiskContexts =
         {
             "Script", "Document", "Stylesheet", "XmlHttpRequest", "Fetch", "WebSocket"
@@ -550,10 +556,12 @@ namespace TalkToAI.ZsecBrowserPreview
                 string runtimeVersion = CoreWebView2Environment.GetAvailableBrowserVersionString();
                 runtimeStatus.Text = "Microsoft Chromium runtime " + runtimeVersion;
                 await CreateTab(initialDestination, true);
+                ClearStartupFailureEvidence();
                 WriteRuntimeEvidence(runtimeVersion);
             }
             catch (Exception exception)
             {
+                WriteStartupFailureEvidence(exception);
                 runtimeStatus.Text = "Protection unavailable";
                 shieldStatus.Text = "  STARTUP FAILED  ";
                 shieldStatus.BackColor = Color.FromArgb(232, 73, 78);
@@ -565,6 +573,32 @@ namespace TalkToAI.ZsecBrowserPreview
                 );
                 Close();
             }
+        }
+
+        private void ClearStartupFailureEvidence()
+        {
+            string path = Path.Combine(productRoot, "startup-failure.txt");
+            if (File.Exists(path)) File.Delete(path);
+        }
+
+        private void WriteStartupFailureEvidence(Exception exception)
+        {
+            Directory.CreateDirectory(productRoot);
+            string path = Path.Combine(productRoot, "startup-failure.txt");
+            string temporary = path + ".tmp-" + Guid.NewGuid().ToString("N");
+            string[] lines =
+            {
+                "schema=zsec.browser.startup-failure.v1",
+                "product=ZSEC Browser",
+                "version=" + Program.ProductVersion,
+                "exception_type=" + exception.GetType().FullName,
+                "hresult=0x" + exception.HResult.ToString("X8"),
+                "message=" + exception.Message.Replace("\r", " ").Replace("\n", " "),
+                "checked_at=" + DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+            };
+            File.WriteAllLines(temporary, lines, new UTF8Encoding(false));
+            if (File.Exists(path)) File.Replace(temporary, path, null);
+            else File.Move(temporary, path);
         }
 
         private async Task<WebView2> CreateTab(
@@ -790,16 +824,36 @@ namespace TalkToAI.ZsecBrowserPreview
             }
             IReadOnlyList<CoreWebView2BrowserExtension> installed =
                 await profile.GetBrowserExtensionsAsync();
+            string installedIdentitySummary = String.Join(
+                ", ",
+                installed.Select(extension =>
+                    extension.Id + ":" + extension.Name + ":" +
+                    (extension.IsEnabled ? "enabled" : "disabled")
+                )
+            );
             if (installed.Count(extension =>
                     String.Equals(extension.Id, ExpectedShieldsExtensionId, StringComparison.Ordinal) &&
                     extension.IsEnabled) != 1 ||
-                installed.Any(extension =>
-                    !String.Equals(extension.Id, ExpectedShieldsExtensionId, StringComparison.Ordinal)))
+                installed.Any(extension => !IsExpectedBrowserExtension(extension)))
             {
-                throw new InvalidOperationException("The browser profile contains an unexpected extension identity.");
+                throw new InvalidOperationException(
+                    "The browser profile contains an unexpected extension identity: " +
+                    installedIdentitySummary
+                );
             }
             shieldsExtensionEnabled = true;
             installedShieldsExtensionId = shields.Id;
+        }
+
+        private static bool IsExpectedBrowserExtension(CoreWebView2BrowserExtension extension)
+        {
+            if (String.Equals(extension.Id, ExpectedShieldsExtensionId, StringComparison.Ordinal))
+            {
+                return String.Equals(extension.Name, "ZSEC Browser Shields", StringComparison.Ordinal);
+            }
+            string expectedName;
+            return ExpectedMicrosoftSystemExtensions.TryGetValue(extension.Id, out expectedName) &&
+                String.Equals(extension.Name, expectedName, StringComparison.Ordinal);
         }
 
         private void HandleNavigationStarting(WebView2 view, CoreWebView2NavigationStartingEventArgs args)
@@ -1036,6 +1090,11 @@ namespace TalkToAI.ZsecBrowserPreview
             }
             tabs.TabPages.RemoveAt(index);
             page.Dispose();
+            if (environment != null)
+            {
+                lastTabAction = "closed";
+                WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
+            }
             if (tabs.TabPages.Count == 0)
             {
                 CreateTabFromKeyboardAsync();
