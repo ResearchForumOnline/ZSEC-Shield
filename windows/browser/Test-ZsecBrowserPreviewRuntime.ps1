@@ -111,7 +111,7 @@ Close-ExactBrowser -ExpectedPath $applicationPath
 $dnrEvidence = Invoke-BrowserEvidenceTest `
     -ApplicationPath $applicationPath `
     -EvidencePath $evidencePath `
-    -Destination "https://talktoai.org/zero-browser/runtime-check/" `
+    -Destination "https://talktoai.org/zero-browser/runtime-check/index.html" `
     -Accept {
         param($evidence)
         $evidence['dnr_runtime_test_status'] -eq 'passed' -and
@@ -141,7 +141,7 @@ $result = [ordered]@{
         }
         browser_shields_dnr = [ordered]@{
             passed = $true
-            fixture = "https://talktoai.org/zero-browser/runtime-check/"
+            fixture = "https://talktoai.org/zero-browser/runtime-check/index.html"
             expected_extension_id = [string]$dnrEvidence['browser_shields_expected_id']
             installed_extension_id = [string]$dnrEvidence['browser_shields_installed_id']
             manifest_sha256 = [string]$dnrEvidence['browser_shields_manifest_sha256']
