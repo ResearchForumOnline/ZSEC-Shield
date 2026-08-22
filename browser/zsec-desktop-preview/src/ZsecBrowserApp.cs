@@ -920,6 +920,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 return;
             }
             RefreshBookmarksBar();
+            RefreshAddressSuggestions();
             UpdateBookmarkButton();
             runtimeStatus.Text = added ? "Bookmark saved locally." : "Bookmark title updated locally.";
         }
@@ -950,6 +951,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 dialog.ShowDialog(this);
             }
             RefreshBookmarksBar();
+            RefreshAddressSuggestions();
             UpdateBookmarkButton();
         }
 
@@ -964,6 +966,7 @@ namespace TalkToAI.ZsecBrowserPreview
             {
                 int added = productStore.ImportBookmarksHtml(productData, picker.FileName);
                 RefreshBookmarksBar();
+                RefreshAddressSuggestions();
                 runtimeStatus.Text = added.ToString() + " bookmark(s) imported locally.";
             }
             catch (Exception exception)
@@ -1044,6 +1047,7 @@ namespace TalkToAI.ZsecBrowserPreview
             try
             {
                 productStore.ClearHistory(productData);
+                RefreshAddressSuggestions();
                 runtimeStatus.Text = "Local browsing history cleared.";
             }
             catch (Exception exception)
@@ -1082,7 +1086,11 @@ namespace TalkToAI.ZsecBrowserPreview
                     {
                         await ApplyYoutubeProtectionSettingAsync();
                     }
-                    if (dialog.ClearHistoryRequested) productStore.ClearHistory(productData);
+                    if (dialog.ClearHistoryRequested)
+                    {
+                        productStore.ClearHistory(productData);
+                        RefreshAddressSuggestions();
+                    }
                 }
                 catch (Exception exception)
                 {
