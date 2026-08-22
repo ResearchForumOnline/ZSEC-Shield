@@ -25,12 +25,14 @@ closed on protocol or digest disagreement. The child currently retains the
 invoking user's authority, so it is process separation—not a reduced-privilege
 sandbox or evidence that the hostile-parser replacement gate is complete.
 
-The current public GitHub tag predates the 0.3 candidate and is not a replacement
-antivirus on any platform. The candidate has no Windows minifilter/AMSI/ELAM stack, macOS
-Endpoint Security system extension, Linux fanotify broker, production
-platform-keychain profile, publisher-signed installer, or independent efficacy
-certification. Those are explicit engineering and release gates, not features
-claimed by a mock dashboard. See the [Windows programme](docs/FULL_ANTIVIRUS_PROGRAM.md),
+Community 0.3.9 is unsigned and is not itself a replacement primary antivirus on
+any platform. A version tag or passing workflow is not artifact acceptance: use the
+published source revision, SHA-256, manifest, and installed-runtime evidence for the
+exact package. ZSEC still has no Windows minifilter/AMSI/ELAM stack, macOS Endpoint
+Security system extension, Linux fanotify broker, production platform-keychain
+profile, publisher-signed installer, or independent efficacy certification. Those
+are explicit engineering and release gates, not features claimed by a dashboard.
+See the [Windows programme](docs/FULL_ANTIVIRUS_PROGRAM.md),
 [macOS programme](docs/MACOS_DESKTOP_PROGRAM.md),
 [Linux programme](docs/LINUX_DESKTOP_PROGRAM.md), and machine-readable
 [replacement-readiness contract](docs/REPLACEMENT_READINESS.md).
@@ -135,7 +137,7 @@ for the exact enforced decision points and non-claims, and the
 for the implemented-now versus release-gated protection programme.
 
 The native Windows Community desktop source lives in
-[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.8
+[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.9
 provides a modern rounded dark interface, managed tabs and popups, local
 bookmarks and bounded history, typed-address suggestions, seven selectable
 search providers, tray controls, a native settings surface and a separate

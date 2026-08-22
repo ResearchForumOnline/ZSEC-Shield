@@ -394,7 +394,7 @@ class ZsecDesktop:
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
         ttk.Label(
             title_row,
-            text="COMMUNITY 0.3.8",
+            text="COMMUNITY 0.3.9",
             style="Subtitle.TLabel",
             foreground=AMBER,
         ).pack(

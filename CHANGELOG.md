@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.9 - 2026-08-22
+
+- Prepared the accepted 0.3.8 protection work for a corrected immutable release
+  boundary after a pre-publication audit stopped the earlier tag workflow before
+  any GitHub Release was created.
+- Replaced stale release-status text embedded in native and source archives with
+  durable exact-revision, SHA-256, manifest and runtime-acceptance boundaries.
+- Made the periodic watcher-heartbeat test deterministic across loaded macOS CI
+  runners without weakening the runtime heartbeat requirement.
+
 ## 0.3.8 - 2026-08-22
 
 - Changed the ZSEC Browser native request hook to receive every WebView2
