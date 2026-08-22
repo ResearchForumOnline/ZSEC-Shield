@@ -32,7 +32,7 @@ COPY_REQUIREMENTS = {
         "is not registered as the primary provider",
     ),
     "zero-browser": (
-        "ZSEC Browser Community 0.3.15",
+        "ZSEC Browser Community 0.3.16",
         "all WebView2 resource-source kinds",
         "Journalist preset",
         "does not seek, accelerate or mute playback",
@@ -59,17 +59,17 @@ ANTIVIRUS_RELEASE_TAG = (
 )
 ANTIVIRUS_RELEASE_REVISION = "57557ae4dd03765a59b05a3a0e0006edc13b7bd4"
 BROWSER_RELEASE_BASE = (
-    "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.15/"
+    "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.16/"
 )
 BROWSER_RELEASE_TAG = (
-    "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.15"
+    "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.16"
 )
-BROWSER_RELEASE_REVISION = "b2618b7ee0db02a158e083efcc49746992de398d"
+BROWSER_RELEASE_REVISION = "002a71f00552e560ad139e40edaa0ef984f06ea6"
 JSON_LD_DOWNLOADS = {
     "zero-security": ANTIVIRUS_RELEASE_BASE
     + "zsec-antivirus-desktop-0.3.14-windows-x86_64.zip",
     "zero-browser": BROWSER_RELEASE_BASE
-    + "zsec-browser-community-0.3.15-windows-x64-unsigned.zip",
+    + "zsec-browser-community-0.3.16-windows-x64-unsigned.zip",
 }
 
 DOWNLOAD_PAGES: dict[str, DownloadPolicy] = {
@@ -120,21 +120,21 @@ DOWNLOAD_PAGES: dict[str, DownloadPolicy] = {
         "canonical": "https://talktoai.org/zero-browser/download/",
         "fingerprints": 4,
         "artifacts": {
-            BROWSER_RELEASE_BASE + "zsec-browser-community-0.3.15-windows-x64-unsigned.zip",
-            BROWSER_RELEASE_BASE + "zsec-browser-community-0.3.15-windows-x64-unsigned.zip.sha256",
-            BROWSER_RELEASE_BASE + "zsec-browser-community-0.3.15-windows-x64-unsigned.zip.json",
+            BROWSER_RELEASE_BASE + "zsec-browser-community-0.3.16-windows-x64-unsigned.zip",
+            BROWSER_RELEASE_BASE + "zsec-browser-community-0.3.16-windows-x64-unsigned.zip.sha256",
+            BROWSER_RELEASE_BASE + "zsec-browser-community-0.3.16-windows-x64-unsigned.zip.json",
             "https://talktoai.org/downloads/zero-browser/zsec-browser-shields-0.5.2-chromium-mv3.zip",
             "https://talktoai.org/downloads/zero-browser/zsec-browser-shields-0.5.2-chromium-mv3.zip.sha256",
             "https://talktoai.org/downloads/zero-browser/zsec-browser-shields-0.5.2-chromium-mv3.zip.json",
         },
         "required_text": (
             BROWSER_RELEASE_REVISION,
-            "4,221,524 bytes",
-            "fd784d60478b457eaa48b7b0dc5301db6d2a1233c0f1a554fad2309652838990",
+            "4,231,957 bytes",
+            "0268e9a0f666e6bbb5d0e039fe14292e0cf8a253a2db7bb50f120897a3777799",
             "2,123 bytes",
-            "d49d4eca2a0190d98c467e16d0396b5c121b9fcf58bfd7ceedc1135b7dbc6ef0",
+            "ea31f75b3a01ff5fe0dc61b9fd52e60f02bc7122671df702f1d209f28883c969",
             "122 bytes",
-            "06262a3a33058a8ee1823fb2e0f912c580e666ce2bcfcb2f5da97ec1cca4c7cf",
+            "406c64f79e746709fe5dd340a97066b0e797e38b8fca7b6b46c74e49824135f5",
             "b571451fa2b3c6f7c69072bee8942d5191d8dfe0df4bde0aa10ac9c2d08f856f",
             "WebView2 SDK 1.0.4129.50",
             "not an installed Evergreen runtime version or a Microsoft signature on ZSEC",
@@ -146,7 +146,7 @@ PRIVACY_PAGE = "https://talktoai.org/zero-browser/privacy/"
 
 RELEASE_SURFACE_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     "index.html": (
-        "ZSEC Antivirus 0.3.14 · ZSEC Browser 0.3.15",
+        "ZSEC Antivirus 0.3.14 · ZSEC Browser 0.3.16",
         ANTIVIRUS_RELEASE_REVISION,
         ANTIVIRUS_RELEASE_TAG,
     ),
@@ -160,21 +160,21 @@ RELEASE_SURFACE_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         "remained <strong>degraded</strong>",
     ),
     "zero-browser/index.html": (
-        "0.3.15 Community package",
+        "0.3.16 Community package",
         BROWSER_RELEASE_REVISION,
-        "4,221,524 bytes",
-        "fd784d60478b457eaa48b7b0dc5301db6d2a1233c0f1a554fad2309652838990",
-        BROWSER_RELEASE_BASE + "zsec-browser-community-0.3.15-windows-x64-unsigned.zip",
+        "4,231,957 bytes",
+        "0268e9a0f666e6bbb5d0e039fe14292e0cf8a253a2db7bb50f120897a3777799",
+        BROWSER_RELEASE_BASE + "zsec-browser-community-0.3.16-windows-x64-unsigned.zip",
         "user-operated local encrypted password vault",
         "release-specific installed-runtime result",
     ),
     "zero-browser/privacy/index.html": (
         BROWSER_RELEASE_REVISION,
-        "4,221,524-byte Windows archive",
-        "fd784d60478b457eaa48b7b0dc5301db6d2a1233c0f1a554fad2309652838990",
+        "4,231,957-byte Windows archive",
+        "0268e9a0f666e6bbb5d0e039fe14292e0cf8a253a2db7bb50f120897a3777799",
         "2,123-byte metadata JSON",
-        "d49d4eca2a0190d98c467e16d0396b5c121b9fcf58bfd7ceedc1135b7dbc6ef0",
-        "does not inject credentials into pages",
+        "ea31f75b3a01ff5fe0dc61b9fd52e60f02bc7122671df702f1d209f28883c969",
+        "Password saving and filling are independent opt-in settings",
     ),
     "llms.txt": (
         ANTIVIRUS_RELEASE_REVISION,
@@ -183,7 +183,7 @@ RELEASE_SURFACE_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         "45,261,418 bytes",
         "Accepted cross-platform core identities",
         "Accepted Windows browser identity",
-        "4,221,524 bytes",
+        "4,231,957 bytes",
         "No release-specific installed-runtime result is claimed",
         ANTIVIRUS_RELEASE_TAG,
         BROWSER_RELEASE_TAG,
@@ -193,9 +193,9 @@ RELEASE_SURFACE_REQUIREMENTS: dict[str, tuple[str, ...]] = {
 RELEASE_SURFACE_TAGS: dict[str, set[str]] = {
     "index.html": {"v0.3.14"},
     "zero-security/index.html": {"v0.3.14"},
-    "zero-browser/index.html": {"v0.3.15"},
-    "zero-browser/privacy/index.html": {"v0.3.15"},
-    "llms.txt": {"v0.3.15", "v0.3.14"},
+    "zero-browser/index.html": {"v0.3.16"},
+    "zero-browser/privacy/index.html": {"v0.3.16"},
+    "llms.txt": {"v0.3.16", "v0.3.14"},
 }
 
 RESIDUAL_OLD_IDENTITIES = (
@@ -386,7 +386,7 @@ def validate_github_pages_landing() -> None:
     require("<script" not in text.casefold(), "web/index.html: executable script is not permitted")
     require_project_prefix_safe(text, "web/index.html")
     for required_copy in (
-        "ZSEC Antivirus 0.3.14 · ZSEC Browser 0.3.15",
+        "ZSEC Antivirus 0.3.14 · ZSEC Browser 0.3.16",
         "Microsoft Defender remains the supported Windows real-time enforcement provider",
         "not a registered primary antivirus",
         "WebView2 is Microsoft-maintained, not a ZSEC Chromium fork",
@@ -422,12 +422,12 @@ def validate_privacy_page() -> None:
         "zero-browser/privacy: description length",
     )
     for required_copy in (
-        "ZSEC Browser Community 0.3.15",
+        "ZSEC Browser Community 0.3.16",
         "bounded <code>browser-data.json</code>",
         "The Journalist preset is therefore not an ephemeral",
         "ZSEC does not proxy searches",
     ):
-        require(required_copy in text, "zero-browser/privacy: 0.3.15 privacy boundary")
+        require(required_copy in text, "zero-browser/privacy: 0.3.16 privacy boundary")
     htaccess = (page.parent / ".htaccess").read_text(encoding="utf-8")
     require("script-src 'none'" in htaccess, "zero-browser/privacy: script CSP missing")
     require("frame-ancestors 'none'" in htaccess, "zero-browser/privacy: frame CSP missing")
