@@ -48,7 +48,9 @@ The startup and steady-state order is:
 2. verify the configured signed feed and bind the session to its exact identity;
 3. acquire an exclusive lock for that state directory;
 4. start the filesystem observer;
-5. run a complete baseline scan while changes are already being queued;
+5. run a complete baseline scan while a dedicated bounded ingestion worker drains
+   raw observer events into the coalescing map; this prevents a long baseline from
+   leaving duplicate events in the raw queue without scanning event paths early;
 6. coalesce duplicate create, modify, close-after-write, and move-destination
    events by absolute path after a configurable quiet period;
 7. scan due paths with the same bounded `Scanner` used by `check`;
@@ -139,6 +141,14 @@ mechanisms.
 - a UTC generation time and event name;
 - explicit active/requested backend and fallback details at startup;
 - full scan result and quarantine result for each content batch;
+- progress heartbeats during reconciliation with phase-local
+  `reconciliation_files_hashed` and `reconciliation_bytes_hashed` counters. These
+  are evidence of work completed inside the active phase; the ordinary
+  `files_hashed`, `bytes_hashed`, and `scan_batches` counters advance only after
+  the complete scanner batch returns;
+- non-destructive queue telemetry: `event_queue_capacity`,
+  `event_queue_raw_depth`, `event_queue_pending_paths`, and
+  `event_queue_total_depth`. The total never exceeds the configured capacity;
 - separate `reconciliation_completed` records with `no_metadata_changes` when no
   bytes were hashed, never a fabricated clean or no-match content result; and
 - a final `zsec.shield.watch-summary.v1` with outcome, counters, health issues,
@@ -148,6 +158,11 @@ The optional report is `zsec.shield.watch-report.v1` and is written with atomic
 same-directory replacement and owner-only permissions where supported. NDJSON is
 intended for a supervising UI or test harness; record ordering is local to one
 process and is not a cryptographic audit log.
+
+If the observer stops with queued or coalesced paths that were not scanned, the
+session records `watch_event_backlog_unprocessed` and completes as incomplete.
+Likewise, a background ingestion-worker failure or any dropped event is a coverage
+failure, never a healthy/no-match result.
 
 ## Exit codes
 

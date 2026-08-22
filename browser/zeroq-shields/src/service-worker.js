@@ -9,7 +9,7 @@ import {
 import { buildHighRiskRulesForSettings, highRiskRuleIds } from "./high-risk-browsing.js";
 
 const HEALTH_KEY = "runtimeHealth";
-const RULESET_IDS = Object.freeze(["privacy_rules", "link_cleanup"]);
+const RULESET_IDS = Object.freeze(["privacy_rules", "link_cleanup", "easylist_ads"]);
 
 async function readRuntimeHealth() {
   const stored = await chrome.storage.local.get(HEALTH_KEY);

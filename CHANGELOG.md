@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.3 - 2026-08-22
+
+- add an isolated Antivirus recovery self-test covering automatic encrypted
+  quarantine, authenticated restore, no-overwrite behavior, ciphertext-tamper
+  rejection and simulated device-key loss/recovery using synthetic data only;
+- expose the validated recovery self-test in the Windows protection-centre GUI
+  while keeping independent replacement certification as a separate hard gate;
+- make the Browser runtime harness tolerate a bounded transient evidence-file
+  lock during exact installed-runtime acceptance.
+
 ## 0.3.2 - 2026-08-22
 
 - expanded the reversible Windows companion installer from one protected root to

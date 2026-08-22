@@ -12,6 +12,18 @@
    a new destination, and compare SHA-256.
 6. Pin a reviewed Ed25519 public key before testing feed update.
 
+Run the isolated recovery self-test without touching user files:
+
+```bash
+zero-security recovery-drill --json
+```
+
+It exercises synthetic encrypted quarantine, authenticated restore,
+no-overwrite behavior, ciphertext-tamper rejection and simulated device-key
+loss/recovery below a disposable temporary directory. A pass is local
+engineering evidence, not the independent recovery certification required for
+primary-antivirus replacement.
+
 ## Foreground post-change protection
 
 After the on-demand workflow has been validated, run the automatic file-event

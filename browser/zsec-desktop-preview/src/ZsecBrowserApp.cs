@@ -21,16 +21,16 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.2.0")]
-[assembly: AssemblyFileVersion("0.3.2.0")]
-[assembly: AssemblyInformationalVersion("0.3.2-community")]
+[assembly: AssemblyVersion("0.3.4.0")]
+[assembly: AssemblyFileVersion("0.3.4.0")]
+[assembly: AssemblyInformationalVersion("0.3.4-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.2";
+        internal const string ProductVersion = "0.3.4";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
 
         [STAThread]
@@ -42,7 +42,14 @@ namespace TalkToAI.ZsecBrowserPreview
             string destination = ResolveDestination(args);
             try
             {
-                Application.Run(new BrowserWindow(destination));
+                bool runtimeNewTabTest = args.Any(value =>
+                    String.Equals(
+                        value,
+                        "--zsec-runtime-test=new-tab",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                );
+                Application.Run(new BrowserWindow(destination, runtimeNewTabTest));
             }
             catch (Exception exception)
             {
@@ -220,6 +227,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private int popupBlockedCount;
         private int tabCreationFailureCount;
         private string lastTabAction = "startup";
+        private readonly bool runtimeNewTabTest;
 
         [DllImport("dwmapi.dll", PreserveSig = true)]
         private static extern int DwmSetWindowAttribute(
@@ -229,9 +237,10 @@ namespace TalkToAI.ZsecBrowserPreview
             int valueSize
         );
 
-        internal BrowserWindow(string destination)
+        internal BrowserWindow(string destination, bool testNewTab = false)
         {
             initialDestination = destination;
+            runtimeNewTabTest = testNewTab;
             applicationRoot = AppDomain.CurrentDomain.BaseDirectory;
             productRoot = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -282,7 +291,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.2";
+            channel.Text = "COMMUNITY 0.3.4";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
@@ -556,6 +565,11 @@ namespace TalkToAI.ZsecBrowserPreview
                 string runtimeVersion = CoreWebView2Environment.GetAvailableBrowserVersionString();
                 runtimeStatus.Text = "Microsoft Chromium runtime " + runtimeVersion;
                 await CreateTab(initialDestination, true);
+                if (runtimeNewTabTest)
+                {
+                    await CreateTab(Program.DefaultStartPage, true, navigate: false);
+                    lastTabAction = "runtime_new_tab_verified";
+                }
                 ClearStartupFailureEvidence();
                 WriteRuntimeEvidence(runtimeVersion);
             }
@@ -610,10 +624,12 @@ namespace TalkToAI.ZsecBrowserPreview
         {
             if (environment == null)
             {
+                RecordTabCreationFailure("runtime_not_ready");
                 throw new InvalidOperationException("The Microsoft Chromium runtime is still starting.");
             }
             if (tabs.TabPages.Count >= MaximumTabs)
             {
+                RecordTabCreationFailure("tab_limit_rejected");
                 throw new InvalidOperationException("The 32-tab safety limit has been reached.");
             }
 
@@ -641,8 +657,7 @@ namespace TalkToAI.ZsecBrowserPreview
             }
             catch
             {
-                tabCreationFailureCount++;
-                lastTabAction = "open_failed";
+                RecordTabCreationFailure("open_failed");
                 browserViews.Remove(view);
                 tabs.TabPages.Remove(page);
                 view.Dispose();
@@ -659,6 +674,10 @@ namespace TalkToAI.ZsecBrowserPreview
             }
             catch (Exception exception)
             {
+                if (environment != null)
+                {
+                    WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
+                }
                 navigationProgress.Visible = false;
                 runtimeStatus.Text = "New tab failed safely";
                 MessageBox.Show(
@@ -667,6 +686,16 @@ namespace TalkToAI.ZsecBrowserPreview
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning
                 );
+            }
+        }
+
+        private void RecordTabCreationFailure(string action)
+        {
+            tabCreationFailureCount++;
+            lastTabAction = action;
+            if (environment != null)
+            {
+                WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
             }
         }
 

@@ -83,9 +83,10 @@ function New-SupportedProbe {
             present               = $true
             missing_files         = @()
             first_path_entry      = 'C:\src\depot_tools'
-            first_python3         = 'C:\src\depot_tools\python3.bat'
+            first_vpython3        = 'C:\src\depot_tools\vpython3.bat'
             first_gclient         = 'C:\src\depot_tools\gclient.bat'
             toolchain_environment = '0'
+            update_environment    = '0'
         }
         checkout = [pscustomobject]@{
             root           = 'C:\src'
@@ -158,12 +159,18 @@ Assert-False -Condition ([bool](Get-Check -Audit $audit -Id 'debugging_tools').p
 
 $wrongPath = Copy-Probe $good
 $wrongPath.depot_tools.first_path_entry = 'C:\Program Files\Git\cmd'
-$wrongPath.depot_tools.first_python3 = 'C:\Users\User\AppData\Local\Microsoft\WindowsApps\python3.exe'
+$wrongPath.depot_tools.first_vpython3 = 'C:\Users\User\bin\vpython3.bat'
 $audit = Test-ZsecChromiumProbe -Probe $wrongPath -Requirements $requirements
 Assert-False -Condition ([bool](Get-Check -Audit $audit -Id 'depot_tools.path_first').passed) `
     -Message 'depot_tools not first on PATH must fail closed.'
-Assert-False -Condition ([bool](Get-Check -Audit $audit -Id 'depot_tools.python3').passed) `
-    -Message 'WindowsApps Python must fail closed.'
+Assert-False -Condition ([bool](Get-Check -Audit $audit -Id 'depot_tools.vpython3').passed) `
+    -Message 'An unrelated vpython launcher must fail closed.'
+
+$autoUpdate = Copy-Probe $good
+$autoUpdate.depot_tools.update_environment = ''
+$audit = Test-ZsecChromiumProbe -Probe $autoUpdate -Requirements $requirements
+Assert-False -Condition ([bool](Get-Check -Audit $audit -Id 'depot_tools.auto_update').passed) `
+    -Message 'Missing DEPOT_TOOLS_UPDATE=0 must fail closed.'
 
 $lowDisk = Copy-Probe $good
 $lowDisk.disk.free_bytes = [int64]107374182400
@@ -205,11 +212,15 @@ foreach ($forbidden in $forbiddenCommands) {
 
 $bootstrapText = Get-Content -LiteralPath (Join-Path $packageRoot 'scripts\Invoke-ZsecChromiumBootstrap.ps1') -Raw
 $auditIndex = $bootstrapText.IndexOf('$audit = Invoke-ZsecChromiumAudit', [StringComparison]::Ordinal)
+$policyIndex = $bootstrapText.IndexOf('$downstreamPolicy = Test-ZsecChromiumDownstreamPolicy', [StringComparison]::Ordinal)
+$depotIndex = $bootstrapText.IndexOf('$depotAttestation = Test-ZsecGitRepositoryAttestation', [StringComparison]::Ordinal)
+$planIndex = $bootstrapText.IndexOf('$plan = New-ZsecChromiumCheckoutPlan', [StringComparison]::Ordinal)
 $mutationIndex = $bootstrapText.IndexOf('$null = New-Item', [StringComparison]::Ordinal)
-Assert-True -Condition ($auditIndex -ge 0 -and $mutationIndex -gt $auditIndex) `
-    -Message 'Audit invocation must precede the first checkout/cache mutation.'
-Assert-True -Condition ($bootstrapText -match 'if \(-not \[bool\]\$audit\.passed\)') `
-    -Message 'Bootstrap must explicitly reject a failed audit.'
+Assert-True -Condition ($auditIndex -ge 0 -and $policyIndex -gt $auditIndex -and
+    $depotIndex -gt $policyIndex -and $planIndex -gt $depotIndex -and $mutationIndex -gt $planIndex) `
+    -Message 'Host, source policy, depot attestation and exact plan must precede mutation.'
+Assert-True -Condition ($bootstrapText -match 'if \(-not \[bool\]\$plan\.execution_permitted\)') `
+    -Message 'Bootstrap must explicitly reject a failed combined preflight.'
 
 "PASS: $script:testsRun assertions"
 exit 0

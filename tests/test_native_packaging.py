@@ -29,15 +29,15 @@ release = load_release_module()
 
 class NativePackagingTests(unittest.TestCase):
     def test_source_version_and_pyinstaller_pin_are_explicit(self) -> None:
-        self.assertEqual("0.3.2", release.project_version())
+        self.assertEqual("0.3.3", release.project_version())
         self.assertEqual("6.21.0", release.expected_pyinstaller_version())
 
     def test_release_tag_must_exactly_match_source_version(self) -> None:
-        self.assertEqual("0.3.2", release.verify_release_tag("v0.3.2"))
+        self.assertEqual("0.3.3", release.verify_release_tag("v0.3.3"))
         with self.assertRaises(release.ReleaseError):
             release.verify_release_tag("v0.1.0")
         with self.assertRaises(release.ReleaseError):
-            release.verify_release_tag("preview-0.3.2")
+            release.verify_release_tag("preview-0.3.3")
 
     def test_python_license_uses_checksum_pinned_vendored_fallback(self) -> None:
         with TemporaryDirectory() as temporary:
@@ -178,6 +178,9 @@ class NativePackagingTests(unittest.TestCase):
         self.assertIn("readiness_result.returncode != 2", content)
         self.assertIn('\"keep_existing_protection\"', content)
         self.assertIn('\"watch\", \"--help\"', content)
+        self.assertIn('\"recovery-drill\", \"--json\"', content)
+        self.assertIn('\"zsec.antivirus.recovery-drill.v1\"', content)
+        self.assertIn('\"independent_certification\"', content)
 
     def test_source_archive_includes_native_rebuild_inputs(self) -> None:
         content = (PROJECT_ROOT / "MANIFEST.in").read_text(encoding="utf-8")

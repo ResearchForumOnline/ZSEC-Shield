@@ -129,6 +129,27 @@ function Test-ZsecChromiumDownstreamPolicy {
     $seriesItems = @($series.series)
     $maxPatchCount = [int]$series.policy.maximum_patch_count
     $maxPatchBytes = [int64]$series.policy.maximum_patch_bytes
+    $requiredForbiddenFragments = @(
+        '--no-sandbox',
+        '--disable-web-security',
+        '--ignore-certificate-errors',
+        '--allow-running-insecure-content',
+        '--disable-site-isolation-trials',
+        'is_chrome_branded=true',
+        'is_chrome_branded = true',
+        'google_api_key',
+        'google_default_client_id',
+        'google_default_client_secret'
+    )
+    $declaredForbiddenFragments = @($series.policy.forbidden_added_line_fragments | ForEach-Object {
+        ([string]$_).ToLowerInvariant()
+    })
+    $forbiddenPolicyPass = $declaredForbiddenFragments.Count -eq $requiredForbiddenFragments.Count
+    foreach ($requiredFragment in $requiredForbiddenFragments) {
+        if ($declaredForbiddenFragments -cnotcontains $requiredFragment) {
+            $forbiddenPolicyPass = $false
+        }
+    }
     $seriesHeaderPass = [int]$series.schema_version -eq 1 -and
         [string]$series.product -eq 'ZSEC Chromium Downstream Patch Series' -and
         (Test-ZsecSha1 -Value $series.base_commit) -and
@@ -136,7 +157,8 @@ function Test-ZsecChromiumDownstreamPolicy {
         $maxPatchCount -gt 0 -and $maxPatchCount -le 256 -and
         $maxPatchBytes -gt 0 -and $maxPatchBytes -le 10485760 -and
         [bool]$series.policy.require_git_format_patch -and
-        [string]$series.policy.allowed_extension -ceq '.patch'
+        [string]$series.policy.allowed_extension -ceq '.patch' -and
+        $forbiddenPolicyPass
     $checks.Add((New-ZsecDownstreamCheck -Id 'patches.policy' -Passed $seriesHeaderPass `
         -Expected 'schema 1, exact locked base, bounded text git-format patch policy' `
         -Actual "base=$($series.base_commit); count=$($seriesItems.Count); max=$maxPatchCount/$maxPatchBytes" `
@@ -148,9 +170,7 @@ function Test-ZsecChromiumDownstreamPolicy {
         -Evidence 'The initial downstream patch surface remains intentionally bounded.'))
 
     $seenPaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-    $forbiddenFragments = @($series.policy.forbidden_added_line_fragments | ForEach-Object {
-        ([string]$_).ToLowerInvariant()
-    })
+    $forbiddenFragments = @($declaredForbiddenFragments)
     $patchRootPrefix = $patchRootFull + [IO.Path]::DirectorySeparatorChar
 
     for ($index = 0; $index -lt $seriesItems.Count; $index++) {

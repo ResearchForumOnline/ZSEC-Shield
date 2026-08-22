@@ -45,6 +45,19 @@ On a review workstation, query the exact official ChromiumDash Windows Stable en
 
 The candidate command never rewrites the lock, fetches source, applies patches, builds, signs, installs, or updates the live product. A newer candidate only produces manual review actions. A downgrade, malformed candidate, same-version commit change, or version change without a commit change fails closed.
 
+Generate the exact local checkout preflight and structured command plan:
+
+```powershell
+& .\scripts\Get-ZsecChromiumCheckoutPlan.ps1 -Json
+```
+
+This command is read-only. In addition to the host and source-policy gates, it
+attests that `C:\src\depot_tools` is a non-reparse Git working tree whose one
+`origin` URL, exact `HEAD` and clean status match `upstream.lock.json`. It also
+requires `DEPOT_TOOLS_UPDATE=0`, so the reviewed tool revision cannot update
+itself before the locked checkout. A passing plan still requires the explicit
+fetch token and PowerShell confirmation before the executor can create files.
+
 ## Pinned host and toolchain
 
 The gate requires:
@@ -57,8 +70,9 @@ The gate requires:
 - x64 Debugging Tools for Windows version 10.0.26100.3323 or newer;
 - a real `depot_tools` git clone at `C:\src\depot_tools`;
 - `C:\src\depot_tools` as the first effective PATH entry;
-- `depot_tools\python3.bat` and `depot_tools\gclient.bat` as the first resolved commands;
+- `depot_tools\vpython3.bat` and `depot_tools\gclient.bat` as the first resolved commands;
 - `DEPOT_TOOLS_WIN_TOOLCHAIN=0`;
+- `DEPOT_TOOLS_UPDATE=0`;
 - an existing, space-free `C:\src` root on NTFS;
 - at least 16 GiB RAM and 250 GiB free on the checkout drive.
 
@@ -118,15 +132,21 @@ Perform these steps only on a separate supported Windows 11/Windows Server build
    mkdir C:\src
    cd /d C:\src
    git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+   git -C C:\src\depot_tools checkout --detach 9f4b1bd59d29f5b9f4acd37733bd10fab3641204
+   git -C C:\src\depot_tools status --short
    set "PATH=C:\src\depot_tools;%PATH%"
    set "DEPOT_TOOLS_WIN_TOOLCHAIN=0"
+   set "DEPOT_TOOLS_UPDATE=0"
    set "vs2026_install=THE_EXACT_PATH_RETURNED_BY_VSWHERE"
    gclient
-   where python3
+   where vpython3
    where gclient
    ```
 
-4. Confirm that `where python3` resolves `C:\src\depot_tools\python3.bat` first and `where gclient` resolves `C:\src\depot_tools\gclient.bat` first.
+4. Confirm that `git status --short` produced no output, `git rev-parse HEAD`
+   equals the commit in `upstream.lock.json`, `where vpython3` resolves
+   `C:\src\depot_tools\vpython3.bat` first, and `where gclient` resolves
+   `C:\src\depot_tools\gclient.bat` first.
 
 The first `gclient` bootstrap must run from `cmd.exe`, not PowerShell, Cygwin, Git Bash, or WSL. A WSL checkout must use a different `depot_tools` clone.
 
@@ -137,7 +157,7 @@ After the audit passes on a supported host, preview the proposed mutation:
 ```powershell
 & .\scripts\Invoke-ZsecChromiumBootstrap.ps1 `
   -FetchChromium `
-  -Confirmation FETCH_CURRENT_CHROMIUM `
+  -Confirmation FETCH_LOCKED_CHROMIUM `
   -WhatIf
 ```
 
@@ -146,19 +166,35 @@ Run the reviewed fetch:
 ```powershell
 & .\scripts\Invoke-ZsecChromiumBootstrap.ps1 `
   -FetchChromium `
-  -Confirmation FETCH_CURRENT_CHROMIUM `
+  -Confirmation FETCH_LOCKED_CHROMIUM `
   -Confirm:$false
 ```
 
-The wrapper executes the pinned equivalent of:
+The wrapper first executes a no-hooks, full-history fetch with the exact
+attested `depot_tools` revision:
 
 ```cmd
 set "GIT_CACHE_PATH=C:\src\zsec-git-cache"
 cd /d C:\src\zsec-chromium
-C:\src\depot_tools\fetch.bat --git-cache chromium
+C:\src\depot_tools\fetch.bat --nohooks --git-cache chromium
 ```
 
-It deliberately does not use `--no-history`; a maintained security downstream needs full history for rebasing, bisecting, and release comparison.
+It then verifies the official Chromium origin and the existence of the locked
+commit, detaches at that commit, and synchronizes dependencies using the exact
+revision:
+
+```cmd
+git.exe -C C:\src\zsec-chromium\src checkout --detach 39c51c70dd5feca6b6aba5bb7997b595011c553d
+C:\src\depot_tools\gclient.bat sync --revision src@39c51c70dd5feca6b6aba5bb7997b595011c553d
+```
+
+Only after exact Chromium origin/HEAD/clean attestation does it apply the
+ordered, SHA-256-locked patch series. It emits
+`C:\src\zsec-chromium\zsec-checkout-receipt.json` with the locked identities,
+final Git tree and patch hashes. A partial failure is preserved for review; an
+existing target is never overwritten or silently resumed. The fetch deliberately
+does not use `--no-history`; a maintained security downstream needs full history
+for rebasing, bisecting and release comparison.
 
 ## Build boundary after fetch
 
@@ -187,9 +223,17 @@ The tests require only PowerShell and do not inspect or mutate Task Scheduler, a
 ```powershell
 & .\tests\Run-Tests.ps1
 & .\tests\Run-Downstream-Tests.ps1
+& .\tests\Run-Checkout-Tests.ps1
 ```
 
-They exercise the pure host evaluator and the source-lock, update-plan, patch-hash, patch-path, official-origin, and dangerous-added-line gates. They also statically reject security-provider and source-mutation commands in the audit/planning scripts. CI runs both suites offline; upstream discovery is deliberately excluded from CI so a network response cannot silently change a reviewed lock.
+They exercise the pure host evaluator; source-lock and update-plan gates; patch
+hash, path, origin and dangerous-added-line gates; and the exact checkout plan.
+The checkout suite builds only a tiny temporary local Git fixture and proves
+that wrong origin, wrong HEAD, tracked or untracked modifications, reparse
+boundaries, failed host/depot checks and an existing target all fail closed.
+CI runs the suites offline under both PowerShell 7 and Windows PowerShell 5.1;
+upstream discovery is deliberately excluded from CI so a network response
+cannot silently change a reviewed lock.
 
 ## Primary sources
 

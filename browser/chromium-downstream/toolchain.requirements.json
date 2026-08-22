@@ -36,11 +36,12 @@
     "required_files": [
       ".git",
       "gclient.bat",
-      "python3.bat",
+      "vpython3.bat",
       "fetch.bat"
     ],
     "required_environment": {
-      "DEPOT_TOOLS_WIN_TOOLCHAIN": "0"
+      "DEPOT_TOOLS_WIN_TOOLCHAIN": "0",
+      "DEPOT_TOOLS_UPDATE": "0"
     }
   },
   "checkout": {
@@ -51,6 +52,7 @@
     "require_space_free_path": true,
     "fetch_configuration": "chromium",
     "fetch_arguments": [
+      "--nohooks",
       "--git-cache"
     ],
     "initial_build_target": "chrome",
@@ -66,7 +68,7 @@
   },
   "safety": {
     "default_mode": "audit-only",
-    "fetch_confirmation": "FETCH_CURRENT_CHROMIUM",
+    "fetch_confirmation": "FETCH_LOCKED_CHROMIUM",
     "may_modify_antivirus": false,
     "may_disable_security_services": false,
     "may_fetch_when_audit_fails": false

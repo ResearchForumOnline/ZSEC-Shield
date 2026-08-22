@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zsec-shield"
-version = "0.3.2"
+version = "0.3.3"
 description = "Cross-platform on-demand security scanner with signed feeds and encrypted quarantine"
 readme = "README.md"
 requires-python = ">=3.11"

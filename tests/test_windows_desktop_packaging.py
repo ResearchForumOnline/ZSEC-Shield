@@ -45,6 +45,22 @@ def test_desktop_installer_has_no_security_provider_mutation_surface() -> None:
     assert "existing_provider_must_remain_active = $true" in installer
 
 
+def test_desktop_installer_activation_is_transactional_and_restores_prior_state() -> None:
+    installer = (ROOT / "windows" / "desktop" / "Install-ZsecAntivirusDesktop.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert '".install-transaction-"' in installer
+    assert "$currentBackup" in installer
+    assert "$desktopShortcutBackup" in installer
+    assert "$startMenuShortcutBackup" in installer
+    assert "new-desktop-shortcut.lnk" in installer
+    assert "new-start-menu-shortcut.lnk" in installer
+    assert "Write-JsonAtomic -Path $currentPath -Value $installed" in installer
+    assert "activation rollback also failed" in installer
+    assert "Copy-Item -LiteralPath $currentBackup -Destination $currentPath" in installer
+    assert "Remove-RegularFileIfPresent $destination" in installer
+
+
 def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
     app = (ROOT / "apps" / "windows-ui" / "zsec_desktop" / "app.py").read_text(encoding="utf-8")
     assert "Desktop Preview" not in app

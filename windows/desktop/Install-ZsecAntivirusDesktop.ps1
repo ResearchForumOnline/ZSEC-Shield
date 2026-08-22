@@ -41,6 +41,14 @@ function Assert-RegularFile {
     }
 }
 
+function Remove-RegularFileIfPresent {
+    param([string]$Path)
+    if (Test-Path -LiteralPath $Path) {
+        Assert-RegularFile $Path
+        Remove-Item -LiteralPath $Path -Force -ErrorAction Stop
+    }
+}
+
 function Write-JsonAtomic {
     param([string]$Path, $Value)
     $temporary = "$Path.tmp-$([Guid]::NewGuid().ToString('N'))"
@@ -145,7 +153,14 @@ if (Test-Path -LiteralPath $versionRoot) {
 }
 
 $createdVersion = $false
+$rollbackRoot = $null
+$currentBackup = $null
+$desktopShortcutBackup = $null
+$startMenuShortcutBackup = $null
 try {
+    if (Test-Path -LiteralPath $productRoot) {
+        Assert-RegularDirectory $productRoot
+    }
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $versionRoot) | Out-Null
     Copy-Item -LiteralPath $package -Destination $versionRoot -Recurse -ErrorAction Stop
     $createdVersion = $true
@@ -155,6 +170,28 @@ try {
     Assert-RegularFile $engineExe
 
     New-Item -ItemType Directory -Force -Path $productRoot | Out-Null
+    $rollbackRoot = Get-NormalizedPath (Join-Path $productRoot (".install-transaction-" + [Guid]::NewGuid().ToString("N")))
+    if (-not (Test-IsBelow -Candidate $rollbackRoot -Parent $productRoot)) {
+        throw "The installer transaction directory escaped the owned product root."
+    }
+    New-Item -ItemType Directory -Path $rollbackRoot -ErrorAction Stop | Out-Null
+    Assert-RegularDirectory $rollbackRoot
+    $currentBackup = Join-Path $rollbackRoot "current.json"
+    $desktopShortcutBackup = Join-Path $rollbackRoot "desktop-shortcut.lnk"
+    $startMenuShortcutBackup = Join-Path $rollbackRoot "start-menu-shortcut.lnk"
+    if (Test-Path -LiteralPath $currentPath) {
+        Assert-RegularFile $currentPath
+        Copy-Item -LiteralPath $currentPath -Destination $currentBackup -ErrorAction Stop
+    }
+    if (Test-Path -LiteralPath $desktopShortcut) {
+        Assert-RegularFile $desktopShortcut
+        Copy-Item -LiteralPath $desktopShortcut -Destination $desktopShortcutBackup -ErrorAction Stop
+    }
+    if (Test-Path -LiteralPath $startMenuShortcut) {
+        Assert-RegularFile $startMenuShortcut
+        Copy-Item -LiteralPath $startMenuShortcut -Destination $startMenuShortcutBackup -ErrorAction Stop
+    }
+
     $installed = [ordered]@{
         schema = "zsec.antivirus.windows-desktop-installation.v1"
         product = "ZSEC Antivirus"
@@ -169,17 +206,30 @@ try {
         security_products_modified = $false
         existing_provider_must_remain_active = $true
     }
-    Write-JsonAtomic -Path $currentPath -Value $installed
 
     New-Item -ItemType Directory -Force -Path $startMenuDirectory | Out-Null
+    Assert-RegularDirectory $startMenuDirectory
     $shell = New-Object -ComObject WScript.Shell
-    foreach ($shortcutPath in @($desktopShortcut, $startMenuShortcut)) {
-        $shortcut = $shell.CreateShortcut($shortcutPath)
+    $pendingShortcuts = @(
+        @{ Temporary = (Join-Path $rollbackRoot "new-desktop-shortcut.lnk"); Destination = $desktopShortcut },
+        @{ Temporary = (Join-Path $rollbackRoot "new-start-menu-shortcut.lnk"); Destination = $startMenuShortcut }
+    )
+    foreach ($record in $pendingShortcuts) {
+        $shortcut = $shell.CreateShortcut([string]$record.Temporary)
         $shortcut.TargetPath = $desktopExe
         $shortcut.WorkingDirectory = Split-Path -Parent $desktopExe
         $shortcut.Description = "ZSEC Antivirus Community desktop"
         $shortcut.IconLocation = "$desktopExe,0"
         $shortcut.Save()
+        Assert-RegularFile ([string]$record.Temporary)
+    }
+
+    Write-JsonAtomic -Path $currentPath -Value $installed
+    foreach ($record in $pendingShortcuts) {
+        $destination = [string]$record.Destination
+        Remove-RegularFileIfPresent $destination
+        Move-Item -LiteralPath ([string]$record.Temporary) -Destination $destination -ErrorAction Stop
+        Assert-RegularFile $destination
     }
 
     $result = [ordered]@{
@@ -200,10 +250,42 @@ try {
     if ($Open) {
         Start-Process -FilePath $desktopExe -WorkingDirectory (Split-Path -Parent $desktopExe)
     }
+    if ($null -ne $rollbackRoot -and (Test-Path -LiteralPath $rollbackRoot)) {
+        Assert-RegularDirectory $rollbackRoot
+        Remove-Item -LiteralPath $rollbackRoot -Recurse -Force -ErrorAction Stop
+    }
 }
 catch {
+    $installationError = $_
+    try {
+        if ($null -ne $rollbackRoot -and (Test-Path -LiteralPath $rollbackRoot)) {
+            Assert-RegularDirectory $rollbackRoot
+            if ($null -ne $currentBackup -and (Test-Path -LiteralPath $currentBackup -PathType Leaf)) {
+                Remove-RegularFileIfPresent $currentPath
+                Copy-Item -LiteralPath $currentBackup -Destination $currentPath -ErrorAction Stop
+            }
+            else {
+                Remove-RegularFileIfPresent $currentPath
+            }
+            foreach ($restore in @(
+                @{ Backup = $desktopShortcutBackup; Destination = $desktopShortcut },
+                @{ Backup = $startMenuShortcutBackup; Destination = $startMenuShortcut }
+            )) {
+                $backup = [string]$restore.Backup
+                $destination = [string]$restore.Destination
+                Remove-RegularFileIfPresent $destination
+                if (-not [string]::IsNullOrWhiteSpace($backup) -and (Test-Path -LiteralPath $backup -PathType Leaf)) {
+                    Copy-Item -LiteralPath $backup -Destination $destination -ErrorAction Stop
+                }
+            }
+            Remove-Item -LiteralPath $rollbackRoot -Recurse -Force -ErrorAction Stop
+        }
+    }
+    catch {
+        throw "ZSEC Antivirus installation failed and activation rollback also failed: $($installationError.Exception.Message); rollback: $($_.Exception.Message)"
+    }
     if ($createdVersion -and (Test-Path -LiteralPath $versionRoot) -and (Test-IsBelow $versionRoot $productRoot)) {
         Remove-Item -LiteralPath $versionRoot -Recurse -Force -ErrorAction SilentlyContinue
     }
-    throw
+    throw $installationError
 }

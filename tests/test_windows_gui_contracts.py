@@ -14,13 +14,14 @@ GUI_ROOT = Path(__file__).resolve().parents[1] / "apps" / "windows-ui"
 if str(GUI_ROOT) not in sys.path:
     sys.path.insert(0, str(GUI_ROOT))
 
-from zsec_desktop.bridge import BridgeError, ZsecBridge, discover_cli  # noqa: E402
+from zsec_desktop.bridge import BridgeError, CommandResult, ZsecBridge, discover_cli  # noqa: E402
 from zsec_desktop.contracts import (  # noqa: E402
     ContractError,
     status_presentation,
     validate_companion_status,
     validate_quarantine_list,
     validate_readiness,
+    validate_recovery_drill,
     validate_status,
     validate_watch_event,
 )
@@ -111,6 +112,29 @@ def valid_companion() -> dict[str, object]:
     }
 
 
+def valid_recovery_drill() -> dict[str, object]:
+    return {
+        "schema": "zsec.antivirus.recovery-drill.v1",
+        "product": "ZSEC Antivirus",
+        "started_at": "2026-08-22T02:00:00Z",
+        "completed_at": "2026-08-22T02:00:01Z",
+        "passed": True,
+        "scope": "isolated synthetic data only",
+        "independent_certification": False,
+        "checks": [
+            {"id": check_id, "passed": True, "error": None}
+            for check_id in (
+                "encrypted_authenticated_copy",
+                "authenticated_restore",
+                "no_overwrite_restore",
+                "ciphertext_tamper_rejected",
+                "device_key_loss_and_recovery",
+            )
+        ],
+        "summary": {"passed": 5, "failed": 0, "total": 5},
+    }
+
+
 def test_watch_contract_accepts_metadata_reconciliation_without_overclaiming() -> None:
     event = {
         "schema": "zsec.shield.watch-event.v1",
@@ -169,6 +193,37 @@ def test_replacement_and_companion_contracts_are_hard_interlocks() -> None:
             validate_companion_status(value)
 
 
+def test_recovery_drill_contract_rejects_certification_and_counter_overclaims() -> None:
+    validate_recovery_drill(valid_recovery_drill())
+
+    certification = copy.deepcopy(valid_recovery_drill())
+    certification["independent_certification"] = True
+    with pytest.raises(ContractError, match="independent certification"):
+        validate_recovery_drill(certification)
+
+    inconsistent = copy.deepcopy(valid_recovery_drill())
+    inconsistent["summary"]["passed"] = 0
+    with pytest.raises(ContractError, match="summary is inconsistent"):
+        validate_recovery_drill(inconsistent)
+
+    missing_control = copy.deepcopy(valid_recovery_drill())
+    missing_control["checks"].pop()
+    missing_control["summary"] = {"passed": 4, "failed": 0, "total": 4}
+    with pytest.raises(ContractError, match="exact v1 control set"):
+        validate_recovery_drill(missing_control)
+
+
+def test_recovery_drill_bridge_binds_exit_code_to_validated_outcome(tmp_path: Path) -> None:
+    bridge = _source_bridge(tmp_path / "state")
+    payload = validate_recovery_drill(valid_recovery_drill())
+    contradictory = CommandResult(("zsec-shield",), 2, payload, "")
+    with (
+        patch.object(bridge, "_run_json", return_value=contradictory),
+        pytest.raises(BridgeError, match="exit code and validated outcome disagree"),
+    ):
+        bridge.recovery_drill()
+
+
 def test_quarantine_contract_rejects_noncanonical_or_duplicate_entries() -> None:
     entry_id = str(uuid.uuid4())
     entry = {
@@ -219,6 +274,11 @@ def test_bridge_consumes_live_status_and_readiness_contracts_without_shell(
     assert readiness.exit_code == 2
     assert readiness.payload["decision"] == "keep_existing_protection"
     assert readiness.payload["automatic_uninstall_available"] is False
+
+    recovery = bridge.recovery_drill()
+    assert recovery.exit_code == 0
+    assert recovery.payload["passed"] is True
+    assert recovery.payload["independent_certification"] is False
 
 
 def test_bridge_scan_writes_and_revalidates_only_bounded_local_reports(

@@ -29,6 +29,7 @@ from zsec_desktop.contracts import (
     validate_feed_update,
     validate_quarantine_list,
     validate_readiness,
+    validate_recovery_drill,
     validate_scan_report,
     validate_status,
     validate_watch_event,
@@ -260,6 +261,17 @@ class ZsecBridge:
             timeout=30,
             validator=validate_readiness,
         )
+
+    def recovery_drill(self) -> CommandResult:
+        result = self._run_json(
+            self._argv("recovery-drill", "--json", with_state=False),
+            expected_codes=frozenset({0, 2}),
+            timeout=120,
+            validator=validate_recovery_drill,
+        )
+        if result.payload["passed"] != (result.exit_code == 0):
+            raise BridgeError("recovery drill exit code and validated outcome disagree")
+        return result
 
     def quarantine_entries(self) -> CommandResult:
         return self._run_json(

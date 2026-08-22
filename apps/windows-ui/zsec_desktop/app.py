@@ -784,8 +784,19 @@ class ZsecDesktop:
             header, text="Primary-antivirus replacement readiness", style="Section.TLabel"
         ).pack(side=tk.LEFT)
         ttk.Button(header, text="Refresh", command=self.refresh_readiness).pack(side=tk.RIGHT)
+        ttk.Button(
+            header,
+            text="Run recovery self-test",
+            command=self.run_recovery_drill,
+        ).pack(side=tk.RIGHT, padx=(0, 8))
         self.readiness_decision = ttk.Label(panel, text="Loading…", style="Danger.TLabel")
         self.readiness_decision.pack(anchor=tk.W, pady=(12, 4))
+        self.recovery_drill_status = ttk.Label(
+            panel,
+            text="Recovery self-test: not run in this session",
+            style="Muted.TLabel",
+        )
+        self.recovery_drill_status.pack(anchor=tk.W, pady=(0, 8))
         ttk.Label(
             panel,
             text=(
@@ -1388,6 +1399,44 @@ class ZsecDesktop:
             self.bridge.replacement_readiness,
             self._render_readiness,
             failure=self._readiness_failure,
+        )
+
+    def run_recovery_drill(self) -> None:
+        self.recovery_drill_status.configure(
+            text="Recovery self-test: running on isolated synthetic data…",
+            foreground=CYAN,
+        )
+        self._run_async(
+            self.bridge.recovery_drill,
+            self._render_recovery_drill,
+            failure=self._recovery_drill_failure,
+        )
+
+    def _render_recovery_drill(self, result: CommandResult) -> None:
+        payload = result.payload
+        summary = payload["summary"]
+        if payload["passed"]:
+            self.recovery_drill_status.configure(
+                text=(
+                    "Recovery self-test: PASSED — "
+                    f"{summary['passed']}/{summary['total']} isolated controls verified; "
+                    "independent certification remains required"
+                ),
+                foreground=GREEN,
+            )
+        else:
+            self.recovery_drill_status.configure(
+                text=(
+                    "Recovery self-test: FAILED — "
+                    f"{summary['failed']} control(s) need investigation"
+                ),
+                foreground=RED,
+            )
+
+    def _recovery_drill_failure(self, exc: BaseException) -> None:
+        self.recovery_drill_status.configure(
+            text=f"Recovery self-test unavailable: {exc}",
+            foreground=RED,
         )
 
     def _render_readiness(self, result: CommandResult) -> None:

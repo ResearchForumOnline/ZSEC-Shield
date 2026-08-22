@@ -121,6 +121,26 @@ class WatchQueueTests(unittest.TestCase):
         self.assertTrue(queue.overflowed.is_set())
         self.assertEqual(1, queue.events_dropped)
 
+    def test_queue_telemetry_reports_raw_pending_and_capacity_without_mutation(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            events = DebouncedPathQueue(
+                excluded_paths=(),
+                debounce_seconds=0.5,
+                max_events=16,
+            )
+            events.submit(root / "raw.bin", "created", False)
+            raw = events.telemetry()
+            events.ingest()
+            pending = events.telemetry()
+        self.assertEqual(16, raw["event_queue_capacity"])
+        self.assertEqual(1, raw["event_queue_raw_depth"])
+        self.assertEqual(0, raw["event_queue_pending_paths"])
+        self.assertEqual(1, raw["event_queue_total_depth"])
+        self.assertEqual(0, pending["event_queue_raw_depth"])
+        self.assertEqual(1, pending["event_queue_pending_paths"])
+        self.assertEqual(1, pending["event_queue_total_depth"])
+
     def test_moved_event_scans_destination_not_old_name(self) -> None:
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -162,6 +182,28 @@ class WatchQueueTests(unittest.TestCase):
         self.assertTrue(queue.overflowed.is_set())
         self.assertGreaterEqual(queue.events_dropped, 1)
         self.assertLessEqual(queue.pending_high_water, 16)
+
+    def test_submit_enforces_combined_raw_and_pending_capacity(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            events = DebouncedPathQueue(
+                excluded_paths=(),
+                debounce_seconds=0.5,
+                max_events=16,
+            )
+            for index in range(16):
+                events.submit(root / f"{index}.bin", "modified", False)
+            events.ingest()
+            full = events.telemetry()
+            events.submit(root / "17.bin", "modified", False)
+            refused = events.telemetry()
+        self.assertEqual(16, full["event_queue_pending_paths"])
+        self.assertEqual(16, full["event_queue_total_depth"])
+        self.assertEqual(16, full["event_queue_capacity"])
+        self.assertEqual(0, refused["event_queue_raw_depth"])
+        self.assertEqual(16, refused["event_queue_total_depth"])
+        self.assertEqual(1, refused["events_dropped"])
+        self.assertTrue(events.overflowed.is_set())
 
     def test_repeated_modifications_cannot_postpone_scan_forever(self) -> None:
         with TemporaryDirectory() as temporary:
@@ -268,6 +310,23 @@ class WatchEngineTests(unittest.TestCase):
         self.assertEqual("incomplete", summary.outcome)
         self.assertEqual("watch_backend_stopped", summary.health_issues[0]["code"])
 
+    def test_event_ingest_thread_start_failure_stops_observer(self) -> None:
+        observer = FakeObserver(0.05)
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(),
+            polling_observer_factory=lambda _timeout: observer,
+        )
+        with (
+            patch(
+                "zsec_shield.watcher.threading.Thread.start",
+                side_effect=RuntimeError("test thread refusal"),
+            ),
+            self.assertRaisesRegex(WatchError, "event ingestion worker failed to start"),
+        ):
+            watcher.run(duration_seconds=0.1)
+        self.assertFalse(observer.alive)
+
     def test_queue_overflow_stops_with_explicit_coverage_failure(self) -> None:
         def fill_queue(observer: FakeObserver) -> None:
             if observer.handler is None:
@@ -289,6 +348,183 @@ class WatchEngineTests(unittest.TestCase):
         self.assertTrue(summary.operational_incomplete)
         self.assertEqual(1, summary.stats.events_dropped)
         self.assertEqual("watch_event_queue_overflow", summary.health_issues[0]["code"])
+
+    def test_baseline_concurrently_ingests_and_coalesces_repeated_events(self) -> None:
+        target_hashed = threading.Event()
+        release_baseline = threading.Event()
+        producer_done = threading.Event()
+        producer_threads: list[threading.Thread] = []
+        target = self.scan_root / "00-target.bin"
+        target.write_bytes(b"benign before the baseline event")
+        (self.scan_root / "99-tail.bin").write_bytes(b"keeps the baseline active")
+
+        class BlockingScanner(Scanner):
+            def scan(self, *args: Any, **kwargs: Any):  # type: ignore[no-untyped-def]
+                original_observer = kwargs.get("file_observer")
+
+                def block_after_target(
+                    path: Path, metadata: os.stat_result, was_hashed: bool
+                ) -> None:
+                    if original_observer is not None:
+                        original_observer(path, metadata, was_hashed)
+                    if path == target:
+                        target_hashed.set()
+                        if not release_baseline.wait(timeout=5):
+                            raise AssertionError(
+                                "event producer did not release baseline scanner"
+                            )
+
+                kwargs["file_observer"] = block_after_target
+                return super().scan(*args, **kwargs)
+
+        def start_producer(observer: FakeObserver) -> None:
+            if observer.handler is None:
+                raise AssertionError("observer was started without a handler")
+
+            def produce() -> None:
+                if not target_hashed.wait(timeout=5):
+                    release_baseline.set()
+                    return
+                target.write_bytes(make_test_rule().literal or b"")
+                for _ in range(32):
+                    observer.handler.on_created(FileCreatedEvent(str(target)))
+                    threading.Event().wait(0.01)
+                producer_done.set()
+                release_baseline.set()
+
+            thread = threading.Thread(target=produce, daemon=True)
+            producer_threads.append(thread)
+            thread.start()
+
+        records: list[dict[str, Any]] = []
+        watcher = ForegroundProtectionWatcher(
+            BlockingScanner((make_test_rule(),)),
+            self._config(event_queue_size=16),
+            on_record=records.append,
+            polling_observer_factory=lambda timeout: FakeObserver(timeout, start_producer),
+        )
+        summary = watcher.run(duration_seconds=1.0)
+        for thread in producer_threads:
+            thread.join(timeout=5)
+        self.assertTrue(producer_done.is_set())
+        self.assertFalse(summary.operational_incomplete)
+        self.assertEqual(32, summary.stats.events_received)
+        self.assertGreater(summary.stats.events_debounced, 0)
+        self.assertEqual(0, summary.stats.events_dropped)
+        self.assertEqual(16, summary.stats.event_queue_capacity)
+        self.assertEqual(0, summary.stats.event_queue_total_depth)
+        event_scans = [
+            record
+            for record in records
+            if record["event"] == "scan_completed"
+            and record["triggers"] != ["initial_baseline"]
+        ]
+        self.assertTrue(event_scans)
+        self.assertEqual(1, event_scans[-1]["scan"]["stats"]["findings"])
+        self.assertLessEqual(
+            summary.stats.event_queue_total_depth,
+            summary.stats.event_queue_capacity,
+        )
+
+    def test_unique_events_during_baseline_overflow_fail_closed(self) -> None:
+        baseline_started = threading.Event()
+        release_baseline = threading.Event()
+        producer_threads: list[threading.Thread] = []
+
+        class BlockingScanner(Scanner):
+            def scan(self, *args: Any, **kwargs: Any):  # type: ignore[no-untyped-def]
+                baseline_started.set()
+                if not release_baseline.wait(timeout=5):
+                    raise AssertionError("event producer did not release baseline scanner")
+                return super().scan(*args, **kwargs)
+
+        def start_producer(observer: FakeObserver) -> None:
+            if observer.handler is None:
+                raise AssertionError("observer was started without a handler")
+
+            def produce() -> None:
+                if not baseline_started.wait(timeout=5):
+                    release_baseline.set()
+                    return
+                for index in range(17):
+                    observer.handler.on_created(
+                        FileCreatedEvent(str(self.scan_root / f"unique-{index}.bin"))
+                    )
+                    threading.Event().wait(0.01)
+                release_baseline.set()
+
+            thread = threading.Thread(target=produce, daemon=True)
+            producer_threads.append(thread)
+            thread.start()
+
+        watcher = ForegroundProtectionWatcher(
+            BlockingScanner(()),
+            self._config(event_queue_size=16),
+            polling_observer_factory=lambda timeout: FakeObserver(timeout, start_producer),
+        )
+        summary = watcher.run(duration_seconds=1.0)
+        for thread in producer_threads:
+            thread.join(timeout=5)
+        self.assertTrue(summary.operational_incomplete)
+        self.assertEqual("incomplete", summary.outcome)
+        self.assertGreaterEqual(summary.stats.events_dropped, 1)
+        self.assertLessEqual(
+            summary.stats.event_queue_total_depth,
+            summary.stats.event_queue_capacity,
+        )
+        self.assertIn(
+            "watch_event_queue_overflow",
+            [issue["code"] for issue in summary.health_issues],
+        )
+
+    def test_shutdown_overflow_is_reported_incomplete(self) -> None:
+        class StopOverflowObserver(FakeObserver):
+            def stop(inner_self) -> None:
+                if inner_self.handler is None:
+                    raise AssertionError("observer was started without a handler")
+                for index in range(17):
+                    inner_self.handler.on_created(
+                        FileCreatedEvent(str(self.scan_root / f"stop-{index}.bin"))
+                    )
+                super().stop()
+
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(event_queue_size=16),
+            polling_observer_factory=StopOverflowObserver,
+        )
+        summary = watcher.run(duration_seconds=0.1)
+        self.assertTrue(summary.operational_incomplete)
+        self.assertEqual("incomplete", summary.outcome)
+        self.assertGreaterEqual(summary.stats.events_dropped, 1)
+        self.assertIn(
+            "watch_event_queue_overflow",
+            [issue["code"] for issue in summary.health_issues],
+        )
+
+    def test_shutdown_with_unprocessed_backlog_is_reported_incomplete(self) -> None:
+        class StopBacklogObserver(FakeObserver):
+            def stop(inner_self) -> None:
+                if inner_self.handler is None:
+                    raise AssertionError("observer was started without a handler")
+                inner_self.handler.on_created(
+                    FileCreatedEvent(str(self.scan_root / "stop-backlog.bin"))
+                )
+                super().stop()
+
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(),
+            polling_observer_factory=StopBacklogObserver,
+        )
+        summary = watcher.run(duration_seconds=0.1)
+        self.assertTrue(summary.operational_incomplete)
+        self.assertEqual("incomplete", summary.outcome)
+        self.assertEqual(1, summary.stats.event_queue_total_depth)
+        self.assertIn(
+            "watch_event_backlog_unprocessed",
+            [issue["code"] for issue in summary.health_issues],
+        )
 
     def test_state_and_quarantine_are_excluded_from_baseline_scan(self) -> None:
         nested_state = self.scan_root / ".zero-state"
@@ -406,7 +642,7 @@ class WatchEngineTests(unittest.TestCase):
             polling_observer_factory=FakeObserver,
             clock=advancing_clock,
         )
-        watcher.run(duration_seconds=0.1)
+        summary = watcher.run(duration_seconds=0.1)
         progress = [
             record
             for record in records
@@ -417,6 +653,37 @@ class WatchEngineTests(unittest.TestCase):
         self.assertGreaterEqual(
             progress[-1]["stats"]["reconciliation_files_observed"], 1
         )
+        self.assertTrue(
+            all(record["stats"]["files_hashed"] == 0 for record in progress)
+        )
+        self.assertTrue(
+            all(record["stats"]["bytes_hashed"] == 0 for record in progress)
+        )
+        self.assertTrue(
+            all(record["stats"]["scan_batches"] == 0 for record in progress)
+        )
+        hashed_progress = [
+            record["stats"]
+            for record in progress
+            if record["stats"]["reconciliation_files_hashed"] >= 1
+        ]
+        self.assertTrue(hashed_progress)
+        self.assertTrue(all(item["files_hashed"] == 0 for item in hashed_progress))
+        self.assertGreater(hashed_progress[-1]["reconciliation_bytes_hashed"], 0)
+        self.assertEqual(4096, hashed_progress[-1]["event_queue_capacity"])
+        phase_counts = [
+            record["stats"]["reconciliation_files_hashed"] for record in progress
+        ]
+        self.assertEqual(sorted(phase_counts), phase_counts)
+        self.assertTrue(
+            all(
+                record["stats"]["reconciliation_files_hashed"]
+                <= record["stats"]["reconciliation_files_observed"]
+                for record in progress
+            )
+        )
+        self.assertEqual(5, summary.stats.files_hashed)
+        self.assertEqual(5 * len(b"bounded baseline"), summary.stats.bytes_hashed)
 
     def test_metadata_reconciliation_does_not_rehash_unchanged_files(self) -> None:
         target = self.scan_root / "stable.bin"
@@ -550,6 +817,11 @@ class WatchEngineTests(unittest.TestCase):
         self.assertGreaterEqual(len(heartbeats), 1)
         self.assertEqual(1, heartbeats[-1]["stats"]["events_received"])
         self.assertEqual(0, heartbeats[-1]["stats"]["events_dropped"])
+        self.assertEqual(4096, heartbeats[-1]["stats"]["event_queue_capacity"])
+        self.assertLessEqual(
+            heartbeats[-1]["stats"]["event_queue_total_depth"],
+            heartbeats[-1]["stats"]["event_queue_capacity"],
+        )
 
 
 if __name__ == "__main__":

@@ -144,6 +144,10 @@ class WatchStats:
     unresolved_files: int = 0
     pending_high_water: int = 0
     oldest_pending_milliseconds: int = 0
+    event_queue_capacity: int = 0
+    event_queue_raw_depth: int = 0
+    event_queue_pending_paths: int = 0
+    event_queue_total_depth: int = 0
 
     def to_dict(self) -> dict[str, int]:
         return {
@@ -169,6 +173,10 @@ class WatchStats:
             "unresolved_files": self.unresolved_files,
             "pending_high_water": self.pending_high_water,
             "oldest_pending_milliseconds": self.oldest_pending_milliseconds,
+            "event_queue_capacity": self.event_queue_capacity,
+            "event_queue_raw_depth": self.event_queue_raw_depth,
+            "event_queue_pending_paths": self.event_queue_pending_paths,
+            "event_queue_total_depth": self.event_queue_total_depth,
         }
 
 
@@ -335,6 +343,7 @@ class DebouncedPathQueue:
         self._clock = clock
         self._queue: queue.Queue[QueuedPathEvent] = queue.Queue(maxsize=max_events)
         self._pending: dict[str, PendingPath] = {}
+        self._state_lock = threading.RLock()
         self.overflowed = threading.Event()
         self.events_received = 0
         self.events_excluded = 0
@@ -344,65 +353,129 @@ class DebouncedPathQueue:
 
     def submit(self, path: Path, event_type: str, is_directory: bool) -> None:
         key = _path_key(path)
-        if any(_is_within(key, excluded) for excluded in self._excluded):
-            self.events_excluded += 1
-            return
-        self.events_received += 1
-        try:
-            self._queue.put_nowait(QueuedPathEvent(_absolute(path), event_type, is_directory))
-        except queue.Full:
-            self.events_dropped += 1
-            self.overflowed.set()
+        with self._state_lock:
+            if any(_is_within(key, excluded) for excluded in self._excluded):
+                self.events_excluded += 1
+                return
+            self.events_received += 1
+            pending = self._pending.get(key)
+            if pending is not None:
+                self.events_debounced += 1
+                now = self._clock()
+                pending.event_types.add(event_type)
+                if event_type in {
+                    "closed_after_write",
+                    "moved_to",
+                    "moved_from",
+                    "deleted",
+                }:
+                    pending.due_at = now
+                else:
+                    pending.due_at = min(
+                        now + self._debounce_seconds,
+                        pending.first_seen_at + self._max_coalesce_seconds,
+                    )
+                return
+            if len(self._pending) + self._queue.qsize() >= self._max_events:
+                self.events_dropped += 1
+                self.overflowed.set()
+                return
+            try:
+                self._queue.put_nowait(
+                    QueuedPathEvent(_absolute(path), event_type, is_directory)
+                )
+            except queue.Full:
+                self.events_dropped += 1
+                self.overflowed.set()
 
     def ingest(self) -> None:
         while True:
-            try:
-                event = self._queue.get_nowait()
-            except queue.Empty:
-                return
-            key = _path_key(event.path)
-            pending = self._pending.get(key)
-            if pending is None:
-                # Keep raw plus coalesced work within the same configured
-                # bound. Overflow is fail-closed even when unique paths were
-                # already drained out of queue.Queue into this dictionary.
-                if len(self._pending) + self._queue.qsize() >= self._max_events:
-                    self.events_dropped += 1
-                    self.overflowed.set()
-                    continue
-                now = self._clock()
-                pending = PendingPath(event.path, first_seen_at=now)
-                self._pending[key] = pending
-                self.pending_high_water = max(self.pending_high_water, len(self._pending))
-            else:
-                self.events_debounced += 1
-                now = self._clock()
-            pending.event_types.add(event.event_type)
-            if event.event_type in {"closed_after_write", "moved_to", "moved_from", "deleted"}:
-                pending.due_at = now
-            else:
-                pending.due_at = min(
-                    now + self._debounce_seconds,
-                    pending.first_seen_at + self._max_coalesce_seconds,
-                )
+            with self._state_lock:
+                try:
+                    event = self._queue.get_nowait()
+                except queue.Empty:
+                    return
+                key = _path_key(event.path)
+                pending = self._pending.get(key)
+                if pending is None:
+                    # Keep raw plus coalesced work within the same configured
+                    # bound. Overflow is fail-closed even when unique paths were
+                    # already drained out of queue.Queue into this dictionary.
+                    if len(self._pending) + self._queue.qsize() >= self._max_events:
+                        self.events_dropped += 1
+                        self.overflowed.set()
+                        continue
+                    now = self._clock()
+                    pending = PendingPath(event.path, first_seen_at=now)
+                    self._pending[key] = pending
+                    self.pending_high_water = max(
+                        self.pending_high_water, len(self._pending)
+                    )
+                else:
+                    self.events_debounced += 1
+                    now = self._clock()
+                pending.event_types.add(event.event_type)
+                if event.event_type in {
+                    "closed_after_write",
+                    "moved_to",
+                    "moved_from",
+                    "deleted",
+                }:
+                    pending.due_at = now
+                else:
+                    pending.due_at = min(
+                        now + self._debounce_seconds,
+                        pending.first_seen_at + self._max_coalesce_seconds,
+                    )
 
     def due(self) -> list[PendingPath]:
         self.ingest()
-        now = self._clock()
-        keys = sorted(key for key, pending in self._pending.items() if pending.due_at <= now)
-        return [self._pending.pop(key) for key in keys]
+        with self._state_lock:
+            now = self._clock()
+            keys = sorted(
+                key for key, pending in self._pending.items() if pending.due_at <= now
+            )
+            return [self._pending.pop(key) for key in keys]
 
     def clear_overflow(self) -> int:
-        dropped = self.events_dropped
-        self.events_dropped = 0
-        self.overflowed.clear()
-        return dropped
+        with self._state_lock:
+            dropped = self.events_dropped
+            self.events_dropped = 0
+            self.overflowed.clear()
+            return dropped
 
     def oldest_pending_age_seconds(self) -> float:
-        if not self._pending:
-            return 0.0
-        oldest = min(item.first_seen_at for item in self._pending.values())
-        return max(0.0, self._clock() - oldest)
+        with self._state_lock:
+            if not self._pending:
+                return 0.0
+            oldest = min(item.first_seen_at for item in self._pending.values())
+            return max(0.0, self._clock() - oldest)
+
+    def telemetry(self) -> dict[str, int]:
+        """Return one internally consistent, non-destructive queue snapshot."""
+
+        with self._state_lock:
+            raw_depth = self._queue.qsize()
+            pending_paths = len(self._pending)
+            if self._pending:
+                oldest = min(item.first_seen_at for item in self._pending.values())
+                oldest_pending_milliseconds = int(
+                    max(0.0, self._clock() - oldest) * 1000
+                )
+            else:
+                oldest_pending_milliseconds = 0
+            return {
+                "events_received": self.events_received,
+                "events_debounced": self.events_debounced,
+                "events_excluded": self.events_excluded,
+                "events_dropped": self.events_dropped,
+                "pending_high_water": self.pending_high_water,
+                "oldest_pending_milliseconds": oldest_pending_milliseconds,
+                "event_queue_capacity": self._max_events,
+                "event_queue_raw_depth": raw_depth,
+                "event_queue_pending_paths": pending_paths,
+                "event_queue_total_depth": raw_depth + pending_paths,
+            }
 
 
 class WatchEventHandler(FileSystemEventHandler):
@@ -506,6 +579,7 @@ class ForegroundProtectionWatcher:
         ] = {}
         self._session_id = str(uuid.uuid4())
         self._record_sequence = 0
+        self._event_ingest_failure: str | None = None
 
     def _emit(self, event: str, **fields: Any) -> None:
         self._record_sequence += 1
@@ -523,17 +597,57 @@ class ForegroundProtectionWatcher:
     def _stats_snapshot(self) -> dict[str, int]:
         """Return live counters without waiting for session shutdown."""
         snapshot = self._stats.to_dict()
-        snapshot["events_received"] = self._events.events_received
-        snapshot["events_debounced"] = self._events.events_debounced
-        snapshot["events_excluded"] = self._events.events_excluded
-        snapshot["events_dropped"] += self._events.events_dropped
+        event_telemetry = self._events.telemetry()
+        snapshot["events_received"] = event_telemetry["events_received"]
+        snapshot["events_debounced"] = event_telemetry["events_debounced"]
+        snapshot["events_excluded"] = event_telemetry["events_excluded"]
+        snapshot["events_dropped"] += event_telemetry["events_dropped"]
         snapshot["pending_high_water"] = max(
-            snapshot["pending_high_water"], self._events.pending_high_water
+            snapshot["pending_high_water"], event_telemetry["pending_high_water"]
         )
-        snapshot["oldest_pending_milliseconds"] = int(
-            self._events.oldest_pending_age_seconds() * 1000
-        )
+        snapshot["oldest_pending_milliseconds"] = event_telemetry[
+            "oldest_pending_milliseconds"
+        ]
+        for name in (
+            "event_queue_capacity",
+            "event_queue_raw_depth",
+            "event_queue_pending_paths",
+            "event_queue_total_depth",
+        ):
+            snapshot[name] = event_telemetry[name]
         return snapshot
+
+    def _ingest_events(self, stop: threading.Event) -> None:
+        """Continuously move raw observer events into the bounded coalescing map."""
+
+        interval = max(0.005, min(0.05, self.config.debounce_seconds / 4))
+        try:
+            while not stop.wait(interval):
+                self._events.ingest()
+            self._events.ingest()
+        except BaseException as exc:  # pragma: no cover - defensive thread boundary
+            self._event_ingest_failure = (
+                f"{type(exc).__name__}: {exc}"
+                .replace("\r", " ")
+                .replace("\n", " ")[:500]
+            )
+
+    def _event_pipeline_is_healthy(self) -> bool:
+        if self._event_ingest_failure is not None:
+            self._health_issue(
+                "watch_event_ingest_stopped",
+                f"event ingestion stopped unexpectedly: {self._event_ingest_failure}",
+            )
+            return False
+        if self._events.overflowed.is_set():
+            dropped = self._events.clear_overflow()
+            self._stats.events_dropped += dropped
+            self._health_issue(
+                "watch_event_queue_overflow",
+                f"lost {dropped} queued filesystem event(s); coverage is unknown",
+            )
+            return False
+        return True
 
     def _new_observer(self, backend: str) -> _Observer:
         factory = self._native_factory if backend == "native" else self._polling_factory
@@ -746,6 +860,10 @@ class ForegroundProtectionWatcher:
         unresolved: set[str] = set()
         observed = 0
         unchanged = 0
+        hashed_in_progress = 0
+        bytes_hashed = 0
+        unresolved_in_progress = 0
+        reconciliation_started = self._clock()
         next_progress_heartbeat = self._clock() + self.config.heartbeat_seconds
 
         def emit_progress_heartbeat() -> None:
@@ -756,11 +874,21 @@ class ForegroundProtectionWatcher:
             progress_stats = self._stats_snapshot()
             progress_stats["reconciliation_files_observed"] = observed
             progress_stats["reconciliation_files_unchanged"] = unchanged
+            progress_stats["reconciliation_files_hashed"] = hashed_in_progress
+            progress_stats["reconciliation_bytes_hashed"] = bytes_hashed
+            progress_stats["reconciliation_unresolved_files"] = unresolved_in_progress
+            progress_stats["reconciliation_elapsed_milliseconds"] = int(
+                max(0.0, now - reconciliation_started) * 1000
+            )
             self._emit(
                 "health_heartbeat",
                 backend_active=self._active_backend,
                 roots=[str(root.path) for root in self.roots],
-                operational_incomplete=self._operational_incomplete,
+                operational_incomplete=(
+                    self._operational_incomplete
+                    or self._events.overflowed.is_set()
+                    or self._event_ingest_failure is not None
+                ),
                 reconciliation_phase=trigger,
                 stats=progress_stats,
                 policy=watch_policy(self.config.quarantine),
@@ -780,12 +908,18 @@ class ForegroundProtectionWatcher:
             return changed
 
         def record_successful_hash(
-            path: Path, metadata: os.stat_result, hashed: bool
+            path: Path, metadata: os.stat_result, was_hashed: bool
         ) -> None:
+            nonlocal bytes_hashed, hashed_in_progress, unresolved_in_progress
             key = _path_key(path)
-            if hashed:
+            if was_hashed:
+                # Keep this phase-local counter distinct from the completed-batch
+                # files_hashed total, which is updated only after Scanner returns.
+                hashed_in_progress += 1
+                bytes_hashed += int(metadata.st_size)
                 current[key] = _file_fingerprint(metadata)
             else:
+                unresolved_in_progress += 1
                 unresolved.add(key)
             emit_progress_heartbeat()
 
@@ -862,11 +996,28 @@ class ForegroundProtectionWatcher:
         next_full_rescan = self._clock() + self.config.full_rescan_seconds
         next_health_check = self._clock() + min(5.0, self.config.reconcile_seconds)
         next_heartbeat = self._clock() + self.config.heartbeat_seconds
+        ingest_stop = threading.Event()
+        ingest_thread = threading.Thread(
+            target=self._ingest_events,
+            args=(ingest_stop,),
+            name="zsec-watch-event-ingest",
+            daemon=True,
+        )
+        ingest_started = False
         try:
+            try:
+                ingest_thread.start()
+            except RuntimeError as exc:
+                raise WatchError("event ingestion worker failed to start") from exc
+            ingest_started = True
             # Start the observer first so changes during the mandatory baseline scan
-            # enter the bounded queue instead of falling into a startup gap.
+            # enter the bounded queue instead of falling into a startup gap. A
+            # dedicated ingestion worker coalesces that raw work while the baseline
+            # scanner owns this thread; it never scans or discards event paths.
             self._reconcile("initial_baseline", full=True)
             while True:
+                if not self._event_pipeline_is_healthy():
+                    break
                 now = self._clock()
                 if duration_seconds is not None and now - started_monotonic >= duration_seconds:
                     break
@@ -878,14 +1029,6 @@ class ForegroundProtectionWatcher:
                         self._health_issue("watch_trust_state_changed", health_error)
                         break
                     next_health_check = now + min(5.0, self.config.reconcile_seconds)
-                if self._events.overflowed.is_set():
-                    dropped = self._events.clear_overflow()
-                    self._stats.events_dropped += dropped
-                    self._health_issue(
-                        "watch_event_queue_overflow",
-                        f"lost {dropped} queued filesystem event(s); coverage is unknown",
-                    )
-                    break
                 for pending in self._events.due():
                     self._scan_pending(pending)
                 now = self._clock()
@@ -910,18 +1053,45 @@ class ForegroundProtectionWatcher:
         except KeyboardInterrupt:
             interrupted = True
         finally:
+            # Close the producer before the consumer so no observer callback can
+            # arrive after the final drain and evidence snapshot.
             self._stop_observer()
+            ingest_stop.set()
+            if ingest_started:
+                ingest_thread.join(timeout=5)
+            if ingest_started and ingest_thread.is_alive():
+                self._health_issue(
+                    "watch_event_ingest_stopped",
+                    "event ingestion worker did not stop within its bounded deadline",
+                )
             self._events.ingest()
-            self._stats.events_received = self._events.events_received
-            self._stats.events_debounced = self._events.events_debounced
-            self._stats.events_excluded = self._events.events_excluded
-            self._stats.events_dropped += self._events.events_dropped
+            self._event_pipeline_is_healthy()
+            event_telemetry = self._events.telemetry()
+            if event_telemetry["event_queue_total_depth"]:
+                self._health_issue(
+                    "watch_event_backlog_unprocessed",
+                    "observer stopped with "
+                    f"{event_telemetry['event_queue_total_depth']} queued path(s) "
+                    "not scanned; coverage is unknown",
+                )
+            self._stats.events_received = event_telemetry["events_received"]
+            self._stats.events_debounced = event_telemetry["events_debounced"]
+            self._stats.events_excluded = event_telemetry["events_excluded"]
+            self._stats.events_dropped += event_telemetry["events_dropped"]
             self._stats.pending_high_water = max(
-                self._stats.pending_high_water, self._events.pending_high_water
+                self._stats.pending_high_water, event_telemetry["pending_high_water"]
             )
-            self._stats.oldest_pending_milliseconds = int(
-                self._events.oldest_pending_age_seconds() * 1000
-            )
+            self._stats.oldest_pending_milliseconds = event_telemetry[
+                "oldest_pending_milliseconds"
+            ]
+            self._stats.event_queue_capacity = event_telemetry["event_queue_capacity"]
+            self._stats.event_queue_raw_depth = event_telemetry["event_queue_raw_depth"]
+            self._stats.event_queue_pending_paths = event_telemetry[
+                "event_queue_pending_paths"
+            ]
+            self._stats.event_queue_total_depth = event_telemetry[
+                "event_queue_total_depth"
+            ]
 
         summary = WatchSummary(
             started_at=started_at,

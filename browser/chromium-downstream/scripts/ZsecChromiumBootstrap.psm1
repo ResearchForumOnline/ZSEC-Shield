@@ -292,9 +292,10 @@ function Get-ZsecChromiumHostProbe {
             present              = Test-Path -LiteralPath $depotRoot -PathType Container
             missing_files        = $missingDepotFiles
             first_path_entry     = $firstPathEntry
-            first_python3        = Get-ZsecFirstCommandPath -Name 'python3'
+            first_vpython3       = Get-ZsecFirstCommandPath -Name 'vpython3'
             first_gclient        = Get-ZsecFirstCommandPath -Name 'gclient'
             toolchain_environment = [string]$env:DEPOT_TOOLS_WIN_TOOLCHAIN
+            update_environment    = [string]$env:DEPOT_TOOLS_UPDATE
         }
         checkout = [pscustomobject]@{
             root           = $checkoutRoot
@@ -381,7 +382,7 @@ function Test-ZsecChromiumProbe {
     $depotPresent = [bool]$Probe.depot_tools.present -and @($Probe.depot_tools.missing_files).Count -eq 0 -and
         (ConvertTo-ZsecNormalizedPath -Path ([string]$Probe.depot_tools.root)) -ieq $requiredDepotRoot
     $checks.Add((New-ZsecAuditCheck -Id 'depot_tools.files' -Passed $depotPresent `
-        -Expected "$requiredDepotRoot with .git, gclient.bat, python3.bat and fetch.bat" `
+        -Expected "$requiredDepotRoot with .git, gclient.bat, vpython3.bat and fetch.bat" `
         -Actual "$($Probe.depot_tools.root); missing=$(@($Probe.depot_tools.missing_files) -join ',')" `
         -Evidence 'A real git clone is required; incomplete archive extraction is rejected.'))
 
@@ -390,11 +391,11 @@ function Test-ZsecChromiumProbe {
         -Expected $requiredDepotRoot -Actual $Probe.depot_tools.first_path_entry `
         -Evidence 'depot_tools must be the first effective PATH entry, ahead of Python and Git.'))
 
-    $expectedPython = ConvertTo-ZsecNormalizedPath -Path (Join-Path $requiredDepotRoot 'python3.bat')
-    $pythonPass = (ConvertTo-ZsecNormalizedPath -Path ([string]$Probe.depot_tools.first_python3)) -ieq $expectedPython
-    $checks.Add((New-ZsecAuditCheck -Id 'depot_tools.python3' -Passed $pythonPass `
-        -Expected $expectedPython -Actual $Probe.depot_tools.first_python3 `
-        -Evidence 'WindowsApps or an independent Python resolving first is rejected.'))
+    $expectedVPython = ConvertTo-ZsecNormalizedPath -Path (Join-Path $requiredDepotRoot 'vpython3.bat')
+    $vpythonPass = (ConvertTo-ZsecNormalizedPath -Path ([string]$Probe.depot_tools.first_vpython3)) -ieq $expectedVPython
+    $checks.Add((New-ZsecAuditCheck -Id 'depot_tools.vpython3' -Passed $vpythonPass `
+        -Expected $expectedVPython -Actual $Probe.depot_tools.first_vpython3 `
+        -Evidence 'The pinned depot_tools vpython launcher must resolve before unrelated installations.'))
 
     $expectedGclient = ConvertTo-ZsecNormalizedPath -Path (Join-Path $requiredDepotRoot 'gclient.bat')
     $gclientPass = (ConvertTo-ZsecNormalizedPath -Path ([string]$Probe.depot_tools.first_gclient)) -ieq $expectedGclient
@@ -407,6 +408,12 @@ function Test-ZsecChromiumProbe {
     $checks.Add((New-ZsecAuditCheck -Id 'depot_tools.local_toolchain' -Passed $toolchainEnvironmentPass `
         -Expected 'DEPOT_TOOLS_WIN_TOOLCHAIN=0' -Actual $Probe.depot_tools.toolchain_environment `
         -Evidence 'External builders must select the locally installed Visual Studio toolchain.'))
+
+    $updateEnvironmentPass = [string]$Probe.depot_tools.update_environment -ceq `
+        [string]$Requirements.depot_tools.required_environment.DEPOT_TOOLS_UPDATE
+    $checks.Add((New-ZsecAuditCheck -Id 'depot_tools.auto_update' -Passed $updateEnvironmentPass `
+        -Expected 'DEPOT_TOOLS_UPDATE=0' -Actual $Probe.depot_tools.update_environment `
+        -Evidence 'The reviewed depot_tools commit must not update itself before checkout or dependency sync.'))
 
     $requiredRoot = ConvertTo-ZsecNormalizedPath -Path ([string]$Requirements.checkout.root)
     $requiredTarget = ConvertTo-ZsecNormalizedPath -Path ([string]$Requirements.checkout.target)

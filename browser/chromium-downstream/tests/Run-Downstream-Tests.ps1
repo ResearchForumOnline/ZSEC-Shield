@@ -140,6 +140,14 @@ try {
     $testPatchPath = Join-Path $tempRootFull '0001-test.patch'
     Copy-Item -LiteralPath $lockPath -Destination $testLockPath
 
+    $weakenedSeries = Read-ZsecDownstreamJson -Path $seriesPath
+    $weakenedSeries.policy.forbidden_added_line_fragments = @()
+    $weakenedSeries | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $testSeriesPath -Encoding UTF8
+    $result = Test-ZsecChromiumDownstreamPolicy `
+        -LockPath $testLockPath -SeriesPath $testSeriesPath -PatchRoot $tempRootFull
+    Assert-False -Condition ([bool](Get-Check -Result $result -Id 'patches.policy').passed) `
+        -Message 'The manifest must not weaken the hard-coded dangerous-added-line policy.'
+
     $patchText = @'
 From dddddddddddddddddddddddddddddddddddddddd Mon Sep 17 00:00:00 2001
 From: ZSEC Test <test@example.invalid>

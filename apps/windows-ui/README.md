@@ -48,6 +48,7 @@ non-link file and never invokes a command shell.
 | Reports | Validated files directly below the ZSEC state `reports` directory | Regular non-link JSON files, size bounded, exact schema required. Invalid reports remain visibly invalid. |
 | Security/YubiKey | Current cryptographic/quarantine facts plus design status | AES-256-GCM/DPAPI facts are separated from unimplemented YubiKey recovery. No fake enrolment control is present. |
 | Replacement readiness | `replacement-readiness --platform windows --json` / `zero.security.replacement-readiness.v1` | Exit `2` plus the blocking decision are both required. There is no override, uninstall, provider-disable, or exclusion action. |
+| Recovery self-test | `recovery-drill --json` / `zsec.antivirus.recovery-drill.v1` | Uses isolated synthetic data only; a strict GUI contract rejects any independent-certification overclaim. |
 | Settings | Local UI scan bounds and resolved command/state paths | No secrets, provider changes, remote URLs, or persistent quarantine default. |
 
 The Windows companion's supported read-only status script additionally validates
@@ -76,6 +77,12 @@ The UI does not import a result merely because a process exits zero. Conversely,
 replacement readiness is expected to exit `2`; changing that code without a new
 reviewed contract remains a desktop error. Scan status, companion health, and
 replacement eligibility are three separate facts.
+
+The Readiness surface also exposes an isolated recovery self-test. It creates
+only synthetic data below a temporary directory and verifies encrypted
+quarantine, authenticated restore, no-overwrite behavior, tamper rejection and
+device-key loss/recovery. A passing local drill is useful engineering evidence;
+it does not satisfy the separate independent recovery-certification gate.
 
 The foreground watcher emits flushed NDJSON. The desktop bounds each record,
 validates the event schema, retains at most 500 visible entries, and marks a

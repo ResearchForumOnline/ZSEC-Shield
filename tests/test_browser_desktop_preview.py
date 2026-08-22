@@ -13,6 +13,7 @@ APP = ROOT / "browser" / "zsec-desktop-preview" / "src" / "ZsecBrowserApp.cs"
 BUILD = ROOT / "windows" / "browser" / "Build-ZsecBrowserPreview.ps1"
 INSTALLER = ROOT / "windows" / "browser" / "Install-ZsecBrowserPreview.ps1"
 STATUS = ROOT / "windows" / "browser" / "Get-ZsecBrowserPreviewStatus.ps1"
+RUNTIME_TEST = ROOT / "windows" / "browser" / "Test-ZsecBrowserPreviewRuntime.ps1"
 README = ROOT / "browser" / "zsec-desktop-preview" / "README.md"
 COMPILER = ROOT / "packaging" / "compile_browser_policy.py"
 PACKAGER = ROOT / "packaging" / "browser_desktop_preview_release.py"
@@ -32,9 +33,9 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
     assert "unsigned" in readme.lower() and "Community" in readme
-    assert 'internal const string ProductVersion = "0.3.2"' in app
-    assert '$ProductVersion = "0.3.2"' in build
-    assert '$ProductVersion = "0.3.2"' in installer
+    assert 'internal const string ProductVersion = "0.3.4"' in app
+    assert '$ProductVersion = "0.3.4"' in build
+    assert '$ProductVersion = "0.3.4"' in installer
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:
@@ -84,30 +85,58 @@ def test_webview2_dependency_is_pinned_to_official_catalog_hash() -> None:
 
 
 def test_compiled_policy_is_deterministic_and_has_source_provenance(tmp_path: Path) -> None:
-    output = tmp_path / "policy"
-    subprocess.run(
-        [
-            sys.executable,
-            str(COMPILER),
-            str(ROOT / "browser" / "zeroq-shields" / "rules"),
-            str(MANIFEST),
-            str(output),
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
+    rules = ROOT / "browser" / "zeroq-shields" / "rules"
+    bounded_rules = tmp_path / "bounded-rules"
+    bounded_rules.mkdir()
+    for name in ("privacy.json", "link-cleaning.json"):
+        (bounded_rules / name).write_bytes((rules / name).read_bytes())
+    # This file is deliberately not valid JSON. Successful compilation proves
+    # EasyList remains an MV3 package input rather than a duplicated native
+    # desktop-policy input.
+    (bounded_rules / "easylist.json").write_text(
+        "not loaded by the bounded desktop policy compiler\n", encoding="utf-8"
     )
+
+    outputs = (tmp_path / "policy-a", tmp_path / "policy-b")
+    for output in outputs:
+        subprocess.run(
+            [
+                sys.executable,
+                str(COMPILER),
+                str(bounded_rules),
+                str(MANIFEST),
+                str(output),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    output = outputs[0]
     provenance = json.loads((output / "policy-provenance.json").read_text(encoding="utf-8"))
     domains = (output / "tracker-domains.txt").read_text(encoding="utf-8").splitlines()
     parameters = (output / "tracking-parameters.txt").read_text(encoding="utf-8").splitlines()
 
     assert provenance["schema"] == "zsec.browser.desktop-policy.v1"
     assert provenance["source_extension"]["name"] == "ZSEC Browser Shields"
-    assert provenance["source_extension"]["version"] == "0.4.2"
+    assert provenance["source_extension"]["version"] == "0.5.0"
+    assert provenance["inputs"]["compiled_rule_files"] == [
+        "link-cleaning.json",
+        "privacy.json",
+    ]
+    assert provenance["packaged_only_rulesets"] == [
+        {
+            "id": "easylist_ads",
+            "path": "rules/easylist.json",
+            "reason": "enforced by Browser Shields MV3; excluded from native desktop policy",
+        }
+    ]
+    assert all("easylist" not in key for key in provenance["inputs"])
     assert domains == sorted(set(domains))
     assert parameters == sorted(set(parameters))
     assert len(domains) == provenance["outputs"]["tracker_domain_count"] == 81
     assert len(parameters) == provenance["outputs"]["tracking_parameter_count"] == 21
+    for name in ("tracker-domains.txt", "tracking-parameters.txt", "policy-provenance.json"):
+        assert (outputs[0] / name).read_bytes() == (outputs[1] / name).read_bytes()
 
 
 def test_status_requires_runtime_and_integrity_evidence() -> None:
@@ -143,10 +172,29 @@ def test_desktop_tabs_popups_and_modern_controls_are_wired() -> None:
     assert "keyData == (Keys.Control | Keys.T)" in app
     assert "keyData == (Keys.Control | Keys.W)" in app
     assert "view.KeyDown += BrowserKeyDown" in app
+    assert '"--zsec-runtime-test=new-tab"' in app
+    assert 'lastTabAction = "runtime_new_tab_verified"' in app
+    assert 'RecordTabCreationFailure("runtime_not_ready")' in app
+    assert 'RecordTabCreationFailure("tab_limit_rejected")' in app
+    assert 'RecordTabCreationFailure("open_failed")' in app
+
+
+def test_runtime_acceptance_retries_transient_evidence_file_locks() -> None:
+    runtime_test = RUNTIME_TEST.read_text(encoding="utf-8")
+
+    assert "$openDeadline = [DateTimeOffset]::UtcNow.AddSeconds(2)" in runtime_test
+    assert "catch [IO.IOException]" in runtime_test
+    assert "Start-Sleep -Milliseconds 50" in runtime_test
+    assert '-AdditionalArguments @("--zsec-runtime-test=new-tab")' in runtime_test
+    assert "$evidence['tab_count'] -eq 2" in runtime_test
+    assert "$evidence['ready_tab_count'] -eq 2" in runtime_test
+    assert "$evidence['tab_creation_failure_count'] -eq 0" in runtime_test
+    assert "$evidence['last_tab_action'] -eq 'runtime_new_tab_verified'" in runtime_test
 
 
 def test_bundled_extension_has_stable_identity_and_bounded_youtube_assist() -> None:
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    build = BUILD.read_text(encoding="utf-8")
     public_key = base64.b64decode(manifest["key"], validate=True)
     digest = hashlib.sha256(public_key).digest()[:16]
     alphabet = "abcdefghijklmnop"
@@ -157,8 +205,16 @@ def test_bundled_extension_has_stable_identity_and_bounded_youtube_assist() -> N
         encoding="utf-8"
     )
 
-    assert manifest["version"] == "0.4.2"
+    assert manifest["version"] == "0.5.0"
     assert extension_id == "ddjbjhnlhapggenanpmcidieimaomiif"
+    for required_desktop_asset in (
+        '"easylist.lock.json"',
+        '"rules/easylist.json"',
+        '"third_party/EASYLIST-LICENSE.txt"',
+        '"third_party/easylist-20260817.txt"',
+        '"third_party/easylist-provenance.json"',
+    ):
+        assert required_desktop_asset in build
     assert "window.top !== window" in assist
     assert "requestAnimationFrame" in assist
     assert "MutationObserver" in assist
@@ -178,7 +234,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
     payload_sha = hashlib.sha256(payload_file.read_bytes()).hexdigest()
     manifest = {
         "schema": "zsec.browser.desktop-preview-build.v2",
-        "version": "0.3.2",
+        "version": "0.3.4",
         "architecture": "windows-x64-webview2-shell",
         "engine_distribution": "Microsoft Evergreen WebView2 Chromium runtime",
         "engine_maintained_by": "Microsoft",
@@ -189,7 +245,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
         "webview2_nuget_sha512_base64": "catalog-hash",
         "tracker_domain_count": 81,
         "tracking_parameter_count": 21,
-        "source_extension_version": "0.4.2",
+        "source_extension_version": "0.5.0",
         "source_extension_id": "ddjbjhnlhapggenanpmcidieimaomiif",
         "files": [
             {"path": "README.md", "sha256": payload_sha, "bytes": 23}
@@ -216,7 +272,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
             text=True,
         )
 
-    name = "zsec-browser-community-0.3.2-windows-x64-unsigned.zip"
+    name = "zsec-browser-community-0.3.4-windows-x64-unsigned.zip"
     archive_a = release_a / name
     archive_b = release_b / name
     assert archive_a.read_bytes() == archive_b.read_bytes()
@@ -235,7 +291,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
     with zipfile.ZipFile(archive_a) as archive:
         provenance = json.loads(
             archive.read(
-                "zsec-browser-community-0.3.2/release-provenance.json"
+                "zsec-browser-community-0.3.4/release-provenance.json"
             ).decode("utf-8")
         )
     assert provenance["source_revision"] == revision

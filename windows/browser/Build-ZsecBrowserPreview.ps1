@@ -6,7 +6,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$ProductVersion = "0.3.2"
+$ProductVersion = "0.3.4"
 $WebView2Version = "1.0.4129.50"
 $WebView2Uri = "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/$WebView2Version/microsoft.web.webview2.$WebView2Version.nupkg"
 $WebView2Sha256 = "d3934f482d484b89fb4825df720c710664e1143a1e90f7b3a60794ef33f473d2"
@@ -118,12 +118,17 @@ $ExtensionFiles = @(
     "popup/index.html",
     "popup/popup.css",
     "popup/popup.js",
+    "easylist.lock.json",
+    "rules/easylist.json",
     "rules/link-cleaning.json",
     "rules/privacy.json",
     "src/high-risk-browsing.js",
     "src/policy.js",
     "src/service-worker.js",
-    "src/youtube-cleanup.js"
+    "src/youtube-cleanup.js",
+    "third_party/EASYLIST-LICENSE.txt",
+    "third_party/easylist-20260817.txt",
+    "third_party/easylist-provenance.json"
 )
 foreach ($relative in $ExtensionFiles) {
     $source = Join-Path $ExtensionSource $relative.Replace('/', '\')

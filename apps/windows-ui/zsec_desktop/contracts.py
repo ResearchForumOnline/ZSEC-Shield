@@ -17,6 +17,17 @@ class ContractError(ValueError):
     """A CLI payload cannot safely be rendered by this desktop version."""
 
 
+RECOVERY_DRILL_CHECK_IDS = frozenset(
+    {
+        "encrypted_authenticated_copy",
+        "authenticated_restore",
+        "no_overwrite_restore",
+        "ciphertext_tamper_rejected",
+        "device_key_loss_and_recovery",
+    }
+)
+
+
 def _is_object(value: Any) -> TypeGuard[dict[str, Any]]:
     return isinstance(value, dict) and all(isinstance(key, str) for key in value)
 
@@ -214,6 +225,50 @@ def validate_readiness(payload: Any) -> dict[str, Any]:
         or _integer(counts.get("total"), "gate_counts.total") != len(blockers)
     ):
         raise ContractError("replacement gate counters are inconsistent")
+    return root
+
+
+def validate_recovery_drill(payload: Any) -> dict[str, Any]:
+    root = _schema(payload, "zsec.antivirus.recovery-drill.v1")
+    if root.get("product") != "ZSEC Antivirus":
+        raise ContractError("recovery drill product identity is invalid")
+    _string(root.get("started_at"), "started_at", maximum=80)
+    _string(root.get("completed_at"), "completed_at", maximum=80)
+    if root.get("scope") != "isolated synthetic data only":
+        raise ContractError("recovery drill scope is not isolated synthetic data")
+    if _bool(root.get("independent_certification"), "independent_certification"):
+        raise ContractError("local recovery drill cannot assert independent certification")
+    passed = _bool(root.get("passed"), "passed")
+    checks = _list(root.get("checks"), "checks")
+    if not checks or len(checks) > 32:
+        raise ContractError("recovery drill check count is invalid")
+    seen: set[str] = set()
+    passed_count = 0
+    for index, value in enumerate(checks):
+        check = _object(value, f"checks[{index}]")
+        check_id = _string(check.get("id"), f"checks[{index}].id", maximum=100)
+        if check_id in seen:
+            raise ContractError("recovery drill check identifiers must be unique")
+        seen.add(check_id)
+        check_passed = _bool(check.get("passed"), f"checks[{index}].passed")
+        error = check.get("error")
+        if check_passed:
+            passed_count += 1
+            if error is not None:
+                raise ContractError("passing recovery drill check cannot contain an error")
+        else:
+            _string(error, f"checks[{index}].error", maximum=2000)
+    if seen != RECOVERY_DRILL_CHECK_IDS:
+        raise ContractError("recovery drill does not contain the exact v1 control set")
+    summary = _object(root.get("summary"), "summary")
+    failed_count = len(checks) - passed_count
+    if (
+        _integer(summary.get("passed"), "summary.passed") != passed_count
+        or _integer(summary.get("failed"), "summary.failed") != failed_count
+        or _integer(summary.get("total"), "summary.total") != len(checks)
+        or passed != (failed_count == 0)
+    ):
+        raise ContractError("recovery drill summary is inconsistent")
     return root
 
 

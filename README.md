@@ -42,6 +42,7 @@ claimed by a mock dashboard. See the [Windows programme](docs/FULL_ANTIVIRUS_PRO
 | Quarantine | Per-object AES-256-GCM, automatic Windows DPAPI key sealing, authenticated ZBA metadata, tamper-fail restore | Windows service key isolation, TPM/CNG root, crash and recovery certification |
 | Updates | Strict Ed25519 signed data-only feed with expiry and rollback checks | Authenticode plus threshold TUF metadata, staged binary/rule/driver rollback |
 | Automatic file monitoring | Per-user Windows Scheduled Task, macOS LaunchAgent and Linux systemd-user packages; native events, baseline, anti-starvation debounce, bounded raw/pending work, verified-file metadata reconciliation, cache-independent full sweeps, heartbeat and rollback | Windows FltMgr/AMSI/ELAM; macOS Endpoint Security; Linux fanotify—with platform-specific deadline and failure tests |
+| Recovery self-test | Isolated synthetic encrypted-quarantine, authenticated-restore, no-overwrite, tamper-rejection and device-key loss/recovery drill | Independent crash, corruption, key-recovery, restore and rollback certification on the exact release |
 | Desktop intelligence | 957-record initial CISA/MSRC/Apple/Ubuntu catalog with strict parsing, raw/semantic digests, atomic update and rollback state | Version applicability, independently validated detection-content providers, signed staged rollout |
 | Platform trust | Read-only inventory | Windows WSC/MVI; Apple entitlement, Developer ID and notarization; signed DEB/RPM repositories and enforced Linux service confinement |
 | Browser | Testable ZSEC Browser Shields MV3 extension; installed Windows WebView2 Community shell with isolated profile and runtime acceptance evidence | Maintained Chromium distribution, upstream security cadence, signed updater and browser regression fleet |
@@ -106,7 +107,8 @@ used the `ZME1` name.
 The open-source extension lives in
 [`browser/zeroq-shields`](browser/zeroq-shields). It provides 39 packaged local
 network blockers, two tracking-link cleaners, a per-site pause switch, and
-best-effort YouTube skip/nuisance cleanup. Community 0.4.2 also adds an optional
+best-effort YouTube skip/nuisance cleanup. Community 0.5.0 adds 49,464 pinned
+EasyList network rules without Acceptable Ads and retains the optional
 High-Risk Browsing profile: two fixed local rules block top-level plaintext HTTP
 navigation and third-party scripts, subframes, objects, and WebSockets. It is off
 by default, may materially break sites, and is exposure reduction rather than
@@ -126,12 +128,13 @@ servers; it never opens the normal user profile. See the
 for the exact enforced decision points and non-claims.
 
 The native Windows Community desktop source lives in
-[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.2
+[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.4
 provides a modern rounded dark interface, managed tabs and popups, an address
 and search bar, and a separate WebView2 profile,
 default-deny site permissions, certificate-error cancellation, explicit downloads,
 HTTPS upgrading, Microsoft Balanced tracking prevention, an automatically loaded
-exact-ID Browser Shields 0.4.2 MV3 engine, 21 tracking-parameter cleaners, a
+exact-ID Browser Shields 0.5.0 MV3 engine with 49,464 pinned EasyList network
+rules, 21 tracking-parameter cleaners, a
 bounded YouTube UI assist and an optional stricter cross-site mode. Its build
 verifies the pinned Microsoft SDK package against the official NuGet SHA-512 and
 a locked SHA-256; installation requires a validly Microsoft-signed Evergreen runtime.
@@ -317,6 +320,7 @@ zero-security replacement-readiness --json
 zero-security replacement-readiness --platform windows --json
 zero-security replacement-readiness --platform macos --json
 zero-security replacement-readiness --platform linux --json
+zero-security recovery-drill --json
 ```
 
 The guard returns `eligible_for_primary_replacement: false`, disables automatic
