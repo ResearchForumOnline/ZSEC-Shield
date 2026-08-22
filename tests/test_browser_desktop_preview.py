@@ -240,3 +240,20 @@ def test_community_release_is_deterministic_and_publishes_provenance(
         )
     assert provenance["source_revision"] == revision
     assert provenance["standalone_chromium_fork"] is False
+
+
+def test_community_package_uses_release_grade_script_names() -> None:
+    build = BUILD.read_text(encoding="utf-8")
+    packager = PACKAGER.read_text(encoding="utf-8")
+    readme = README.read_text(encoding="utf-8")
+
+    for name in (
+        "Install-ZsecBrowser.ps1",
+        "Get-ZsecBrowserStatus.ps1",
+        "Test-ZsecBrowserRuntime.ps1",
+        "Uninstall-ZsecBrowser.ps1",
+    ):
+        assert name in build
+    assert "Install-ZsecBrowser.ps1" in packager
+    assert "Install-ZsecBrowserPreview.ps1" not in packager
+    assert "Install-ZsecBrowserPreview.ps1" not in readme

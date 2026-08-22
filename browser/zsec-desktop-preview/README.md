@@ -48,19 +48,18 @@ not prove complete or permanent YouTube ad blocking. The application is
 also not antivirus and cannot guarantee protection from every browser-engine,
 zero-click, Pegasus-class or other exploit.
 
-## Build and install
+## Install the Community package
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\Build-ZsecBrowserPreview.ps1
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\Install-ZsecBrowserPreview.ps1 -PlanOnly
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\Install-ZsecBrowserPreview.ps1 -Open
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Install-ZsecBrowser.ps1 -PlanOnly
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Install-ZsecBrowser.ps1 -Open
 ```
 
 Status is read-only:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\Get-ZsecBrowserPreviewStatus.ps1
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\Test-ZsecBrowserPreviewRuntime.ps1
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Get-ZsecBrowserStatus.ps1
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Test-ZsecBrowserRuntime.ps1
 ```
 
 Uninstall removes the versioned application files and owned shortcuts while

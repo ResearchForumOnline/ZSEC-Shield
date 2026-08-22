@@ -149,7 +149,7 @@ def main() -> int:
         },
         "installation": (
             "Extract the archive, review README.md, then run "
-            "Install-ZsecBrowserPreview.ps1 from PowerShell."
+            "Install-ZsecBrowser.ps1 from PowerShell."
         ),
         "claims_boundary": (
             "Unsigned Community evaluation. Not a maintained Chromium fork, "

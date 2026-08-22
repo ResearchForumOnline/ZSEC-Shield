@@ -136,13 +136,13 @@ foreach ($relative in $ExtensionFiles) {
 }
 Copy-Item -LiteralPath (Join-Path $RepoRoot "LICENSE") -Destination (Join-Path $PayloadRoot "LICENSE.txt") -Force
 Copy-Item -LiteralPath (Join-Path $RepoRoot "browser\zsec-desktop-preview\README.md") -Destination (Join-Path $PayloadRoot "README.md") -Force
-foreach ($name in @(
-    "Install-ZsecBrowserPreview.ps1",
-    "Get-ZsecBrowserPreviewStatus.ps1",
-    "Test-ZsecBrowserPreviewRuntime.ps1",
-    "Uninstall-ZsecBrowserPreview.ps1"
+foreach ($script in @(
+    @{ Source = "Install-ZsecBrowserPreview.ps1"; Destination = "Install-ZsecBrowser.ps1" },
+    @{ Source = "Get-ZsecBrowserPreviewStatus.ps1"; Destination = "Get-ZsecBrowserStatus.ps1" },
+    @{ Source = "Test-ZsecBrowserPreviewRuntime.ps1"; Destination = "Test-ZsecBrowserRuntime.ps1" },
+    @{ Source = "Uninstall-ZsecBrowserPreview.ps1"; Destination = "Uninstall-ZsecBrowser.ps1" }
 )) {
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $PayloadRoot $name) -Force
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot $script.Source) -Destination (Join-Path $PayloadRoot $script.Destination) -Force
 }
 
 $fileManifest = @()
