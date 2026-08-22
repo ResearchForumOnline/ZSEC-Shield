@@ -8,8 +8,8 @@ enabled.
 
 The scripts are intentionally review-first. No repository build or test invokes
 the mutation path. `-PlanOnly` resolves the preferred current-user Scheduled
-Task, the access-denied-only `HKCU` Run fallback, executable hashes, Downloads
-root, state paths, settings, and rollback boundary without creating a directory,
+Task, the access-denied-only `HKCU` Run fallback, executable hashes, protected
+roots, state paths, settings, and rollback boundary without creating a directory,
 registering a task, or writing the registry.
 
 ## Review the exact plan
@@ -22,10 +22,14 @@ powershell.exe -NoLogo -NoProfile -ExecutionPolicy RemoteSigned `
   -PlanOnly
 ```
 
-The default protected root is `%USERPROFILE%\Downloads`. Use `-ProtectedRoot`
-to choose another existing, regular, non-reparse directory. The installer finds
-`zero-security.exe`, retaining `zsec-shield.exe` as a compatibility fallback, or
-accepts an explicit reviewed `-CliPath`.
+The secure Windows default monitors each existing current-user Downloads,
+Desktop, Documents and temporary directory. A standard folder that Windows
+resolves to an absent or reparse-point location is skipped instead of making an
+automatic install fail. Pass one to eight `-ProtectedRoot` values to use a
+different bounded set of existing, regular, non-reparse directories. The installer deduplicates exact
+roots and refuses any root inside, equal to, or containing its mutable state
+directory. It finds `zero-security.exe`, retaining `zsec-shield.exe` as a
+compatibility fallback, or accepts an explicit reviewed `-CliPath`.
 
 Plan output fixes the safety policy to:
 

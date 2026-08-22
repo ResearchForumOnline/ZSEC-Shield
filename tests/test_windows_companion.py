@@ -39,6 +39,15 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn("max_file_bytes = 268435456", content)
         self.assertIn("event_log_max_bytes = 4194304", content)
         self.assertIn("event_log_backups = 3", content)
+        self.assertIn("[string[]]$ProtectedRoot", content)
+        self.assertIn('(Join-Path $env:USERPROFILE "Downloads")', content)
+        self.assertIn('[Environment]::GetFolderPath("Desktop")', content)
+        self.assertIn('[Environment]::GetFolderPath("MyDocuments")', content)
+        self.assertIn('[IO.Path]::GetTempPath()', content)
+        self.assertIn("Test-Path -LiteralPath $_ -PathType Container", content)
+        self.assertIn("[IO.FileAttributes]::ReparsePoint", content)
+        self.assertIn("between one and eight distinct protected roots", content)
+        self.assertIn("A protected root cannot contain the excluded ZSEC state directory", content)
         self.assertIn("quarantine_enabled = [bool]$EnableQuarantine", content)
         self.assertIn('"runtime-identity" "--json"', content)
         self.assertIn("runtime_sha256 = $runtimeHash", content)
@@ -157,6 +166,8 @@ class WindowsCompanionReadOnlyIntegrationTests(unittest.TestCase):
     def test_plan_only_returns_exact_safe_plan_without_creating_state(self) -> None:
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
+            protected = root / "protected"
+            protected.mkdir()
             state = root / "state"
             result = subprocess.run(
                 [
@@ -170,7 +181,7 @@ class WindowsCompanionReadOnlyIntegrationTests(unittest.TestCase):
                     "-CliPath",
                     self.cli,
                     "-ProtectedRoot",
-                    str(root),
+                    str(protected),
                     "-StateDirectory",
                     str(state),
                     "-PlanOnly",

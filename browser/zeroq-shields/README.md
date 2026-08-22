@@ -6,6 +6,12 @@ fingerprinting and session-replay domains; removes common campaign identifiers
 from top-level links; offers a per-site breakage switch; and performs best-effort
 YouTube skip-button and promoted-slot cleanup.
 
+The YouTube helper is deliberately bounded: it hides a packaged list of known
+promoted interface containers and clicks only a visible, enabled skip/close
+control exposed by the page. It does not alter video playback, inspect response
+bodies, download filtering logic, or promise to suppress server-selected,
+unskippable, already-buffered, or markup-changed advertising.
+
 It does not upload browsing history, inject affiliate links, install a root
 certificate, proxy traffic, or download executable rules. Its two static
 rulesets contain 39 local blocking rules and two link-cleaning rules. They are

@@ -106,7 +106,7 @@ used the `ZME1` name.
 The open-source extension lives in
 [`browser/zeroq-shields`](browser/zeroq-shields). It provides 39 packaged local
 network blockers, two tracking-link cleaners, a per-site pause switch, and
-best-effort YouTube skip/nuisance cleanup. Community 0.4.1 also adds an optional
+best-effort YouTube skip/nuisance cleanup. Community 0.4.2 also adds an optional
 High-Risk Browsing profile: two fixed local rules block top-level plaintext HTTP
 navigation and third-party scripts, subframes, objects, and WebSockets. It is off
 by default, may materially break sites, and is exposure reduction rather than
@@ -126,12 +126,12 @@ servers; it never opens the normal user profile. See the
 for the exact enforced decision points and non-claims.
 
 The native Windows Community desktop source lives in
-[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.1
+[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.2
 provides a modern rounded dark interface, managed tabs and popups, an address
 and search bar, and a separate WebView2 profile,
 default-deny site permissions, certificate-error cancellation, explicit downloads,
 HTTPS upgrading, Microsoft Balanced tracking prevention, an automatically loaded
-exact-ID Browser Shields 0.4.1 MV3 engine, 21 tracking-parameter cleaners, a
+exact-ID Browser Shields 0.4.2 MV3 engine, 21 tracking-parameter cleaners, a
 bounded YouTube UI assist and an optional stricter cross-site mode. Its build
 verifies the pinned Microsoft SDK package against the official NuGet SHA-512 and
 a locked SHA-256; installation requires a validly Microsoft-signed Evergreen runtime.

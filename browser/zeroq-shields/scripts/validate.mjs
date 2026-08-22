@@ -16,14 +16,15 @@ const linkRules = JSON.parse(await readFile(join(root, "rules", "link-cleaning.j
 const popup = await readFile(join(root, "popup", "index.html"), "utf8");
 const popupScript = await readFile(join(root, "popup", "popup.js"), "utf8");
 const serviceWorker = await readFile(join(root, "src", "service-worker.js"), "utf8");
+const youtubeCleanup = await readFile(join(root, "src", "youtube-cleanup.js"), "utf8");
 const totalRules = blockingRules.length + linkRules.length;
 
 if (manifest.manifest_version !== 3) throw new Error("Manifest V3 is required");
 if (manifest.name !== "ZSEC Browser Shields" || manifest.short_name !== "ZSEC Shields") {
   throw new Error("Public extension branding is stale");
 }
-if (manifest.version !== "0.4.1" || packageJson.version !== manifest.version) {
-  throw new Error("Manifest/package release version must match the reviewed 0.4.1 release");
+if (manifest.version !== "0.4.2" || packageJson.version !== manifest.version) {
+  throw new Error("Manifest/package release version must match the reviewed 0.4.2 release");
 }
 const resources = manifest.declarative_net_request?.rule_resources || [];
 if (resources.length !== 2) throw new Error("Expected blocking and link-cleaning rulesets");
@@ -52,6 +53,25 @@ if (!popup.includes('id="pause-site"')) throw new Error("Site-pause control miss
 if (!popupScript.includes("settings.protectionEnabled && settings.highRiskMode")) throw new Error("Popup high-risk status is not master-gated");
 if (!popupScript.includes("settings.highRiskMode;")) throw new Error("Site pause is not disabled during High-Risk Browsing");
 if (!popupScript.includes("Unavailable while High-Risk Browsing is active")) throw new Error("Site-pause override explanation missing");
+
+const youtubeForbidden = [
+  [/\.currentTime\s*=/, "video seeking"],
+  [/\.playbackRate\s*=/, "playback acceleration"],
+  [/\.muted\s*=/, "forced muting"],
+  [/\.volume\s*=/, "volume changes"],
+  [/\bsetInterval\s*\(/, "unbounded polling"],
+  [/\b(?:fetch|XMLHttpRequest|WebSocket|EventSource)\b/, "page/network inspection"],
+  [/\bsendBeacon\s*\(/, "telemetry"],
+];
+for (const [pattern, behavior] of youtubeForbidden) {
+  if (pattern.test(youtubeCleanup)) throw new Error(`YouTube assistance must not use ${behavior}`);
+}
+if (!youtubeCleanup.includes('host !== "www.youtube.com" && host !== "m.youtube.com"')) {
+  throw new Error("YouTube assistance lacks an exact-host runtime guard");
+}
+if (!youtubeCleanup.includes("button.getAttribute(\"aria-disabled\")")) {
+  throw new Error("YouTube assistance does not reject disabled controls");
+}
 
 const highRiskRules = buildHighRiskRules(true);
 if (buildHighRiskRules(false).length !== 0) throw new Error("High-risk rules must default off");

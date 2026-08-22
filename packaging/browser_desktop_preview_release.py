@@ -152,7 +152,7 @@ def main() -> int:
             "Install-ZsecBrowser.ps1 from PowerShell."
         ),
         "claims_boundary": (
-            "Unsigned Community evaluation. Not a maintained Chromium fork, "
+            "Unsigned direct Community package. Not a maintained Chromium fork, "
             "not antivirus, and not approved as a primary browser or managed "
             "production deployment."
         ),

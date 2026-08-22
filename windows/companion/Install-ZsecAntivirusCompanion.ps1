@@ -2,7 +2,17 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
 param(
     [string]$CliPath = "",
-    [string]$ProtectedRoot = (Join-Path $env:USERPROFILE "Downloads"),
+    [string[]]$ProtectedRoot = (@(
+            (Join-Path $env:USERPROFILE "Downloads"),
+            ([Environment]::GetFolderPath("Desktop")),
+            ([Environment]::GetFolderPath("MyDocuments")),
+            ([IO.Path]::GetTempPath())
+        ) | Where-Object {
+            -not [string]::IsNullOrWhiteSpace($_) -and
+            (Test-Path -LiteralPath $_ -PathType Container) -and
+            (((Get-Item -LiteralPath $_ -Force).Attributes -band
+                [IO.FileAttributes]::ReparsePoint) -eq 0)
+        }),
     [string]$StateDirectory = (Join-Path $env:LOCALAPPDATA "ZSEC\Shield"),
     [switch]$EnableQuarantine,
     [switch]$StartNow,
@@ -165,15 +175,30 @@ if ([string]::IsNullOrWhiteSpace($CliPath)) {
 }
 
 $cli = Get-NormalizedPath $CliPath
-$protected = Get-NormalizedPath $ProtectedRoot
 $state = Get-NormalizedPath $StateDirectory
 Assert-RegularNonReparseFile $cli
-Assert-RegularNonReparseDirectory $protected
-if ((Get-NormalizedPath $protected).TrimEnd('\') -eq (Get-NormalizedPath $state).TrimEnd('\')) {
-    throw "The protected root cannot be the ZSEC state directory."
+$protected = @()
+$protectedSeen = @{}
+foreach ($candidate in @($ProtectedRoot)) {
+    $normalized = (Get-NormalizedPath ([string]$candidate)).TrimEnd('\')
+    Assert-RegularNonReparseDirectory $normalized
+    if ($normalized -eq $state.TrimEnd('\')) {
+        throw "A protected root cannot be the ZSEC state directory."
+    }
+    if (Test-IsPathBelow -Candidate $normalized -Parent $state) {
+        throw "A protected root cannot be located below the excluded ZSEC state directory."
+    }
+    if (Test-IsPathBelow -Candidate $state -Parent $normalized) {
+        throw "A protected root cannot contain the excluded ZSEC state directory."
+    }
+    $key = $normalized.ToLowerInvariant()
+    if (-not $protectedSeen.ContainsKey($key)) {
+        $protectedSeen[$key] = $true
+        $protected += $normalized
+    }
 }
-if (Test-IsPathBelow -Candidate $protected -Parent $state) {
-    throw "The protected root cannot be located below the excluded ZSEC state directory."
+if ($protected.Count -lt 1 -or $protected.Count -gt 8) {
+    throw "The companion requires between one and eight distinct protected roots."
 }
 
 $installRoot = Join-Path $state "companion"

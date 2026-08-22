@@ -32,9 +32,9 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
     assert "unsigned" in readme.lower() and "Community" in readme
-    assert 'internal const string ProductVersion = "0.3.1"' in app
-    assert '$ProductVersion = "0.3.1"' in build
-    assert '$ProductVersion = "0.3.1"' in installer
+    assert 'internal const string ProductVersion = "0.3.2"' in app
+    assert '$ProductVersion = "0.3.2"' in build
+    assert '$ProductVersion = "0.3.2"' in installer
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:
@@ -103,7 +103,7 @@ def test_compiled_policy_is_deterministic_and_has_source_provenance(tmp_path: Pa
 
     assert provenance["schema"] == "zsec.browser.desktop-policy.v1"
     assert provenance["source_extension"]["name"] == "ZSEC Browser Shields"
-    assert provenance["source_extension"]["version"] == "0.4.1"
+    assert provenance["source_extension"]["version"] == "0.4.2"
     assert domains == sorted(set(domains))
     assert parameters == sorted(set(parameters))
     assert len(domains) == provenance["outputs"]["tracker_domain_count"] == 81
@@ -157,7 +157,7 @@ def test_bundled_extension_has_stable_identity_and_bounded_youtube_assist() -> N
         encoding="utf-8"
     )
 
-    assert manifest["version"] == "0.4.1"
+    assert manifest["version"] == "0.4.2"
     assert extension_id == "ddjbjhnlhapggenanpmcidieimaomiif"
     assert "window.top !== window" in assist
     assert "requestAnimationFrame" in assist
@@ -178,7 +178,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
     payload_sha = hashlib.sha256(payload_file.read_bytes()).hexdigest()
     manifest = {
         "schema": "zsec.browser.desktop-preview-build.v2",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "architecture": "windows-x64-webview2-shell",
         "engine_distribution": "Microsoft Evergreen WebView2 Chromium runtime",
         "engine_maintained_by": "Microsoft",
@@ -189,7 +189,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
         "webview2_nuget_sha512_base64": "catalog-hash",
         "tracker_domain_count": 81,
         "tracking_parameter_count": 21,
-        "source_extension_version": "0.4.1",
+        "source_extension_version": "0.4.2",
         "source_extension_id": "ddjbjhnlhapggenanpmcidieimaomiif",
         "files": [
             {"path": "README.md", "sha256": payload_sha, "bytes": 23}
@@ -216,7 +216,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
             text=True,
         )
 
-    name = "zsec-browser-community-0.3.1-windows-x64-unsigned.zip"
+    name = "zsec-browser-community-0.3.2-windows-x64-unsigned.zip"
     archive_a = release_a / name
     archive_b = release_b / name
     assert archive_a.read_bytes() == archive_b.read_bytes()
@@ -235,7 +235,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
     with zipfile.ZipFile(archive_a) as archive:
         provenance = json.loads(
             archive.read(
-                "zsec-browser-community-0.3.1/release-provenance.json"
+                "zsec-browser-community-0.3.2/release-provenance.json"
             ).decode("utf-8")
         )
     assert provenance["source_revision"] == revision

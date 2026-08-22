@@ -19,6 +19,32 @@ The scripts in this directory:
 
 The pinned requirements live in [`toolchain.requirements.json`](toolchain.requirements.json). Treat any change to that file as a security-sensitive toolchain change requiring source review.
 
+## Locked source and patch boundary
+
+[`upstream.lock.json`](upstream.lock.json) records one exact Chromium Windows Stable version, Chromium commit, branch position, official source origin, and `depot_tools` commit. [`patches/series.json`](patches/series.json) binds the patch series to that Chromium commit and rejects unlisted, path-escaping, oversized, binary, hash-mismatched, or explicitly dangerous added content.
+
+The checked-in series is intentionally empty. That means this repository has no ZSEC Chromium source modifications yet and must not be described as a maintained Chromium fork. The gate creates a reviewable starting point for later source work; it does not make the installed WebView2 shell into Chromium or attest that a browser build exists.
+
+Validate the immutable lock and patch inventory without network access:
+
+```powershell
+& .\scripts\Test-ZsecChromiumDownstreamPolicy.ps1 -Json
+```
+
+Generate a no-change plan against the checked-in lock:
+
+```powershell
+& .\scripts\New-ZsecChromiumUpdatePlan.ps1 -Json
+```
+
+On a review workstation, query the exact official ChromiumDash Windows Stable endpoint and produce a read-only candidate plan:
+
+```powershell
+& .\scripts\New-ZsecChromiumUpdatePlan.ps1 -CheckUpstream -Json
+```
+
+The candidate command never rewrites the lock, fetches source, applies patches, builds, signs, installs, or updates the live product. A newer candidate only produces manual review actions. A downgrade, malformed candidate, same-version commit change, or version change without a commit change fails closed.
+
 ## Pinned host and toolchain
 
 The gate requires:
@@ -160,9 +186,10 @@ The tests require only PowerShell and do not inspect or mutate Task Scheduler, a
 
 ```powershell
 & .\tests\Run-Tests.ps1
+& .\tests\Run-Downstream-Tests.ps1
 ```
 
-They exercise the pure policy evaluator with supported and rejected host snapshots and statically reject dangerous security-provider mutation commands in the bootstrap scripts.
+They exercise the pure host evaluator and the source-lock, update-plan, patch-hash, patch-path, official-origin, and dangerous-added-line gates. They also statically reject security-provider and source-mutation commands in the audit/planning scripts. CI runs both suites offline; upstream discovery is deliberately excluded from CI so a network response cannot silently change a reviewed lock.
 
 ## Primary sources
 

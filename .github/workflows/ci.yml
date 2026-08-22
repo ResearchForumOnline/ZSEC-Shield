@@ -64,6 +64,22 @@ jobs:
       - name: Static extension validation
         run: npm run validate
 
+  chromium-downstream-policy:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Test fail-closed host and downstream policy
+        shell: pwsh
+        run: |
+          & .\browser\chromium-downstream\tests\Run-Tests.ps1
+          & .\browser\chromium-downstream\tests\Run-Downstream-Tests.ps1
+      - name: Validate locked source and reviewed patch inventory
+        shell: pwsh
+        run: |
+          & .\browser\chromium-downstream\scripts\Test-ZsecChromiumDownstreamPolicy.ps1 -Json
+          & .\browser\chromium-downstream\scripts\New-ZsecChromiumUpdatePlan.ps1 -Json
+
   site-validation:
     runs-on: ubuntu-latest
     timeout-minutes: 10

@@ -9,7 +9,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $ProductName = "ZSEC Browser"
-$ProductVersion = "0.3.1"
+$ProductVersion = "0.3.2"
 
 function Get-NormalizedPath {
     param([Parameter(Mandatory = $true)][string]$Path)
@@ -141,7 +141,7 @@ $policy = Get-Content -LiteralPath $payloadPolicy -Raw -Encoding UTF8 | ConvertF
 if (
     $policy.schema -ne "zsec.browser.desktop-policy.v1" -or
     $policy.source_extension.name -ne "ZSEC Browser Shields" -or
-    [string]$policy.source_extension.version -ne "0.4.1" -or
+    [string]$policy.source_extension.version -ne "0.4.2" -or
     [int]$policy.outputs.tracker_domain_count -lt 1
 ) {
     throw "The compiled ZSEC Browser policy identity is invalid."
