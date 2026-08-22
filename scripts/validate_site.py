@@ -41,7 +41,7 @@ DOWNLOAD_PAGES: dict[str, DownloadPolicy] = {
         "fingerprints": 3,
         "artifacts": {
             "/downloads/zero-security/zsec-shield-0.3.0-windows-x86_64.zip",
-            "/downloads/zero-security/zsec-antivirus-desktop-0.3.5-windows-x86_64.zip",
+            "/downloads/zero-security/zsec-antivirus-desktop-0.3.6-windows-x86_64.zip",
             "/downloads/zero-security/zsec-shield-0.3.0-macos-arm64.tar.gz",
             "/downloads/zero-security/zsec-shield-0.3.0-linux-x86_64.tar.gz",
             "/downloads/zero-security/zsec_shield-0.3.0-py3-none-any.whl",
@@ -51,8 +51,8 @@ DOWNLOAD_PAGES: dict[str, DownloadPolicy] = {
         "canonical": "https://talktoai.org/zero-browser/download/",
         "fingerprints": 2,
         "artifacts": {
-            "/downloads/zero-browser/zsec-browser-community-0.3.5-windows-x64-unsigned.zip",
-            "/downloads/zero-browser/zsec-browser-shields-0.5.1-chromium-mv3.zip",
+            "/downloads/zero-browser/zsec-browser-community-0.3.6-windows-x64-unsigned.zip",
+            "/downloads/zero-browser/zsec-browser-shields-0.5.2-chromium-mv3.zip",
         },
     },
 }

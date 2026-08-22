@@ -107,7 +107,7 @@ used the `ZME1` name.
 The open-source extension lives in
 [`browser/zeroq-shields`](browser/zeroq-shields). It provides 39 packaged local
 network blockers, two tracking-link cleaners, a per-site pause switch, and
-best-effort YouTube skip/nuisance cleanup. Community 0.5.1 adds 49,464 pinned
+best-effort YouTube skip/nuisance cleanup. Community 0.5.2 adds 49,464 pinned
 EasyList network rules without Acceptable Ads and retains the optional
 High-Risk Browsing profile: two fixed local rules block top-level plaintext HTTP
 navigation and third-party scripts, subframes, objects, and WebSockets. It is off
@@ -133,7 +133,7 @@ provides a modern rounded dark interface, managed tabs and popups, an address
 and search bar, and a separate WebView2 profile,
 default-deny site permissions, certificate-error cancellation, explicit downloads,
 HTTPS upgrading, Microsoft Balanced tracking prevention, an automatically loaded
-exact-ID Browser Shields 0.5.1 MV3 engine with 49,464 pinned EasyList-derived network
+exact-ID Browser Shields 0.5.2 MV3 engine with 49,464 pinned EasyList-derived network
 rules, 21 tracking-parameter cleaners, a
 19 selected packaged YouTube cosmetic selectors, a bounded YouTube UI assist
 and an optional stricter cross-site mode. Its build
