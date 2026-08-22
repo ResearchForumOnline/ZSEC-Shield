@@ -10,6 +10,13 @@ from pathlib import Path
 from typing import Any
 
 from zsec_shield import __version__
+from zsec_shield.automatic_updates import (
+    DEFAULT_APPLICATION_UPDATE_URL,
+    DEFAULT_INTELLIGENCE_URL,
+    load_automatic_update_status,
+    run_automatic_update,
+    verify_application_update_envelope,
+)
 from zsec_shield.errors import QuarantinePartialError, WatchError, ZsecShieldError
 from zsec_shield.feed import (
     download_feed,
@@ -220,6 +227,27 @@ def build_parser() -> argparse.ArgumentParser:
     update.add_argument("--timeout", type=float, default=15.0, help="HTTPS timeout in seconds")
     update.add_argument("--json", action="store_true")
     update.set_defaults(handler=_command_update)
+
+    automatic = subparsers.add_parser(
+        "update-intelligence",
+        help="check the release-owned signed, data-only advisory catalog",
+    )
+    automatic.add_argument("--url", default=DEFAULT_INTELLIGENCE_URL, help=argparse.SUPPRESS)
+    automatic.add_argument("--timeout", type=float, default=15.0)
+    automatic.add_argument("--force", action="store_true", help="check now even if not due")
+    automatic.add_argument("--json", action="store_true")
+    automatic.set_defaults(handler=_command_update_intelligence)
+
+    application_update = subparsers.add_parser(
+        "check-application-update",
+        help="verify a notification-only application release manifest",
+    )
+    application_update.add_argument(
+        "--url", default=DEFAULT_APPLICATION_UPDATE_URL, help=argparse.SUPPRESS
+    )
+    application_update.add_argument("--timeout", type=float, default=15.0)
+    application_update.add_argument("--json", action="store_true")
+    application_update.set_defaults(handler=_command_check_application_update)
 
     status = subparsers.add_parser("status", help="show scanner, feed, and quarantine status")
     status.add_argument("--json", action="store_true")
@@ -612,10 +640,53 @@ def _command_update(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _command_update_intelligence(args: argparse.Namespace) -> int:
+    if not 1 <= args.timeout <= 120:
+        raise ZsecShieldError("timeout must be between 1 and 120 seconds")
+    state_dir = _state_dir(args)
+    status = run_automatic_update(
+        state_dir,
+        _keyring_path(args, state_dir),
+        source=args.url,
+        timeout=args.timeout,
+        force=bool(args.force),
+    )
+    result = status.to_dict()
+    if args.json:
+        _emit_json(result)
+    else:
+        print(
+            f"Intelligence update: {status.state}; sequence "
+            f"{status.feed_sequence or 'not installed'}; next check {status.next_check_at}."
+        )
+        if status.error:
+            print(f"Update error: {status.error}", file=sys.stderr)
+    return EXIT_INCOMPLETE if status.state == "error" else EXIT_OK
+
+
+def _command_check_application_update(args: argparse.Namespace) -> int:
+    if not 1 <= args.timeout <= 120:
+        raise ZsecShieldError("timeout must be between 1 and 120 seconds")
+    state_dir = _state_dir(args)
+    result = verify_application_update_envelope(
+        download_feed(args.url, timeout=args.timeout),
+        _keyring_path(args, state_dir),
+    )
+    if args.json:
+        _emit_json(result)
+    else:
+        print(
+            f"Verified ZSEC {result['version']} application update notice; "
+            "automatic installation is disabled."
+        )
+    return EXIT_OK
+
+
 def _command_status(args: argparse.Namespace) -> int:
     state_dir = _state_dir(args)
     keyring_path = _keyring_path(args, state_dir)
     feed_status, _ = inspect_feed(state_dir, keyring_path)
+    update_status = load_automatic_update_status(state_dir)
     entries, quarantine_errors = list_entries(state_dir)
     last_scan, last_scan_error = load_last_scan(state_dir)
     counts: dict[str, int] = {}
@@ -659,6 +730,11 @@ def _command_status(args: argparse.Namespace) -> int:
         "state_dir": str(state_dir),
         "built_in_rules": len(builtin_rules()),
         "feed": feed_status.to_dict(),
+        "update_status": {
+            key: value
+            for key, value in update_status.to_dict().items()
+            if key != "schema"
+        },
         "quarantine": {
             "entries": len(entries),
             "states": counts,

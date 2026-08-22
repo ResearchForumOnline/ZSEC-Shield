@@ -1,0 +1,39 @@
+{
+  "artifacts": [
+    {
+      "architecture": "x86_64",
+      "authenticode": "unsigned",
+      "filename": "zsec-antivirus-desktop-0.3.13-windows-x86_64.zip",
+      "operating_system": "windows",
+      "sha256": "f1a36ac2cf0070dc14c6c73ac088fa8ab698aefee5a30eebd802e6f9dae65d82",
+      "size": 45062027,
+      "url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.13/zsec-antivirus-desktop-0.3.13-windows-x86_64.zip"
+    },
+    {
+      "architecture": "x86_64",
+      "authenticode": "not-applicable",
+      "filename": "zsec-shield-0.3.13-linux-x86_64.tar.gz",
+      "operating_system": "linux",
+      "sha256": "88fc70ae54177d4e78a26de7a3a2b0c177fe24cd7a4b56d9f025f42eb6cf15e0",
+      "size": 23930115,
+      "url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.13/zsec-shield-0.3.13-linux-x86_64.tar.gz"
+    },
+    {
+      "architecture": "arm64",
+      "authenticode": "not-applicable",
+      "filename": "zsec-shield-0.3.13-macos-arm64.tar.gz",
+      "operating_system": "macos",
+      "sha256": "45941ec7c3be491577763f56c92e289b60689c399b91ef4cd3995c0779996d90",
+      "size": 12622684,
+      "url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.13/zsec-shield-0.3.13-macos-arm64.tar.gz"
+    }
+  ],
+  "auto_install_allowed": false,
+  "channel": "stable",
+  "minimum_supported_version": "0.3.13",
+  "notification_only": true,
+  "release_notes_url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.13",
+  "schema": "zsec.application-release-source.v1",
+  "source_revision": "dcaa2ec1f4c58854a350fcb1ef920dc5112e26ba",
+  "version": "0.3.13"
+}

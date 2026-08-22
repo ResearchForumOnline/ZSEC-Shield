@@ -1,0 +1,100 @@
+name: Publish signed update service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "intelligence/**"
+      - "updates/application-release.json"
+  schedule:
+    - cron: "17 20 * * *"
+  workflow_dispatch:
+    inputs:
+      sequence:
+        description: Optional monotonic sequence; zero selects the next sequence
+        required: false
+        default: 0
+        type: number
+      generated_at:
+        description: Optional RFC 3339 UTC generation timestamp
+        required: false
+        type: string
+      expires_at:
+        description: Optional RFC 3339 UTC expiry, no more than 14 days later
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: zsec-production-update-service
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    environment: update-production
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install locked project dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Run publisher and security tests
+        run: python -m pytest tests/test_update_service_publication.py tests/test_desktop_intelligence.py
+      - name: Refresh and validate authoritative advisory metadata
+        run: |
+          python scripts/update_desktop_intelligence.py --dry-run --json
+          python scripts/update_desktop_intelligence.py --json
+          python -m pytest tests/test_desktop_intelligence.py
+      - name: Select monotonic sequence and validity window
+        id: publication
+        shell: bash
+        env:
+          REQUESTED_SEQUENCE: ${{ inputs.sequence || 0 }}
+          REQUESTED_GENERATED_AT: ${{ inputs.generated_at || '' }}
+          REQUESTED_EXPIRES_AT: ${{ inputs.expires_at || '' }}
+        run: |
+          mkdir -p web/zsec/updates/v1/audit
+          latest="$(find web/zsec/updates/v1/audit -maxdepth 1 -type f -name '*.json' -printf '%f\n' 2>/dev/null | sed 's/\.json$//' | sort -n | tail -1)"
+          latest="${latest:-0}"
+          latest=$((10#$latest))
+          requested="${REQUESTED_SEQUENCE:-0}"
+          if [ "$requested" -eq 0 ]; then sequence=$((latest + 1)); else sequence="$requested"; fi
+          test "$sequence" -gt "$latest" || { echo "sequence must exceed $latest"; exit 1; }
+          generated_at="${REQUESTED_GENERATED_AT:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}"
+          expires_at="${REQUESTED_EXPIRES_AT:-$(date -u -d '+7 days' +'%Y-%m-%dT%H:%M:%SZ')}"
+          echo "sequence=$sequence" >> "$GITHUB_OUTPUT"
+          echo "generated_at=$generated_at" >> "$GITHUB_OUTPUT"
+          echo "expires_at=$expires_at" >> "$GITHUB_OUTPUT"
+      - name: Build signed endpoints
+        env:
+          ZSEC_UPDATE_PUBLIC_KEY_B64: ${{ vars.ZSEC_UPDATE_PUBLIC_KEY_B64 }}
+          ZSEC_UPDATE_SIGNING_KEY_B64: ${{ secrets.ZSEC_UPDATE_SIGNING_KEY_B64 }}
+        run: >-
+          python scripts/publish_update_service.py
+          --key-id zsec:update-primary-2026
+          --sequence '${{ steps.publication.outputs.sequence }}'
+          --generated-at '${{ steps.publication.outputs.generated_at }}'
+          --expires-at '${{ steps.publication.outputs.expires_at }}'
+      - name: Refuse unrelated generated changes
+        shell: bash
+        run: |
+          unexpected="$(git status --short | awk '$2 !~ /^web\/zsec\// && $2 !~ /^intelligence\/desktop-advisories(\.state)?\.json$/ {print}')"
+          test -z "$unexpected" || { printf '%s\n' "$unexpected"; exit 1; }
+          test -n "$(git status --short web/zsec)"
+      - name: Commit immutable and stable endpoints
+        env:
+          SEQUENCE: ${{ steps.publication.outputs.sequence }}
+        run: |
+          git config user.name "zsec-update-service[bot]"
+          git config user.email "zsec-update-service[bot]@users.noreply.github.com"
+          git add web/zsec intelligence/desktop-advisories.json intelligence/desktop-advisories.state.json
+          git commit -m "data(updates): publish signed sequence ${SEQUENCE}"
+          git push origin HEAD:main

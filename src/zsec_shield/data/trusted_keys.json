@@ -1,4 +1,11 @@
 {
-  "keys": [],
+  "keys": [
+    {
+      "algorithm": "ed25519",
+      "key_id": "zsec:update-primary-2026",
+      "public_key": "SgTMDmveYZ/zx8mpyMQPdZXdoLu7LmmgljMK4ewjxXs=",
+      "status": "active"
+    }
+  ],
   "schema": "zsec.shield.keyring.v1"
 }

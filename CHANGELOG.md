@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.14 - 2026-08-22
+
+- Added decentralized, credential-free daily security-intelligence updates from
+  a fixed HTTPS endpoint, verified against an embedded Ed25519 trust root.
+- Added strict expiry, sequence, rollback, equal-sequence mutation, catalog
+  digest, schema and data-only policy verification with atomic activation and
+  last-known-good retention.
+- Added automatic Windows companion checks with randomized daily scheduling and
+  explicit update-health evidence in the desktop interface.
+- Added a separately signed, notification-only application release channel;
+  unsigned application packages are never downloaded or executed automatically.
+- Added a daily fail-closed publication workflow, bounded signed metadata, small
+  append-only audit receipts and production key bootstrap tooling.
+- Polished the desktop update interface and public Antivirus and Browser pages
+  with responsive update contracts, restrained motion and reduced-motion support.
+
 ## 0.3.13 - 2026-08-22
 
 - Reworked the Windows protection-centre workflow around automatic coverage:

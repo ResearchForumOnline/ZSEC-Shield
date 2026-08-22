@@ -56,5 +56,33 @@ def feed_lock_path(state_dir: Path) -> Path:
     return state_dir / "feed" / ".update.lock"
 
 
+def feed_last_known_good_document_path(state_dir: Path) -> Path:
+    return state_dir / "feed" / "last-known-good.json"
+
+
+def feed_last_known_good_state_path(state_dir: Path) -> Path:
+    return state_dir / "feed" / "last-known-good-state.json"
+
+
+def automatic_update_status_path(state_dir: Path) -> Path:
+    return state_dir / "feed" / "automatic-update-status.json"
+
+
+def intelligence_document_path(state_dir: Path) -> Path:
+    return state_dir / "intelligence" / "current.json"
+
+
+def intelligence_envelope_path(state_dir: Path) -> Path:
+    return state_dir / "intelligence" / "current-envelope.json"
+
+
+def intelligence_state_path(state_dir: Path) -> Path:
+    return state_dir / "intelligence" / "state.json"
+
+
+def intelligence_last_known_good_path(state_dir: Path) -> Path:
+    return state_dir / "intelligence" / "last-known-good-envelope.json"
+
+
 def quarantine_entries_dir(state_dir: Path) -> Path:
     return state_dir / "quarantine" / "entries"

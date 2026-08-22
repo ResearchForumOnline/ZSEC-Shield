@@ -12,7 +12,7 @@
   <link rel="alternate" hreflang="en-GB" href="https://talktoai.org/zero-security/">
   <link rel="alternate" hreflang="x-default" href="https://talktoai.org/zero-security/">
   <link rel="icon" href="../assets/zero-security-mark.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="../assets/style.css?v=20260822-zsec6">
+  <link rel="stylesheet" href="../assets/style.css?v=20260822-zsec7">
 
   <meta property="og:site_name" content="TalkToAI">
   <meta property="og:locale" content="en_GB">
@@ -134,7 +134,7 @@
             "name": "How does ZSEC Antivirus update desktop security intelligence?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "A data-only updater validates current advisory metadata from CISA, Microsoft, Apple and Ubuntu using strict source allowlists, raw SHA-256 provenance, semantic rollback protection and atomic installation. Advisory text never becomes an automatic malware signature or remote command."
+              "text": "Each installation performs its own scheduled check against a fixed TalkToAI HTTPS endpoint. A data-only updater validates the Ed25519 signature, schema, sequence, expiry and SHA-256 before atomic installation. The last valid feed remains active if a check fails, and advisory text never becomes an automatic malware signature or remote command."
             }
           },
           {
@@ -164,6 +164,7 @@
       </a>
       <nav class="nav-links" aria-label="Primary navigation">
         <a class="nav-priority" href="download/">Download</a>
+        <a href="#updates">Updates</a>
         <a href="#platforms">Platforms</a>
         <a href="#how-it-works">How it works</a>
         <a href="#architecture">Architecture</a>
@@ -175,6 +176,7 @@
         <summary>Menu</summary>
         <nav aria-label="Mobile navigation">
           <a href="download/">Download</a>
+          <a href="#updates">Updates</a>
           <a href="#platforms">Platforms</a>
           <a href="#how-it-works">How it works</a>
           <a href="#architecture">Architecture</a>
@@ -196,6 +198,11 @@
           <div class="hero-actions">
             <a class="button" href="download/">Download Community 0.3.13 <span aria-hidden="true">↓</span></a>
             <a class="button button-secondary" href="#how-it-works">See what works</a>
+          </div>
+          <div class="hero-proof" aria-label="Release highlights">
+            <span><strong>Automatic</strong> protected-folder coverage</span>
+            <span><strong>Daily</strong> signed intelligence checks</span>
+            <span><strong>Local</strong> file inspection and quarantine</span>
           </div>
           <p class="microcopy"><strong>Accepted Windows archive:</strong> 45,062,027 bytes · SHA-256 <code>f1a36ac2cf0070dc14c6c73ac088fa8ab698aefee5a30eebd802e6f9dae65d82</code> · source <code>dcaa2ec1f4c58854a350fcb1ef920dc5112e26ba</code>. Microsoft Defender supplies supported Windows real-time enforcement when the evidence contract confirms it active. ZSEC remains unsigned, user-mode and post-change; it is not a protected service and is not registered as the primary provider.</p>
         </div>
@@ -304,8 +311,8 @@
 
         <div class="step-grid" aria-label="ZSEC Antivirus automatic post-change workflow">
           <article class="step">
-            <h3>Choose watched folders</h3>
-            <p>Start <code>zero-security protect PATH</code> for the directories you want monitored. The native observer starts before the mandatory baseline scan.</p>
+            <h3>Start automatically</h3>
+            <p>The Windows desktop companion protects Desktop, Documents and Downloads without a folder picker. The native observer starts before the mandatory baseline scan.</p>
           </article>
           <article class="step">
             <h3>React and reconcile</h3>
@@ -331,7 +338,45 @@
       </div>
     </section>
 
-    <section class="section section-muted" id="encryption" aria-labelledby="encryption-title">
+    <section class="section section-muted" id="updates" aria-labelledby="updates-title">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Automatic intelligence service</p>
+            <h2 id="updates-title">Updates arrive without connecting anyone’s computer to yours.</h2>
+          </div>
+          <p>Each installation checks a fixed TalkToAI HTTPS endpoint on its own schedule. The client accepts only a signed, versioned, data-only payload; it does not accept commands, executable code or arbitrary update servers.</p>
+        </div>
+
+        <div class="update-contract" role="region" aria-label="Automatic security intelligence update contract">
+          <div class="update-contract-head">
+            <div>
+              <span class="live-indicator"><span aria-hidden="true"></span> Automatic client checks</span>
+              <h3>Security intelligence channel</h3>
+            </div>
+            <span class="status-tag">Data only</span>
+          </div>
+          <dl class="contract-grid">
+            <div><dt>Client schedule</dt><dd>Daily, with bounded retry after a failed check</dd></div>
+            <div><dt>Canonical endpoint</dt><dd><code>/zsec/intelligence/v1/feed.json</code></dd></div>
+            <div><dt>Acceptance gate</dt><dd>Ed25519 signature, schema, sequence, expiry and SHA-256</dd></div>
+            <div><dt>Failure behaviour</dt><dd>Keep the last valid feed; report the error; never install partial data</dd></div>
+            <div><dt>Privacy</dt><dd>No file sample, browsing history or device account is required</dd></div>
+            <div><dt>Software releases</dt><dd>Separate signed manifest at <code>/zsec/updates/v1/stable.json</code></dd></div>
+          </dl>
+        </div>
+
+        <div class="callout callout-spaced">
+          <span class="callout-mark" aria-hidden="true">✓</span>
+          <div>
+            <h3>Visible state, not a vague “up to date” badge</h3>
+            <p>The desktop interface reports the last check, last valid update, next scheduled check, accepted sequence, feed expiry and last error. An unavailable or failed check never becomes a green status.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="encryption" aria-labelledby="encryption-title">
       <div class="container">
         <div class="section-head">
           <div>
@@ -596,7 +641,7 @@
           </details>
           <details>
             <summary>How does ZSEC Antivirus update desktop security intelligence?</summary>
-            <div class="faq-answer"><p>A data-only updater validates current advisory metadata from CISA, Microsoft, Apple and Ubuntu using strict source allowlists, raw SHA-256 provenance, semantic rollback protection and atomic installation. Advisory text never becomes an automatic malware signature or remote command.</p></div>
+            <div class="faq-answer"><p>Each installation checks the fixed ZSEC intelligence endpoint on its own daily schedule; it does not connect to the developer’s computer. A data-only updater validates the Ed25519 signature, schema, sequence, expiry and SHA-256 before atomic installation. The last valid feed stays active after a failed check, and advisory text never becomes an automatic malware signature or remote command.</p></div>
           </details>
           <details>
             <summary>Is every ZSEC Antivirus component open source?</summary>

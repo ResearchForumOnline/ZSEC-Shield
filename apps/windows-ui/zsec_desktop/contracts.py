@@ -164,6 +164,17 @@ def validate_status(payload: Any) -> dict[str, Any]:
     feed = _object(root.get("feed"), "feed")
     if feed.get("state") not in {"absent", "valid", "invalid"}:
         raise ContractError("feed.state is unknown")
+    if root.get("update_status") is not None:
+        update = _object(root.get("update_status"), "update_status")
+        if update.get("state") not in {"never_checked", "current", "updated", "error"}:
+            raise ContractError("update_status.state is unknown")
+        for field in ("last_checked_at", "last_success_at", "feed_expires_at", "error"):
+            _optional_string(update.get(field), f"update_status.{field}", maximum=500)
+        _string(update.get("next_check_at"), "update_status.next_check_at", maximum=80)
+        _string(update.get("source"), "update_status.source", maximum=2048)
+        sequence = update.get("feed_sequence")
+        if sequence is not None and _integer(sequence, "update_status.feed_sequence") < 1:
+            raise ContractError("update_status.feed_sequence is invalid")
     _integer(root.get("quarantine_count"), "quarantine_count")
     quarantine = _object(root.get("quarantine"), "quarantine")
     if _integer(quarantine.get("entries"), "quarantine.entries") != root["quarantine_count"]:

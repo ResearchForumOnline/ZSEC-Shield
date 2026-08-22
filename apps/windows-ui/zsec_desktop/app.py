@@ -395,7 +395,7 @@ class ZsecDesktop:
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
         ttk.Label(
             title_row,
-            text="COMMUNITY 0.3.13",
+            text="COMMUNITY 0.3.14",
             style="Subtitle.TLabel",
             foreground=AMBER,
         ).pack(
@@ -870,7 +870,7 @@ class ZsecDesktop:
     def _build_feeds(self) -> None:
         panel = self._panel(self.feeds_tab)
         panel.pack(fill=tk.BOTH, expand=True)
-        ttk.Label(panel, text="Signed data-only rule feed", style="Section.TLabel").pack(
+        ttk.Label(panel, text="Security intelligence updates", style="Section.TLabel").pack(
             anchor=tk.W
         )
         self.feed_status_label = ttk.Label(
@@ -879,21 +879,60 @@ class ZsecDesktop:
         self.feed_status_label.pack(anchor=tk.W, pady=(12, 5))
         self.feed_detail_label = ttk.Label(panel, text="", style="Muted.TLabel", wraplength=900)
         self.feed_detail_label.pack(anchor=tk.W)
+
+        update_panel = ttk.Frame(panel, style="Alt.TFrame", padding=16)
+        update_panel.pack(fill=tk.X, pady=(18, 0))
+        update_heading = ttk.Frame(update_panel, style="Alt.TFrame")
+        update_heading.pack(fill=tk.X)
+        ttk.Label(
+            update_heading,
+            text="Automatic update service",
+            style="Surface.TLabel",
+            background=SURFACE_ALT,
+            font=("Segoe UI Semibold", 11),
+        ).pack(side=tk.LEFT)
+        self.feed_update_state_label = ttk.Label(
+            update_heading,
+            text="CHECKING STATUS",
+            style="Surface.TLabel",
+            background=SURFACE_ALT,
+            foreground=CYAN,
+            font=("Segoe UI Semibold", 9),
+        )
+        self.feed_update_state_label.pack(side=tk.RIGHT)
+        self.feed_update_schedule_label = ttk.Label(
+            update_panel,
+            text="Waiting for update-service evidence…",
+            style="Muted.TLabel",
+            background=SURFACE_ALT,
+            wraplength=850,
+        )
+        self.feed_update_schedule_label.pack(anchor=tk.W, pady=(8, 2))
+        self.feed_update_source_label = ttk.Label(
+            update_panel,
+            text="Only a pinned ZSEC HTTPS endpoint and a valid signed data payload are accepted.",
+            style="Muted.TLabel",
+            background=SURFACE_ALT,
+            wraplength=850,
+        )
+        self.feed_update_source_label.pack(anchor=tk.W)
+
         ttk.Separator(panel).pack(fill=tk.X, pady=18)
         ttk.Label(
             panel,
-            text="Automatic remote updates",
+            text="Verification contract",
             style="Surface.TLabel",
             font=("Segoe UI Semibold", 11),
         ).pack(anchor=tk.W)
         ttk.Label(
             panel,
             text=(
-                "Not configured in this Community build. The current CLI accepts signed feeds "
-                "but no release-owned host allowlist or production update schedule is "
-                "published, so the desktop does not expose an arbitrary URL box."
+                "Update checks accept data only from the release-owned endpoint. A candidate "
+                "must pass Ed25519 signature, sequence, expiry, schema and payload-digest "
+                "validation before atomic activation. The last valid feed remains active if a "
+                "check fails."
             ),
-            style="Warning.TLabel",
+            style="Muted.TLabel",
             wraplength=900,
         ).pack(anchor=tk.W, pady=(4, 14))
         ttk.Button(
@@ -1020,7 +1059,7 @@ class ZsecDesktop:
         self.yubikey_status = ttk.Label(
             panel,
             text=(
-                "Hardware-key recovery is not enabled in Community 0.3.13. When "
+                "Hardware-key recovery is not enabled in Community 0.3.14. When "
                 "quarantine is explicitly enabled, encryption remains automatic, "
                 "authenticated and device-bound."
             ),
@@ -1363,6 +1402,13 @@ class ZsecDesktop:
         self.feed_card.set_value("Evidence unavailable", RED)
         self.quarantine_card.set_value("Evidence unavailable", RED)
         self.feed_status_label.configure(text=f"Status error: {exc}", foreground=RED)
+        self.feed_update_state_label.configure(text="STATUS UNAVAILABLE", foreground=RED)
+        self.feed_update_schedule_label.configure(
+            text="Automatic-update evidence could not be read."
+        )
+        self.feed_update_source_label.configure(
+            text="The interface does not infer that an update succeeded."
+        )
         self.tray_scan_status = "Scan evidence unavailable"
         self._update_tray_status()
 
@@ -1393,7 +1439,58 @@ class ZsecDesktop:
         if feed.get("error"):
             detail += f" | error: {feed['error']}"
         self.feed_detail_label.configure(text=detail)
+        self._render_update_status(status)
         self._render_health_payload(status)
+
+    def _render_update_status(self, status: dict[str, Any]) -> None:
+        """Render optional automatic-update evidence without inventing a healthy state."""
+
+        update = status.get("update_status")
+        if not isinstance(update, dict):
+            self.feed_update_state_label.configure(text="EVIDENCE UNAVAILABLE", foreground=AMBER)
+            self.feed_update_schedule_label.configure(
+                text="This engine did not return automatic-update status evidence."
+            )
+            self.feed_update_source_label.configure(
+                text=(
+                    "The installed signed feed remains visible above; no update success "
+                    "is inferred."
+                )
+            )
+            return
+
+        state = str(update.get("state") or "unknown").strip().lower()
+        if state in {"current", "updated", "healthy"}:
+            colour = GREEN
+        elif state in {"checking", "scheduled"}:
+            colour = CYAN
+        elif state in {"never_checked", "unknown"}:
+            colour = AMBER
+        else:
+            colour = RED
+        self.feed_update_state_label.configure(
+            text=state.replace("_", " ").upper(), foreground=colour
+        )
+        last_checked = str(update.get("last_checked_at") or "not yet recorded")
+        last_success = str(update.get("last_success_at") or "not yet recorded")
+        next_check = str(update.get("next_check_at") or "not scheduled")
+        self.feed_update_schedule_label.configure(
+            text=(
+                f"Last checked: {last_checked}  ·  Last valid update: {last_success}  ·  "
+                f"Next check: {next_check}"
+            )
+        )
+        source = str(update.get("source") or "pinned endpoint not reported")
+        sequence = update.get("feed_sequence")
+        expires = str(update.get("feed_expires_at") or "not reported")
+        sequence_text = str(sequence) if sequence is not None else "not reported"
+        evidence = (
+            f"Source: {source}  ·  Feed sequence: {sequence_text}  ·  Expires: {expires}"
+        )
+        error = update.get("error")
+        if error:
+            evidence += f"  ·  Last error: {error}"
+        self.feed_update_source_label.configure(text=evidence)
 
     def refresh_health(self) -> None:
         self.refresh_status()

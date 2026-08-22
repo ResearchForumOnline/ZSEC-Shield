@@ -380,6 +380,8 @@ try {
         poll_seconds = 1.0
         reconcile_seconds = 300.0
         full_rescan_seconds = 86400.0
+        intelligence_update_url = "https://talktoai.org/zsec/intelligence/v1/feed.json"
+        intelligence_check_seconds = 3600
         heartbeat_seconds = 30.0
         event_queue_size = 8192
         max_file_bytes = 268435456

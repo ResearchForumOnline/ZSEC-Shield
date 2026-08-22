@@ -93,6 +93,7 @@ Assert-ExactFields -Value $config -Context "Companion config" -Expected @(
     "runtime_executable", "runtime_sha256",
     "state_directory", "protected_roots", "backend", "debounce_seconds", "poll_seconds",
     "reconcile_seconds", "full_rescan_seconds", "heartbeat_seconds", "event_queue_size", "max_file_bytes",
+    "intelligence_update_url", "intelligence_check_seconds",
     "chunk_bytes", "health_file", "event_log", "event_log_max_bytes", "event_log_backups",
     "stdout_file", "stderr_file", "quarantine_enabled", "installed_at", "policy"
 )
@@ -181,6 +182,15 @@ if (
 ) {
     throw "Companion cache-independent full-rescan interval is invalid."
 }
+if (
+    [string]$config.intelligence_update_url -ne
+    "https://talktoai.org/zsec/intelligence/v1/feed.json"
+) {
+    throw "Companion intelligence update URL is invalid."
+}
+if ($config.intelligence_check_seconds -lt 300 -or $config.intelligence_check_seconds -gt 21600) {
+    throw "Companion intelligence check interval is invalid."
+}
 
 $arguments = @(
     "--state-dir", (Quote-NativeArgument $state),
@@ -217,6 +227,30 @@ foreach ($outputPath in @($stdout, $stderr)) {
     }
 }
 
+function Invoke-IntelligenceCheck {
+    try {
+        $output = & $cli `
+            "--state-dir" $state `
+            "update-intelligence" `
+            "--url" ([string]$config.intelligence_update_url) `
+            "--json" 2>$null
+        if ([string]::IsNullOrWhiteSpace(($output -join ""))) {
+            return "error"
+        }
+        $result = ($output -join [Environment]::NewLine) | ConvertFrom-Json
+        if ($result.schema -ne "zsec.shield.automatic-update-status.v1") {
+            return "error"
+        }
+        return [string]$result.state
+    }
+    catch {
+        # Network or verification failure is recorded by the CLI and never
+        # removes the last-known-good catalog. Monitoring continues.
+        return "error"
+    }
+}
+
+$null = Invoke-IntelligenceCheck
 $process = Start-Process `
     -FilePath $cli `
     -ArgumentList $argumentLine `
@@ -232,5 +266,12 @@ catch {
     Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
     throw "Could not apply BelowNormal priority to the companion process."
 }
-$process.WaitForExit()
+while (-not $process.HasExited) {
+    $null = $process.WaitForExit([int]([double]$config.intelligence_check_seconds * 1000.0))
+    if (-not $process.HasExited) {
+        # The CLI persists a randomized next-check time, so hourly supervision
+        # results in one fleet-spread check per day rather than synchronized load.
+        $null = Invoke-IntelligenceCheck
+    }
+}
 exit $process.ExitCode
