@@ -54,7 +54,7 @@ an **unsigned direct Community build**, not a publisher-signed Store installer.
 - Keyboard routes for bookmarks, history, settings, menu, tab selection and
   navigation, with accessible names on primary controls.
 - Non-web schemes are rejected; remote debugging and developer tools are off.
-- The UI labels the product as `Community 0.3.6` and exposes the exact runtime
+- The UI labels the product as `Community 0.3.7` and exposes the exact runtime
   and policy boundary in its About dialog.
 
 The YouTube UI assist hides selected known promotional slots and activates a
