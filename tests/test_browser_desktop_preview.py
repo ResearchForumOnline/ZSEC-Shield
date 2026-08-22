@@ -8,6 +8,8 @@ import sys
 import zipfile
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "browser" / "zsec-desktop-preview" / "src" / "ZsecBrowserApp.cs"
 BUILD = ROOT / "windows" / "browser" / "Build-ZsecBrowserPreview.ps1"
@@ -18,6 +20,7 @@ README = ROOT / "browser" / "zsec-desktop-preview" / "README.md"
 COMPILER = ROOT / "packaging" / "compile_browser_policy.py"
 PACKAGER = ROOT / "packaging" / "browser_desktop_preview_release.py"
 MANIFEST = ROOT / "browser" / "zeroq-shields" / "manifest.json"
+PACKAGE_STAGING_FIXTURE = ROOT / "tests" / "fixtures" / "browser_package_staging.ps1"
 
 
 def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
@@ -33,9 +36,9 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
     assert "unsigned" in readme.lower() and "Community" in readme
-    assert 'internal const string ProductVersion = "0.3.9"' in app
-    assert '$ProductVersion = "0.3.9"' in build
-    assert '$ProductVersion = "0.3.9"' in installer
+    assert 'internal const string ProductVersion = "0.3.10"' in app
+    assert '$ProductVersion = "0.3.10"' in build
+    assert '$ProductVersion = "0.3.10"' in installer
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:
@@ -82,8 +85,113 @@ def test_webview2_dependency_is_pinned_to_official_catalog_hash() -> None:
         '"9TM9AZpDUiAb6OJB9s6thxl63BJFgbINcp047Zy+oiz9+cjgLhFrMRZ5Be+5wVHGvMJR3z1rmPWeJipo4g0sJw=="'
         in build
     )
+    assert "Expand-Archive" not in build
+    assert 'Join-Path $PackageCache "extracted"' not in build
+    assert "Add-Type -AssemblyName System.IO.Compression.FileSystem" in build
+    assert "[IO.Compression.ZipFile]::ExtractToDirectory" in build
+    assert "function Expand-PinnedPackageToFreshStaging" in build
+    assert "function Remove-OwnedPackageExtraction" in build
+    assert '"extract-$([Guid]::NewGuid().ToString(\'N\'))"' in build
+    staging_call = build.index("$PackageExtract = Expand-PinnedPackageToFreshStaging")
+    assert build.index("if ($actualSha256 -ne $WebView2Sha256)") < staging_call
+    assert build.index("failed the NuGet catalog SHA-512 check") < staging_call
+    assert "Remove-Item -LiteralPath $resolvedPath -Recurse" not in build
+    assert "[IO.Directory]::Delete($directory, $false)" in build
+    assert "[IO.FileAttributes]::ReparsePoint" in build
+    assert "The pinned Microsoft WebView2 SDK package could not be extracted." in build
+    output_guard = build.index("if (Test-Path -LiteralPath $OutputDirectory)")
+    assert output_guard < build.index("New-Item -ItemType Directory -Path $AppRoot")
+    assert "OutputDirectory must not already exist" in build
     assert "Get-AuthenticodeSignature" in installer
     assert "Microsoft Corporation" in installer
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows PowerShell 5.1 is required")
+def test_windows_powershell_uses_fresh_bounded_nupkg_staging(tmp_path: Path) -> None:
+    valid_package = tmp_path / "valid.nupkg"
+    partial_package = tmp_path / "partial.nupkg"
+    cache_root = tmp_path / "package-cache"
+    with zipfile.ZipFile(
+        valid_package, "w", compression=zipfile.ZIP_DEFLATED
+    ) as archive:
+        archive.writestr(
+            "lib/net462/Microsoft.Web.WebView2.Core.dll", "verified package core"
+        )
+        archive.writestr(
+            "lib/net462/Microsoft.Web.WebView2.WinForms.dll", "verified package winforms"
+        )
+        archive.writestr(
+            "runtimes/win-x64/native/WebView2Loader.dll", "verified package loader"
+        )
+    with zipfile.ZipFile(
+        partial_package, "w", compression=zipfile.ZIP_DEFLATED
+    ) as archive:
+        archive.writestr("partial.txt", "created before the extraction failure")
+        archive.writestr("conflict", "a file that blocks the next directory")
+        archive.writestr("conflict/child.txt", "forces a partial extraction failure")
+
+    completed = subprocess.run(
+        [
+            "powershell.exe",
+            "-NoLogo",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "RemoteSigned",
+            "-File",
+            str(PACKAGE_STAGING_FIXTURE),
+            "-BuildScript",
+            str(BUILD),
+            "-ValidPackage",
+            str(valid_package),
+            "-PartialPackage",
+            str(partial_package),
+            "-CacheRoot",
+            str(cache_root),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    evidence = json.loads(completed.stdout)
+    assert evidence == {
+        "schema": "zsec.tests.browser-package-staging.v1",
+        "legacy_cache_ignored": True,
+        "legacy_cache_preserved": True,
+        "fresh_stage_used": True,
+        "partial_stage_not_reused": True,
+        "unexpected_nested_object_failed_closed": True,
+    }
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows PowerShell 5.1 is required")
+def test_build_refuses_a_preexisting_output_directory(tmp_path: Path) -> None:
+    output = tmp_path / "existing-output"
+    output.mkdir()
+    sentinel = output / "must-remain.txt"
+    sentinel.write_text("preserve existing output\n", encoding="utf-8")
+    completed = subprocess.run(
+        [
+            "powershell.exe",
+            "-NoLogo",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "RemoteSigned",
+            "-File",
+            str(BUILD),
+            "-OutputDirectory",
+            str(output),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert completed.returncode != 0
+    assert "OutputDirectory must not already exist" in completed.stderr
+    assert sentinel.read_text(encoding="utf-8") == "preserve existing output\n"
+    assert list(output.iterdir()) == [sentinel]
 
 
 def test_compiled_policy_is_deterministic_and_has_source_provenance(tmp_path: Path) -> None:
@@ -263,7 +371,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
     payload_sha = hashlib.sha256(payload_file.read_bytes()).hexdigest()
     manifest = {
         "schema": "zsec.browser.desktop-preview-build.v2",
-        "version": "0.3.9",
+        "version": "0.3.10",
         "architecture": "windows-x64-webview2-shell",
         "engine_distribution": "Microsoft Evergreen WebView2 Chromium runtime",
         "engine_maintained_by": "Microsoft",
@@ -301,7 +409,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
             text=True,
         )
 
-    name = "zsec-browser-community-0.3.9-windows-x64-unsigned.zip"
+    name = "zsec-browser-community-0.3.10-windows-x64-unsigned.zip"
     archive_a = release_a / name
     archive_b = release_b / name
     assert archive_a.read_bytes() == archive_b.read_bytes()
@@ -320,7 +428,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
     with zipfile.ZipFile(archive_a) as archive:
         provenance = json.loads(
             archive.read(
-                "zsec-browser-community-0.3.9/release-provenance.json"
+                "zsec-browser-community-0.3.10/release-provenance.json"
             ).decode("utf-8")
         )
     assert provenance["source_revision"] == revision

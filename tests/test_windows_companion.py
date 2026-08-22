@@ -17,6 +17,7 @@ STATUS = COMPANION_ROOT / "Get-ZsecAntivirusCompanionStatus.ps1"
 ACTION = COMPANION_ROOT / "Invoke-ZsecWindowsProtectionAction.ps1"
 UNINSTALLER = COMPANION_ROOT / "Uninstall-ZsecAntivirusCompanion.ps1"
 SYNC = COMPANION_ROOT / "Sync-ZsecAntivirusCompanion.ps1"
+DEFENDER_AGE_FIXTURE = PROJECT_ROOT / "tests" / "fixtures" / "defender_scan_age_evidence.ps1"
 
 
 class WindowsCompanionStaticTests(unittest.TestCase):
@@ -117,6 +118,58 @@ class WindowsCompanionStaticTests(unittest.TestCase):
             "[DateTimeOffset]::Parse([string]$health.updated_at)",
             content,
         )
+        self.assertIn("function ConvertTo-DefenderAgeEvidence", content)
+        self.assertIn(
+            "$Defender.signatures.antivirus_age_days = ConvertTo-DefenderAgeEvidence",
+            content,
+        )
+        self.assertIn(
+            "$Defender.scans.quick_scan_age_days = ConvertTo-DefenderAgeEvidence",
+            content,
+        )
+        self.assertIn(
+            "$Defender.scans.full_scan_age_days = ConvertTo-DefenderAgeEvidence",
+            content,
+        )
+        self.assertIn("Set-DefenderAgeAndFeatureEvidence", content)
+        self.assertIn("-Defender $defender", content)
+        self.assertNotIn("[int]$signatureAge", content)
+        self.assertNotIn("[int]$quickAge", content)
+        self.assertNotIn("[int]$fullAge", content)
+
+    def test_defender_scan_age_fixture_preserves_active_evidence(self) -> None:
+        powershell = shutil.which("powershell.exe") or shutil.which("pwsh")
+        if powershell is None:
+            self.skipTest("PowerShell is unavailable")
+        result = subprocess.run(
+            [
+                powershell,
+                "-NoLogo",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "RemoteSigned",
+                "-File",
+                str(DEFENDER_AGE_FIXTURE),
+                "-StatusScript",
+                str(STATUS),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            self.fail(
+                "Defender scan-age fixture failed: "
+                f"stdout={result.stdout!r} stderr={result.stderr!r}"
+            )
+        evidence = json.loads(result.stdout)
+        self.assertEqual("zsec.tests.defender-scan-age-evidence.v1", evidence["schema"])
+        self.assertTrue(evidence["sentinel_maps_to_null"])
+        self.assertTrue(evidence["signature_sentinel_maps_to_null"])
+        self.assertEqual(3, evidence["normal_age_days"])
+        self.assertTrue(evidence["confirmed_active"])
+        self.assertTrue(evidence["baseline_features_confirmed"])
 
     def test_rollback_is_owned_and_preserves_scanner_security_state(self) -> None:
         content = UNINSTALLER.read_text(encoding="utf-8")

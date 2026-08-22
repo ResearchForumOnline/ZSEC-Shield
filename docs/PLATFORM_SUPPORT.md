@@ -2,7 +2,7 @@
 
 Last reviewed: 22 August 2026.
 
-ZSEC Antivirus Community 0.3.9 means a Windows graphical protection control plane
+ZSEC Antivirus Community 0.3.10 means a Windows graphical protection control plane
 plus a cross-platform command-line scanner and installable, per-user automatic
 post-change companion. On Windows, Microsoft Defender may supply the supported
 real-time/on-access enforcement only when the live status contract verifies it.
@@ -13,7 +13,8 @@ installer, or registered primary-antivirus replacement.
 
 | Surface | Version/status | What it contains |
 | --- | --- | --- |
-| Community release represented by this source | `0.3.9` | Defender-backed Windows control plane, bounded local scanning, post-change monitoring, encrypted quarantine, signed data-only feeds, and browser controls described below |
+| Community release represented by this source | `0.3.10` | Defender-backed Windows control plane, bounded local scanning, post-change monitoring, encrypted quarantine, signed data-only feeds, and browser controls described below |
+| Published release rejected for site cutover | [`v0.3.9`](https://github.com/ResearchForumOnline/ZSEC-Shield/tree/v0.3.9) | Rejected for the TalkToAI site cutover because the installed Windows status path could reject Defender evidence when `FullScanAge` carried the no-scan sentinel; its immutable bytes remain available for historical verification and should not be used for provider-handoff decisions |
 | Historical source checkpoint | [`v0.3.8`](https://github.com/ResearchForumOnline/ZSEC-Shield/tree/v0.3.8) | Source tag only; it was not published as an accepted GitHub Release because its bundled release-status documentation failed the pre-publication audit |
 | Browser Shields package | `0.5.2` | Separately versioned Manifest V3 data rules and local controls for compatible Chromium-family browsers |
 
@@ -22,17 +23,18 @@ revision, platform manifest, SHA-256, authenticated release asset, and relevant
 installed-runtime evidence. A tag, workflow run, draft release, or locally built
 archive is not a published accepted release on its own.
 
-## Current public native-archive matrix
+## Native-archive build matrix
 
-The 0.3.9 release workflow builds these self-contained PyInstaller one-directory
-CLI archives. This table describes bounded artifacts, not production desktop
-support or a platform antivirus certification.
+The 0.3.10 release workflow builds these self-contained PyInstaller one-directory
+CLI archives. Publication requires every release gate to pass. This table
+describes bounded build targets, not proof that a particular byte sequence was
+accepted, production desktop support, or a platform antivirus certification.
 
-| Artifact family | Architecture | Delivery | Automatic companion | Key protection in 0.3.9 Community code | Publisher identity | Status |
+| Artifact family | Architecture | Delivery | Automatic companion | Key protection in Community 0.3.10 | Publisher identity | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| Windows | x86-64 | ZIP CLI | Per-user startup launcher scripts | CurrentUser DPAPI | No Authenticode signature | Workflow-built and smoke-tested; post-change companion, not primary AV |
-| macOS | Workflow manifest identifies native architecture | `tar.gz` CLI | Per-user LaunchAgent scripts | `filesystem-0600-preview`; not production Keychain custody | No Developer ID signature/notarization | Workflow-built and smoke-tested; physical-hardware GUI/provider qualification absent |
-| Linux | x86-64 | `tar.gz` CLI | systemd-user scripts | `filesystem-0600-preview`; not production Secret Service/TPM custody | No signed DEB/RPM package or repository | Workflow-built and smoke-tested; distro package/provider qualification absent |
+| Windows | x86-64 | ZIP CLI | Per-user startup launcher scripts | CurrentUser DPAPI | No Authenticode signature | Workflow build target; exact asset manifest and checksum required; post-change companion, not primary AV |
+| macOS | Workflow manifest identifies native architecture | `tar.gz` CLI | Per-user LaunchAgent scripts | `filesystem-0600-preview`; not production Keychain custody | No Developer ID signature/notarization | Workflow build target; exact asset manifest and checksum required; physical-hardware GUI/provider qualification absent |
+| Linux | x86-64 | `tar.gz` CLI | systemd-user scripts | `filesystem-0600-preview`; not production Secret Service/TPM custody | No signed DEB/RPM package or repository | Workflow build target; exact asset manifest and checksum required; distro package/provider qualification absent |
 
 The GitHub release workflow builds a Windows x86-64 target on `windows-2022`, a
 machine-native macOS target on `macos-14`, and Linux x86-64 on `ubuntu-22.04`.
@@ -45,7 +47,7 @@ Python test suite on GitHub-hosted Windows, macOS, and Linux with Python 3.11 an
 3.13. That is useful core compatibility evidence; it is not a support promise
 for every OS version, CPU, filesystem, desktop, or security configuration.
 
-The 0.3.9 `watch` command is a foreground process using native filesystem
+The 0.3.10 `watch` command is a foreground process using native filesystem
 notifications with a disclosed polling fallback. It performs post-change scans and has
 `pre_access_enforcement: false` and `real_time_protection: false`; the existing
 platform/endpoint provider must remain active.
@@ -68,7 +70,7 @@ platform/endpoint provider must remain active.
 
 ## Browser desktop application
 
-ZSEC Browser Community 0.3.9 is an unsigned Windows x64 application with its own
+ZSEC Browser Community 0.3.10 is an unsigned Windows x64 application with its own
 native ZSEC window and isolated profile. Microsoft maintains the Evergreen
 WebView2 Chromium engine; ZSEC maintains the shell, UI and data-only policy
 adapter. It includes managed tabs, tray controls, bookmarks, local typed-history

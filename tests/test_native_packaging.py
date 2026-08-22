@@ -29,7 +29,7 @@ release = load_release_module()
 
 class NativePackagingTests(unittest.TestCase):
     def test_source_version_and_pyinstaller_pin_are_explicit(self) -> None:
-        self.assertEqual("0.3.9", release.project_version())
+        self.assertEqual("0.3.10", release.project_version())
         self.assertEqual("6.21.0", release.expected_pyinstaller_version())
 
     def test_windows_archive_retries_transient_endpoint_protection_locks(self) -> None:
@@ -39,11 +39,11 @@ class NativePackagingTests(unittest.TestCase):
         self.assertIn("time.sleep(0.1)", source)
 
     def test_release_tag_must_exactly_match_source_version(self) -> None:
-        self.assertEqual("0.3.9", release.verify_release_tag("v0.3.9"))
+        self.assertEqual("0.3.10", release.verify_release_tag("v0.3.10"))
         with self.assertRaises(release.ReleaseError):
             release.verify_release_tag("v0.1.0")
         with self.assertRaises(release.ReleaseError):
-            release.verify_release_tag("preview-0.3.9")
+            release.verify_release_tag("preview-0.3.10")
 
     def test_python_license_uses_checksum_pinned_vendored_fallback(self) -> None:
         with TemporaryDirectory() as temporary:
@@ -197,6 +197,32 @@ class NativePackagingTests(unittest.TestCase):
         self.assertIn("include SECURITY.md", content)
         self.assertNotIn("dist/", content)
         self.assertNotIn("build/", content)
+
+    def test_packaged_release_status_is_artifact_neutral(self) -> None:
+        packaged_status_files = (
+            PROJECT_ROOT / "CHANGELOG.md",
+            PROJECT_ROOT / "COMPONENTS.json",
+            PROJECT_ROOT / "docs" / "CLAIMS_POLICY.md",
+            PROJECT_ROOT / "docs" / "NATIVE_DISTRIBUTION.md",
+            PROJECT_ROOT / "docs" / "PLATFORM_SUPPORT.md",
+        )
+        text = "\n".join(
+            path.read_text(encoding="utf-8").casefold()
+            for path in packaged_status_files
+        )
+        for transient_claim in (
+            "0.3.10-unreleased-source",
+            "unreleased source candidate",
+            "version 0.3.10 is source only",
+            "no 0.3.10 artifact",
+            "no accepted 0.3.10 artifact",
+            "no 0.3.10 artifact or public release",
+        ):
+            self.assertNotIn(transient_claim, text)
+        components = json.loads(
+            (PROJECT_ROOT / "COMPONENTS.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual("0.3.10-source", components["release_status"])
 
     def test_release_workflow_builds_all_targets_and_only_drafts(self) -> None:
         content = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(

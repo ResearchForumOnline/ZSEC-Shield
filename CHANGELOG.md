@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.10 - 2026-08-22
+
+- Normalized optional Microsoft Defender quick/full scan-age evidence through a
+  bounded integer parser: null, negative, nonnumeric, out-of-range and
+  `UInt32::MaxValue` no-scan values now remain null instead of throwing.
+- Kept verified Defender active and baseline-feature evidence independent from
+  an absent full-scan age, with executable sentinel/normal-value regression
+  coverage and static source-contract assertions.
+- Advanced the core, Windows desktop and ZSEC Browser Community identity to
+  0.3.10 while retaining Browser Shields 0.5.2. Version text alone does not
+  establish accepted bytes; require the exact revision, manifest, checksum,
+  provenance and applicable runtime-acceptance evidence.
+- Recorded that published v0.3.9 was rejected for the TalkToAI site cutover after
+  the installed Windows status path exposed this Defender-evidence defect. Its
+  immutable bytes remain available for historical verification and should not
+  be used for provider-handoff decisions.
+
 ## 0.3.9 - 2026-08-22
 
 - Prepared the accepted 0.3.8 protection work for a corrected immutable release
