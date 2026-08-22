@@ -10,6 +10,10 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "browser" / "zsec-desktop-preview" / "src" / "ZsecBrowserApp.cs"
 STATE = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserProductState.cs"
 DIALOGS = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserProductDialogs.cs"
+POLICY = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserProductPolicy.cs"
+YOUTUBE_PROTECTION = (
+    ROOT / "browser" / "zsec-desktop-preview" / "assets" / "youtube-player-protection.js"
+)
 BUILD = ROOT / "windows" / "browser" / "Build-ZsecBrowserPreview.ps1"
 README = ROOT / "browser" / "zsec-desktop-preview" / "README.md"
 PRODUCT_TESTS = (
@@ -83,6 +87,10 @@ def test_bookmarks_history_and_main_menu_are_wired() -> None:
     assert "File.Replace(temporary, statePath, null)" in state
     assert "FileAttributes.ReparsePoint" in state
     assert "javascript:" not in state
+    assert "GetAddressSuggestions" in state
+    assert "TypedCount" in state
+    assert "AutoCompleteMode.SuggestAppend" in app
+    assert "RefreshAddressSuggestions" in app
 
 
 def test_settings_surface_is_complete_and_truthful() -> None:
@@ -103,6 +111,47 @@ def test_settings_surface_is_complete_and_truthful() -> None:
     assert "Default-browser registration is not implemented" in dialogs
     assert "native strict policy and the extension High-Risk mode are separate" in dialogs
     assert "Every download still requires an explicit allow decision" in dialogs
+    assert "Default address bar search engine" in dialogs
+    assert "Apply Journalist high-risk preset" in dialogs
+    assert "Restore standard compatibility" in dialogs
+    assert "Block YouTube advertising" in dialogs
+
+
+def test_all_source_native_filter_and_youtube_runtime_evidence_are_wired() -> None:
+    app = APP.read_text(encoding="utf-8")
+    policy = POLICY.read_text(encoding="utf-8")
+    youtube = YOUTUBE_PROTECTION.read_text(encoding="utf-8")
+
+    assert "CoreWebView2WebResourceRequestSourceKinds.All" in app
+    assert "IsReviewedThirdPartyTracker" in app
+    assert "IsYoutubeAdRequest" in app
+    assert "native_request_filter_source_kinds=all" in app
+    assert "native_subresource_runtime_probe_status=" in app
+    assert "youtube_protection_hook_status=" in app
+    assert "youtube_ad_intervention_count=" in app
+    assert "AddScriptToExecuteOnDocumentCreatedAsync" in app
+    assert "youtube-player-protection.js" in app
+    assert "YoutubeAdPathPrefixes" in policy
+    assert "__zsecYoutubeProtection" in youtube
+    assert "ytInitialPlayerResponse" in youtube
+    assert "youtubei/v1/player" in youtube
+    assert ".currentTime =" not in youtube
+    assert "setInterval(" not in youtube
+
+
+def test_search_provider_catalogue_is_explicit_and_bounded() -> None:
+    policy = POLICY.read_text(encoding="utf-8")
+    for provider in (
+        "Brave Search",
+        "DuckDuckGo",
+        "Startpage",
+        "Qwant",
+        "Ecosia",
+        "Microsoft Bing",
+        "Google",
+    ):
+        assert provider in policy
+    assert 'return provider == null ? "brave"' in policy
 
 
 def test_shortcuts_and_accessibility_contract() -> None:
@@ -136,7 +185,9 @@ def test_build_compiles_product_sources_and_docs_keep_engine_boundary() -> None:
     normalized_readme = " ".join(readme.split())
 
     assert "BrowserProductState.cs" in build
+    assert "BrowserProductPolicy.cs" in build
     assert "BrowserProductDialogs.cs" in build
+    assert "youtube-player-protection.js" in build
     assert '"/reference:System.Web.Extensions.dll"' in build
     assert "not" in normalized_readme
     assert "separately built or maintained" in normalized_readme

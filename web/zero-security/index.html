@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ZSEC Antivirus Community 0.3 | Post-Change File Monitoring</title>
-  <meta name="description" content="ZSEC Antivirus Community 0.3 delivers automatic post-change file monitoring, local deterministic checks and encrypted quarantine for Windows, macOS and Linux.">
+  <title>ZSEC Antivirus Community 0.3.8 | Defender-Backed Windows Protection</title>
+  <meta name="description" content="ZSEC Antivirus Community 0.3.8 combines Defender-backed Windows protection evidence and actions with local scanning, monitoring and encrypted quarantine.">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#07101f">
@@ -18,16 +18,16 @@
   <meta property="og:locale" content="en_GB">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://talktoai.org/zero-security/">
-  <meta property="og:title" content="ZSEC Antivirus Community 0.3 | Post-Change File Monitoring">
-  <meta property="og:description" content="Cross-platform native file-event monitoring, deterministic local checks, signed data-only rules and authenticated encrypted quarantine.">
+  <meta property="og:title" content="ZSEC Antivirus Community 0.3.8 | Defender-Backed Windows Protection">
+  <meta property="og:description" content="A local Windows control plane for Defender evidence and scans, plus post-change monitoring, deterministic checks and encrypted quarantine.">
   <meta property="og:image" content="https://talktoai.org/assets/zero-security-og.png">
   <meta property="og:image:width" content="1536">
   <meta property="og:image:height" content="1024">
   <meta property="og:image:alt" content="ZSEC Antivirus Community protection-centre interface">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="ZSEC Antivirus Community 0.3 | Post-Change File Monitoring">
-  <meta name="twitter:description" content="Companion post-change monitoring for Windows, macOS and Linux; not a primary antivirus.">
+  <meta name="twitter:title" content="ZSEC Antivirus Community 0.3.8 | Windows Protection Control Plane">
+  <meta name="twitter:description" content="Microsoft Defender supplies Windows real-time enforcement; ZSEC adds verified status, safe actions and companion controls.">
   <meta name="twitter:image" content="https://talktoai.org/assets/zero-security-og.png">
   <meta name="twitter:image:alt" content="ZSEC Antivirus Community protection-centre interface">
 
@@ -39,10 +39,10 @@
         "@type": "WebPage",
         "@id": "https://talktoai.org/zero-security/#webpage",
         "url": "https://talktoai.org/zero-security/",
-        "name": "ZSEC Antivirus Community 0.3 | Post-Change File Monitoring",
-        "description": "ZSEC Antivirus Community 0.3 provides per-user post-change file monitoring, deterministic local checks and authenticated encrypted quarantine for Windows, macOS and Linux.",
+        "name": "ZSEC Antivirus Community 0.3.8 | Defender-Backed Windows Protection",
+        "description": "ZSEC Antivirus Community 0.3.8 reports Microsoft Defender and Windows Security evidence, offers fixed Defender update and scan actions, and retains local post-change monitoring and authenticated encrypted quarantine.",
         "inLanguage": "en-GB",
-        "dateModified": "2026-08-21",
+        "dateModified": "2026-08-22",
         "isPartOf": { "@id": "https://talktoai.org/#website" },
         "about": { "@id": "https://talktoai.org/zero-security/#software" },
         "breadcrumb": { "@id": "https://talktoai.org/zero-security/#breadcrumb" }
@@ -63,16 +63,16 @@
       {
         "@type": "SoftwareApplication",
         "@id": "https://talktoai.org/zero-security/#software",
-        "name": "ZSEC Antivirus Community 0.3",
+        "name": "ZSEC Antivirus Community 0.3.8",
         "url": "https://talktoai.org/zero-security/",
         "applicationCategory": "SecurityApplication",
         "applicationSubCategory": "Cross-platform automatic file-monitoring security",
         "operatingSystem": ["Windows 10", "Windows 11", "macOS", "Linux"],
-        "softwareVersion": "0.3.7 Community for Windows; 0.3.0 core",
+        "softwareVersion": "0.3.8 Community for Windows; 0.3.8 core source",
         "isAccessibleForFree": true,
         "license": "https://www.apache.org/licenses/LICENSE-2.0",
         "publisher": { "@id": "https://talktoai.org/#organization" },
-        "description": "An open-core desktop security companion with automatic post-change file-event monitoring, deterministic checks, signed data-only rule verification and authenticated encrypted quarantine. It is not kernel pre-access protection or a primary antivirus."
+        "description": "An open-core Windows protection control plane and desktop security companion. Microsoft Defender supplies supported real-time enforcement when confirmed active; ZSEC reports provider evidence, offers fixed Defender update and scan actions, and adds post-change file monitoring, deterministic checks, signed data-only rule verification and authenticated encrypted quarantine. ZSEC is not a registered primary antivirus or kernel pre-access provider."
       },
       {
         "@type": "BreadcrumbList",
@@ -101,7 +101,7 @@
             "name": "Does ZSEC Antivirus replace Microsoft Defender, Malwarebytes or another antivirus?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No. Version 0.3 adds useful automatic post-change monitoring, but it does not block access at the kernel boundary or register as a primary provider. Keep Malwarebytes, Microsoft Defender, XProtect, Gatekeeper, SIP, Linux security controls and any endpoint agent active. The fail-closed replacement-readiness command is blocked because Community 0.3 has not passed exact-platform signing, integration, efficacy, coexistence and rollback gates."
+              "text": "ZSEC does not become the registered primary provider. On Windows, Community 0.3.8 can verify Microsoft Defender as the supported real-time enforcement engine and expose fixed Defender intelligence-update and scan actions. Its fail-closed handoff interlock reports blocked, operator-cutover-eligible or verified from live evidence, but ZSEC does not select or remove providers. Keep one supported primary provider active throughout any handoff. On macOS and Linux, keep the native platform protections and any endpoint agent active."
             }
           },
           {
@@ -189,14 +189,14 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="container hero-grid">
         <div class="hero-copy">
-          <p class="hero-kicker">Windows · macOS · Linux · automatic post-change monitoring</p>
-          <h1 id="hero-title">Automatic post-change file monitoring with verifiable status.</h1>
-          <p class="lede">ZSEC Antivirus 0.3 combines a full Windows desktop dashboard with automatic post-change folder monitoring, deterministic local scans, signed data-only rules, encrypted quarantine, reports, health evidence and replacement-readiness interlocks.</p>
+          <p class="hero-kicker">Windows Community 0.3.8 · Defender-backed enforcement · cross-platform core</p>
+          <h1 id="hero-title">See who protects Windows—and act from one local control plane.</h1>
+          <p class="lede">ZSEC Antivirus Community 0.3.8 combines live Windows Security and Microsoft Defender evidence, fixed Defender update and scan actions, automatic post-change folder monitoring, deterministic local checks, signed data-only rules, encrypted quarantine, reports and fail-closed provider-handoff interlocks.</p>
           <div class="hero-actions">
             <a class="button" href="download/">Download Community 0.3 <span aria-hidden="true">↓</span></a>
             <a class="button button-secondary" href="#how-it-works">See what works</a>
           </div>
-          <p class="microcopy"><strong>Clear boundary:</strong> the Windows Community 0.3.7 graphical package is implemented, downloadable, installed and hash-verified from immutable source, with animated local operation status and a reduced-motion control. It remains unsigned and detects after filesystem changes rather than blocking at the kernel boundary, so it is not a protected service or primary-provider integration. Keep the current Windows Security provider or native platform controls active.</p>
+          <p class="microcopy"><strong>Clear boundary:</strong> Microsoft Defender supplies supported Windows real-time enforcement when the 0.3.8 evidence contract confirms it active. ZSEC supplies the local dashboard, fixed Defender actions, bounded second-opinion scanning, post-change monitoring and encrypted quarantine; it remains unsigned, is not a protected service, and is not registered as the primary provider. Exact 0.3.8 artifact identity is published only after immutable-build acceptance; the download page retains the previously verified 0.3.7 package until that evidence is available.</p>
         </div>
 
         <!-- Local launch artwork: ../assets/zsec-family-hero-v2.png -->
@@ -211,16 +211,16 @@
             </div>
             <div class="window-body">
               <div class="status-row">
-                <span class="status-name">Registered antivirus</span>
-                <span class="status-value">Required and health-checked</span>
+                <span class="status-name">Windows real-time engine</span>
+                <span class="status-value">Provider named and verified</span>
               </div>
               <div class="status-row">
                 <span class="status-name">File processing</span>
                 <span class="status-value">Local by default</span>
               </div>
               <div class="status-row">
-                <span class="status-name">Protection mode</span>
-                <span class="status-value">Native post-change watch</span>
+                <span class="status-name">ZSEC companion</span>
+                <span class="status-value">Post-change watch</span>
               </div>
             </div>
           </div>
@@ -259,7 +259,7 @@
           <article class="card">
             <span class="card-icon" aria-hidden="true">W</span>
             <h3>Windows</h3>
-            <p><strong>Community 0.3.7:</strong> modern dark protection-centre layout with native minimize/close-to-tray controls, tray status/scan/settings/exit actions, persistent navigation, rounded evidence cards, animated local-operation status and reduced-motion support; full surfaces for scans, monitoring, quarantine, signed feeds, reports, health, security/YubiKey status, replacement gates and settings; bounded review-only PE, cache-only Authenticode, script-chain and ZIP safety providers; a path-free exact-rule worker with broker digest verification; plus reversible logon monitoring and CurrentUser DPAPI key protection. Review observations cannot quarantine files. <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/eacd53438695946e5af5a063cacae6ada3dac51d/apps/windows-ui">Inspect the immutable GUI source.</a></p>
+            <p><strong>Community 0.3.8:</strong> modern dark protection-centre layout with native minimize/close-to-tray controls, persistent navigation, bounded local scans, automatic post-change monitoring, encrypted quarantine, signed feeds, reports and settings. The Windows protection page separately reports aggregate Windows Security health, raw registered-product inventory, Defender real-time features, tamper state, security-intelligence freshness, supported scan timestamps and relevant services. It offers only Defender intelligence update, quick scan and a user-confirmed full scan. Review observations cannot quarantine files, and provider records alone never become an “active” verdict.</p>
           </article>
           <article class="card">
             <span class="card-icon" aria-hidden="true">M</span>
@@ -276,8 +276,8 @@
         <div class="callout callout-spaced">
           <span class="callout-mark" aria-hidden="true">!</span>
           <div>
-            <h3>Replacement is programmatically blocked</h3>
-            <p><code>zero-security replacement-readiness --json</code> returns exit code 2, <code>keep_existing_protection</code> and no override in Community 0.3. Keep the existing antivirus and native security controls active; ZSEC does not uninstall providers or create exclusions.</p>
+            <h3>Native ZSEC replacement stays blocked; Defender handoff is separately gated</h3>
+            <p><code>zero-security replacement-readiness --json</code> still returns exit code 2, <code>keep_existing_protection</code> and no override because ZSEC is not a native primary provider. On Windows, a separate three-state handoff interlock can report operator-cutover eligibility only after Defender and Windows Security evidence passes. ZSEC does not uninstall a provider, change exclusions or register itself with Windows Security.</p>
           </div>
         </div>
       </div>
@@ -372,7 +372,7 @@
         <div class="architecture-copy">
           <p class="section-label">Fail-closed architecture</p>
           <h2 id="architecture-title">Small components. Narrow authority.</h2>
-          <p>The product architecture separates the unelevated Windows interface, supervisor and content work. Community 0.3.7 ships the graphical client, user-scoped CLI companion and a path-free bounded exact-rule child process with independent broker SHA-256 verification. The child still has the invoking user's authority; privileged enforcement and reduced-privilege hostile-format parser workers remain outside this release.</p>
+          <p>The product architecture separates the unelevated Windows interface, read-only provider evidence, fixed Defender actions, supervisor and content work. Community 0.3.8 ships the graphical client, user-scoped CLI companion and a path-free bounded exact-rule child process with independent broker SHA-256 verification. Defender remains the supported Windows enforcement provider when confirmed active. The ZSEC child still has the invoking user's authority; privileged ZSEC enforcement and reduced-privilege hostile-format parser workers remain outside this release.</p>
           <ul class="check-list">
             <li>The currently registered antivirus remains active alongside Community 0.3.</li>
             <li>Feeds contain data, not remote commands.</li>
@@ -425,11 +425,11 @@
           </div>
           <div class="status-line">
             <div><span class="status-tag implementation">Community 0.3</span></div>
-            <p>Automatic AES-256-GCM quarantine, Windows DPAPI key sealing, authenticated ZBA lifecycle records, per-user automatic companions and bounded health evidence.</p>
+            <p>Automatic AES-256-GCM quarantine, Windows DPAPI key sealing, authenticated ZBA lifecycle records, per-user automatic companions, bounded health evidence, Defender-backed Windows status/actions and fail-closed handoff states.</p>
           </div>
           <div class="status-line">
             <div><span class="status-tag not-claimed">Not claimed</span></div>
-            <p>Real-time protection, memory scanning, EDR, complete antivirus coverage, zero-day prevention, a clean system verdict or guaranteed protection from attackers.</p>
+            <p>ZSEC-native real-time enforcement, memory scanning, EDR, complete antivirus coverage, zero-day prevention, a clean-system verdict, Pegasus detection/immunity or guaranteed protection from attackers. Any verified Windows real-time state names Microsoft Defender as the provider.</p>
           </div>
         </div>
       </div>
@@ -571,7 +571,7 @@
         <div class="faq-list">
           <details>
             <summary>Does ZSEC Antivirus replace Microsoft Defender, Malwarebytes or another antivirus?</summary>
-            <div class="faq-answer"><p>No. Version 0.3 adds useful automatic post-change monitoring, but it does not block access at the kernel boundary or register as a primary provider. Keep Malwarebytes, Microsoft Defender, XProtect, Gatekeeper, SIP, Linux security controls and any endpoint agent active. The fail-closed replacement-readiness command is blocked because Community 0.3 has not passed exact-platform signing, integration, efficacy, coexistence and rollback gates.</p></div>
+            <div class="faq-answer"><p>ZSEC does not become the registered primary provider. On Windows, Community 0.3.8 can verify Microsoft Defender as the supported real-time enforcement engine and expose fixed Defender intelligence-update and scan actions. Its fail-closed handoff interlock reports blocked, operator-cutover-eligible or verified from live evidence, but ZSEC does not select or remove providers. Keep one supported primary provider active throughout any handoff. On macOS and Linux, keep native platform protections and any endpoint agent active.</p></div>
           </details>
           <details>
             <summary>Does ZSEC Antivirus upload my files?</summary>

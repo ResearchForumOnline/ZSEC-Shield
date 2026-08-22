@@ -28,7 +28,13 @@ an **unsigned direct Community build**, not a publisher-signed Store installer.
   link-cleaning rules and a bounded YouTube UI assist. Acceptable Ads is not
   bundled. The native shell independently removes 21 selected tracking parameters.
 - Microsoft Balanced tracking prevention is explicitly enabled and read back.
-- Optional High-Risk mode blocks cross-site active resource classes.
+- The native request hook covers all WebView2 resource-source kinds. Reviewed
+  third-party tracker domains are blocked for subresources instead of merely
+  being counted, and the runtime test exercises an actual script subrequest.
+- Optional High-Risk mode blocks cross-site active resource classes. A
+  Journalist high-risk preset also disables new local history, requests clear
+  on clean exit, enables YouTube protection, and retains a labelled standard-
+  compatibility escape hatch.
 - Camera, microphone, location, notification, clipboard and other site
   permissions are denied by default.
 - Certificate errors are cancelled; there is no bypass path in the UI.
@@ -44,24 +50,35 @@ an **unsigned direct Community build**, not a publisher-signed Store installer.
   only bounded HTTP/HTTPS entries are accepted.
 - Local per-user browsing history with a history window, explicit clear,
   optional recording and optional clear-on-clean-exit. ZSEC adds no cloud
-  history or bookmark sync.
+  history or bookmark sync. Repeat visits are consolidated, explicitly typed
+  addresses are ranked, and recent history/bookmarks feed bounded local
+  address-bar suggestions.
 - A native notification-area lifecycle: minimize-to-tray is enabled by
   default, the close button exits by default, optional close-to-tray is
   explicit, and the tray menu always exposes a clean Exit command.
 - A seven-category native settings surface for privacy, permissions, Shields,
   startup, appearance, downloads and default behavior. Unsupported behavior is
   labelled read-only rather than represented by non-functional switches.
+- Address-bar search supports explicit local selection among Brave Search,
+  DuckDuckGo, Startpage, Qwant, Ecosia, Microsoft Bing and Google. The selected
+  provider receives the query and network metadata; ZSEC does not proxy it.
 - Keyboard routes for bookmarks, history, settings, menu, tab selection and
   navigation, with accessible names on primary controls.
 - Non-web schemes are rejected; remote debugging and developer tools are off.
-- The UI labels the product as `Community 0.3.7` and exposes the exact runtime
+- The UI labels the product as `Community 0.3.8` and exposes the exact runtime
   and policy boundary in its About dialog.
 
-The YouTube UI assist hides selected known promotional slots and activates a
-visible skip control when available. It does not rewrite video playback and does
-not prove complete or permanent YouTube ad blocking. The application is
-also not antivirus and cannot guarantee protection from every browser-engine,
-zero-click, Pegasus-class or other exploit.
+When enabled, native YouTube protection runs at document start only on exact
+YouTube/YouTube-nocookie hosts. It removes bounded advertising fields from
+initial/player JSON, wraps exact player-data fetch responses, blocks reviewed
+ad endpoints, hides known promotional containers and activates a visible skip
+control when available. It does not seek, accelerate or mute video playback.
+Runtime evidence separately reports the DNR probe, native subresource probe,
+main-world hook loading and observed interventions; zero interventions is not
+called a failure when no ad was served. YouTube can change delivery at any time,
+so this is tested coverage rather than a guarantee of permanent ad blocking.
+The application is also not antivirus and cannot guarantee protection from
+every browser-engine, zero-click, Pegasus-class or other exploit.
 
 ## Local browser data and settings
 

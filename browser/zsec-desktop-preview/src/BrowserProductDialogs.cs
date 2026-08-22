@@ -367,6 +367,8 @@ namespace TalkToAI.ZsecBrowserPreview
         private CheckBox askDownloadLocation;
         private TextBox downloadDirectory;
         private CheckBox nativeStrictMode;
+        private CheckBox blockYoutubeAds;
+        private ComboBox searchEngine;
 
         internal bool ClearHistoryRequested { get; private set; }
         internal bool OpenShieldsRequested { get; private set; }
@@ -442,6 +444,24 @@ namespace TalkToAI.ZsecBrowserPreview
             panel.Controls.Add(clearHistoryOnExit);
             panel.Controls.Add(clear);
             panel.Controls.Add(BrowserDialogTheme.Description(
+                "Default search engine for words entered in the address bar. The selected provider receives the query and network metadata; ZSEC does not proxy searches in this build."
+            ));
+            searchEngine = new ComboBox();
+            searchEngine.DropDownStyle = ComboBoxStyle.DropDownList;
+            searchEngine.Width = 360;
+            searchEngine.AccessibleName = "Default address bar search engine";
+            foreach (BrowserSearchProvider provider in BrowserSearchProviders.All)
+            {
+                searchEngine.Items.Add(provider);
+                if (provider.Key == BrowserSearchProviders.NormalizeKey(working.SearchEngine))
+                {
+                    searchEngine.SelectedIndex = searchEngine.Items.Count - 1;
+                }
+            }
+            searchEngine.DisplayMember = "Name";
+            if (searchEngine.SelectedIndex < 0) searchEngine.SelectedIndex = 0;
+            panel.Controls.Add(searchEngine);
+            panel.Controls.Add(BrowserDialogTheme.Description(
                 "Native tracking-parameter cleanup and Microsoft Balanced tracking prevention remain enabled. Clearing history does not delete bookmarks or the WebView2 profile."
             ));
             return Page("Privacy", panel);
@@ -477,6 +497,11 @@ namespace TalkToAI.ZsecBrowserPreview
                 "Use strict native cross-site active-content policy"
             );
             nativeStrictMode.Checked = working.NativeStrictMode;
+            blockYoutubeAds = BrowserDialogTheme.CheckBox(
+                "Block YouTube advertising with native request and player-data protection",
+                "Block YouTube advertising"
+            );
+            blockYoutubeAds.Checked = working.BlockYoutubeAds;
             Button controls = BrowserDialogTheme.Button("Open Shields controls", "Open ZSEC Shields extension controls");
             controls.Click += delegate
             {
@@ -484,10 +509,29 @@ namespace TalkToAI.ZsecBrowserPreview
                 DialogResult = DialogResult.OK;
                 Close();
             };
+            Button journalist = BrowserDialogTheme.Button(
+                "Apply Journalist high-risk preset",
+                "Apply the local journalist high-risk privacy preset"
+            );
+            journalist.Click += delegate
+            {
+                nativeStrictMode.Checked = true;
+                blockYoutubeAds.Checked = true;
+                recordHistory.Checked = false;
+                clearHistoryOnExit.Checked = true;
+            };
+            Button compatibility = BrowserDialogTheme.Button(
+                "Restore standard compatibility",
+                "Disable strict third-party active-content blocking"
+            );
+            compatibility.Click += delegate { nativeStrictMode.Checked = false; };
             panel.Controls.Add(nativeStrictMode);
+            panel.Controls.Add(blockYoutubeAds);
+            panel.Controls.Add(journalist);
+            panel.Controls.Add(compatibility);
             panel.Controls.Add(controls);
             panel.Controls.Add(BrowserDialogTheme.Description(
-                "The native strict policy and the extension High-Risk mode are separate controls. ZSEC does not claim they are synchronized."
+                "The Journalist preset disables new local history, clears existing history on clean exit, enables native strict third-party active-content blocking, and enables YouTube ad protection. Restore standard compatibility disables only the strict native cross-site rule. The native strict policy and the extension High-Risk mode are separate controls."
             ));
             return Page("Shields", panel);
         }
@@ -631,6 +675,9 @@ namespace TalkToAI.ZsecBrowserPreview
             working.AskDownloadLocation = askDownloadLocation.Checked;
             working.DownloadDirectory = downloadDirectory.Text;
             working.NativeStrictMode = nativeStrictMode.Checked;
+            working.BlockYoutubeAds = blockYoutubeAds.Checked;
+            BrowserSearchProvider selectedProvider = searchEngine.SelectedItem as BrowserSearchProvider;
+            working.SearchEngine = selectedProvider == null ? "brave" : selectedProvider.Key;
             DialogResult = DialogResult.OK;
             Close();
         }

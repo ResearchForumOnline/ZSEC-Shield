@@ -26,6 +26,7 @@ def test_desktop_builder_is_syntax_valid_and_records_coexistence_policy() -> Non
     assert '"automatic_provider_removal": False' in source
     assert '"automatic_companion_lifecycle": True' in source
     assert 'Sync-ZsecAntivirusCompanion.ps1' in source
+    assert 'Invoke-ZsecWindowsProtectionAction.ps1' in source
     assert '"publisher_code_signing": "not-performed-by-this-build"' in source
     assert '"ZSEC Antivirus Build"' in source
     assert 'os.environ.get("LOCALAPPDATA")' in source
@@ -49,6 +50,34 @@ def test_desktop_installer_has_no_security_provider_mutation_surface() -> None:
         assert forbidden not in lowered
     assert "security_products_modified = $false" in installer
     assert "existing_provider_must_remain_active = $true" in installer
+
+
+def test_windows_protection_orchestration_has_only_update_and_scan_actions() -> None:
+    action = (
+        ROOT / "windows" / "companion" / "Invoke-ZsecWindowsProtectionAction.ps1"
+    ).read_text(encoding="utf-8")
+    lowered = action.casefold()
+    assert '[validateset("updatesignatures", "quickscan", "fullscan")]' in lowered
+    assert "update-mpsignature" in lowered
+    assert "start-mpscan -scantype quickscan" in lowered
+    assert "start-mpscan -scantype fullscan" in lowered
+    for forbidden in (
+        "set-mppreference",
+        "add-mppreference",
+        "remove-mppreference",
+        "uninstall-package",
+        "msiexec",
+        "stop-service",
+        "securitycenter2).delete",
+    ):
+        assert forbidden not in lowered
+    for invariant in (
+        "provider_configuration_changed = $false",
+        "exclusions_changed = $false",
+        "security_center_registration_changed = $false",
+        "existing_provider_removed = $false",
+    ):
+        assert invariant in action
 
 
 def test_desktop_installer_activation_is_transactional_and_restores_prior_state() -> None:
@@ -77,7 +106,7 @@ def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
     assert "Desktop Preview" not in app
     assert "DESKTOP PREVIEW" not in app
     assert 'self.root.title("ZSEC Antivirus")' in app
-    assert 'text="COMMUNITY 0.3.7"' in app
+    assert 'text="COMMUNITY 0.3.8"' in app
 
 
 def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None:

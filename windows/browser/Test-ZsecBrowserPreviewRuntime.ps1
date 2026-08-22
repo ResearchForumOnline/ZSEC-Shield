@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param(
     [string]$ProductRoot = (Join-Path $env:LOCALAPPDATA "TalkToAI\ZSEC Browser"),
-    [int]$TimeoutSeconds = 20,
+    [int]$TimeoutSeconds = 30,
     [string]$ReportPath = "",
     [switch]$LeaveClosed
 )
@@ -137,6 +137,33 @@ $dnrEvidence = Invoke-BrowserEvidenceTest `
     }
 Close-ExactBrowser -ExpectedPath $applicationPath
 
+$nativePolicyEvidence = Invoke-BrowserEvidenceTest `
+    -ApplicationPath $applicationPath `
+    -EvidencePath $evidencePath `
+    -Destination "https://newtab.zsec.local/native-request-probe.html" `
+    -Accept {
+        param($evidence)
+        $evidence['native_request_filter_source_kinds'] -eq 'all' -and
+        $evidence['native_reviewed_tracker_blocking'] -eq 'enabled' -and
+        $evidence['native_tracker_policy_self_test_status'] -eq 'passed' -and
+        $evidence['native_subresource_runtime_probe_status'] -eq 'passed' -and
+        [int]$evidence['blocked_request_count'] -ge 1
+    }
+Close-ExactBrowser -ExpectedPath $applicationPath
+
+$youtubeEvidence = Invoke-BrowserEvidenceTest `
+    -ApplicationPath $applicationPath `
+    -EvidencePath $evidencePath `
+    -Destination "https://www.youtube.com/" `
+    -Accept {
+        param($evidence)
+        $evidence['youtube_native_protection_enabled'] -eq 'true' -and
+        $evidence['youtube_protection_hook_status'] -eq 'loaded' -and
+        ([string]$evidence['youtube_protection_script_sha256']) -match '^[0-9a-f]{64}$' -and
+        [int]$evidence['youtube_ad_intervention_count'] -ge 0
+    }
+Close-ExactBrowser -ExpectedPath $applicationPath
+
 $newTabEvidence = Invoke-BrowserEvidenceTest `
     -ApplicationPath $applicationPath `
     -EvidencePath $evidencePath `
@@ -157,7 +184,7 @@ if (-not $LeaveClosed) {
 }
 
 $result = [ordered]@{
-    schema = "zsec.browser.desktop-preview-runtime-acceptance.v1"
+    schema = "zsec.browser.desktop-preview-runtime-acceptance.v2"
     product = "ZSEC Browser"
     version = [string]$state.version
     passed = $true
@@ -177,6 +204,21 @@ $result = [ordered]@{
             manifest_sha256 = [string]$dnrEvidence['browser_shields_manifest_sha256']
             dnr_runtime_test_status = [string]$dnrEvidence['dnr_runtime_test_status']
             tracking_prevention_effective = [string]$dnrEvidence['tracking_prevention_effective']
+        }
+        native_all_subresource_policy = [ordered]@{
+            passed = $true
+            source_kinds = [string]$nativePolicyEvidence['native_request_filter_source_kinds']
+            tracker_policy_self_test_status = [string]$nativePolicyEvidence['native_tracker_policy_self_test_status']
+            subresource_runtime_probe_status = [string]$nativePolicyEvidence['native_subresource_runtime_probe_status']
+            reviewed_tracker_blocks = [int]$nativePolicyEvidence['native_tracker_block_count']
+        }
+        youtube_native_protection = [ordered]@{
+            passed = $true
+            exact_site = "https://www.youtube.com/"
+            hook_status = [string]$youtubeEvidence['youtube_protection_hook_status']
+            script_sha256 = [string]$youtubeEvidence['youtube_protection_script_sha256']
+            ad_interventions_observed = [int]$youtubeEvidence['youtube_ad_intervention_count']
+            no_ad_served_is_not_a_failure = $true
         }
         new_tab = [ordered]@{
             passed = $true

@@ -27,6 +27,7 @@ TOOLS: tuple[Path, ...] = (
     PROJECT_ROOT / "windows" / "companion" / "Install-ZsecAntivirusCompanion.ps1",
     PROJECT_ROOT / "windows" / "companion" / "Start-ZsecAntivirusCompanion.ps1",
     PROJECT_ROOT / "windows" / "companion" / "Get-ZsecAntivirusCompanionStatus.ps1",
+    PROJECT_ROOT / "windows" / "companion" / "Invoke-ZsecWindowsProtectionAction.ps1",
     PROJECT_ROOT / "windows" / "companion" / "Uninstall-ZsecAntivirusCompanion.ps1",
 )
 

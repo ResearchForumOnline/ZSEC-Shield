@@ -55,6 +55,62 @@ function Get-RunRegistration {
     }
 }
 
+function Get-OptionalProperty {
+    param(
+        [Parameter(Mandatory = $true)]$InputObject,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+    $property = $InputObject.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $null
+    }
+    return $property.Value
+}
+
+function ConvertTo-UtcEvidenceTimestamp {
+    param($Value)
+    if ($null -eq $Value) {
+        return $null
+    }
+    try {
+        return ([DateTimeOffset]$Value).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+    }
+    catch {
+        return $null
+    }
+}
+
+function ConvertTo-OptionalEvidenceString {
+    param($Value)
+    if ($null -eq $Value) {
+        return $null
+    }
+    $text = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $null
+    }
+    return $text
+}
+
+function Get-SecurityServiceEvidence {
+    $values = @()
+    foreach ($serviceName in @(
+            "WinDefend",
+            "WdNisSvc",
+            "MDCoreSvc",
+            "wscsvc",
+            "SecurityHealthService"
+        )) {
+        $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+        $values += [ordered]@{
+            name = $serviceName
+            available = ($null -ne $service)
+            status = $(if ($null -eq $service) { "unavailable" } else { $service.Status.ToString() })
+        }
+    }
+    return @($values)
+}
+
 function Get-WscAntivirusEvidence {
     $source = @'
 using System;
@@ -77,6 +133,8 @@ public static class ZsecWscHealth {
         "UNKNOWN_$healthValue"
     }
     $registrations = @()
+    $registrationInventoryComplete = $true
+    $registrationInventoryError = $null
     try {
         $products = Get-CimInstance `
             -Namespace "root/SecurityCenter2" `
@@ -93,14 +151,40 @@ public static class ZsecWscHealth {
     }
     catch {
         $registrations = @()
+        $registrationInventoryComplete = $false
+        $registrationInventoryError = $_.Exception.Message
     }
     $defender = [ordered]@{
         available = $false
+        source = "Get-MpComputerStatus"
         antivirus_enabled = $null
         real_time_protection_enabled = $null
         antispyware_enabled = $null
         service_enabled = $null
+        behavior_monitor_enabled = $null
+        ioav_protection_enabled = $null
+        on_access_protection_enabled = $null
+        network_inspection_enabled = $null
+        tamper_protection = "unknown"
+        reboot_required = $null
+        signatures = [ordered]@{
+            engine_version = $null
+            product_version = $null
+            antivirus_version = $null
+            antivirus_last_updated = $null
+            antivirus_age_days = $null
+            defender_reports_out_of_date = $null
+        }
+        scans = [ordered]@{
+            quick_scan_age_days = $null
+            quick_scan_end = $null
+            full_scan_age_days = $null
+            full_scan_end = $null
+        }
         confirmed_active = $false
+        baseline_features_confirmed = $false
+        signatures_current = $false
+        update_recommended = $false
         note = "Defender is not inferred active from WSC registration."
     }
     try {
@@ -110,11 +194,84 @@ public static class ZsecWscHealth {
         $defender.real_time_protection_enabled = [bool]$mp.RealTimeProtectionEnabled
         $defender.antispyware_enabled = [bool]$mp.AntispywareEnabled
         $defender.service_enabled = [bool]$mp.AMServiceEnabled
+        $defender.behavior_monitor_enabled = [bool]$mp.BehaviorMonitorEnabled
+        $defender.ioav_protection_enabled = [bool]$mp.IoavProtectionEnabled
+        $defender.on_access_protection_enabled = [bool]$mp.OnAccessProtectionEnabled
+        $defender.network_inspection_enabled = [bool]$mp.NISEnabled
+        $tamperProtected = Get-OptionalProperty -InputObject $mp -Name "IsTamperProtected"
+        if ($null -ne $tamperProtected) {
+            $defender.tamper_protection = $(if ([bool]$tamperProtected) { "enabled" } else { "disabled" })
+        }
+        $rebootRequired = Get-OptionalProperty -InputObject $mp -Name "RebootRequired"
+        if ($null -ne $rebootRequired) {
+            $defender.reboot_required = [bool]$rebootRequired
+        }
+        $defender.signatures.engine_version = ConvertTo-OptionalEvidenceString (
+            Get-OptionalProperty -InputObject $mp -Name "AMEngineVersion"
+        )
+        $defender.signatures.product_version = ConvertTo-OptionalEvidenceString (
+            Get-OptionalProperty -InputObject $mp -Name "AMProductVersion"
+        )
+        $defender.signatures.antivirus_version = ConvertTo-OptionalEvidenceString (
+            Get-OptionalProperty -InputObject $mp -Name "AntivirusSignatureVersion"
+        )
+        $defender.signatures.antivirus_last_updated = ConvertTo-UtcEvidenceTimestamp (
+            Get-OptionalProperty -InputObject $mp -Name "AntivirusSignatureLastUpdated"
+        )
+        $signatureAge = Get-OptionalProperty -InputObject $mp -Name "AntivirusSignatureAge"
+        if ($null -ne $signatureAge) {
+            $defender.signatures.antivirus_age_days = [int]$signatureAge
+        }
+        $signaturesOutOfDate = Get-OptionalProperty `
+            -InputObject $mp `
+            -Name "DefenderSignaturesOutOfDate"
+        if ($null -ne $signaturesOutOfDate) {
+            $defender.signatures.defender_reports_out_of_date = [bool]$signaturesOutOfDate
+            $signatureMaterialPresent = (
+                -not [string]::IsNullOrWhiteSpace($defender.signatures.antivirus_version) -and
+                -not [string]::IsNullOrWhiteSpace(
+                    $defender.signatures.antivirus_last_updated
+                )
+            )
+            $defender.signatures_current = (
+                -not [bool]$signaturesOutOfDate -and $signatureMaterialPresent
+            )
+            $defender.update_recommended = (
+                [bool]$signaturesOutOfDate -or -not $signatureMaterialPresent
+            )
+        }
+        $quickAge = Get-OptionalProperty -InputObject $mp -Name "QuickScanAge"
+        if ($null -ne $quickAge) {
+            $defender.scans.quick_scan_age_days = [int]$quickAge
+        }
+        $defender.scans.quick_scan_end = ConvertTo-UtcEvidenceTimestamp (
+            Get-OptionalProperty -InputObject $mp -Name "QuickScanEndTime"
+        )
+        $fullAge = Get-OptionalProperty -InputObject $mp -Name "FullScanAge"
+        if ($null -ne $fullAge) {
+            $defender.scans.full_scan_age_days = [int]$fullAge
+        }
+        $defender.scans.full_scan_end = ConvertTo-UtcEvidenceTimestamp (
+            Get-OptionalProperty -InputObject $mp -Name "FullScanEndTime"
+        )
         $defender.confirmed_active = (
             $defender.antivirus_enabled -and
             $defender.real_time_protection_enabled -and
             $defender.service_enabled
         )
+        $defender.baseline_features_confirmed = (
+            $defender.confirmed_active -and
+            $defender.behavior_monitor_enabled -and
+            $defender.ioav_protection_enabled -and
+            $defender.on_access_protection_enabled -and
+            $defender.network_inspection_enabled
+        )
+        $defender.note = $(if ($defender.confirmed_active) {
+                "Defender active state is confirmed by Get-MpComputerStatus."
+            }
+            else {
+                "Defender is installed but not confirmed as the active real-time antivirus."
+            })
     }
     catch {
         $defender.note = "Get-MpComputerStatus was unavailable; no Defender-active inference made."
@@ -125,9 +282,12 @@ public static class ZsecWscHealth {
         aggregate_health = $healthName
         aggregate_good = ($hresult -eq 0 -and $healthValue -eq 0)
         registered_products = $registrations
+        registration_inventory_complete = $registrationInventoryComplete
+        registration_inventory_error = $registrationInventoryError
         registration_note = (
             "SecurityCenter2 productState values are retained as raw evidence and are not decoded."
         )
+        security_services = @(Get-SecurityServiceEvidence)
         defender = $defender
         existing_primary_protection_present_and_active = (
             $hresult -eq 0 -and $healthValue -eq 0

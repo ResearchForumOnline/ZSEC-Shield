@@ -22,16 +22,16 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.7.0")]
-[assembly: AssemblyFileVersion("0.3.7.0")]
-[assembly: AssemblyInformationalVersion("0.3.7-community")]
+[assembly: AssemblyVersion("0.3.8.0")]
+[assembly: AssemblyFileVersion("0.3.8.0")]
+[assembly: AssemblyInformationalVersion("0.3.8-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.7";
+        internal const string ProductVersion = "0.3.8";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
         internal const string NewTabUri = "https://newtab.zsec.local/index.html";
 
@@ -74,6 +74,11 @@ namespace TalkToAI.ZsecBrowserPreview
 
         internal static string ResolveDestination(string[] args)
         {
+            return ResolveDestination(args, "brave");
+        }
+
+        internal static string ResolveDestination(string[] args, string searchEngine)
+        {
             string candidate = args.FirstOrDefault(value =>
                 !String.IsNullOrWhiteSpace(value) && !value.StartsWith("--", StringComparison.Ordinal)
             );
@@ -95,7 +100,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 return uri.AbsoluteUri;
             }
 
-            return "https://search.brave.com/search?q=" + Uri.EscapeDataString(candidate);
+            return BrowserSearchProviders.BuildSearchUrl(searchEngine, candidate);
         }
     }
 
@@ -367,10 +372,15 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly string policyRoot;
         private readonly string extensionRoot;
         private readonly string newTabRoot;
+        private readonly string youtubeProtectionPath;
         private readonly string extensionManifestSha256;
+        private readonly string youtubeProtectionSha256;
+        private readonly string youtubeProtectionSource;
         private readonly HashSet<string> trackerDomains;
         private readonly HashSet<string> trackingParameters;
         private readonly List<WebView2> browserViews;
+        private readonly Dictionary<WebView2, string> youtubeScriptRegistrations;
+        private readonly HashSet<WebView2> typedNavigationPending;
         private readonly TabControl tabs;
         private readonly Panel tabHost;
         private readonly RoundedActionButton newTabButton;
@@ -391,11 +401,18 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly NotifyIcon trayIcon;
         private CoreWebView2Environment environment;
         private int blockedRequestCount;
+        private int nativeTrackerBlockCount;
+        private int youtubeRequestBlockCount;
+        private int youtubeScriptInterventionCount;
         private int trackingCleanupCount;
         private bool highRiskMode;
         private bool lastNavigationHttps;
         private bool shieldsExtensionEnabled;
         private bool dnrRuntimeVerified;
+        private bool nativePolicySelfTestPassed;
+        private bool nativeSubresourceRuntimeProbePassed;
+        private bool youtubeScriptLoaded;
+        private bool youtubeStatusRefreshActive;
         private bool runtimeUpdateAvailable;
         private bool isClosing;
         private bool exitRequested;
@@ -413,6 +430,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly bool runtimeNewTabTest;
         private readonly TaskCompletionSource<bool> environmentReady;
         private readonly SemaphoreSlim tabMutationGate;
+        private readonly System.Windows.Forms.Timer youtubeStatusTimer;
 
         [DllImport("dwmapi.dll", PreserveSig = true)]
         private static extern int DwmSetWindowAttribute(
@@ -453,17 +471,31 @@ namespace TalkToAI.ZsecBrowserPreview
             policyRoot = Path.Combine(applicationRoot, "policy");
             extensionRoot = Path.Combine(applicationRoot, "extension");
             newTabRoot = Path.Combine(applicationRoot, "new-tab");
+            youtubeProtectionPath = Path.Combine(applicationRoot, "youtube-player-protection.js");
             extensionManifestSha256 = ComputeSha256RegularFile(
                 Path.Combine(extensionRoot, "manifest.json")
             );
+            youtubeProtectionSha256 = ComputeSha256RegularFile(youtubeProtectionPath);
+            youtubeProtectionSource = ReadBoundedRegularText(youtubeProtectionPath, 128 * 1024);
             trackerDomains = LoadRequiredLines(Path.Combine(policyRoot, "tracker-domains.txt"));
             trackingParameters = LoadRequiredLines(Path.Combine(policyRoot, "tracking-parameters.txt"));
             browserViews = new List<WebView2>();
+            youtubeScriptRegistrations = new Dictionary<WebView2, string>();
+            typedNavigationPending = new HashSet<WebView2>();
             environmentReady = new TaskCompletionSource<bool>(
                 TaskCreationOptions.RunContinuationsAsynchronously
             );
             tabMutationGate = new SemaphoreSlim(1, 1);
             highRiskMode = productData.Settings.NativeStrictMode;
+            nativePolicySelfTestPassed = RunNativePolicySelfTest();
+            youtubeStatusTimer = new System.Windows.Forms.Timer();
+            youtubeStatusTimer.Interval = 3000;
+            youtubeStatusTimer.Tick += async delegate
+            {
+                WebView2 current = ActiveView;
+                if (current != null) await RefreshYoutubeProtectionStatusAsync(current);
+            };
+            youtubeStatusTimer.Start();
 
             Text = "ZSEC Browser";
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
@@ -499,7 +531,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.7";
+            channel.Text = "COMMUNITY 0.3.8";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
@@ -557,8 +589,11 @@ namespace TalkToAI.ZsecBrowserPreview
             address.Width = addressSurface.Width - 28;
             address.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
             address.AccessibleName = "Address and search";
+            address.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+            address.AutoCompleteSource = AutoCompleteSource.CustomSource;
             address.KeyDown += AddressKeyDown;
             addressSurface.Controls.Add(address);
+            RefreshAddressSuggestions();
             addressHost = new ToolStripControlHost(addressSurface);
             addressHost.AutoSize = false;
             addressHost.Width = 660;
@@ -885,6 +920,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 return;
             }
             RefreshBookmarksBar();
+            RefreshAddressSuggestions();
             UpdateBookmarkButton();
             runtimeStatus.Text = added ? "Bookmark saved locally." : "Bookmark title updated locally.";
         }
@@ -915,6 +951,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 dialog.ShowDialog(this);
             }
             RefreshBookmarksBar();
+            RefreshAddressSuggestions();
             UpdateBookmarkButton();
         }
 
@@ -929,6 +966,7 @@ namespace TalkToAI.ZsecBrowserPreview
             {
                 int added = productStore.ImportBookmarksHtml(productData, picker.FileName);
                 RefreshBookmarksBar();
+                RefreshAddressSuggestions();
                 runtimeStatus.Text = added.ToString() + " bookmark(s) imported locally.";
             }
             catch (Exception exception)
@@ -1009,6 +1047,7 @@ namespace TalkToAI.ZsecBrowserPreview
             try
             {
                 productStore.ClearHistory(productData);
+                RefreshAddressSuggestions();
                 runtimeStatus.Text = "Local browsing history cleared.";
             }
             catch (Exception exception)
@@ -1043,7 +1082,15 @@ namespace TalkToAI.ZsecBrowserPreview
                     productData.Settings = dialog.Result;
                     productStore.Save(productData);
                     ApplyProductSettings();
-                    if (dialog.ClearHistoryRequested) productStore.ClearHistory(productData);
+                    if (previous.BlockYoutubeAds != productData.Settings.BlockYoutubeAds)
+                    {
+                        await ApplyYoutubeProtectionSettingAsync();
+                    }
+                    if (dialog.ClearHistoryRequested)
+                    {
+                        productStore.ClearHistory(productData);
+                        RefreshAddressSuggestions();
+                    }
                 }
                 catch (Exception exception)
                 {
@@ -1096,6 +1143,39 @@ namespace TalkToAI.ZsecBrowserPreview
             {
                 WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
             }
+        }
+
+        private async Task ApplyYoutubeProtectionSettingAsync()
+        {
+            foreach (WebView2 view in browserViews.ToArray())
+            {
+                if (view == null || view.CoreWebView2 == null) continue;
+                string registration;
+                if (productData.Settings.BlockYoutubeAds &&
+                    !youtubeScriptRegistrations.ContainsKey(view))
+                {
+                    registration = await view.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
+                        youtubeProtectionSource
+                    );
+                    youtubeScriptRegistrations[view] = registration;
+                }
+                else if (!productData.Settings.BlockYoutubeAds &&
+                    youtubeScriptRegistrations.TryGetValue(view, out registration))
+                {
+                    view.CoreWebView2.RemoveScriptToExecuteOnDocumentCreated(registration);
+                    youtubeScriptRegistrations.Remove(view);
+                }
+                if (view.Source != null && BrowserRequestPolicy.IsYoutubeSite(view.Source.Host))
+                {
+                    view.Reload();
+                }
+            }
+            if (!productData.Settings.BlockYoutubeAds)
+            {
+                youtubeScriptLoaded = false;
+                youtubeScriptInterventionCount = 0;
+            }
+            WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
         }
 
         private void BrowserWindowResize(object sender, EventArgs args)
@@ -1273,6 +1353,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 RejectReparseDirectory(newTabRoot);
                 AssertRequiredRegularFile(Path.Combine(extensionRoot, "manifest.json"));
                 AssertRequiredRegularFile(Path.Combine(newTabRoot, "index.html"));
+                AssertRequiredRegularFile(youtubeProtectionPath);
 
                 CoreWebView2EnvironmentOptions options = new CoreWebView2EnvironmentOptions();
                 options.AdditionalBrowserArguments = "--enable-features=HttpsUpgrades";
@@ -1662,6 +1743,13 @@ namespace TalkToAI.ZsecBrowserPreview
                 .ToString()
                 .ToLowerInvariant();
             await EnsureShieldsExtensionAsync(core.Profile);
+            if (productData.Settings.BlockYoutubeAds)
+            {
+                string registration = await core.AddScriptToExecuteOnDocumentCreatedAsync(
+                    youtubeProtectionSource
+                );
+                youtubeScriptRegistrations[view] = registration;
+            }
 
             view.KeyDown += BrowserKeyDown;
 
@@ -1715,6 +1803,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 protectionPulse.Active = false;
                 if (!args.IsSuccess)
                 {
+                    typedNavigationPending.Remove(view);
                     runtimeStatus.Text = "Navigation failed safely · " + args.WebErrorStatus;
                     lastNavigationHttps = false;
                     lastTabAction = "navigation_failed_" + args.WebErrorStatus.ToString().ToLowerInvariant();
@@ -1733,6 +1822,13 @@ namespace TalkToAI.ZsecBrowserPreview
                 TryRecordHistory(view, core.DocumentTitle);
                 if (view == ActiveView) UpdateBookmarkButton();
                 WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
+                if (view.Source != null && BrowserRequestPolicy.IsYoutubeSite(view.Source.Host))
+                {
+                    BeginInvoke(new Action(async delegate
+                    {
+                        await RefreshYoutubeProtectionStatusAsync(view);
+                    }));
+                }
             };
             core.NewWindowRequested += delegate(object sender, CoreWebView2NewWindowRequestedEventArgs args)
             {
@@ -1803,7 +1899,7 @@ namespace TalkToAI.ZsecBrowserPreview
             core.AddWebResourceRequestedFilter(
                 "*",
                 CoreWebView2WebResourceContext.All,
-                CoreWebView2WebResourceRequestSourceKinds.Document
+                CoreWebView2WebResourceRequestSourceKinds.All
             );
             core.WebResourceRequested += delegate(
                 object sender,
@@ -1948,6 +2044,38 @@ namespace TalkToAI.ZsecBrowserPreview
                 return;
             }
 
+            string topLevelUrl = view.Source == null ? String.Empty : view.Source.AbsoluteUri;
+            Uri probeTopLevel;
+            if (args.ResourceContext == CoreWebView2WebResourceContext.Script &&
+                Uri.TryCreate(topLevelUrl, UriKind.Absolute, out probeTopLevel) &&
+                String.Equals(probeTopLevel.Host, "newtab.zsec.local", StringComparison.OrdinalIgnoreCase) &&
+                String.Equals(requestUri.Host, "native-policy-probe.invalid", StringComparison.OrdinalIgnoreCase) &&
+                String.Equals(requestUri.AbsolutePath, "/zsec-native-probe.js", StringComparison.Ordinal))
+            {
+                nativeSubresourceRuntimeProbePassed = true;
+                BlockRequest(args);
+                return;
+            }
+            if (productData.Settings.BlockYoutubeAds &&
+                BrowserRequestPolicy.IsYoutubeAdRequest(topLevelUrl, requestUri.AbsoluteUri))
+            {
+                youtubeRequestBlockCount++;
+                BlockRequest(args);
+                return;
+            }
+
+            if (args.ResourceContext != CoreWebView2WebResourceContext.Document &&
+                BrowserRequestPolicy.IsReviewedThirdPartyTracker(
+                    topLevelUrl,
+                    requestUri.AbsoluteUri,
+                    trackerDomains
+                ))
+            {
+                nativeTrackerBlockCount++;
+                BlockRequest(args);
+                return;
+            }
+
             if (highRiskMode && ActiveHighRiskContexts.Contains(args.ResourceContext.ToString()))
             {
                 Uri topLevel;
@@ -1973,6 +2101,92 @@ namespace TalkToAI.ZsecBrowserPreview
             WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
         }
 
+        private bool RunNativePolicySelfTest()
+        {
+            const string YoutubePage = "https://www.youtube.com/watch?v=zsec-policy-probe";
+            return BrowserRequestPolicy.IsYoutubeAdRequest(
+                    YoutubePage,
+                    "https://www.youtube.com/pagead/zsec-policy-probe"
+                ) &&
+                BrowserRequestPolicy.IsYoutubeAdRequest(
+                    YoutubePage,
+                    "https://static.doubleclick.net/instream/ad_status.js"
+                ) &&
+                !BrowserRequestPolicy.IsYoutubeAdRequest(
+                    YoutubePage,
+                    "https://www.youtube.com/youtubei/v1/player"
+                ) &&
+                BrowserRequestPolicy.IsReviewedThirdPartyTracker(
+                    "https://newtab.zsec.local/native-request-probe.html",
+                    "https://doubleclick.net/zsec-native-probe.js",
+                    trackerDomains
+                ) &&
+                !BrowserRequestPolicy.IsReviewedThirdPartyTracker(
+                    "https://www.youtube.com/watch?v=zsec-policy-probe",
+                    "https://i.ytimg.com/vi/zsec-policy-probe/default.jpg",
+                    trackerDomains
+                );
+        }
+
+        private async Task RefreshYoutubeProtectionStatusAsync(WebView2 view)
+        {
+            if (youtubeStatusRefreshActive || view == null || view.CoreWebView2 == null ||
+                view.Source == null || !BrowserRequestPolicy.IsYoutubeSite(view.Source.Host))
+            {
+                return;
+            }
+            youtubeStatusRefreshActive = true;
+            try
+            {
+                string result = await view.CoreWebView2.ExecuteScriptAsync(
+                    "globalThis.__zsecYoutubeProtection ? ({" +
+                    "loaded:globalThis.__zsecYoutubeProtection.loaded," +
+                    "removedFields:globalThis.__zsecYoutubeProtection.removedFields," +
+                    "hiddenContainers:globalThis.__zsecYoutubeProtection.hiddenContainers," +
+                    "skipControlsUsed:globalThis.__zsecYoutubeProtection.skipControlsUsed}) : null"
+                );
+                object parsed = new System.Web.Script.Serialization.JavaScriptSerializer()
+                    .DeserializeObject(result);
+                Dictionary<string, object> status = parsed as Dictionary<string, object>;
+                if (status == null || !status.ContainsKey("loaded") ||
+                    !Convert.ToBoolean(status["loaded"]))
+                {
+                    return;
+                }
+                youtubeScriptLoaded = true;
+                int interventions = SafeStatusCount(status, "removedFields") +
+                    SafeStatusCount(status, "hiddenContainers") +
+                    SafeStatusCount(status, "skipControlsUsed");
+                youtubeScriptInterventionCount = Math.Max(
+                    youtubeScriptInterventionCount,
+                    interventions
+                );
+                WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
+            }
+            catch
+            {
+                // A page transition can invalidate script execution. The next bounded timer tick retries.
+            }
+            finally
+            {
+                youtubeStatusRefreshActive = false;
+            }
+        }
+
+        private static int SafeStatusCount(Dictionary<string, object> status, string key)
+        {
+            object value;
+            if (!status.TryGetValue(key, out value) || value == null) return 0;
+            try
+            {
+                return Math.Max(0, Convert.ToInt32(value));
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
         private void TryRecordHistory(WebView2 view, string title)
         {
             if (!CanPersistProductData(false)) return;
@@ -1986,7 +2200,9 @@ namespace TalkToAI.ZsecBrowserPreview
             }
             try
             {
-                productStore.AddHistory(productData, title, url);
+                bool typed = typedNavigationPending.Remove(view);
+                productStore.AddHistory(productData, title, url, typed);
+                RefreshAddressSuggestions();
             }
             catch (Exception exception)
             {
@@ -2073,7 +2289,11 @@ namespace TalkToAI.ZsecBrowserPreview
             if (args.KeyCode == Keys.Enter)
             {
                 args.SuppressKeyPress = true;
-                Navigate(Program.ResolveDestination(new[] { address.Text }));
+                if (ActiveView != null) typedNavigationPending.Add(ActiveView);
+                Navigate(Program.ResolveDestination(
+                    new[] { address.Text },
+                    productData.Settings.SearchEngine
+                ));
             }
         }
 
@@ -2271,8 +2491,11 @@ namespace TalkToAI.ZsecBrowserPreview
                 "Protection: Browser Shields MV3 + separate native strict policy\r\n" +
                 "Policy provenance: " + trackerDomains.Count + " reviewed domains, " + trackingParameters.Count + " tracking parameters\r\n" +
                 "Tracking prevention: Balanced\r\n" +
-                "YouTube UI assist: enabled (best effort)\r\n" +
+                "YouTube native protection: " +
+                    (productData.Settings.BlockYoutubeAds ? "enabled" : "disabled") +
+                    "; hook " + (youtubeScriptLoaded ? "observed" : "not yet observed") + "\r\n" +
                 "Bookmarks/history: local per-user storage; no ZSEC cloud sync\r\n" +
+                "Address search: " + BrowserSearchProviders.DisplayName(productData.Settings.SearchEngine) + "\r\n" +
                 "Tray: native notification-area lifecycle with explicit exit\r\n" +
                 "Profile: separate app data under LocalAppData\r\n" +
                 "Permissions: default deny\r\n" +
@@ -2299,6 +2522,8 @@ namespace TalkToAI.ZsecBrowserPreview
             if (view != null)
             {
                 browserViews.Remove(view);
+                youtubeScriptRegistrations.Remove(view);
+                typedNavigationPending.Remove(view);
                 view.Dispose();
             }
             tabs.TabPages.RemoveAt(index);
@@ -2327,6 +2552,15 @@ namespace TalkToAI.ZsecBrowserPreview
             }
             else address.Clear();
             UpdateBookmarkButton();
+        }
+
+        private void RefreshAddressSuggestions()
+        {
+            AutoCompleteStringCollection suggestions = new AutoCompleteStringCollection();
+            suggestions.AddRange(productStore
+                .GetAddressSuggestions(productData, String.Empty, 1200)
+                .ToArray());
+            address.AutoCompleteCustomSource = suggestions;
         }
 
         private static bool IsSameSite(string first, string second)
@@ -2442,6 +2676,17 @@ namespace TalkToAI.ZsecBrowserPreview
             }
         }
 
+        private static string ReadBoundedRegularText(string path, int maximumBytes)
+        {
+            AssertRequiredRegularFile(path);
+            FileInfo file = new FileInfo(path);
+            if (file.Length <= 0 || file.Length > maximumBytes)
+            {
+                throw new InvalidDataException("A required ZSEC script has an invalid size.");
+            }
+            return File.ReadAllText(path, new UTF8Encoding(false, true));
+        }
+
         private static void RejectReparseDirectory(string path)
         {
             DirectoryInfo directory = new DirectoryInfo(path);
@@ -2498,8 +2743,20 @@ namespace TalkToAI.ZsecBrowserPreview
                 "tracking_prevention_requested=balanced",
                 "tracking_prevention_effective=" + effectiveTrackingPrevention,
                 "youtube_ui_assist=" + (shieldsExtensionEnabled ? "enabled_best_effort" : "unavailable"),
-                "host_filter_source_kinds=document",
-                "request_count_coverage=native_policy_only",
+                "native_request_filter_source_kinds=all",
+                "native_reviewed_tracker_blocking=enabled",
+                "native_tracker_policy_self_test_status=" + (nativePolicySelfTestPassed ? "passed" : "failed"),
+                "native_subresource_runtime_probe_status=" + (nativeSubresourceRuntimeProbePassed ? "passed" : "not_run"),
+                "youtube_native_protection_enabled=" + productData.Settings.BlockYoutubeAds.ToString().ToLowerInvariant(),
+                "youtube_protection_script_sha256=" + youtubeProtectionSha256,
+                "youtube_protection_hook_status=" + (!productData.Settings.BlockYoutubeAds
+                    ? "disabled_by_user"
+                    : youtubeScriptLoaded ? "loaded" : "not_observed"),
+                "youtube_request_block_count=" + youtubeRequestBlockCount.ToString(),
+                "youtube_script_intervention_count=" + youtubeScriptInterventionCount.ToString(),
+                "youtube_ad_intervention_count=" + (youtubeRequestBlockCount + youtubeScriptInterventionCount).ToString(),
+                "host_filter_source_kinds=all",
+                "request_count_coverage=all_web_resource_source_kinds",
                 "profile_separate=true",
                 "sandbox_attestation_complete=false",
                 "tab_count=" + tabs.TabPages.Count.ToString(),
@@ -2514,6 +2771,8 @@ namespace TalkToAI.ZsecBrowserPreview
                 "bookmarks_count=" + productData.Bookmarks.Count.ToString(),
                 "history_count=" + productData.History.Count.ToString(),
                 "history_recording_enabled=" + productData.Settings.RecordHistory.ToString().ToLowerInvariant(),
+                "address_history_suggestions_enabled=true",
+                "search_engine=" + BrowserSearchProviders.NormalizeKey(productData.Settings.SearchEngine),
                 "clear_history_on_exit=" + productData.Settings.ClearHistoryOnExit.ToString().ToLowerInvariant(),
                 "bookmarks_bar_visible=" + bookmarksBar.Visible.ToString().ToLowerInvariant(),
                 "minimize_to_tray_enabled=" + productData.Settings.MinimizeToTray.ToString().ToLowerInvariant(),
@@ -2521,6 +2780,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 "download_location_prompt=" + productData.Settings.AskDownloadLocation.ToString().ToLowerInvariant(),
                 "default_browser_registration_supported=false",
                 "blocked_request_count=" + blockedRequestCount.ToString(),
+                "native_tracker_block_count=" + nativeTrackerBlockCount.ToString(),
                 "tracking_cleanup_count=" + trackingCleanupCount.ToString(),
                 "last_navigation_https=" + lastNavigationHttps.ToString().ToLowerInvariant(),
                 "host_objects_allowed=false",
@@ -2571,11 +2831,15 @@ namespace TalkToAI.ZsecBrowserPreview
 
         private void DisposeBrowserViews(object sender, FormClosedEventArgs args)
         {
+            youtubeStatusTimer.Stop();
+            youtubeStatusTimer.Dispose();
             trayIcon.Visible = false;
             trayIcon.Dispose();
             mainMenu.Dispose();
             foreach (WebView2 view in browserViews.ToArray()) view.Dispose();
             browserViews.Clear();
+            youtubeScriptRegistrations.Clear();
+            typedNavigationPending.Clear();
             tabMutationGate.Dispose();
         }
     }

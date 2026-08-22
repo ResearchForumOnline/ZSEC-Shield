@@ -43,6 +43,7 @@ non-link file and never invokes a command shell.
 | Overview and health | `status --json` / `zsec.shield.status.v2` | Unknown schemas and inconsistent counters fail closed. “No configured rule matches” is never rendered as “clean.” |
 | Scanner | `check PATH... --json` / `zsec.shield.report.v1` | Runs outside the UI thread, has bounded output and timeout/cancel handling, excludes ZSEC state through the engine, and writes validated local reports. |
 | Automatic monitoring | Windows companion status plus `watch PATH --json-lines` / `zsec.shield.watch-event.v1` | Clearly labelled post-change user-mode monitoring. The installed companion may start at logon; a UI-started session ends with the UI. Neither is pre-access protection. |
+| Windows protection control plane | WSC category health, raw provider inventory, `Get-MpComputerStatus`, and fixed Defender update/quick-scan/full-scan actions | Shows Defender feature, tamper, intelligence, scan, and service evidence without decoding `SecurityCenter2.productState`. Actions cannot select/disable a provider, edit preferences, add exclusions, register ZSEC, or remove software. |
 | Quarantine | `quarantine list --json`, `quarantine restore ID --json` | Restore requires a user-selected non-existing destination. No delete/purge button is exposed. Quarantine opt-in resets off after each action. |
 | Feeds | `status --json`, `update --file FILE --json` | Local reviewed signed-feed files only. The UI deliberately exposes no arbitrary remote URL because the current rule-feed downloader has HTTPS/signature controls but no release-owned hostname allowlist. |
 | Reports | Validated files directly below the ZSEC state `reports` directory | Regular non-link JSON files, size bounded, exact schema required. Invalid reports remain visibly invalid. |
@@ -59,6 +60,16 @@ its owned supervisor registration, launcher/runtime hashes, heartbeat freshness,
 process identity, post-change policy, and Windows Security Center aggregate
 antivirus health. Raw `SecurityCenter2.productState` values are never decoded as
 health claims.
+
+The Windows protection page makes coexistence useful today: it reports the
+supported Windows Security Center aggregate, registered product names as raw
+inventory, Defender service and real-time feature evidence, tamper status,
+security-intelligence freshness reported by Defender, and last supported scan
+timestamps. It can request only `Update-MpSignature`, a Defender quick scan, or
+a Defender full scan through a fixed argument contract. These operations use
+Microsoft Defender as the enforcement provider and do not turn ZSEC into a
+Windows Security provider. If Defender is passive or disabled because another
+antivirus is primary, ZSEC says so and keeps scan actions unavailable.
 
 ## Process and privilege boundary
 

@@ -14,13 +14,22 @@ COMPANION_ROOT = PROJECT_ROOT / "windows" / "companion"
 INSTALLER = COMPANION_ROOT / "Install-ZsecAntivirusCompanion.ps1"
 LAUNCHER = COMPANION_ROOT / "Start-ZsecAntivirusCompanion.ps1"
 STATUS = COMPANION_ROOT / "Get-ZsecAntivirusCompanionStatus.ps1"
+ACTION = COMPANION_ROOT / "Invoke-ZsecWindowsProtectionAction.ps1"
 UNINSTALLER = COMPANION_ROOT / "Uninstall-ZsecAntivirusCompanion.ps1"
 SYNC = COMPANION_ROOT / "Sync-ZsecAntivirusCompanion.ps1"
 
 
 class WindowsCompanionStaticTests(unittest.TestCase):
     def test_all_companion_scripts_and_review_document_are_present(self) -> None:
-        for path in (INSTALLER, LAUNCHER, STATUS, UNINSTALLER, SYNC, COMPANION_ROOT / "README.md"):
+        for path in (
+            INSTALLER,
+            LAUNCHER,
+            STATUS,
+            ACTION,
+            UNINSTALLER,
+            SYNC,
+            COMPANION_ROOT / "README.md",
+        ):
             self.assertTrue(path.is_file(), path)
 
     def test_installer_is_limited_per_user_single_instance_and_bounded(self) -> None:

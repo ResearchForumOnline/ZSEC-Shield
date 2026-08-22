@@ -1,0 +1,401 @@
+{
+  "schema": "zsec.journalist-high-risk-profile.v1",
+  "profile_id": "journalist-high-risk",
+  "profile_version": 1,
+  "updated_at": "2026-08-22",
+  "status": "design-and-current-control-contract",
+  "claim_boundary": {
+    "existing_primary_antivirus_required": true,
+    "mercenary_spyware_detection": false,
+    "mobile_zero_click_coverage": false,
+    "pegasus_immunity": false,
+    "threat_actor_attribution": false,
+    "zba_is_cipher": false
+  },
+  "zba_role": {
+    "allowed": [
+      "typed lifecycle state",
+      "provenance commitment",
+      "evidence status vocabulary"
+    ],
+    "prohibited": [
+      "cryptographic cipher",
+      "entropy or key derivation",
+      "exploit mitigation",
+      "malware classification",
+      "threat actor attribution"
+    ]
+  },
+  "controls": [
+    {
+      "id": "browser-evergreen-runtime",
+      "area": "browser",
+      "action_class": "already_enforced",
+      "current_state": "implemented",
+      "decision": "Require a validly Microsoft-signed Evergreen WebView2 runtime and report its version.",
+      "evidence": [
+        {
+          "path": "windows/browser/Install-ZsecBrowserPreview.ps1",
+          "contains": [
+            "Get-TrustedWebView2Runtime",
+            "Get-AuthenticodeSignature",
+            "Microsoft Corporation"
+          ]
+        },
+        {
+          "path": "windows/browser/Get-ZsecBrowserPreviewStatus.ps1",
+          "contains": [
+            "prohibited_security_flags_absent",
+            "sandbox_attestation_complete = $false"
+          ]
+        }
+      ],
+      "source_ids": [
+        "microsoft-webview2-enterprise",
+        "microsoft-webview2-security"
+      ]
+    },
+    {
+      "id": "browser-host-and-permission-boundary",
+      "area": "browser",
+      "action_class": "already_enforced",
+      "current_state": "implemented",
+      "decision": "Disable host bridges, password saving, autofill, developer tools and script dialogs; deny site permissions and certificate errors.",
+      "evidence": [
+        {
+          "path": "browser/zsec-desktop-preview/src/ZsecBrowserApp.cs",
+          "contains": [
+            "settings.AreHostObjectsAllowed = false",
+            "settings.IsWebMessageEnabled = false",
+            "settings.IsPasswordAutosaveEnabled = false",
+            "settings.IsGeneralAutofillEnabled = false",
+            "settings.AreDevToolsEnabled = false",
+            "core.PermissionRequested +=",
+            "args.State = CoreWebView2PermissionState.Deny",
+            "core.ServerCertificateErrorDetected +=",
+            "args.Action = CoreWebView2ServerCertificateErrorAction.Cancel"
+          ]
+        }
+      ],
+      "source_ids": [
+        "microsoft-webview2-security"
+      ]
+    },
+    {
+      "id": "browser-extension-identity",
+      "area": "browser",
+      "action_class": "already_enforced",
+      "current_state": "implemented",
+      "decision": "Require exactly one enabled ZSEC Shields identity and fail on an unexpected extension identity.",
+      "evidence": [
+        {
+          "path": "browser/zsec-desktop-preview/src/ZsecBrowserApp.cs",
+          "contains": [
+            "ExpectedShieldsExtensionId",
+            "GetBrowserExtensionsAsync",
+            "The browser profile contains an unexpected extension identity"
+          ]
+        }
+      ],
+      "source_ids": [
+        "microsoft-extension-management"
+      ]
+    },
+    {
+      "id": "browser-strict-third-party-active-content",
+      "area": "browser",
+      "action_class": "already_enforced",
+      "current_state": "implemented",
+      "decision": "In native strict mode, block declared cross-site active resource classes; in MV3 high-risk mode, install the fixed higher-priority blocking rules.",
+      "evidence": [
+        {
+          "path": "browser/zsec-desktop-preview/src/ZsecBrowserApp.cs",
+          "contains": [
+            "ActiveHighRiskContexts",
+            "\"Script\", \"Document\", \"Stylesheet\", \"XmlHttpRequest\", \"Fetch\", \"WebSocket\"",
+            "if (highRiskMode && ActiveHighRiskContexts.Contains"
+          ]
+        },
+        {
+          "path": "browser/zeroq-shields/src/high-risk-browsing.js",
+          "contains": [
+            "HIGH_RISK_RULE_PRIORITY = 1000",
+            "domainType: \"thirdParty\"",
+            "urlFilter: \"|http://\""
+          ]
+        }
+      ],
+      "source_ids": [
+        "google-tag-http-injection",
+        "google-tag-watering-hole",
+        "chrome-site-isolation"
+      ]
+    },
+    {
+      "id": "browser-download-confirmation",
+      "area": "browser",
+      "action_class": "already_enforced",
+      "current_state": "implemented",
+      "decision": "Require explicit approval, allocate a safe non-overwriting destination and never automatically open a download.",
+      "evidence": [
+        {
+          "path": "browser/zsec-desktop-preview/src/ZsecBrowserApp.cs",
+          "contains": [
+            "Allow this download?",
+            "ZSEC does not automatically open downloaded files.",
+            "GetAvailableDownloadPath"
+          ]
+        }
+      ],
+      "source_ids": [
+        "google-advanced-protection"
+      ]
+    },
+    {
+      "id": "browser-clear-history-on-exit",
+      "area": "browser",
+      "action_class": "already_enforced",
+      "current_state": "partial",
+      "decision": "Allow app-level history to be disabled or cleared on exit; do not describe this as clearing the complete WebView2 profile.",
+      "evidence": [
+        {
+          "path": "browser/zsec-desktop-preview/src/BrowserProductState.cs",
+          "contains": [
+            "public bool RecordHistory",
+            "public bool ClearHistoryOnExit"
+          ]
+        },
+        {
+          "path": "browser/zsec-desktop-preview/src/ZsecBrowserApp.cs",
+          "contains": [
+            "productData.Settings.ClearHistoryOnExit",
+            "productStore.ClearHistory(productData)"
+          ]
+        }
+      ],
+      "source_ids": [
+        "microsoft-webview2-profile-data"
+      ]
+    },
+    {
+      "id": "browser-ephemeral-session",
+      "area": "browser",
+      "action_class": "implement_now",
+      "current_state": "not_implemented",
+      "decision": "Create a fresh bounded WebView2 user-data folder before navigation and remove session state after clean exit or reviewed crash cleanup.",
+      "gate": "Pass clean-exit, crash, update, concurrent-start, sign-in-breakage and deletion-failure tests without touching another profile.",
+      "source_ids": [
+        "apple-lockdown-mode",
+        "microsoft-webview2-profile-data"
+      ]
+    },
+    {
+      "id": "browser-enhanced-security-jit-reduction",
+      "area": "browser",
+      "action_class": "release_gated",
+      "current_state": "not_implemented",
+      "decision": "Use the stable supported WebView2 Enhanced Security Mode API to disable JavaScript JIT and enable the documented OS mitigations.",
+      "gate": "The pinned SDK does not expose the property and Microsoft's current WebView2 API documentation is prerelease; require a stable pinned SDK, exact runtime evidence and compatibility tests.",
+      "source_ids": [
+        "microsoft-edge-enhanced-security",
+        "microsoft-webview2-enhanced-security-prerelease"
+      ]
+    },
+    {
+      "id": "windows-defender-backed-real-time",
+      "area": "antivirus",
+      "action_class": "implement_now",
+      "current_state": "external_required",
+      "decision": "Expose Microsoft Defender or another supported OS-integrated provider as the named real-time enforcement layer while ZSEC remains the bounded dashboard and second-opinion scanner.",
+      "gate": "Provider aggregate health, active mode, real-time protection, platform/engine/signature freshness, tamper state and rollback must pass before another provider changes.",
+      "source_ids": [
+        "ncsc-high-risk-guidance"
+      ]
+    },
+    {
+      "id": "windows-security-posture",
+      "area": "operating_system",
+      "action_class": "implement_now",
+      "current_state": "not_implemented",
+      "decision": "Report BitLocker, Windows Update/reboot, OS support, exploit protection, Smart App Control or App Control, and provider freshness without exposing recovery material or silently changing policy.",
+      "gate": "Unknown, unsupported, access-denied and organisation-managed states must remain distinct from good; changes require recovery and compatibility gates.",
+      "source_ids": [
+        "ncsc-high-risk-guidance",
+        "cisa-civil-society"
+      ]
+    },
+    {
+      "id": "incident-response-preservation",
+      "area": "incident_response",
+      "action_class": "implement_now",
+      "current_state": "partial",
+      "decision": "Export a bounded, manifest-hashed and privacy-redacted evidence handoff while leaving original device evidence unchanged.",
+      "evidence": [
+        {
+          "path": "src/zsec_shield/watch_evidence.py",
+          "contains": [
+            "Evidence files must stay under the scanner state directory",
+            "watch evidence path must be a regular, non-link file"
+          ]
+        }
+      ],
+      "gate": "A complete bundle must add product/runtime versions, provider and update posture, policy IDs, failures, privacy defaults, encryption for a named responder and an exact manifest.",
+      "source_ids": [
+        "apple-threat-notifications",
+        "amnesty-tools-and-guides",
+        "access-now-helpline",
+        "mvt-indicators"
+      ]
+    },
+    {
+      "id": "account-fido-and-advanced-protection",
+      "area": "account_security",
+      "action_class": "external_required",
+      "current_state": "external_required",
+      "decision": "Guide high-risk users to provider-confirmed passkey or FIDO2-key enrollment, backup keys and recovery review without collecting credentials or recovery material.",
+      "gate": "Only an authoritative provider confirmation establishes enrollment.",
+      "source_ids": [
+        "google-advanced-protection",
+        "ncsc-high-risk-guidance"
+      ]
+    },
+    {
+      "id": "apple-mobile-lockdown-and-expert-response",
+      "area": "mobile",
+      "action_class": "external_required",
+      "current_state": "outside_zsec",
+      "decision": "Direct at-risk Apple users to current OS updates, Apple Lockdown Mode, authentic threat-notification verification and expert support.",
+      "gate": "ZSEC Browser and Antivirus do not inspect iMessage, mobile OS memory, baseband traffic or another application's zero-click path.",
+      "source_ids": [
+        "apple-lockdown-mode",
+        "apple-threat-notifications",
+        "citizen-lab-blastpass",
+        "access-now-helpline"
+      ]
+    },
+    {
+      "id": "zsec-native-primary-antivirus",
+      "area": "antivirus",
+      "action_class": "release_gated",
+      "current_state": "not_implemented",
+      "decision": "Become an independently supported Windows primary antivirus only after the native platform programme passes.",
+      "gate": "Require a signed minifilter, protected service, AMSI, approved WSC/MVI integration, rollback-resistant signed updates, corpus evaluation, false-positive operations and independent testing.",
+      "source_ids": [
+        "microsoft-webview2-measures"
+      ]
+    },
+    {
+      "id": "zba-security-receipts",
+      "area": "provenance",
+      "action_class": "release_gated",
+      "current_state": "not_implemented",
+      "decision": "Use ZBA typed states for tamper-evident posture and incident receipts while standard cryptography and signatures supply security.",
+      "gate": "Require an append-only transition log, policy verifier, rollback control, signing profile, deterministic vectors, privacy limits and independent review; the current record is sequence zero only.",
+      "source_ids": [
+        "zba-paper"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "access-now-helpline",
+      "authority": "Access Now",
+      "url": "https://www.accessnow.org/help/"
+    },
+    {
+      "id": "amnesty-tools-and-guides",
+      "authority": "Amnesty International Security Lab",
+      "url": "https://securitylab.amnesty.org/tools-and-guides/"
+    },
+    {
+      "id": "apple-lockdown-mode",
+      "authority": "Apple",
+      "url": "https://support.apple.com/en-euro/105120"
+    },
+    {
+      "id": "apple-threat-notifications",
+      "authority": "Apple",
+      "url": "https://support.apple.com/en-in/102174"
+    },
+    {
+      "id": "chrome-site-isolation",
+      "authority": "Chromium",
+      "url": "https://www.chromium.org/Home/chromium-security/site-isolation/"
+    },
+    {
+      "id": "cisa-civil-society",
+      "authority": "CISA and partners",
+      "url": "https://www.cisa.gov/sites/default/files/2024-05/joint-guide-mitigating-cyber-threats-with-limited-resources-guidance-for-civil-society-508c_3.pdf"
+    },
+    {
+      "id": "citizen-lab-blastpass",
+      "authority": "Citizen Lab",
+      "url": "https://citizenlab.ca/blastpass-nso-group-iphone-zero-click-zero-day-exploit-captured-in-the-wild/"
+    },
+    {
+      "id": "google-advanced-protection",
+      "authority": "Google",
+      "url": "https://support.google.com/accounts/answer/7519408"
+    },
+    {
+      "id": "google-tag-http-injection",
+      "authority": "Google Threat Analysis Group",
+      "url": "https://blog.google/threat-analysis-group/0-days-exploited-by-commercial-surveillance-vendor-in-egypt/"
+    },
+    {
+      "id": "google-tag-watering-hole",
+      "authority": "Google Threat Analysis Group",
+      "url": "https://blog.google/threat-analysis-group/state-backed-attackers-and-commercial-surveillance-vendors-repeatedly-use-the-same-exploits/"
+    },
+    {
+      "id": "microsoft-edge-enhanced-security",
+      "authority": "Microsoft",
+      "url": "https://learn.microsoft.com/en-us/deployedge/microsoft-edge-security-browse-safer"
+    },
+    {
+      "id": "microsoft-extension-management",
+      "authority": "Microsoft",
+      "url": "https://learn.microsoft.com/en-us/deployedge/microsoft-edge-manage-extensions"
+    },
+    {
+      "id": "microsoft-webview2-enhanced-security-prerelease",
+      "authority": "Microsoft",
+      "url": "https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/winrt/microsoft_web_webview2_core/corewebview2enhancedsecuritymodestate"
+    },
+    {
+      "id": "microsoft-webview2-enterprise",
+      "authority": "Microsoft",
+      "url": "https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/enterprise"
+    },
+    {
+      "id": "microsoft-webview2-measures",
+      "authority": "Microsoft",
+      "url": "https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/measures"
+    },
+    {
+      "id": "microsoft-webview2-profile-data",
+      "authority": "Microsoft",
+      "url": "https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/overview-features-apis"
+    },
+    {
+      "id": "microsoft-webview2-security",
+      "authority": "Microsoft",
+      "url": "https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/security"
+    },
+    {
+      "id": "mvt-indicators",
+      "authority": "Mobile Verification Toolkit",
+      "url": "https://docs.mvt.re/en/stable/iocs/"
+    },
+    {
+      "id": "ncsc-high-risk-guidance",
+      "authority": "UK National Cyber Security Centre",
+      "url": "https://www.ncsc.gov.uk/collection/defending-democracy/guidance-for-high-risk-individuals"
+    },
+    {
+      "id": "zba-paper",
+      "authority": "Shafaet Brady Hussain",
+      "url": "https://huggingface.co/datasets/researchforumonline/zero-boundary-algebra/blob/main/Zero-Boundary-Algebra-1.1-Shafaet-Brady-Hussain.pdf"
+    }
+  ]
+}

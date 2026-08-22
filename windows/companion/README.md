@@ -160,6 +160,37 @@ Defender is active. On a machine where Malwarebytes is primary, Defender's own
 antivirus/real-time fields can correctly be false while the supported WSC
 aggregate remains `GOOD`.
 
+The same evidence object reports Defender behavior monitoring, downloaded-file
+inspection, on-access protection, network inspection, tamper state, security
+intelligence version/timestamp, last supported scan timestamps, and the observed
+states of `WinDefend`, `WdNisSvc`, `MDCoreSvc`, `wscsvc`, and
+`SecurityHealthService`. Missing version/timestamp evidence can never become a
+"current intelligence" result.
+
+The desktop packages a separate fixed-action helper for three user-requested
+Defender operations:
+
+```powershell
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy RemoteSigned `
+  -File .\windows\companion\Invoke-ZsecWindowsProtectionAction.ps1 `
+  -Action UpdateSignatures
+```
+
+The other accepted values are `QuickScan` and `FullScan`. The helper cannot run
+an arbitrary command, select or disable a provider, change Defender preferences,
+add an exclusion, alter Security Center registration, or remove software. Its
+versioned result explicitly records all those configuration/removal booleans as
+false, and the desktop rejects a contradictory result.
+
+The UI derives a separate provider-handoff interlock from complete registration
+inventory, WSC `GOOD`, Defender active/baseline controls, current Defender
+intelligence, tamper protection, and no pending/unknown Defender reboot. With
+Malwarebytes still registered it can at most report
+"eligible for operator cutover; Defender remains enforcement." It provides no
+automated uninstall. After Malwarebytes is absent, the UI reports a verified
+Defender-backed handoff only while the same evidence remains true. This is not a
+claim that ZSEC supplies pre-access enforcement.
+
 Microsoft documents the WSC API as returning aggregate category health, with
 `GOOD` meaning the category needs no attention. It does not identify which
 registered product supplies that health:

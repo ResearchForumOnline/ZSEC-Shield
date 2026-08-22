@@ -130,20 +130,32 @@ npm run test:runtime
 The runtime test uses an isolated temporary Chromium profile and local-only test
 servers; it never opens the normal user profile. See the
 [bounded mercenary-spyware defence analysis](docs/MERCENARY_SPYWARE_DEFENCE.md)
-for the exact enforced decision points and non-claims.
+for the exact enforced decision points and non-claims, and the
+[journalist and high-risk user profile](docs/JOURNALIST_HIGH_RISK_PROFILE.md)
+for the implemented-now versus release-gated protection programme.
 
 The native Windows Community desktop source lives in
-[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.6
-provides a modern rounded dark interface, managed tabs and popups, an address
-and search bar, and a separate WebView2 profile,
-default-deny site permissions, certificate-error cancellation, explicit downloads,
-HTTPS upgrading, Microsoft Balanced tracking prevention, an automatically loaded
-exact-ID Browser Shields 0.5.2 MV3 engine with 49,464 pinned EasyList-derived network
-rules, 21 tracking-parameter cleaners, a
-19 selected packaged YouTube cosmetic selectors, a bounded YouTube UI assist
-and an optional stricter cross-site mode. Its build
-verifies the pinned Microsoft SDK package against the official NuGet SHA-512 and
-a locked SHA-256; installation requires a validly Microsoft-signed Evergreen runtime.
+[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.8
+provides a modern rounded dark interface, managed tabs and popups, local
+bookmarks and bounded history, typed-address suggestions, seven selectable
+search providers, tray controls, a native settings surface and a separate
+WebView2 profile. Its request hook receives document and subresource requests
+across all WebView2 resource-source kinds, blocks reviewed third-party tracker
+subresources and records a real local subresource probe instead of treating a
+configuration self-test as runtime proof. It retains default-deny site
+permissions, certificate-error cancellation, explicit downloads, HTTPS
+upgrading, Microsoft Balanced tracking prevention, and the automatically loaded
+exact-ID Browser Shields 0.5.2 MV3 engine with 49,464 pinned EasyList-derived
+network rules, 21 tracking-parameter cleaners and 19 selected packaged YouTube
+cosmetic selectors. Bounded YouTube protection adds reviewed endpoint blocking
+and exact-host, document-start player-data sanitisation without seeking,
+accelerating or muting playback; site changes can still evade it. A Journalist
+high-risk preset disables new app-history recording, requests app-history
+cleanup on clean exit, and enables the native strict cross-site and YouTube
+controls. It is exposure reduction, not an ephemeral profile, spyware verdict,
+Pegasus detector or exploit guarantee. The build verifies the pinned Microsoft
+SDK package against the official NuGet SHA-512 and a locked SHA-256;
+installation requires a validly Microsoft-signed Evergreen runtime.
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\Build-ZsecBrowserPreview.ps1
@@ -275,7 +287,7 @@ pre-access real-time enforcement. Keep the existing antivirus active. See the
 ### ZSEC Antivirus automatic desktop companion
 
 The Windows Community channel includes review-first scripts for a reversible,
-current-user logon task protecting `%USERPROFILE%\Downloads`. Start with the
+current-user logon task protecting a bounded set of current-user folders. Start with the
 read-only plan; repository tests never execute task registration:
 
 ```powershell
@@ -285,11 +297,17 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned `
 
 The generated task runs at limited user privilege, permits one instance, uses
 bounded event/log/restart settings, and writes a 30-second health heartbeat. Its
-status combines task/action/hash/process proof with supported aggregate WSC
-antivirus health while keeping raw provider `productState` uninterpreted. It
-never disables or removes Malwarebytes/Defender, changes exclusions, registers
-ZSEC with Windows Security, or authorizes primary-provider cutover. See the
-[ZSEC Antivirus Windows companion guide](windows/companion/README.md).
+status combines task/action/hash/process proof with supported aggregate Windows
+Security Center health and separate Defender feature, tamper, intelligence,
+scan and service evidence while keeping raw provider `productState`
+uninterpreted. The Windows GUI can request only a Defender intelligence update,
+quick scan or confirmed full scan. A three-state handoff interlock distinguishes
+blocked, operator-cutover-eligible and verified states, but it does not remove a
+provider or make ZSEC the enforcing antivirus. Microsoft Defender supplies
+supported real-time enforcement when confirmed active. ZSEC never changes
+Defender preferences or exclusions, registers itself with Windows Security, or
+uninstalls Malwarebytes. See the [ZSEC Antivirus Windows companion
+guide](windows/companion/README.md).
 
 Equivalent current-user LaunchAgent and systemd-user packages are included for
 macOS and Linux. They pin the selected CLI by SHA-256, require the native event

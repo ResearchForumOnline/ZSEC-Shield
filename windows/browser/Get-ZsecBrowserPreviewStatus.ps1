@@ -156,6 +156,8 @@ if (Test-Path -LiteralPath ([string]$state.runtime_evidence_path) -PathType Leaf
         $evidence['password_autosave_enabled'] -eq 'false' -and
         $evidence['general_autofill_enabled'] -eq 'false' -and
         $evidence['permissions_default'] -eq 'deny' -and
+        $evidence['native_request_filter_source_kinds'] -eq 'all' -and
+        $evidence['native_tracker_policy_self_test_status'] -eq 'passed' -and
         [int]$evidence['tracker_domain_count'] -eq [int]$state.policy.tracker_domain_count
     )
     $runtimeEvidence = [ordered]@{
@@ -165,6 +167,10 @@ if (Test-Path -LiteralPath ([string]$state.runtime_evidence_path) -PathType Leaf
         engine_version = $evidence['engine_version']
         profile_root = $evidence['profile_root']
         blocked_request_count = $evidence['blocked_request_count']
+        native_tracker_block_count = $evidence['native_tracker_block_count']
+        native_subresource_runtime_probe_status = $evidence['native_subresource_runtime_probe_status']
+        youtube_protection_hook_status = $evidence['youtube_protection_hook_status']
+        youtube_ad_intervention_count = $evidence['youtube_ad_intervention_count']
         tracking_cleanup_count = $evidence['tracking_cleanup_count']
         last_navigation_https = $evidence['last_navigation_https']
         elevated = $evidence['elevated']
