@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.3.8 - 2026-08-22
+
+- Changed the ZSEC Browser native request hook to receive every WebView2
+  resource-source kind, block reviewed third-party tracker subresources, and
+  record an actual local subresource probe separately from configuration
+  self-tests.
+- Added bounded, exact-host YouTube protection at document start: reviewed ad
+  endpoint blocking, player-data field sanitisation, known promotional-container
+  hiding and visible skip-control activation, without playback seeking,
+  acceleration or muting. Runtime evidence reports hook loading and observed
+  interventions without treating “no ad served” as a failure or promising
+  permanent coverage.
+- Added deduplicated local typed-address history suggestions, seven selectable
+  search providers, and a Journalist high-risk preset that disables new app
+  history, requests app-history cleanup on clean exit, and enables native strict
+  cross-site and YouTube controls. The preset is exposure reduction, not an
+  ephemeral profile, spyware detector or exploit guarantee.
+- Added the Windows protection control plane: Windows Security Center aggregate
+  health, raw registered-provider inventory, separate Microsoft Defender
+  feature/tamper/intelligence/scan/service evidence, and fixed Defender
+  intelligence-update, quick-scan and confirmed full-scan actions.
+- Added a fail-closed three-state Windows provider-handoff interlock. It reports
+  blocked, operator-cutover-eligible or verified only from the required Defender
+  and Windows Security evidence; it never selects or removes a provider, changes
+  exclusions, registers ZSEC as a provider, or represents the user-mode ZSEC
+  watcher as pre-access real-time antivirus.
+- Added the evidence-bound Journalist and high-risk user protection profile,
+  including browser-delivery controls, Microsoft Defender-backed Windows
+  enforcement, incident-preservation guidance, and explicit non-claims for
+  Pegasus immunity/detection, attacker attribution and ZBA-as-cipher.
+
+## 0.3.7 - 2026-08-22
+
+- Added the ZSEC Browser native main menu, bookmark star/bar/manager with bounded
+  HTML import/export, local history controls, seven-category settings surface,
+  and explicit minimize/close-to-tray lifecycle.
+- Added ZSEC Antivirus notification-area controls and bounded review-only PE,
+  cache-only Authenticode, script-chain and ZIP safety evidence without allowing
+  review observations to trigger quarantine.
+- Advanced both desktop products to distinct immutable 0.3.7 package identities
+  and published the corrected no-argument browser installer path while
+  preserving profiles, companions and existing security providers.
+
 ## 0.3.6 - 2026-08-22
 
 - Added a responsive, keyboard-accessible animated Windows protection-centre

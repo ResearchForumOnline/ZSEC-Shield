@@ -65,7 +65,7 @@ an **unsigned direct Community build**, not a publisher-signed Store installer.
 - Keyboard routes for bookmarks, history, settings, menu, tab selection and
   navigation, with accessible names on primary controls.
 - Non-web schemes are rejected; remote debugging and developer tools are off.
-- The UI labels the product as `Community 0.3.7` and exposes the exact runtime
+- The UI labels the product as `Community 0.3.8` and exposes the exact runtime
   and policy boundary in its About dialog.
 
 When enabled, native YouTube protection runs at document start only on exact

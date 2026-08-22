@@ -33,9 +33,11 @@ by tracing third-party browser or antivirus branding.
 ## Public voice
 
 Calm, precise, and evidence-led. Prefer “processed locally,” “authenticated
-encrypted vault,” “best-effort ad filtering,” and “on-demand security preview.”
-Reserve “antivirus” for a platform candidate whose exact evidence gates passed.
-Avoid “unhackable,” “military grade,” “quantum encryption,”
+encrypted vault,” “bounded local filtering,” and “Community security companion.”
+The product name may use “ZSEC Antivirus,” but primary-provider or native
+real-time claims require the exact platform evidence gates. When Microsoft
+Defender supplies enforcement, name Defender explicitly and describe ZSEC as
+the control plane and companion. Avoid “unhackable,” “military grade,” “quantum encryption,”
 “blocks everything,” or unsupported comparison claims.
 
 ## Image-generation provenance

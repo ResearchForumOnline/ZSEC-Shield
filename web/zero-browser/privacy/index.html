@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ZSEC Browser and Browser Shields Privacy Policy</title>
-  <meta name="description" content="Privacy policy for ZSEC Browser Community 0.3.7 and Browser Shields 0.5.2: local profiles and rules, no ZSEC history upload and no spyware verdicts.">
+  <meta name="description" content="Privacy policy for ZSEC Browser Community 0.3.8 and Browser Shields 0.5.2: local history suggestions and filtering with no ZSEC history upload.">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#07101f">
@@ -46,10 +46,10 @@
   <main id="main-content">
     <section class="hero" aria-labelledby="privacy-title">
       <div class="container narrow">
-          <p class="hero-kicker">ZSEC Browser 0.3.7 · Browser Shields 0.5.2</p>
+          <p class="hero-kicker">ZSEC Browser 0.3.8 · Browser Shields 0.5.2</p>
         <h1 id="privacy-title">Privacy should be a testable contract.</h1>
-        <p class="lede">ZSEC Browser uses a separate local profile and Browser Shields evaluates 49,505 packaged network rules, optional High-Risk Browsing and site-pause choices inside the browser. Filtering is local: the Community packages have no ZSEC analytics, advertising, account, crash-upload, cloud-reputation, spyware-verdict or remote-control endpoint.</p>
-        <p class="microcopy"><strong>Effective and last reviewed:</strong> <time datetime="2026-08-22">22 August 2026</time>. This policy covers the separately distributed unsigned ZSEC Browser Community 0.3.7 Windows package and Browser Shields Community 0.5.2 Manifest V3 package.</p>
+        <p class="lede">ZSEC Browser uses a separate local profile, bounded local bookmarks/history/settings data and local request controls. Browser Shields evaluates 49,505 packaged network rules, optional High-Risk Browsing and site-pause choices inside the browser. The Community packages have no ZSEC analytics, advertising, account, crash-upload, cloud-reputation, spyware-verdict or remote-control endpoint.</p>
+        <p class="microcopy"><strong>Effective and last reviewed:</strong> <time datetime="2026-08-22">22 August 2026</time>. This policy covers the unsigned ZSEC Browser Community 0.3.8 Windows source/package contract and the separately distributed Browser Shields Community 0.5.2 Manifest V3 package. Exact 0.3.8 artifact metadata is published only after immutable-build acceptance.</p>
       </div>
     </section>
 
@@ -64,7 +64,7 @@
             <li>The user's High-Risk Browsing on/off choice.</li>
             <li>Domain names the user explicitly pauses during normal protection.</li>
             <li>Two browser-managed High-Risk request rules when that profile is active.</li>
-            <li>Page-interface signals used for best-effort YouTube cleanup.</li>
+            <li>Exact-host player-data fields and page-interface signals used for bounded YouTube protection when enabled.</li>
           </ul>
           <p>These operations happen inside the browser. The current extension sends no report about them to TalkToAI. The High-Risk preference is one local setting; it is not a targeting assessment or infection verdict.</p>
         </article>
@@ -102,12 +102,13 @@
         <article class="panel panel-positive">
           <p class="section-label">Windows Community client</p>
           <h2 id="desktop-privacy-title">A separate local profile, with no ZSEC telemetry.</h2>
-          <p>ZSEC Browser Community 0.3.7 stores cookies, history, cache, permissions and other browser state under the user's dedicated <code>LocalAppData\TalkToAI\ZSEC Browser</code> profile. It does not reuse Chrome, Edge or Brave profiles and adds no ZSEC analytics, account, browsing-history upload or remote-control endpoint.</p>
+          <p>ZSEC Browser Community 0.3.8 stores cookies, cache, permissions and other engine state under the user's dedicated <code>LocalAppData\TalkToAI\ZSEC Browser</code> profile. A separate bounded <code>browser-data.json</code> stores bookmarks, app history and Community settings atomically for this Windows account. Repeat history is consolidated, explicitly typed addresses can influence local suggestions, and the chosen search provider is stored locally. History recording can be disabled, cleared immediately or cleared on a clean exit. ZSEC does not reuse Chrome, Edge or Brave profiles and adds no ZSEC analytics, account, history upload or remote-control endpoint.</p>
+          <p>Clearing the app-history list does not delete WebView2 cookies, cache, IndexedDB, service workers, permissions, DNS/operating-system records or logs held by sites, networks or other providers. The Journalist preset is therefore not an ephemeral or “nothing retained” mode.</p>
         </article>
         <article class="panel panel-private">
           <p class="section-label">Microsoft runtime boundary</p>
           <h2>WebView2 and SmartScreen are not ZSEC services.</h2>
-          <p>Microsoft's Evergreen WebView2 runtime supplies the engine and updates. WebView2 diagnostics and SmartScreen may send information to Microsoft under Microsoft's terms and Windows diagnostic settings; see <a href="https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/data-privacy">Microsoft's WebView2 data and privacy documentation</a>. The ZSEC Community application adds no ZSEC analytics, account, browsing-history upload or remote-control endpoint. It does not claim that all browser data is encrypted by ZMath or hidden from the engine provider.</p>
+          <p>Microsoft's Evergreen WebView2 runtime supplies the engine and updates. WebView2 diagnostics and SmartScreen may send information to Microsoft under Microsoft's terms and Windows diagnostic settings; see <a href="https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/data-privacy">Microsoft's WebView2 data and privacy documentation</a>. A selected search provider receives the query and ordinary network metadata; ZSEC does not proxy searches. The ZSEC Community application adds no ZSEC analytics, account, browsing-history upload or remote-control endpoint. It does not claim that all browser data is encrypted by ZMath or hidden from the engine or search provider.</p>
         </article>
       </div>
     </section>
@@ -133,7 +134,7 @@
           <span class="brand-mark" aria-hidden="true">Z</span>
           <span>ZSEC Browser</span>
         </a>
-        <p>Local-first browser privacy from TalkToAI. ZSEC Browser Community 0.3.7 for Windows and Browser Shields Community 0.5.2 for compatible Chromium-family browsers.</p>
+        <p>Local-first browser privacy from TalkToAI. ZSEC Browser Community 0.3.8 for Windows and Browser Shields Community 0.5.2 for compatible Chromium-family browsers.</p>
       </div>
       <div>
         <p class="footer-title">Policy</p>
@@ -155,7 +156,7 @@
     </div>
     <div class="container footer-bottom">
       <p>© 2026 TalkToAI. ZSEC Browser Community packages.</p>
-      <p>Policy version 1.3 · 22 August 2026.</p>
+      <p>Policy version 1.4 · 22 August 2026.</p>
     </div>
   </footer>
 </body>
