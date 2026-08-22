@@ -597,10 +597,32 @@ else {
 }
 
 $healthy = $reasons.Count -eq 0
+$baselineInProgress = (
+    -not $healthy -and
+    $reasons.Count -eq 1 -and
+    $reasons[0] -eq "watch session reports baselining" -and
+    $supervisorRegistrationVerified -and
+    $cliHashVerified -and
+    $runtimeHashVerified -and
+    $launcherHashVerified -and
+    $healthSchemaValid -and
+    $healthFresh -and
+    $processVerified -and
+    $base.existing_primary_protection.aggregate_good -eq $true
+)
 $base.installed = $true
 $base.healthy = $healthy
-$base.decision = $(if ($healthy) { "healthy_companion" } else { "degraded" })
-$base.reasons = $reasons
+$base.decision = $(
+    if ($healthy) { "healthy_companion" }
+    elseif ($baselineInProgress) { "baseline_in_progress" }
+    else { "degraded" }
+)
+if ($baselineInProgress) {
+    $base.reasons = [object[]]@("initial protected-folder baseline is in progress")
+}
+else {
+    $base.reasons = $reasons
+}
 $base.supervisor = [ordered]@{
     kind = $supervisorKind
     registration_verified = $supervisorRegistrationVerified

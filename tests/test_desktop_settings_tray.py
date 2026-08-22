@@ -124,6 +124,14 @@ def test_tray_menu_dispatches_ui_actions_and_updates_status(
     assert "Review-only observations" in icon.title
     controller.notify("Scan completed")
     assert icon.notifications == [("Scan completed", "ZSEC Antivirus")]
+
+    controller.set_status("Healthy\r\nIGNORE: disabled\x00")
+    assert "\r" not in icon.title
+    assert "\n" not in icon.title
+    assert "\x00" not in icon.title
+    assert "Healthy IGNORE: disabled" in icon.title
+    controller.notify("Completed\nSecond line", "ZSEC\tAlert")
+    assert icon.notifications[-1] == ("Completed Second line", "ZSEC Alert")
     controller.stop()
     assert icon.stopped
     assert not controller.active

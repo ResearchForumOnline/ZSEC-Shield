@@ -3,8 +3,21 @@
 from __future__ import annotations
 
 import threading
+import unicodedata
 from collections.abc import Callable
 from typing import Any
+
+
+def _single_line(value: str, *, maximum: int) -> str:
+    """Return bounded tray text that cannot create deceptive extra lines."""
+
+    if not isinstance(value, str):
+        raise TypeError("tray text must be a string")
+    cleaned = "".join(
+        " " if unicodedata.category(character) == "Cc" else character
+        for character in value
+    ).split()
+    return " ".join(cleaned)[:maximum].rstrip()
 
 
 class TrayController:
@@ -71,7 +84,7 @@ class TrayController:
             return False
 
     def set_status(self, value: str) -> None:
-        self._status = value[:120]
+        self._status = _single_line(value, maximum=120) or "Status unavailable"
         icon = self._icon
         if icon is not None:
             with suppress_tray_errors():
@@ -82,7 +95,9 @@ class TrayController:
         icon = self._icon
         if icon is not None:
             with suppress_tray_errors():
-                icon.notify(message[:240], title[:64])
+                safe_message = _single_line(message, maximum=240) or "Open ZSEC Antivirus."
+                safe_title = _single_line(title, maximum=64) or "ZSEC Antivirus"
+                icon.notify(safe_message, safe_title)
 
     def stop(self) -> None:
         icon = self._icon

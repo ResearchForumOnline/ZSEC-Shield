@@ -413,9 +413,18 @@ def validate_companion_status(payload: Any) -> dict[str, Any]:
     installed = _bool(root.get("installed"), "installed")
     healthy = _bool(root.get("healthy"), "healthy")
     decision = root.get("decision")
-    if decision not in {"not_installed", "degraded", "healthy_companion"}:
+    if decision not in {
+        "not_installed",
+        "baseline_in_progress",
+        "degraded",
+        "healthy_companion",
+    }:
         raise ContractError("companion decision is unknown")
-    _list(root.get("reasons"), "reasons")
+    reasons = _list(root.get("reasons"), "reasons")
+    if len(reasons) > 32:
+        raise ContractError("companion reasons exceed their bound")
+    for index, reason in enumerate(reasons):
+        _string(reason, f"reasons[{index}]", maximum=500)
     existing = _object(root.get("existing_primary_protection"), "existing_primary_protection")
     if existing.get("method") != "WscGetSecurityProviderHealth(WSC_SECURITY_PROVIDER_ANTIVIRUS)":
         raise ContractError("existing protection uses an unsupported health source")
@@ -588,6 +597,27 @@ def validate_companion_status(payload: Any) -> dict[str, Any]:
     elif decision == "degraded":
         if healthy:
             raise ContractError("degraded companion decision contradicts healthy state")
+    elif decision == "baseline_in_progress":
+        if not installed or healthy or not aggregate_good:
+            raise ContractError("baseline companion decision contradicts protection evidence")
+        if root.get("reasons") != ["initial protected-folder baseline is in progress"]:
+            raise ContractError("baseline companion reason is inconsistent")
+        supervisor = _object(root.get("supervisor"), "supervisor")
+        if not _bool(supervisor.get("registration_verified"), "supervisor.registration_verified"):
+            raise ContractError("baseline companion supervisor registration is unverified")
+        if supervisor.get("state") not in {"registered_for_logon", "registered_and_running"}:
+            raise ContractError("baseline companion supervisor state is unsupported")
+        integrity = _object(root.get("integrity"), "integrity")
+        for field in ("cli_hash_verified", "runtime_hash_verified", "launcher_hash_verified"):
+            if not _bool(integrity.get(field), f"integrity.{field}"):
+                raise ContractError(f"baseline companion lacks {field}")
+        health = _object(root.get("health"), "health")
+        for field in ("schema_valid", "fresh", "process_verified"):
+            if not _bool(health.get(field), f"health.{field}"):
+                raise ContractError(f"baseline companion lacks {field}")
+        last_record = _object(health.get("last_record"), "health.last_record")
+        if last_record.get("operational_state") != "baselining":
+            raise ContractError("baseline companion health does not report baselining")
     else:
         if not installed or not healthy or not aggregate_good:
             raise ContractError("healthy companion decision lacks required protection evidence")
@@ -680,7 +710,17 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
             detail="Existing Windows antivirus remains required.",
             accent="amber",
         )
-    reasons = "; ".join(str(value) for value in payload["reasons"][:3])
+    if decision == "baseline_in_progress":
+        return CompanionPresentation(
+            state="baselining",
+            headline="Automatic protection initialising",
+            detail=(
+                "Live change monitoring is active while the first protected-folder "
+                "inventory completes."
+            ),
+            accent="cyan",
+        )
+    reasons = "; ".join(payload["reasons"][:3])
     return CompanionPresentation(
         state="degraded",
         headline="Automatic companion degraded",

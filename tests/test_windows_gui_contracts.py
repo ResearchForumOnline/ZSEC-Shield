@@ -195,6 +195,19 @@ def valid_healthy_companion() -> dict[str, object]:
     return value
 
 
+def valid_baselining_companion() -> dict[str, object]:
+    value = valid_healthy_companion()
+    value.update(
+        {
+            "healthy": False,
+            "decision": "baseline_in_progress",
+            "reasons": ["initial protected-folder baseline is in progress"],
+        }
+    )
+    value["health"]["last_record"] = {"operational_state": "baselining"}
+    return value
+
+
 def valid_recovery_drill() -> dict[str, object]:
     return {
         "schema": "zsec.antivirus.recovery-drill.v1",
@@ -345,6 +358,16 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     healthy = validate_companion_status(valid_healthy_companion())
     assert companion_presentation(healthy).state == "healthy"
 
+    baselining = validate_companion_status(valid_baselining_companion())
+    baseline_view = companion_presentation(baselining)
+    assert baseline_view.state == "baselining"
+    assert baseline_view.accent == "cyan"
+
+    contradictory_baseline = valid_baselining_companion()
+    contradictory_baseline["integrity"]["runtime_hash_verified"] = False
+    with pytest.raises(ContractError, match="baseline companion"):
+        validate_companion_status(contradictory_baseline)
+
     for field, replacement in (
         ("installed", False),
         ("healthy", False),
@@ -379,6 +402,23 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     degraded.update({"decision": "degraded", "installed": True, "healthy": True})
     with pytest.raises(ContractError, match="degraded"):
         validate_companion_status(degraded)
+
+
+def test_companion_reasons_are_bounded_strings_before_ui_rendering() -> None:
+    wrong_type = valid_companion()
+    wrong_type["reasons"] = [{"headline": "forged"}]
+    with pytest.raises(ContractError, match=r"reasons\[0\]"):
+        validate_companion_status(wrong_type)
+
+    oversized = valid_companion()
+    oversized["reasons"] = ["x"] * 33
+    with pytest.raises(ContractError, match="exceed their bound"):
+        validate_companion_status(oversized)
+
+    too_long = valid_companion()
+    too_long["reasons"] = ["x" * 501]
+    with pytest.raises(ContractError, match=r"reasons\[0\]"):
+        validate_companion_status(too_long)
 
 
 def test_watch_heartbeat_contract_exposes_incomplete_state() -> None:

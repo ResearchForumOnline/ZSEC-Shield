@@ -59,6 +59,7 @@ class ModernStatusCard(tk.Canvas):
     ) -> None:
         super().__init__(
             parent,
+            width=240,
             height=124,
             bg=BACKGROUND,
             highlightthickness=0,
@@ -395,7 +396,7 @@ class ZsecDesktop:
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
         ttk.Label(
             title_row,
-            text="COMMUNITY 0.3.14",
+            text="COMMUNITY 0.3.17",
             style="Subtitle.TLabel",
             foreground=AMBER,
         ).pack(
@@ -546,7 +547,7 @@ class ZsecDesktop:
         self.overview_cards_frame = ttk.Frame(self.overview_tab)
         self.overview_cards_frame.pack(fill=tk.X)
         self.scan_card = self._overview_card(self.overview_cards_frame, "Last scan")
-        self.feed_card = self._overview_card(self.overview_cards_frame, "Signed rule feed")
+        self.feed_card = self._overview_card(self.overview_cards_frame, "Security intelligence")
         self.quarantine_card = self._overview_card(
             self.overview_cards_frame, "Encrypted quarantine"
         )
@@ -565,48 +566,66 @@ class ZsecDesktop:
         ]
         self.overview_card_columns = 0
         self.overview_cards_frame.bind("<Configure>", self._layout_overview_cards)
+        self.overview_tab.bind("<Map>", self._layout_overview_cards)
         self.root.after_idle(self._layout_overview_cards)
         actions = self._panel(self.overview_tab)
         actions.pack(fill=tk.X, pady=(12, 0))
         ttk.Label(actions, text="Quick actions", style="Section.TLabel").pack(anchor=tk.W)
         row = ttk.Frame(actions, style="Surface.TFrame")
         row.pack(fill=tk.X, pady=(12, 0))
-        ttk.Button(
+        self.overview_action_buttons: list[ttk.Button] = []
+        refresh_button = ttk.Button(
             row, text="Refresh evidence", style="Primary.TButton", command=self.refresh_all
-        ).pack(side=tk.LEFT)
+        )
+        self.overview_action_buttons.append(refresh_button)
         self.scan_protected_button = ttk.Button(
             row,
             text="Scan protected folders now",
             command=self._scan_protected_folders,
             state=tk.DISABLED,
         )
-        self.scan_protected_button.pack(side=tk.LEFT, padx=8)
-        ttk.Button(
+        self.overview_action_buttons.append(self.scan_protected_button)
+        details_button = ttk.Button(
             row,
             text="Protection details",
             command=lambda: self.tabs.select(self.monitor_tab),  # type: ignore[no-untyped-call]
-        ).pack(side=tk.LEFT, padx=(0, 8))
-        ttk.Button(
+        )
+        self.overview_action_buttons.append(details_button)
+        assurance_button = ttk.Button(
             row,
             text="Protection assurance",
             command=lambda: self.tabs.select(  # type: ignore[no-untyped-call]
                 self.readiness_tab
             ),
-        ).pack(side=tk.LEFT)
+        )
+        self.overview_action_buttons.append(assurance_button)
+        self.overview_actions_row = row
+        self.overview_action_columns = 0
+        row.bind("<Configure>", self._layout_overview_actions)
+        self.overview_tab.bind("<Map>", self._layout_overview_actions, add="+")
+        self.root.after_idle(self._layout_overview_actions)
 
     def _overview_card(self, parent: ttk.Frame, title: str) -> ModernStatusCard:
         return ModernStatusCard(parent, title, lambda: not self.reduce_motion.get())
 
     def _layout_overview_cards(self, event: tk.Event[tk.Misc] | None = None) -> None:
-        width = int(event.width) if event is not None else self.overview_cards_frame.winfo_width()
+        del event
+        width = max(
+            self.overview_cards_frame.winfo_width(),
+            self.overview_tab.winfo_width() - 32,
+        )
         columns = 4 if width >= 1040 else 2 if width >= 520 else 1
         if columns == self.overview_card_columns:
             return
         self.overview_card_columns = columns
         for column in range(4):
-            self.overview_cards_frame.columnconfigure(column, weight=0)
+            self.overview_cards_frame.columnconfigure(
+                column, weight=0, minsize=0, uniform=""
+            )
         for column in range(columns):
-            self.overview_cards_frame.columnconfigure(column, weight=1, uniform="overview")
+            self.overview_cards_frame.columnconfigure(
+                column, weight=1, minsize=240, uniform="overview"
+            )
         for index, card in enumerate(self.overview_cards):
             card.grid_forget()
             row, column = divmod(index, columns)
@@ -616,6 +635,35 @@ class ZsecDesktop:
                 sticky="nsew",
                 padx=(0 if column == 0 else 6, 0 if column == columns - 1 else 6),
                 pady=(0 if row == 0 else 6, 6),
+            )
+
+    def _layout_overview_actions(self, event: tk.Event[tk.Misc] | None = None) -> None:
+        del event
+        width = max(
+            self.overview_actions_row.winfo_width(),
+            self.overview_tab.winfo_width() - 68,
+        )
+        columns = 4 if width >= 780 else 2 if width >= 390 else 1
+        if columns == self.overview_action_columns:
+            return
+        self.overview_action_columns = columns
+        for column in range(4):
+            self.overview_actions_row.columnconfigure(
+                column, weight=0, minsize=0, uniform=""
+            )
+        for column in range(columns):
+            self.overview_actions_row.columnconfigure(
+                column, weight=1, minsize=180, uniform="overview-actions"
+            )
+        for index, button in enumerate(self.overview_action_buttons):
+            button.grid_forget()
+            row, column = divmod(index, columns)
+            button.grid(
+                row=row,
+                column=column,
+                sticky="ew",
+                padx=(0 if column == 0 else 4, 0 if column == columns - 1 else 4),
+                pady=(0 if row == 0 else 8, 0),
             )
 
     def _build_scan(self) -> None:
@@ -1059,7 +1107,7 @@ class ZsecDesktop:
         self.yubikey_status = ttk.Label(
             panel,
             text=(
-                "Hardware-key recovery is not enabled in Community 0.3.14. When "
+                "Hardware-key recovery is not enabled in Community 0.3.17. When "
                 "quarantine is explicitly enabled, encryption remains automatic, "
                 "authenticated and device-bound."
             ),
@@ -1423,7 +1471,25 @@ class ZsecDesktop:
         feed_colour = (
             GREEN if feed["state"] == "valid" else AMBER if feed["state"] == "absent" else RED
         )
-        self.feed_card.set_value(feed_text, feed_colour)
+        update = status.get("update_status")
+        update_state = (
+            str(update.get("state") or "unknown").strip().lower()
+            if isinstance(update, dict)
+            else "unknown"
+        )
+        if update_state in {"current", "updated", "healthy"}:
+            intelligence_text = "Current · signed advisory catalog"
+            intelligence_colour = GREEN
+        elif update_state in {"checking", "scheduled"}:
+            intelligence_text = "Checking signed advisory catalog"
+            intelligence_colour = CYAN
+        elif update_state in {"never_checked", "unknown"}:
+            intelligence_text = "Update evidence unavailable"
+            intelligence_colour = AMBER
+        else:
+            intelligence_text = "Signed advisory update needs attention"
+            intelligence_colour = RED
+        self.feed_card.set_value(intelligence_text, intelligence_colour)
         self.quarantine_card.set_value(
             (
                 f"{status['quarantine_count']} recovery "

@@ -155,7 +155,7 @@ def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
     assert "Desktop Preview" not in app
     assert "DESKTOP PREVIEW" not in app
     assert 'self.root.title("ZSEC Antivirus")' in app
-    assert 'text="COMMUNITY 0.3.14"' in app
+    assert 'text="COMMUNITY 0.3.17"' in app
 
 
 def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None:
@@ -173,9 +173,17 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     assert "lambda: not self.reduce_motion.get()" in app
     assert "width >= 1040" in app
     assert "width >= 520" in app
+    assert "width=240" in app
+    assert 'minsize=240, uniform="overview"' in app
+    assert "_layout_overview_actions" in app
+    assert 'minsize=180, uniform="overview-actions"' in app
+    assert 'self.overview_tab.bind("<Map>", self._layout_overview_cards)' in app
     assert "TrayController" in app
     assert "_tray_scan_protected_folders" in app
     assert "Scan protected folders now" in app
+    assert '"Security intelligence"' in app
+    assert '"Current · signed advisory catalog"' in app
+    assert '"Signed advisory update needs attention"' in app
     assert "_window_close" in app
     assert "Start ZSEC Antivirus in the notification area" in app
 
