@@ -756,13 +756,20 @@ class WatchEngineTests(unittest.TestCase):
 
     def test_periodic_heartbeat_proves_the_backend_loop_is_alive(self) -> None:
         records: list[dict[str, Any]] = []
+        now = [0.0]
+
+        def advance_clock(seconds: float) -> None:
+            now[0] += seconds
+
         watcher = ForegroundProtectionWatcher(
             Scanner(()),
             self._config(heartbeat_seconds=0.1),
             on_record=records.append,
             polling_observer_factory=FakeObserver,
+            clock=lambda: now[0],
         )
-        summary = watcher.run(duration_seconds=0.25)
+        with patch("zsec_shield.watcher.time.sleep", side_effect=advance_clock):
+            summary = watcher.run(duration_seconds=0.25)
         heartbeats = [record for record in records if record["event"] == "health_heartbeat"]
         self.assertFalse(summary.operational_incomplete)
         self.assertGreaterEqual(len(heartbeats), 1)
