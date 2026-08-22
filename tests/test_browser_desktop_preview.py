@@ -162,6 +162,8 @@ def test_desktop_tabs_popups_and_modern_controls_are_wired() -> None:
     assert "MaximumTabs = 32" in app
     assert "DrawMode = TabDrawMode.OwnerDrawFixed" in app
     assert "RoundedSurface" in app
+    assert "ControlStyles.SupportsTransparentBackColor" in app
+    assert 'WriteStartupStage("runtime_evidence_ready")' in app
     assert "Profile: isolated" not in app
     assert "ExpectedMicrosoftSystemExtensions" in app
     assert '"Microsoft Clipboard Extension"' in app

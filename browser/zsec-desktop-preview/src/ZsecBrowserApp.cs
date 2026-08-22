@@ -179,6 +179,7 @@ namespace TalkToAI.ZsecBrowserPreview
 
         internal ProtectionPulse()
         {
+            SetStyle(ControlStyles.SupportsTransparentBackColor, true);
             DoubleBuffered = true;
             Size = new Size(34, 34);
             BackColor = Color.Transparent;
@@ -496,6 +497,7 @@ namespace TalkToAI.ZsecBrowserPreview
             Load += InitializeBrowserAsync;
             FormClosed += DisposeBrowserViews;
             KeyDown += BrowserKeyDown;
+            WriteStartupStage("window_constructed");
         }
 
         private WebView2 ActiveView
@@ -513,6 +515,7 @@ namespace TalkToAI.ZsecBrowserPreview
         protected override void OnHandleCreated(EventArgs args)
         {
             base.OnHandleCreated(args);
+            WriteStartupStage("window_handle_created");
             try
             {
                 int darkMode = 1;
@@ -623,6 +626,7 @@ namespace TalkToAI.ZsecBrowserPreview
         {
             try
             {
+                WriteStartupStage("initialization_started");
                 Directory.CreateDirectory(productRoot);
                 Directory.CreateDirectory(profileRoot);
                 RejectReparseDirectory(productRoot);
@@ -635,9 +639,11 @@ namespace TalkToAI.ZsecBrowserPreview
                 options.EnableTrackingPrevention = true;
                 options.AreBrowserExtensionsEnabled = true;
                 environment = await CoreWebView2Environment.CreateAsync(null, profileRoot, options);
+                WriteStartupStage("chromium_environment_ready");
                 string runtimeVersion = CoreWebView2Environment.GetAvailableBrowserVersionString();
                 runtimeStatus.Text = "Microsoft Chromium runtime " + runtimeVersion;
                 await CreateTab(initialDestination, true);
+                WriteStartupStage("protected_tab_ready");
                 shieldStatus.Text = "  FILTERING: STANDARD  ";
                 shieldStatus.BackColor = Accent;
                 environmentReady.TrySetResult(true);
@@ -647,9 +653,11 @@ namespace TalkToAI.ZsecBrowserPreview
                 }
                 ClearStartupFailureEvidence();
                 WriteRuntimeEvidence(runtimeVersion);
+                WriteStartupStage("runtime_evidence_ready");
             }
             catch (Exception exception)
             {
+                WriteStartupStage("initialization_failed:" + exception.GetType().Name);
                 environmentReady.TrySetException(exception);
                 WriteStartupFailureEvidence(exception);
                 runtimeStatus.Text = "Protection unavailable";
@@ -1444,6 +1452,31 @@ namespace TalkToAI.ZsecBrowserPreview
             finally
             {
                 if (File.Exists(temporary)) File.Delete(temporary);
+            }
+        }
+
+        private void WriteStartupStage(string stage)
+        {
+            try
+            {
+                Directory.CreateDirectory(productRoot);
+                string path = Path.Combine(productRoot, "startup-state.txt");
+                string value = String.Join(
+                    Environment.NewLine,
+                    new[]
+                    {
+                        "schema=zsec.browser.startup-state.v1",
+                        "version=" + Program.ProductVersion,
+                        "stage=" + stage.Replace("\r", " ").Replace("\n", " "),
+                        "process_id=" + Process.GetCurrentProcess().Id.ToString(),
+                        "checked_at=" + DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                    }
+                ) + Environment.NewLine;
+                File.WriteAllText(path, value, new UTF8Encoding(false));
+            }
+            catch
+            {
+                // Startup diagnostics must never become a startup dependency.
             }
         }
 
