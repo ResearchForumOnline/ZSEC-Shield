@@ -12,7 +12,7 @@ from unittest.mock import patch
 from watchdog.events import FileCreatedEvent, FileMovedEvent
 
 from zsec_shield.errors import WatchError
-from zsec_shield.models import Rule
+from zsec_shield.models import Rule, ScanIssue, ScanResult
 from zsec_shield.scanner import Scanner, ScannerConfig
 from zsec_shield.watcher import (
     DebouncedPathQueue,
@@ -686,6 +686,42 @@ class WatchEngineTests(unittest.TestCase):
         self.assertEqual("no_configured_rule_matches", summary.outcome)
         self.assertEqual(1, summary.stats.events_superseded)
         self.assertIn("event_superseded", [record["event"] for record in records])
+
+    def test_path_vanishing_inside_scan_is_superseded_but_other_errors_stay_sticky(self) -> None:
+        records: list[dict[str, Any]] = []
+        scanner = Scanner(())
+        watcher = ForegroundProtectionWatcher(
+            scanner,
+            self._config(),
+            on_record=records.append,
+            polling_observer_factory=FakeObserver,
+        )
+        vanished = self.scan_root / "vanished-during-open.bin"
+        vanished_result = ScanResult(
+            started_at="2026-08-22T00:00:00Z",
+            completed_at="2026-08-22T00:00:01Z",
+            roots=[str(vanished)],
+            issues=[ScanIssue(str(vanished), "file_open_failed", "[WinError 2] missing")],
+        )
+        with patch.object(scanner, "scan", return_value=vanished_result):
+            reconciled = watcher._scan_paths([vanished], ["created"])
+        self.assertEqual([], reconciled.issues)
+        self.assertFalse(watcher._operational_incomplete)
+        self.assertEqual(1, watcher._stats.events_superseded)
+        self.assertEqual("path_vanished_during_scan", records[-2]["reason"])
+
+        retained = self.scan_root / "retained.bin"
+        retained.write_bytes(b"ordinary")
+        permission_result = ScanResult(
+            started_at="2026-08-22T00:00:02Z",
+            completed_at="2026-08-22T00:00:03Z",
+            roots=[str(retained)],
+            issues=[ScanIssue(str(retained), "file_open_failed", "Permission denied")],
+        )
+        with patch.object(scanner, "scan", return_value=permission_result):
+            reconciled = watcher._scan_paths([retained], ["modified"])
+        self.assertEqual(1, len(reconciled.issues))
+        self.assertTrue(watcher._operational_incomplete)
 
     def test_real_polling_backend_detects_file_created_after_baseline(self) -> None:
         target = self.scan_root / "arriving.bin"

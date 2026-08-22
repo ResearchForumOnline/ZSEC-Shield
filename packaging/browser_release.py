@@ -33,6 +33,7 @@ INCLUDE = (
     "rules/link-cleaning.json",
     "rules/privacy.json",
     "src/policy.js",
+    "src/popup-state.js",
     "src/runtime-health.js",
     "src/settings-transaction.js",
     "src/high-risk-browsing.js",

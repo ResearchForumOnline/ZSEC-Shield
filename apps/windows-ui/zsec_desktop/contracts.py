@@ -101,7 +101,7 @@ def validate_status(payload: Any) -> dict[str, Any]:
     if root.get("scanner_mode") != "on-demand":
         raise ContractError("status scanner_mode is inconsistent with this desktop build")
     worker = _object(root.get("content_worker"), "content_worker")
-    if worker.get("mode") != "bounded_out_of_process_exact_rules":
+    if worker.get("mode") != "bounded_out_of_process_rules_and_review_providers":
         raise ContractError("status content_worker mode is unsupported")
     if _bool(worker.get("path_disclosure"), "content_worker.path_disclosure"):
         raise ContractError("content worker unexpectedly receives a source path")
@@ -120,6 +120,7 @@ def validate_status(payload: Any) -> dict[str, Any]:
     if _bool(root.get("real_time_protection"), "real_time_protection"):
         raise ContractError("desktop status unexpectedly asserts real-time protection")
     findings = _integer(root.get("findings"), "findings")
+    observations = _integer(root.get("observations"), "observations")
     errors = _integer(root.get("last_scan_errors"), "last_scan_errors")
     diagnostic = _object(root.get("last_scan_diagnostic"), "last_scan_diagnostic")
     available = _bool(diagnostic.get("available"), "last_scan_diagnostic.available")
@@ -134,15 +135,22 @@ def validate_status(payload: Any) -> dict[str, Any]:
         None,
         "no_configured_rule_matches",
         "configured_rule_matches_detected",
+        "review_observations",
         "incomplete",
     }:
         raise ContractError("last_scan_outcome is unknown")
     if available != (last_scan is not None):
         raise ContractError("last-scan availability and timestamp are inconsistent")
-    if outcome == "no_configured_rule_matches" and (findings != 0 or errors != 0):
+    if outcome == "no_configured_rule_matches" and (
+        findings != 0 or observations != 0 or errors != 0
+    ):
         raise ContractError("no-match outcome has inconsistent counters")
     if outcome == "configured_rule_matches_detected" and findings == 0:
         raise ContractError("finding outcome has a zero finding counter")
+    if outcome == "review_observations" and (
+        observations == 0 or findings != 0 or errors != 0
+    ):
+        raise ContractError("review-observation outcome has inconsistent counters")
     if diagnostic_error is not None and available:
         raise ContractError("validated last-scan state cannot also have a diagnostic error")
     feed = _object(root.get("feed"), "feed")
@@ -183,6 +191,16 @@ def status_presentation(status: Mapping[str, Any]) -> ScanPresentation:
             "Configured rules matched",
             f"{status['findings']} file finding(s) require review.",
             "#ef4444",
+        )
+    if outcome == "review_observations":
+        return ScanPresentation(
+            "review",
+            "Review-only signals found",
+            (
+                f"{status['observations']} conservative user-mode observation(s); "
+                "none authorized automatic quarantine."
+            ),
+            "#f59e0b",
         )
     if outcome == "no_configured_rule_matches":
         return ScanPresentation(
@@ -310,14 +328,35 @@ def validate_scan_report(payload: Any) -> dict[str, Any]:
     if root.get("outcome") not in {
         "no_configured_rule_matches",
         "configured_rule_matches_detected",
+        "review_observations",
         "incomplete",
     }:
         raise ContractError("scan outcome is unknown")
     policy = _object(root.get("policy"), "policy")
     if _bool(policy.get("real_time_protection"), "policy.real_time_protection"):
         raise ContractError("on-demand report unexpectedly asserts real-time protection")
+    if "heuristic_observations_quarantine_eligible" in policy and _bool(
+        policy["heuristic_observations_quarantine_eligible"],
+        "policy.heuristic_observations_quarantine_eligible",
+    ):
+        raise ContractError("review providers unexpectedly authorize quarantine")
     scan = _object(root.get("scan"), "scan")
     _list(scan.get("findings"), "scan.findings")
+    observations = _list(scan.get("observations"), "scan.observations")
+    for index, observation_value in enumerate(observations):
+        observation = _object(observation_value, f"scan.observations[{index}]")
+        _string(observation.get("path"), f"scan.observations[{index}].path", maximum=32768)
+        _string(observation.get("provider"), f"scan.observations[{index}].provider", maximum=40)
+        _string(observation.get("category"), f"scan.observations[{index}].category", maximum=80)
+        if observation.get("severity") not in {"info", "low", "medium", "high", "critical"}:
+            raise ContractError(f"scan.observations[{index}].severity is invalid")
+        _string(observation.get("summary"), f"scan.observations[{index}].summary", maximum=300)
+        _object(observation.get("evidence"), f"scan.observations[{index}].evidence")
+        if _bool(
+            observation.get("quarantine_eligible"),
+            f"scan.observations[{index}].quarantine_eligible",
+        ):
+            raise ContractError("review-only observation cannot authorize quarantine")
     _list(scan.get("issues"), "scan.issues")
     _object(scan.get("stats"), "scan.stats")
     _list(root.get("quarantine"), "quarantine")

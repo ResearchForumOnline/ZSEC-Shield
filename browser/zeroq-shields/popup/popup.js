@@ -1,3 +1,9 @@
+import {
+  UNCHECKED_HEALTH,
+  healthPresentation,
+  normalizeContextDomain
+} from "../src/popup-state.js";
+
 const protection = document.querySelector("#protection");
 const youtube = document.querySelector("#youtube");
 const highRisk = document.querySelector("#high-risk");
@@ -18,15 +24,20 @@ async function send(payload) {
 }
 
 function showError(error) {
+  protection.disabled = true;
+  highRisk.disabled = true;
+  youtube.disabled = true;
+  pauseSite.disabled = true;
   message.textContent = error instanceof Error ? error.message : "The setting could not be changed.";
 }
 
-function apply(settings, sitePaused = pauseSite.checked, health = { ok: true }) {
+function apply(settings, sitePaused = pauseSite.checked, health = UNCHECKED_HEALTH) {
   protection.checked = settings.protectionEnabled;
   highRisk.checked = settings.highRiskMode;
   youtube.checked = settings.youtubeCleanup;
   pauseSite.checked = sitePaused;
-  const unavailable = health?.ok === false;
+  const presentation = healthPresentation(settings, health);
+  const unavailable = presentation.unavailable;
   protection.disabled = unavailable;
   highRisk.disabled = unavailable || !settings.protectionEnabled;
   youtube.disabled = unavailable;
@@ -34,30 +45,15 @@ function apply(settings, sitePaused = pauseSite.checked, health = { ok: true }) 
   domainLabel.textContent = settings.highRiskMode && settings.protectionEnabled
     ? "Unavailable while High-Risk Browsing is active"
     : currentDomain || "Unavailable on this page";
-  status.textContent = unavailable
-    ? "Filtering state unavailable"
-    : settings.protectionEnabled && settings.highRiskMode
-      ? "High-Risk mode is on"
-      : settings.protectionEnabled
-        ? "ZSEC rules are on"
-        : "ZSEC rules are off";
-  const details = health?.details;
-  coverage.textContent = unavailable
-    ? "Coverage verification did not complete"
-    : details?.filteringMode === "full"
-      ? `${details.packagedStaticRuleCount.toLocaleString()} packaged rules · ${details.regexRulesVerified} regex checks passed`
-      : "Filtering is intentionally paused";
-  if (unavailable) {
-    message.textContent = health.diagnostic
-      ? `${health.error || "Extension initialization failed"} (${health.diagnostic})`
-      : health.error || "Extension initialization failed";
-  } else {
-    message.textContent = "";
-  }
+  status.textContent = presentation.status;
+  coverage.textContent = presentation.coverage;
+  message.textContent = presentation.message;
 }
 
 async function initialise() {
-  const contextualSite = tabSurface ? pageParameters.get("site") : null;
+  const contextualSite = tabSurface
+    ? normalizeContextDomain(pageParameters.get("site"))
+    : null;
   const [tab] = contextualSite ? [] : await chrome.tabs.query({ active: true, currentWindow: true });
   const response = await send({
     type: "getStatus",
@@ -65,35 +61,44 @@ async function initialise() {
   });
   currentDomain = response.domain;
   apply(response.settings, response.sitePaused, response.health);
+  return response;
+}
+
+async function recoverAfterSettingFailure(error) {
+  const originalMessage = error instanceof Error ? error.message : "The setting could not be changed.";
+  showError(error);
+  try {
+    const response = await initialise();
+    if (response.health?.ok === true) message.textContent = originalMessage;
+  } catch (verificationError) {
+    showError(verificationError);
+  }
 }
 
 protection.addEventListener("change", async () => {
   try {
     const response = await send({ type: "setProtection", enabled: protection.checked });
-    apply(response.settings);
+    apply(response.settings, pauseSite.checked, response.health);
   } catch (error) {
-    protection.checked = !protection.checked;
-    showError(error);
+    await recoverAfterSettingFailure(error);
   }
 });
 
 highRisk.addEventListener("change", async () => {
   try {
     const response = await send({ type: "setHighRiskMode", enabled: highRisk.checked });
-    apply(response.settings);
+    apply(response.settings, pauseSite.checked, response.health);
   } catch (error) {
-    highRisk.checked = !highRisk.checked;
-    showError(error);
+    await recoverAfterSettingFailure(error);
   }
 });
 
 youtube.addEventListener("change", async () => {
   try {
     const response = await send({ type: "setYoutubeCleanup", enabled: youtube.checked });
-    apply(response.settings);
+    apply(response.settings, pauseSite.checked, response.health);
   } catch (error) {
-    youtube.checked = !youtube.checked;
-    showError(error);
+    await recoverAfterSettingFailure(error);
   }
 });
 
@@ -104,10 +109,13 @@ pauseSite.addEventListener("change", async () => {
       domain: currentDomain,
       paused: pauseSite.checked
     });
-    apply(response.settings, response.settings.pausedSites.includes(currentDomain));
+    apply(
+      response.settings,
+      response.settings.pausedSites.includes(currentDomain),
+      response.health
+    );
   } catch (error) {
-    pauseSite.checked = !pauseSite.checked;
-    showError(error);
+    await recoverAfterSettingFailure(error);
   }
 });
 

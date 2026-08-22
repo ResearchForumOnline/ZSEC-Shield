@@ -39,8 +39,22 @@ an **unsigned direct Community build**, not a publisher-signed Store installer.
   filesystem, process, registry, PowerShell, antivirus or application bridge.
 - A visible New tab control, Ctrl+T, tab close controls, true WebView2 popup
   binding, transactional failure cleanup and a 32-tab resource bound.
+- A Brave-style native main menu, bookmark star, local bookmarks bar and
+  bookmark manager. Import and export use standard Netscape bookmark HTML;
+  only bounded HTTP/HTTPS entries are accepted.
+- Local per-user browsing history with a history window, explicit clear,
+  optional recording and optional clear-on-clean-exit. ZSEC adds no cloud
+  history or bookmark sync.
+- A native notification-area lifecycle: minimize-to-tray is enabled by
+  default, the close button exits by default, optional close-to-tray is
+  explicit, and the tray menu always exposes a clean Exit command.
+- A seven-category native settings surface for privacy, permissions, Shields,
+  startup, appearance, downloads and default behavior. Unsupported behavior is
+  labelled read-only rather than represented by non-functional switches.
+- Keyboard routes for bookmarks, history, settings, menu, tab selection and
+  navigation, with accessible names on primary controls.
 - Non-web schemes are rejected; remote debugging and developer tools are off.
-- The UI labels the product as `Community 0.3.6` and exposes the exact runtime
+- The UI labels the product as `Community 0.3.7` and exposes the exact runtime
   and policy boundary in its About dialog.
 
 The YouTube UI assist hides selected known promotional slots and activates a
@@ -48,6 +62,31 @@ visible skip control when available. It does not rewrite video playback and does
 not prove complete or permanent YouTube ad blocking. The application is
 also not antivirus and cannot guarantee protection from every browser-engine,
 zero-click, Pegasus-class or other exploit.
+
+## Local browser data and settings
+
+Bookmarks, history and Community shell settings are stored as bounded JSON at
+`%LOCALAPPDATA%\TalkToAI\ZSEC Browser\browser-data.json`. The write is atomic,
+reparse-point roots/files are refused, bookmark and history counts are bounded,
+and stored navigation targets are restricted to HTTP/HTTPS. This file contains
+browsing metadata, not passwords or encryption keys. The WebView2 profile
+remains a separate Microsoft-runtime data store under `User Data`.
+
+Implemented shortcuts:
+
+- `Ctrl+T`, `Ctrl+W`, `Ctrl+L`/`F6`, `Ctrl+R`, `Alt+Left`, `Alt+Right`;
+- `Ctrl+D` bookmark current page;
+- `Ctrl+Shift+B` toggle bookmarks bar;
+- `Ctrl+Shift+O` bookmark manager;
+- `Ctrl+H` history and `Ctrl+Shift+Delete` clear history;
+- `Ctrl+,` settings and `Alt+F` main menu;
+- `Ctrl+Tab` / `Ctrl+Shift+Tab` select the next/previous tab.
+
+Permissions remain deny-by-default and do not currently support per-site
+exceptions. Dark is the only implemented Community shell theme. Default-browser
+registration is not implemented and the installer does not change Windows
+defaults. The native strict navigation policy and the extension High-Risk mode
+are separate, truthfully labelled controls.
 
 ## Install the Community package
 

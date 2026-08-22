@@ -10,7 +10,10 @@ import {
 } from "../src/high-risk-browsing.js";
 import {
   EXPECTED_RULESET_IDS,
-  PACKAGED_STATIC_RULE_COUNT
+  PACKAGED_STATIC_RULE_COUNT,
+  REQUIRED_REGEX_RULES,
+  RUNTIME_HEALTH_SCHEMA,
+  RUNTIME_POLICY_REVISION
 } from "../src/runtime-health.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -25,6 +28,8 @@ const easyListProvenance = JSON.parse(await readFile(join(root, "third_party", "
 const easyListSource = await readFile(join(root, "third_party", "easylist-20260817.txt"));
 const popup = await readFile(join(root, "popup", "index.html"), "utf8");
 const popupScript = await readFile(join(root, "popup", "popup.js"), "utf8");
+const popupState = await readFile(join(root, "src", "popup-state.js"), "utf8");
+const runtimeHealth = await readFile(join(root, "src", "runtime-health.js"), "utf8");
 const serviceWorker = await readFile(join(root, "src", "service-worker.js"), "utf8");
 const youtubeCosmeticRules = await readFile(join(root, "src", "youtube-cosmetic-rules.js"), "utf8");
 const youtubeCleanup = await readFile(join(root, "src", "youtube-cleanup.js"), "utf8");
@@ -87,21 +92,42 @@ if (linkRules.some((rule) => rule.action?.type !== "redirect")) throw new Error(
 if (linkRules.some((rule) => rule.condition?.resourceTypes?.join() !== "main_frame")) throw new Error("Link cleaning must be limited to top-level navigation");
 if (linkRules.some((rule) => !rule.action?.redirect?.transform?.queryTransform?.removeParams?.length)) throw new Error("Link rules must only remove declared parameters");
 if (PACKAGED_STATIC_RULE_COUNT !== totalRules) throw new Error("Runtime-health rule count is stale");
-if (!popupScript.includes("details.packagedStaticRuleCount.toLocaleString()")) throw new Error("Popup runtime coverage count is missing");
+if (!popupState.includes('details.packagedStaticRuleCount.toLocaleString("en-GB")')) throw new Error("Popup runtime coverage count is missing");
+if (!popupState.includes("health?.ok !== true")) throw new Error("Popup health must fail closed unless explicitly verified");
+if (!popup.includes('<p id="status-title" class="status">Verifying local filtering…</p>')) throw new Error("Popup initial health wording is not fail closed");
+for (const id of ["protection", "high-risk", "youtube"]) {
+  if (!popup.includes(`<input id="${id}" type="checkbox" disabled>`)) throw new Error(`Popup ${id} control is enabled before verification`);
+}
 if (!popup.includes("ZSEC Browser") || popup.includes("ZeroQ Shields")) throw new Error("Popup branding is stale");
 if (!popup.includes("https://talktoai.org/zero-browser/privacy/")) throw new Error("Privacy URL missing");
 if (!serviceWorker.includes("runtimeHealth")) throw new Error("Runtime health reporting missing");
 if (serviceWorker.includes(".catch(() => undefined)")) throw new Error("Initialization errors are hidden");
 if (EXPECTED_RULESET_IDS.join() !== resources.map((resource) => resource.id).join()) throw new Error("Runtime ruleset identity is stale");
-if (!serviceWorker.includes("verifyDnrRuntime(chrome, candidate.protectionEnabled, expectedDynamicRuleIds)")) throw new Error("DNR runtime verification is not enforced");
-if (!serviceWorker.includes("expectedDynamicRuleIds")) throw new Error("Dynamic rule identity verification is missing");
-if (!serviceWorker.includes("buildHighRiskRulesForSettings(normalized)")) throw new Error("High-risk rules are not gated by normalized local settings");
-if (!serviceWorker.includes("buildPauseRules(normalized.protectionEnabled ? normalized.pausedSites : [])")) throw new Error("Pause rules are not gated by the master protection control");
+if (!serviceWorker.includes("dynamicRulesFor(candidate)")) throw new Error("Exact dynamic-rule verification is not enforced");
+if (!serviceWorker.includes("enqueueOperation(respond)")) throw new Error("Settings operations are not serialized");
+if (!serviceWorker.includes("health: result.health")) throw new Error("Settings responses omit committed runtime health");
+if (!popupScript.includes("recoverAfterSettingFailure")) throw new Error("Popup does not reverify after a failed settings transaction");
+if (!runtimeHealth.includes("testMatchOutcome")) throw new Error("Representative DNR match evidence is missing");
+if (RUNTIME_HEALTH_SCHEMA !== "zsec.browser-shields.runtime-health.v3") throw new Error("Runtime health schema is stale");
+if (!RUNTIME_POLICY_REVISION.includes(easyListLock.ruleset.output_sha256)) throw new Error("Runtime health is not bound to the pinned EasyList output");
+const pinnedRegexRules = easyListRules.filter((rule) => rule.condition?.regexFilter);
+if (pinnedRegexRules.length !== REQUIRED_REGEX_RULES.length || REQUIRED_REGEX_RULES.some((expected) => {
+  const actual = pinnedRegexRules.find((rule) => rule.id === expected.id);
+  return !actual || actual.condition.regexFilter !== expected.regex ||
+    (actual.condition.isUrlFilterCaseSensitive === true) !== expected.isCaseSensitive;
+})) {
+  throw new Error("Runtime regex evidence drifted from the pinned EasyList rules");
+}
+if (!serviceWorker.includes("buildHighRiskRulesForSettings(settings)")) throw new Error("High-risk rules are not gated by normalized local settings");
+if (!serviceWorker.includes("buildPauseRules(settings.protectionEnabled ? settings.pausedSites : [])")) throw new Error("Pause rules are not gated by the master protection control");
 if (!serviceWorker.includes('highRiskActive ? "HIGH"')) throw new Error("High-risk badge state is not explicit");
 if (!serviceWorker.includes('message.type === "setHighRiskMode"')) throw new Error("High-risk control message missing");
 if (!popup.includes('id="high-risk"') || !popup.includes("may break sites")) throw new Error("High-risk opt-in/breakage disclosure missing");
 if (!popup.includes('id="pause-site"')) throw new Error("Site-pause control missing");
-if (!popupScript.includes("settings.protectionEnabled && settings.highRiskMode")) throw new Error("Popup high-risk status is not master-gated");
+if (!popupState.includes("else if (!settings.protectionEnabled)") ||
+    !popupState.includes("else if (settings.highRiskMode)")) {
+  throw new Error("Popup high-risk status is not master-gated");
+}
 if (!popupScript.includes("settings.highRiskMode;")) throw new Error("Site pause is not disabled during High-Risk Browsing");
 if (!popupScript.includes("Unavailable while High-Risk Browsing is active")) throw new Error("Site-pause override explanation missing");
 

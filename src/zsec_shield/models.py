@@ -100,6 +100,34 @@ class ScanIssue:
         return {"path": self.path, "code": self.code, "message": self.message}
 
 
+@dataclass(frozen=True, slots=True)
+class ScanObservation:
+    """Review-only signal from a bounded content provider.
+
+    Observations are deliberately separate from configured-rule findings. They
+    may improve triage, but they never authorize automatic quarantine.
+    """
+
+    path: str
+    provider: str
+    category: str
+    severity: Severity
+    summary: str
+    evidence: dict[str, str | int | bool]
+    quarantine_eligible: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "path": self.path,
+            "provider": self.provider,
+            "category": self.category,
+            "severity": self.severity,
+            "summary": self.summary,
+            "evidence": dict(self.evidence),
+            "quarantine_eligible": self.quarantine_eligible,
+        }
+
+
 @dataclass(slots=True)
 class ScanStats:
     roots_requested: int = 0
@@ -107,6 +135,7 @@ class ScanStats:
     bytes_hashed: int = 0
     findings: int = 0
     errors: int = 0
+    observations: int = 0
     skipped_symlinks: int = 0
     skipped_special: int = 0
     skipped_too_large: int = 0
@@ -120,6 +149,7 @@ class ScanStats:
             "bytes_hashed": self.bytes_hashed,
             "findings": self.findings,
             "errors": self.errors,
+            "observations": self.observations,
             "skipped_symlinks": self.skipped_symlinks,
             "skipped_special": self.skipped_special,
             "skipped_too_large": self.skipped_too_large,
@@ -134,6 +164,7 @@ class ScanResult:
     completed_at: str
     roots: list[str]
     findings: list[FileFinding] = field(default_factory=list)
+    observations: list[ScanObservation] = field(default_factory=list)
     issues: list[ScanIssue] = field(default_factory=list)
     stats: ScanStats = field(default_factory=ScanStats)
 
@@ -143,6 +174,7 @@ class ScanResult:
             "completed_at": self.completed_at,
             "roots": self.roots,
             "findings": [finding.to_dict() for finding in self.findings],
+            "observations": [observation.to_dict() for observation in self.observations],
             "issues": [issue.to_dict() for issue in self.issues],
             "stats": self.stats.to_dict(),
         }

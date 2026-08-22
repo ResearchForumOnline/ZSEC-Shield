@@ -11,7 +11,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from zsec_shield.errors import ScanConfigurationError, ScanWorkerError
-from zsec_shield.models import FileFinding, Rule, RuleMatch, ScanIssue, ScanResult, ScanStats
+from zsec_shield.models import (
+    FileFinding,
+    Rule,
+    RuleMatch,
+    ScanIssue,
+    ScanObservation,
+    ScanResult,
+    ScanStats,
+)
 from zsec_shield.rules import highest_severity
 from zsec_shield.scan_worker import (
     DEFAULT_WORKER_MAX_REQUESTS,
@@ -19,6 +27,7 @@ from zsec_shield.scan_worker import (
     BoundedScanWorker,
 )
 from zsec_shield.util import format_utc, utc_now
+from zsec_shield.windows_authenticode import verify_authenticode
 
 DEFAULT_MAX_FILE_BYTES = 64 * 1024 * 1024
 DEFAULT_CHUNK_BYTES = 1024 * 1024
@@ -124,6 +133,7 @@ class Scanner:
         stats = ScanStats(roots_requested=len(absolute_roots))
         issues: list[ScanIssue] = []
         findings: list[FileFinding] = []
+        observations: list[ScanObservation] = []
         seen_paths: set[str] = set()
         for root in sorted(absolute_roots, key=_path_key):
             for path, metadata in self._iter_regular_files(root, stats, issues):
@@ -139,7 +149,7 @@ class Scanner:
                         self._issue(issues, path, "file_filter_failed", exc)
                         continue
                 hashed_before = stats.files_hashed
-                finding = self._scan_file(path, metadata, stats, issues)
+                finding = self._scan_file(path, metadata, stats, issues, observations)
                 hashed = stats.files_hashed > hashed_before
                 if file_observer is not None:
                     try:
@@ -149,14 +159,23 @@ class Scanner:
                 if finding is not None:
                     findings.append(finding)
         findings.sort(key=lambda finding: os.path.normcase(finding.path))
+        observations.sort(
+            key=lambda observation: (
+                os.path.normcase(observation.path),
+                observation.provider,
+                observation.category,
+            )
+        )
         issues.sort(key=lambda issue: (os.path.normcase(issue.path), issue.code))
         stats.findings = len(findings)
+        stats.observations = len(observations)
         stats.errors = len(issues)
         return ScanResult(
             started_at=format_utc(started),
             completed_at=format_utc(),
             roots=[str(path) for path in absolute_roots],
             findings=findings,
+            observations=observations,
             issues=issues,
             stats=stats,
         )
@@ -264,6 +283,7 @@ class Scanner:
         before: os.stat_result,
         stats: ScanStats,
         issues: list[ScanIssue],
+        observations: list[ScanObservation],
     ) -> FileFinding | None:
         flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
         try:
@@ -288,6 +308,42 @@ class Scanner:
                 hex_digest = worker_scan.sha256
                 bytes_read = worker_scan.bytes_read
                 literal_matches = set(worker_scan.literal_rule_ids)
+                absolute = str(_absolute(path))
+                for observation in worker_scan.observations:
+                    # Informational provider telemetry is useful inside the broker
+                    # (for example to trigger Authenticode) but is not a user review
+                    # signal and must not turn every ordinary PE/ZIP scan amber.
+                    if observation["severity"] == "info":
+                        continue
+                    observations.append(
+                        ScanObservation(
+                            path=absolute,
+                            provider=observation["provider"],
+                            category=observation["category"],
+                            severity=observation["severity"],
+                            summary=observation["summary"],
+                            evidence=dict(observation["evidence"]),
+                            quarantine_eligible=False,
+                        )
+                    )
+                if any(
+                    observation.get("provider") == "pe"
+                    and observation.get("category") == "metadata"
+                    for observation in worker_scan.observations
+                ):
+                    trust = verify_authenticode(path, opened)
+                    if trust is not None and trust["severity"] != "info":
+                        observations.append(
+                            ScanObservation(
+                                path=absolute,
+                                provider=trust["provider"],
+                                category=trust["category"],
+                                severity=trust["severity"],
+                                summary=trust["summary"],
+                                evidence=dict(trust["evidence"]),
+                                quarantine_eligible=False,
+                            )
+                        )
             else:
                 digest = hashlib.sha256()
                 literal_matches = set()

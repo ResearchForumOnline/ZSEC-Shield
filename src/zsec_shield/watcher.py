@@ -23,7 +23,7 @@ from watchdog.observers import Observer
 from watchdog.observers.polling import PollingObserver
 
 from zsec_shield.errors import FeedError, QuarantinePartialError, WatchError, ZsecShieldError
-from zsec_shield.models import ScanResult
+from zsec_shield.models import ScanIssue, ScanResult
 from zsec_shield.quarantine import quarantine_finding
 from zsec_shield.scanner import Scanner
 from zsec_shield.util import format_utc, update_lock
@@ -134,6 +134,7 @@ class WatchStats:
     files_hashed: int = 0
     bytes_hashed: int = 0
     findings: int = 0
+    observations: int = 0
     issues: int = 0
     quarantine_completed: int = 0
     quarantine_partial: int = 0
@@ -163,6 +164,7 @@ class WatchStats:
             "files_hashed": self.files_hashed,
             "bytes_hashed": self.bytes_hashed,
             "findings": self.findings,
+            "observations": self.observations,
             "issues": self.issues,
             "quarantine_completed": self.quarantine_completed,
             "quarantine_partial": self.quarantine_partial,
@@ -203,6 +205,8 @@ class WatchSummary:
             return "incomplete"
         if self.stats.findings:
             return "configured_rule_matches_detected"
+        if self.stats.observations:
+            return "review_observations"
         return "no_configured_rule_matches"
 
     def to_dict(self) -> dict[str, Any]:
@@ -788,10 +792,42 @@ class ForegroundProtectionWatcher:
             file_filter=file_filter,
             file_observer=file_observer,
         )
+        retained_issues: list[ScanIssue] = []
+        for issue in result.issues:
+            vanished_error = (
+                issue.code
+                in {
+                    "root_unreadable",
+                    "directory_unreadable",
+                    "entry_unreadable",
+                    "file_open_failed",
+                }
+                and (
+                    "No such file or directory" in issue.message
+                    or "WinError 2" in issue.message
+                    or "WinError 3" in issue.message
+                )
+                and not Path(issue.path).exists()
+            )
+            if vanished_error:
+                self._stats.events_superseded += 1
+                self._reconciliation_snapshot.pop(_path_key(Path(issue.path)), None)
+                self._emit(
+                    "event_superseded",
+                    path=issue.path,
+                    triggers=triggers,
+                    reason="path_vanished_during_scan",
+                )
+            else:
+                retained_issues.append(issue)
+        if len(retained_issues) != len(result.issues):
+            result.issues = retained_issues
+            result.stats.errors = len(retained_issues)
         self._stats.scan_batches += 1
         self._stats.files_hashed += result.stats.files_hashed
         self._stats.bytes_hashed += result.stats.bytes_hashed
         self._stats.findings += len(result.findings)
+        self._stats.observations += len(result.observations)
         new_scan_issues = 0
         for issue in result.issues:
             key = (issue.path, issue.code, issue.message)
@@ -1149,4 +1185,6 @@ def _scan_outcome(result: ScanResult) -> str:
         return "incomplete"
     if result.findings:
         return "configured_rule_matches_detected"
+    if result.observations:
+        return "review_observations"
     return "no_configured_rule_matches"

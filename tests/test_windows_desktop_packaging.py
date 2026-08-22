@@ -13,6 +13,8 @@ def test_gui_spec_is_windowed_versioned_and_keeps_cli_out_of_process() -> None:
     assert "ZSEC_GUI_WINDOWS_VERSION_FILE" in spec
     assert "ZSEC_GUI_WINDOWS_ICON" in spec
     assert "zsec_shield" not in spec
+    assert '"pystray._win32"' in spec
+    assert '"PIL.Image"' in spec
 
 
 def test_desktop_builder_is_syntax_valid_and_records_coexistence_policy() -> None:
@@ -75,7 +77,7 @@ def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
     assert "Desktop Preview" not in app
     assert "DESKTOP PREVIEW" not in app
     assert 'self.root.title("ZSEC Antivirus")' in app
-    assert 'text="COMMUNITY 0.3.6"' in app
+    assert 'text="COMMUNITY 0.3.7"' in app
 
 
 def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None:
@@ -93,6 +95,10 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     assert "lambda: not self.reduce_motion.get()" in app
     assert "width >= 1040" in app
     assert "width >= 520" in app
+    assert "TrayController" in app
+    assert "_tray_scan_downloads" in app
+    assert "_window_close" in app
+    assert "Start ZSEC Antivirus in the notification area" in app
 
 
 def test_companion_sync_is_bounded_verified_and_rolls_back() -> None:

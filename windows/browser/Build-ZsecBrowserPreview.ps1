@@ -6,7 +6,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$ProductVersion = "0.3.6"
+$ProductVersion = "0.3.7"
 $WebView2Version = "1.0.4129.50"
 $WebView2Uri = "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/$WebView2Version/microsoft.web.webview2.$WebView2Version.nupkg"
 $WebView2Sha256 = "d3934f482d484b89fb4825df720c710664e1143a1e90f7b3a60794ef33f473d2"
@@ -21,6 +21,8 @@ $PayloadRoot = Join-Path $OutputDirectory "payload"
 $AppRoot = Join-Path $PayloadRoot "App"
 $PolicyRoot = Join-Path $AppRoot "policy"
 $LauncherSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\ZsecBrowserApp.cs"
+$ProductStateSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserProductState.cs"
+$ProductDialogsSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserProductDialogs.cs"
 $ExtensionSource = Join-Path $RepoRoot "browser\zeroq-shields"
 $IconSource = Join-Path $RepoRoot "assets\brand\zeroq-icon.png"
 $IconPath = Join-Path $OutputDirectory "zsec-browser.ico"
@@ -30,7 +32,7 @@ $PackageCache = Join-Path $env:LOCALAPPDATA "TalkToAI\ZSEC Browser Build\package
 $PackagePath = Join-Path $PackageCache "microsoft.web.webview2.$WebView2Version.nupkg"
 $PackageExtract = Join-Path $PackageCache "extracted"
 
-foreach ($path in @($LauncherSource, $IconSource, $CscPath)) {
+foreach ($path in @($LauncherSource, $ProductStateSource, $ProductDialogsSource, $IconSource, $CscPath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Required build input is absent: $path"
     }
@@ -96,12 +98,15 @@ $compilerArguments = @(
     "/reference:System.Drawing.dll",
     "/reference:System.Security.dll",
     "/reference:System.Web.dll",
+    "/reference:System.Web.Extensions.dll",
     "/reference:System.Windows.Forms.dll",
     "/reference:$CoreDll",
     "/reference:$WinFormsDll",
     "/win32icon:$IconPath",
     "/out:$LauncherPath",
-    $LauncherSource
+    $LauncherSource,
+    $ProductStateSource,
+    $ProductDialogsSource
 )
 & $CscPath @compilerArguments
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $LauncherPath -PathType Leaf)) {
@@ -131,6 +136,7 @@ $ExtensionFiles = @(
     "rules/privacy.json",
     "src/high-risk-browsing.js",
     "src/policy.js",
+    "src/popup-state.js",
     "src/runtime-health.js",
     "src/settings-transaction.js",
     "src/service-worker.js",

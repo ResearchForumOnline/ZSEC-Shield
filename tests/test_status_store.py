@@ -21,6 +21,7 @@ class StatusStoreTests(unittest.TestCase):
                 files_hashed=12,
                 bytes_hashed=3456,
                 outcome="configured_rule_matches_detected",
+                observations=0,
             )
             value, error = load_last_scan(state)
             self.assertIsNone(error)
@@ -28,6 +29,7 @@ class StatusStoreTests(unittest.TestCase):
             self.assertEqual(2, value["findings"])
             self.assertEqual(12, value["files_hashed"])
             self.assertEqual(3456, value["bytes_hashed"])
+            self.assertEqual(0, value["observations"])
             self.assertEqual("2026-08-01T12:00:00Z", value["completed_at"])
 
     def test_legacy_v1_summary_is_migrated_without_invented_metrics(self) -> None:
@@ -53,6 +55,27 @@ class StatusStoreTests(unittest.TestCase):
             self.assertEqual("zsec.shield.last-scan.v1", value["schema"])
             self.assertIsNone(value["files_hashed"])
             self.assertIsNone(value["bytes_hashed"])
+            self.assertEqual(0, value["observations"])
+
+    def test_review_observation_round_trip_requires_nonzero_observations(self) -> None:
+        with TemporaryDirectory() as temporary:
+            state = Path(temporary) / "state"
+            save_last_scan(
+                state,
+                completed_at="2026-08-01T12:00:00Z",
+                findings=0,
+                issues=0,
+                files_hashed=1,
+                bytes_hashed=10,
+                outcome="review_observations",
+                observations=2,
+            )
+            value, error = load_last_scan(state)
+            self.assertIsNone(error)
+            assert value is not None
+            self.assertEqual("zsec.shield.last-scan.v3", value["schema"])
+            self.assertEqual("review_observations", value["outcome"])
+            self.assertEqual(2, value["observations"])
 
     def test_invalid_v2_counters_outcomes_and_invariants_are_rejected(self) -> None:
         with TemporaryDirectory() as temporary:

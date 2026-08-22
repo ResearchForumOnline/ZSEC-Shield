@@ -49,9 +49,10 @@ User-scoped CLI broker
     +-- signed feed and final result policy
     |
     v
-Bounded out-of-process exact-rule worker
+Bounded out-of-process rule and review-provider worker
     +-- path-free content stream
     +-- exact literal rules and independent digest
+    +-- bounded PE/script/ZIP review-only observations
     +-- strict bounded response; failures are incomplete
 ```
 
@@ -62,8 +63,10 @@ periodic reconciliation, and reports known coverage loss as incomplete. It does
 not mediate access or install system persistence. The exact-rule child is replaced
 periodically and separates worker crashes/state from the broker, but currently
 runs with the invoking user's authority. It is not a reduced-privilege sandbox,
-does not pass the hostile-parser readiness gate, and contains no PE, archive,
-document or script parser. Shared
+does not pass the hostile-parser readiness gate. Its current PE metadata,
+conservative script-chain and ZIP central-directory providers are bounded,
+review-only, and never authorize quarantine; ZIP content is not extracted. It has
+no document/macro parser. Shared
 scanner, evidence, feed, quarantine-envelope, updater-policy, and UI concepts sit
 above three separately released enforcement planes:
 

@@ -33,9 +33,9 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
     assert "unsigned" in readme.lower() and "Community" in readme
-    assert 'internal const string ProductVersion = "0.3.6"' in app
-    assert '$ProductVersion = "0.3.6"' in build
-    assert '$ProductVersion = "0.3.6"' in installer
+    assert 'internal const string ProductVersion = "0.3.7"' in app
+    assert '$ProductVersion = "0.3.7"' in build
+    assert '$ProductVersion = "0.3.7"' in installer
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:
@@ -234,6 +234,7 @@ def test_bundled_extension_has_stable_identity_and_bounded_youtube_assist() -> N
         '"third_party/EASYLIST-LICENSE.txt"',
         '"third_party/easylist-20260817.txt"',
         '"third_party/easylist-provenance.json"',
+        '"src/popup-state.js"',
         '"src/youtube-cosmetic-rules.js"',
     ):
         assert required_desktop_asset in build
@@ -256,7 +257,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
     payload_sha = hashlib.sha256(payload_file.read_bytes()).hexdigest()
     manifest = {
         "schema": "zsec.browser.desktop-preview-build.v2",
-        "version": "0.3.6",
+        "version": "0.3.7",
         "architecture": "windows-x64-webview2-shell",
         "engine_distribution": "Microsoft Evergreen WebView2 Chromium runtime",
         "engine_maintained_by": "Microsoft",
@@ -294,7 +295,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
             text=True,
         )
 
-    name = "zsec-browser-community-0.3.6-windows-x64-unsigned.zip"
+    name = "zsec-browser-community-0.3.7-windows-x64-unsigned.zip"
     archive_a = release_a / name
     archive_b = release_b / name
     assert archive_a.read_bytes() == archive_b.read_bytes()
@@ -313,7 +314,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
     with zipfile.ZipFile(archive_a) as archive:
         provenance = json.loads(
             archive.read(
-                "zsec-browser-community-0.3.6/release-provenance.json"
+                "zsec-browser-community-0.3.7/release-provenance.json"
             ).decode("utf-8")
         )
     assert provenance["source_revision"] == revision

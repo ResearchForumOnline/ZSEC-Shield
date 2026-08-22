@@ -115,6 +115,7 @@ def test_worker_protocol_rejects_duplicate_unknown_and_mismatched_fields() -> No
         "sha256": hashlib.sha256(b"").hexdigest(),
         "bytes_read": 0,
         "literal_rule_ids": [],
+        "observations": [],
     }
     with pytest.raises(ScanWorkerError, match="correlation mismatch"):
         worker._validate_response(valid, 0, "b" * 32)
