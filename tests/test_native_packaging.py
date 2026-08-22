@@ -29,15 +29,15 @@ release = load_release_module()
 
 class NativePackagingTests(unittest.TestCase):
     def test_source_version_and_pyinstaller_pin_are_explicit(self) -> None:
-        self.assertEqual("0.1.2", release.project_version())
+        self.assertEqual("0.3.0", release.project_version())
         self.assertEqual("6.21.0", release.expected_pyinstaller_version())
 
     def test_release_tag_must_exactly_match_source_version(self) -> None:
-        self.assertEqual("0.1.2", release.verify_release_tag("v0.1.2"))
+        self.assertEqual("0.3.0", release.verify_release_tag("v0.3.0"))
         with self.assertRaises(release.ReleaseError):
             release.verify_release_tag("v0.1.0")
         with self.assertRaises(release.ReleaseError):
-            release.verify_release_tag("preview-0.1.2")
+            release.verify_release_tag("preview-0.3.0")
 
     def test_python_license_uses_checksum_pinned_vendored_fallback(self) -> None:
         with TemporaryDirectory() as temporary:
@@ -115,8 +115,52 @@ class NativePackagingTests(unittest.TestCase):
         self.assertIn("runtime_policy", schema["required"])
         self.assertIn("source_tree_state", schema["properties"]["build"]["required"])
         policy = schema["properties"]["runtime_policy"]["properties"]
+        self.assertEqual(
+            ["on-demand", "foreground-post-change-protection"], policy["modes"]["const"]
+        )
+        self.assertEqual(False, policy["pre_access_enforcement"]["const"])
+        self.assertEqual(False, policy["background_service"]["const"])
+        self.assertEqual(True, policy["per_user_background_companion"]["const"])
+        self.assertEqual(True, policy["opt_in_companion_quarantine"]["const"])
         self.assertEqual(False, policy["real_time_protection"]["const"])
+        self.assertEqual(False, policy["automatic_quarantine"]["const"])
         self.assertEqual(False, policy["telemetry"]["const"])
+
+    def test_manifest_writer_records_post_change_capability_without_primary_claims(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "zsec-shield.exe").write_bytes(b"preview")
+            with (
+                patch.object(release, "_source_revision", return_value="a" * 40),
+                patch.object(release, "_source_tree_state", return_value="modified"),
+            ):
+                path = release._write_manifest(
+                    root,
+                    version="0.3.0",
+                    target_os="windows",
+                    architecture="x86_64",
+                    entrypoint="zsec-shield.exe",
+                    pyinstaller_version="6.21.0",
+                    components=[],
+                )
+            manifest = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual("zsec.shield.native-distribution.v2", manifest["schema"])
+        policy = manifest["runtime_policy"]
+        self.assertEqual(
+            ["on-demand", "foreground-post-change-protection"], policy["modes"]
+        )
+        self.assertFalse(policy["pre_access_enforcement"])
+        self.assertFalse(policy["background_service"])
+        self.assertTrue(policy["per_user_background_companion"])
+        self.assertTrue(policy["opt_in_companion_quarantine"])
+        self.assertFalse(policy["real_time_protection"])
+        self.assertFalse(policy["automatic_quarantine"])
+
+    def test_watchdog_runtime_license_is_required_in_native_archive(self) -> None:
+        self.assertIn(
+            ("watchdog", "runtime filesystem-event observer", True),
+            release.NOTICE_DISTRIBUTIONS,
+        )
 
     def test_spec_uses_inspectable_onedir_without_upx_or_signing(self) -> None:
         content = (PROJECT_ROOT / "packaging" / "zsec-shield.spec").read_text(encoding="utf-8")
@@ -126,10 +170,20 @@ class NativePackagingTests(unittest.TestCase):
         self.assertIn("codesign_identity=None", content)
         self.assertIn("trusted_keys.json", content)
 
+    def test_native_smoke_test_enforces_replacement_guard(self) -> None:
+        content = (PROJECT_ROOT / "packaging" / "native_release.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('\"replacement-readiness\", \"--json\"', content)
+        self.assertIn("readiness_result.returncode != 2", content)
+        self.assertIn('\"keep_existing_protection\"', content)
+        self.assertIn('\"watch\", \"--help\"', content)
+
     def test_source_archive_includes_native_rebuild_inputs(self) -> None:
         content = (PROJECT_ROOT / "MANIFEST.in").read_text(encoding="utf-8")
         self.assertIn("recursive-include docs *.md", content)
         self.assertIn("recursive-include packaging *.json *.md *.py *.spec", content)
+        self.assertIn("recursive-include windows *.md *.ps1", content)
         self.assertIn("include packaging/licenses/CPython-3.11-LICENSE.txt", content)
         self.assertIn("include SECURITY.md", content)
         self.assertNotIn("dist/", content)

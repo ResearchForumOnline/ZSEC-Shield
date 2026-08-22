@@ -51,3 +51,9 @@ missing file/byte counters are normalized to null; consumers must not invent zer
 This bridge reports evidence from a deterministic on-demand scanner. “No configured
 rule matches” is not proof that a machine is clean and does not imply real-time
 protection, behavioral monitoring, cloud reputation, or antivirus certification.
+
+Primary-antivirus eligibility is deliberately a separate contract. Consumers
+must never infer replacement readiness from scan status, inventory, EICAR, or a
+zero exit here. Use `zero-security replacement-readiness --json` and follow the
+[replacement-readiness contract](REPLACEMENT_READINESS.md); the current preview
+returns a blocking decision and exit code `2` on every supported platform.

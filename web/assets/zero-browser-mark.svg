@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Zero Browser mark</title>
+  <desc id="desc">A luminous zero protected inside a browser shield.</desc>
+  <defs>
+    <linearGradient id="g" x1="42" y1="32" x2="216" y2="224" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#58ffd5"/>
+      <stop offset=".52" stop-color="#0ec4ac"/>
+      <stop offset="1" stop-color="#6576ff"/>
+    </linearGradient>
+  </defs>
+  <rect x="22" y="28" width="212" height="194" rx="42" fill="#071411" stroke="#294a45" stroke-width="6"/>
+  <path d="M25 77h206" stroke="#294a45" stroke-width="6"/>
+  <circle cx="52" cy="53" r="7" fill="#58ffd5"/>
+  <circle cx="76" cy="53" r="7" fill="#0ec4ac"/>
+  <circle cx="100" cy="53" r="7" fill="#6576ff"/>
+  <path d="M128 93c-34 0-57 27-57 62s23 62 57 62 57-27 57-62-23-62-57-62Zm0 31c16 0 26 12 26 31s-10 31-26 31-26-12-26-31 10-31 26-31Z" fill="url(#g)"/>
+  <path d="m190 109 25 10v19c0 18-10 31-25 38-16-7-25-20-25-38v-19l25-10Z" fill="#0a1d1a" stroke="#58ffd5" stroke-width="4"/>
+  <path d="m179 139 8 8 15-18" fill="none" stroke="#58ffd5" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+</svg>

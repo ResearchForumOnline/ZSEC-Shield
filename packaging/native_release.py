@@ -38,13 +38,78 @@ DOCUMENTS: tuple[tuple[Path, str], ...] = (
     (PROJECT_ROOT / "docs" / "THREAT_MODEL.md", "THREAT_MODEL.md"),
     (PROJECT_ROOT / "docs" / "FEED_FORMAT.md", "FEED_FORMAT.md"),
     (PROJECT_ROOT / "docs" / "OPERATIONS.md", "OPERATIONS.md"),
+    (PROJECT_ROOT / "docs" / "FOREGROUND_WATCH_MODE.md", "FOREGROUND_WATCH_MODE.md"),
     (PROJECT_ROOT / "docs" / "NATIVE_DISTRIBUTION.md", "NATIVE_DISTRIBUTION.md"),
+    (PROJECT_ROOT / "docs" / "PLATFORM_SUPPORT.md", "PLATFORM_SUPPORT.md"),
+    (PROJECT_ROOT / "docs" / "REPLACEMENT_READINESS.md", "REPLACEMENT_READINESS.md"),
+    (PROJECT_ROOT / "docs" / "FULL_ANTIVIRUS_PROGRAM.md", "WINDOWS_PROGRAM.md"),
+    (PROJECT_ROOT / "docs" / "MACOS_DESKTOP_PROGRAM.md", "MACOS_PROGRAM.md"),
+    (PROJECT_ROOT / "docs" / "LINUX_DESKTOP_PROGRAM.md", "LINUX_PROGRAM.md"),
     (PROJECT_ROOT / "packaging" / "THIRD_PARTY_NOTICES.md", "THIRD_PARTY_NOTICES.md"),
     (SCHEMA_PATH, "native-manifest.schema.json"),
 )
 
+PLATFORM_COMPANION_DOCUMENTS: dict[str, tuple[tuple[Path, str], ...]] = {
+    "windows": (
+        (PROJECT_ROOT / "windows" / "companion" / "README.md", "COMPANION.md"),
+        (
+            PROJECT_ROOT / "windows" / "companion" / "Install-ZsecAntivirusCompanion.ps1",
+            "Install-ZsecAntivirusCompanion.ps1",
+        ),
+        (
+            PROJECT_ROOT / "windows" / "companion" / "Start-ZsecAntivirusCompanion.ps1",
+            "Start-ZsecAntivirusCompanion.ps1",
+        ),
+        (
+            PROJECT_ROOT / "windows" / "companion" / "Get-ZsecAntivirusCompanionStatus.ps1",
+            "Get-ZsecAntivirusCompanionStatus.ps1",
+        ),
+        (
+            PROJECT_ROOT / "windows" / "companion" / "Uninstall-ZsecAntivirusCompanion.ps1",
+            "Uninstall-ZsecAntivirusCompanion.ps1",
+        ),
+    ),
+    "macos": (
+        (PROJECT_ROOT / "packaging" / "companion" / "README.md", "COMPANION.md"),
+        (PROJECT_ROOT / "packaging" / "companion" / "macos" / "install.sh", "install.sh"),
+        (PROJECT_ROOT / "packaging" / "companion" / "macos" / "run.sh", "run.sh"),
+        (PROJECT_ROOT / "packaging" / "companion" / "macos" / "status.sh", "status.sh"),
+        (
+            PROJECT_ROOT / "packaging" / "companion" / "macos" / "uninstall.sh",
+            "uninstall.sh",
+        ),
+        (
+            PROJECT_ROOT
+            / "packaging"
+            / "companion"
+            / "macos"
+            / "com.talktoai.zsec-antivirus-companion.plist.template",
+            "com.talktoai.zsec-antivirus-companion.plist.template",
+        ),
+    ),
+    "linux": (
+        (PROJECT_ROOT / "packaging" / "companion" / "README.md", "COMPANION.md"),
+        (PROJECT_ROOT / "packaging" / "companion" / "linux" / "install.sh", "install.sh"),
+        (PROJECT_ROOT / "packaging" / "companion" / "linux" / "run.sh", "run.sh"),
+        (PROJECT_ROOT / "packaging" / "companion" / "linux" / "status.sh", "status.sh"),
+        (
+            PROJECT_ROOT / "packaging" / "companion" / "linux" / "uninstall.sh",
+            "uninstall.sh",
+        ),
+        (
+            PROJECT_ROOT
+            / "packaging"
+            / "companion"
+            / "linux"
+            / "zsec-antivirus-companion.service.template",
+            "zsec-antivirus-companion.service.template",
+        ),
+    ),
+}
+
 NOTICE_DISTRIBUTIONS: tuple[tuple[str, str, bool], ...] = (
     ("cryptography", "runtime", True),
+    ("watchdog", "runtime filesystem-event observer", True),
     ("cffi", "runtime dependency", False),
     ("pycparser", "runtime dependency", False),
     ("pyinstaller", "build tool and bundled bootloader", True),
@@ -160,7 +225,7 @@ VSVersionInfo(
         '040904B0',
         [
           StringStruct('CompanyName', 'ZSEC contributors'),
-          StringStruct('FileDescription', 'ZSEC Shield on-demand scanner'),
+          StringStruct('FileDescription', 'ZSEC Shield file scanner'),
           StringStruct('FileVersion', '{dotted}'),
           StringStruct('InternalName', 'zsec-shield'),
           StringStruct('LegalCopyright', 'Licensed under Apache-2.0'),
@@ -282,8 +347,11 @@ def _copy_licenses(bundle_root: Path) -> list[dict[str, Any]]:
     return components
 
 
-def _copy_documents(bundle_root: Path) -> None:
-    for source, destination_name in DOCUMENTS:
+def _copy_documents(bundle_root: Path, target_os: str) -> None:
+    platform_documents = PLATFORM_COMPANION_DOCUMENTS.get(target_os)
+    if platform_documents is None:
+        raise ReleaseError(f"no companion package is defined for target OS: {target_os}")
+    for source, destination_name in (*DOCUMENTS, *platform_documents):
         if not source.is_file():
             raise ReleaseError(f"required distribution document is missing: {source}")
         shutil.copyfile(source, bundle_root / destination_name)
@@ -390,7 +458,7 @@ def _write_manifest(
     components: list[dict[str, Any]],
 ) -> Path:
     manifest = {
-        "schema": "zsec.shield.native-distribution.v1",
+        "schema": "zsec.shield.native-distribution.v2",
         "product": "ZSEC Shield",
         "version": version,
         "target": {"os": target_os, "architecture": architecture},
@@ -403,8 +471,13 @@ def _write_manifest(
             "publisher_code_signing": "not-performed-by-this-build",
         },
         "runtime_policy": {
-            "scanner_mode": "on-demand",
+            "modes": ["on-demand", "foreground-post-change-protection"],
+            "pre_access_enforcement": False,
+            "background_service": False,
+            "per_user_background_companion": True,
             "real_time_protection": False,
+            "automatic_quarantine": False,
+            "opt_in_companion_quarantine": True,
             "telemetry": False,
             "bundled_trust_keys": _bundled_trust_key_count(),
         },
@@ -432,6 +505,17 @@ def _smoke_test(executable: Path, state_dir: Path, version: str) -> None:
     )
     if version_result.stdout.strip() != f"zsec-shield {version}":
         raise ReleaseError("frozen executable returned an unexpected version")
+    watch_help_result = subprocess.run(
+        [str(executable), "watch", "--help"],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    watch_help_tokens = set(watch_help_result.stdout.casefold().split())
+    required_watch_options = {"--backend", "--reconcile-seconds", "--quarantine"}
+    if not required_watch_options.issubset(watch_help_tokens):
+        raise ReleaseError("frozen executable does not expose the bounded watch interface")
     status_result = subprocess.run(
         [str(executable), "--state-dir", str(state_dir), "status", "--json"],
         check=True,
@@ -463,6 +547,29 @@ def _smoke_test(executable: Path, state_dir: Path, version: str) -> None:
         or status.get("real_time_protection") is not False
     ):
         raise ReleaseError("frozen executable status contract smoke test failed")
+
+    readiness_result = subprocess.run(
+        [str(executable), "replacement-readiness", "--json"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    try:
+        readiness = json.loads(readiness_result.stdout)
+    except json.JSONDecodeError as exc:
+        raise ReleaseError(
+            "frozen executable readiness output is not valid JSON"
+        ) from exc
+    if (
+        readiness_result.returncode != 2
+        or readiness.get("schema") != "zero.security.replacement-readiness.v1"
+        or readiness.get("decision") != "keep_existing_protection"
+        or readiness.get("eligible_for_primary_replacement") is not False
+        or readiness.get("existing_provider_must_remain_active") is not True
+        or readiness.get("automatic_uninstall_available") is not False
+    ):
+        raise ReleaseError("frozen executable replacement guard smoke test failed")
 
 
 def _create_archive(bundle_root: Path, archive: Path, target_os: str) -> None:
@@ -560,7 +667,7 @@ def build_native(output_dir: Path) -> dict[str, Any]:
 
         staged_root = temporary / "stage" / artifact_stem
         shutil.copytree(frozen_root, staged_root, symlinks=True)
-        _copy_documents(staged_root)
+        _copy_documents(staged_root, target_os)
         components = _copy_licenses(staged_root)
         _write_manifest(
             staged_root,

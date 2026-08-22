@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://talktoai.org/zsec/schemas/native-distribution-v1.json",
+  "$id": "https://talktoai.org/zsec/schemas/native-distribution-v2.json",
   "title": "ZSEC Shield native distribution manifest",
   "type": "object",
   "additionalProperties": false,
@@ -17,7 +17,7 @@
     "files"
   ],
   "properties": {
-    "schema": { "const": "zsec.shield.native-distribution.v1" },
+    "schema": { "const": "zsec.shield.native-distribution.v2" },
     "product": { "const": "ZSEC Shield" },
     "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
     "target": {
@@ -53,14 +53,26 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "scanner_mode",
+        "modes",
+        "pre_access_enforcement",
+        "background_service",
+        "per_user_background_companion",
         "real_time_protection",
+        "automatic_quarantine",
+        "opt_in_companion_quarantine",
         "telemetry",
         "bundled_trust_keys"
       ],
       "properties": {
-        "scanner_mode": { "const": "on-demand" },
+        "modes": {
+          "const": ["on-demand", "foreground-post-change-protection"]
+        },
+        "pre_access_enforcement": { "const": false },
+        "background_service": { "const": false },
+        "per_user_background_companion": { "const": true },
         "real_time_protection": { "const": false },
+        "automatic_quarantine": { "const": false },
+        "opt_in_companion_quarantine": { "const": true },
         "telemetry": { "const": false },
         "bundled_trust_keys": { "type": "integer", "minimum": 0 }
       }

@@ -1,0 +1,372 @@
+from __future__ import annotations
+
+import os
+import threading
+import unittest
+from collections.abc import Callable
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import Any
+
+from watchdog.events import FileCreatedEvent, FileMovedEvent
+
+from zsec_shield.errors import WatchError
+from zsec_shield.models import Rule
+from zsec_shield.scanner import Scanner, ScannerConfig
+from zsec_shield.watcher import (
+    DebouncedPathQueue,
+    ForegroundProtectionWatcher,
+    WatchConfig,
+    WatchEventHandler,
+    _configure_windows_native_change_mask,
+    normalize_watch_roots,
+    watch_policy,
+)
+
+
+class FakeObserver:
+    def __init__(self, timeout: float, start_hook: Callable[[FakeObserver], None] | None = None):
+        self.timeout = timeout
+        self.start_hook = start_hook
+        self.handler: WatchEventHandler | None = None
+        self.roots: list[Path] = []
+        self.alive = False
+
+    def schedule(
+        self, handler: WatchEventHandler, path: str, *, recursive: bool
+    ) -> object:
+        self.handler = handler
+        self.roots.append(Path(path))
+        if not recursive:
+            raise AssertionError("watch roots must be recursive")
+        return object()
+
+    def start(self) -> None:
+        self.alive = True
+        if self.start_hook is not None:
+            self.start_hook(self)
+
+    def stop(self) -> None:
+        self.alive = False
+
+    def join(self, timeout: float | None = None) -> None:
+        del timeout
+
+    def is_alive(self) -> bool:
+        return self.alive
+
+
+def make_test_rule(pattern: bytes = b"zsec-watch-test-marker") -> Rule:
+    return Rule(
+        rule_id="test:watch-marker",
+        name="Watch marker",
+        kind="literal",
+        severity="high",
+        description="Benign watch-mode test marker.",
+        source="test suite",
+        literal=pattern,
+    )
+
+
+class WatchQueueTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "nt", "Windows notification mask test")
+    def test_windows_native_mask_ignores_last_access_only_changes(self) -> None:
+        from watchdog.observers import winapi
+
+        original = int(winapi.WATCHDOG_FILE_NOTIFY_FLAGS)
+        try:
+            _configure_windows_native_change_mask()
+            narrowed = int(winapi.WATCHDOG_FILE_NOTIFY_FLAGS)
+            self.assertEqual(0, narrowed & int(winapi.FILE_NOTIFY_CHANGE_LAST_ACCESS))
+            self.assertEqual(
+                original & ~int(winapi.FILE_NOTIFY_CHANGE_LAST_ACCESS),
+                narrowed,
+            )
+        finally:
+            winapi.WATCHDOG_FILE_NOTIFY_FLAGS = original
+
+    def test_duplicate_events_are_debounced_and_state_is_excluded_pre_queue(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            now = [10.0]
+            events = DebouncedPathQueue(
+                excluded_paths=(root / "state",),
+                debounce_seconds=0.5,
+                max_events=16,
+                clock=lambda: now[0],
+            )
+            target = root / "scan" / "sample.bin"
+            events.submit(target, "created", False)
+            events.submit(target, "modified", False)
+            events.submit(root / "state" / "quarantine" / "object", "created", False)
+            self.assertEqual([], events.due())
+            now[0] = 10.5
+            due = events.due()
+        self.assertEqual(1, len(due))
+        self.assertEqual({"created", "modified"}, due[0].event_types)
+        self.assertEqual(2, events.events_received)
+        self.assertEqual(1, events.events_debounced)
+        self.assertEqual(1, events.events_excluded)
+
+    def test_queue_overflow_is_latched_and_counted(self) -> None:
+        with TemporaryDirectory() as temporary:
+            queue = DebouncedPathQueue(
+                excluded_paths=(),
+                debounce_seconds=0.1,
+                max_events=16,
+            )
+            for index in range(17):
+                queue.submit(Path(temporary) / f"{index}.bin", "created", False)
+        self.assertTrue(queue.overflowed.is_set())
+        self.assertEqual(1, queue.events_dropped)
+
+    def test_moved_event_scans_destination_not_old_name(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            now = [1.0]
+            events = DebouncedPathQueue(
+                excluded_paths=(),
+                debounce_seconds=0.1,
+                max_events=16,
+                clock=lambda: now[0],
+            )
+            handler = WatchEventHandler(events)
+            source = root / "partial.download"
+            destination = root / "complete.exe"
+            handler.on_moved(FileMovedEvent(str(source), str(destination)))
+            events.ingest()
+            now[0] = 1.1
+            due = events.due()
+        self.assertEqual([destination.absolute()], [item.path for item in due])
+        self.assertEqual({"moved_to"}, due[0].event_types)
+
+
+class WatchEngineTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = TemporaryDirectory()
+        self.root = Path(self.temporary.name)
+        self.scan_root = self.root / "scan"
+        self.state_dir = self.root / "state"
+        self.scan_root.mkdir()
+
+    def tearDown(self) -> None:
+        self.temporary.cleanup()
+
+    def _config(self, **overrides: Any) -> WatchConfig:
+        values: dict[str, Any] = {
+            "roots": (self.scan_root,),
+            "state_dir": self.state_dir,
+            "backend": "polling",
+            "debounce_seconds": 0.05,
+            "poll_seconds": 0.05,
+            "reconcile_seconds": 10.0,
+        }
+        values.update(overrides)
+        return WatchConfig(**values)
+
+    def test_policy_keeps_existing_protection_and_requires_quarantine_opt_in(self) -> None:
+        policy = watch_policy(False)
+        self.assertFalse(policy["kernel_or_os_access_mediation"])
+        self.assertFalse(policy["primary_antivirus"])
+        self.assertTrue(policy["existing_protection_must_remain_active"])
+        self.assertFalse(policy["automatic_provider_changes"])
+        self.assertFalse(policy["quarantine_requested"])
+
+    def test_roots_are_canonical_deduplicated_and_never_inside_state(self) -> None:
+        child = self.scan_root / "child"
+        child.mkdir()
+        roots = normalize_watch_roots((child, self.scan_root), self.state_dir)
+        self.assertEqual((self.scan_root.absolute(),), tuple(root.path for root in roots))
+        self.state_dir.mkdir()
+        with self.assertRaisesRegex(WatchError, "inside the excluded state"):
+            normalize_watch_roots((self.state_dir,), self.state_dir)
+
+    def test_auto_backend_discloses_native_failure_and_uses_polling(self) -> None:
+        def fail_native(_timeout: float) -> FakeObserver:
+            raise OSError("test native backend failure")
+
+        records: list[dict[str, Any]] = []
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(backend="auto"),
+            on_record=records.append,
+            native_observer_factory=fail_native,
+            polling_observer_factory=FakeObserver,
+        )
+        summary = watcher.run(duration_seconds=0.1)
+        self.assertEqual("polling", summary.backend_active)
+        self.assertIn("test native backend failure", summary.fallback_reason or "")
+        self.assertFalse(summary.operational_incomplete)
+        self.assertIn("backend_fallback", [record["event"] for record in records])
+
+    def test_explicit_native_backend_failure_refuses_to_start(self) -> None:
+        def fail_native(_timeout: float) -> FakeObserver:
+            raise OSError("native unavailable")
+
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(backend="native"),
+            native_observer_factory=fail_native,
+        )
+        with self.assertRaisesRegex(WatchError, "native watch backend failed"):
+            watcher.run(duration_seconds=0.1)
+
+    def test_backend_death_returns_incomplete_instead_of_silent_success(self) -> None:
+        class DeadObserver(FakeObserver):
+            def is_alive(self) -> bool:
+                return False
+
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(),
+            polling_observer_factory=DeadObserver,
+        )
+        summary = watcher.run(duration_seconds=0.2)
+        self.assertTrue(summary.operational_incomplete)
+        self.assertEqual("incomplete", summary.outcome)
+        self.assertEqual("watch_backend_stopped", summary.health_issues[0]["code"])
+
+    def test_queue_overflow_stops_with_explicit_coverage_failure(self) -> None:
+        def fill_queue(observer: FakeObserver) -> None:
+            if observer.handler is None:
+                raise AssertionError("observer was started without a handler")
+            for index in range(17):
+                observer.handler.on_created(
+                    FileCreatedEvent(str(self.scan_root / f"missing-{index}.bin"))
+                )
+
+        def factory(timeout: float) -> FakeObserver:
+            return FakeObserver(timeout, fill_queue)
+
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(event_queue_size=16),
+            polling_observer_factory=factory,
+        )
+        summary = watcher.run(duration_seconds=0.2)
+        self.assertTrue(summary.operational_incomplete)
+        self.assertEqual(1, summary.stats.events_dropped)
+        self.assertEqual("watch_event_queue_overflow", summary.health_issues[0]["code"])
+
+    def test_state_and_quarantine_are_excluded_from_baseline_scan(self) -> None:
+        nested_state = self.scan_root / ".zero-state"
+        (nested_state / "quarantine").mkdir(parents=True)
+        (nested_state / "quarantine" / "marker.bin").write_bytes(
+            make_test_rule().literal or b""
+        )
+        watcher = ForegroundProtectionWatcher(
+            Scanner((make_test_rule(),), ScannerConfig(excluded_paths=(nested_state,))),
+            self._config(state_dir=nested_state),
+            polling_observer_factory=FakeObserver,
+        )
+        summary = watcher.run(duration_seconds=0.1)
+        self.assertEqual(0, summary.stats.findings)
+        self.assertGreaterEqual(summary.stats.events_excluded, 0)
+
+    def test_size_skip_is_an_incomplete_scope_not_a_clean_result(self) -> None:
+        (self.scan_root / "large.bin").write_bytes(b"12345")
+        watcher = ForegroundProtectionWatcher(
+            Scanner((), ScannerConfig(max_file_bytes=4)),
+            self._config(),
+            polling_observer_factory=FakeObserver,
+        )
+        summary = watcher.run(duration_seconds=0.1)
+        self.assertEqual("incomplete", summary.outcome)
+        self.assertEqual("scan_scope_incomplete", summary.health_issues[0]["code"])
+
+    def test_short_lived_event_is_superseded_without_poisoning_session_health(self) -> None:
+        records: list[dict[str, Any]] = []
+
+        def submit_missing(observer: FakeObserver) -> None:
+            if observer.handler is None:
+                raise AssertionError("observer was started without a handler")
+            observer.handler.on_created(FileCreatedEvent(str(self.scan_root / "gone.tmp")))
+
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(debounce_seconds=0.05),
+            on_record=records.append,
+            polling_observer_factory=lambda timeout: FakeObserver(timeout, submit_missing),
+        )
+        # macOS CI can spend most of a 200 ms window starting the observer. Keep
+        # this an integration-style timing test, but leave enough time for the
+        # configured 50 ms debounce to become due on slower hosted runners.
+        summary = watcher.run(duration_seconds=1.0)
+        self.assertFalse(summary.operational_incomplete)
+        self.assertEqual("no_configured_rule_matches", summary.outcome)
+        self.assertEqual(1, summary.stats.events_superseded)
+        self.assertIn("event_superseded", [record["event"] for record in records])
+
+    def test_real_polling_backend_detects_file_created_after_baseline(self) -> None:
+        target = self.scan_root / "arriving.bin"
+        wrote_target = threading.Event()
+        records: list[dict[str, Any]] = []
+
+        def record(value: dict[str, Any]) -> None:
+            records.append(value)
+            if value["event"] == "scan_completed" and value["triggers"] == [
+                "initial_baseline"
+            ]:
+                target.write_bytes(
+                    b"prefix-" + (make_test_rule().literal or b"") + b"-suffix"
+                )
+                wrote_target.set()
+
+        watcher = ForegroundProtectionWatcher(
+            Scanner((make_test_rule(),)),
+            self._config(),
+            on_record=record,
+        )
+        summary = watcher.run(duration_seconds=1.0)
+        self.assertTrue(wrote_target.is_set())
+        self.assertEqual(1, summary.stats.findings)
+        event_scans = [
+            value
+            for value in records
+            if value["event"] == "scan_completed" and "initial_baseline" not in value["triggers"]
+        ]
+        self.assertTrue(event_scans)
+        self.assertTrue(target.exists(), "quarantine must remain off by default")
+
+    def test_periodic_heartbeat_proves_the_backend_loop_is_alive(self) -> None:
+        records: list[dict[str, Any]] = []
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(heartbeat_seconds=0.1),
+            on_record=records.append,
+            polling_observer_factory=FakeObserver,
+        )
+        summary = watcher.run(duration_seconds=0.25)
+        heartbeats = [record for record in records if record["event"] == "health_heartbeat"]
+        self.assertFalse(summary.operational_incomplete)
+        self.assertGreaterEqual(len(heartbeats), 1)
+        self.assertEqual("polling", heartbeats[0]["backend_active"])
+        self.assertFalse(heartbeats[0]["policy"]["real_time_protection"])
+        self.assertFalse(heartbeats[0]["policy"]["pre_access_enforcement"])
+
+    def test_heartbeat_reports_live_event_queue_counters(self) -> None:
+        target = self.scan_root / "heartbeat-event.bin"
+
+        def submit_event(observer: FakeObserver) -> None:
+            if observer.handler is None:
+                raise AssertionError("observer was started without a handler")
+            target.write_bytes(b"benign heartbeat counter test")
+            observer.handler.on_created(FileCreatedEvent(str(target)))
+
+        records: list[dict[str, Any]] = []
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(heartbeat_seconds=0.1),
+            on_record=records.append,
+            polling_observer_factory=lambda timeout: FakeObserver(timeout, submit_event),
+        )
+        summary = watcher.run(duration_seconds=0.3)
+        heartbeats = [record for record in records if record["event"] == "health_heartbeat"]
+        self.assertFalse(summary.operational_incomplete)
+        self.assertGreaterEqual(len(heartbeats), 1)
+        self.assertEqual(1, heartbeats[-1]["stats"]["events_received"])
+        self.assertEqual(0, heartbeats[-1]["stats"]["events_dropped"])
+
+
+if __name__ == "__main__":
+    unittest.main()

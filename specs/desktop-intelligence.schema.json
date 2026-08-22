@@ -1,0 +1,165 @@
+{
+  "$id": "https://talktoai.org/schemas/zsec-desktop-intelligence-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "advisories": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {"maxLength": 500, "minLength": 1, "type": "string"},
+          "cve_ids": {
+            "items": {"pattern": "^CVE-[0-9]{4}-[0-9]{4,}$", "type": "string"},
+            "maxItems": 256,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "exploited": {"type": ["boolean", "null"]},
+          "id": {"maxLength": 160, "minLength": 3, "type": "string"},
+          "modified_at": {"format": "date-time", "type": "string"},
+          "platforms": {
+            "items": {
+              "enum": ["browser", "cross-platform", "linux", "macos", "windows"]
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "products": {
+            "items": {"maxLength": 300, "minLength": 1, "type": "string"},
+            "maxItems": 32,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "provenance": {
+            "additionalProperties": false,
+            "properties": {
+              "parser": {"maxLength": 80, "minLength": 3, "type": "string"},
+              "source_body_sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "source_record_id": {
+                "maxLength": 160,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": ["source_body_sha256", "source_record_id", "parser"],
+            "type": "object"
+          },
+          "published_at": {"format": "date-time", "type": "string"},
+          "ransomware": {"type": ["boolean", "null"]},
+          "record_url": {"format": "uri", "pattern": "^https://", "type": "string"},
+          "severity": {
+            "enum": ["critical", "high", "medium", "low", "info", "unknown"]
+          },
+          "source_id": {
+            "enum": ["apple-security", "cisa-kev", "microsoft-msrc", "ubuntu-usn"]
+          },
+          "source_url": {"format": "uri", "pattern": "^https://", "type": "string"},
+          "summary": {"maxLength": 700, "minLength": 1, "type": "string"},
+          "title": {"maxLength": 300, "minLength": 1, "type": "string"},
+          "zba": {
+            "additionalProperties": false,
+            "properties": {
+              "commitment": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+              "evidence": {"const": "authoritative-advisory"},
+              "phase": {"const": "observed"},
+              "spec": {"const": "zsec.zba.intelligence.v1"}
+            },
+            "required": ["spec", "phase", "evidence", "commitment"],
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "source_id",
+          "source_url",
+          "record_url",
+          "title",
+          "summary",
+          "published_at",
+          "modified_at",
+          "platforms",
+          "cve_ids",
+          "severity",
+          "exploited",
+          "ransomware",
+          "action",
+          "products",
+          "provenance",
+          "zba"
+        ],
+        "type": "object"
+      },
+      "maxItems": 4096,
+      "minItems": 1,
+      "type": "array"
+    },
+    "generated_at": {"format": "date-time", "type": "string"},
+    "policy": {
+      "additionalProperties": false,
+      "properties": {
+        "auto_remediation_allowed": {"const": false},
+        "data_only": {"const": true},
+        "detection_rules_derived": {"const": false},
+        "malware_samples_allowed": {"const": false},
+        "remote_commands_allowed": {"const": false}
+      },
+      "required": [
+        "data_only",
+        "remote_commands_allowed",
+        "auto_remediation_allowed",
+        "detection_rules_derived",
+        "malware_samples_allowed"
+      ],
+      "type": "object"
+    },
+    "schema": {"const": "zsec.desktop-intelligence.v1"},
+    "sources": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "advisory_count": {"minimum": 0, "type": "integer"},
+          "authority": {"maxLength": 200, "minLength": 3, "type": "string"},
+          "body_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+          "contribution_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "parser": {"maxLength": 80, "minLength": 3, "type": "string"},
+          "semantic_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "source_id": {
+            "enum": ["apple-security", "cisa-kev", "microsoft-msrc", "ubuntu-usn"]
+          },
+          "url": {"format": "uri", "pattern": "^https://", "type": "string"},
+          "version": {"format": "date-time", "type": "string"}
+        },
+        "required": [
+          "source_id",
+          "authority",
+          "url",
+          "version",
+          "body_sha256",
+          "contribution_sha256",
+          "semantic_sha256",
+          "advisory_count",
+          "parser"
+        ],
+        "type": "object"
+      },
+      "maxItems": 4,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": ["schema", "generated_at", "policy", "sources", "advisories"],
+  "title": "ZSEC desktop intelligence catalog v1",
+  "type": "object"
+}

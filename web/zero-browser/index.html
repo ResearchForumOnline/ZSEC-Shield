@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZSEC Browser | Windows Desktop Preview + Chromium Shields</title>
+  <meta name="description" content="Explore the ZSEC Browser Windows desktop preview and install open-source Chromium Shields for local blocking, link cleanup and High-Risk Browsing.">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="theme-color" content="#07101f">
+  <link rel="canonical" href="https://talktoai.org/zero-browser/">
+  <link rel="alternate" hreflang="en-GB" href="https://talktoai.org/zero-browser/">
+  <link rel="alternate" hreflang="x-default" href="https://talktoai.org/zero-browser/">
+  <link rel="icon" href="../assets/zero-browser-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/style.css?v=20260821-zsec2">
+
+  <meta property="og:site_name" content="TalkToAI">
+  <meta property="og:locale" content="en_GB">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://talktoai.org/zero-browser/">
+  <meta property="og:title" content="ZSEC Browser | Windows Desktop Preview + Chromium Shields">
+  <meta property="og:description" content="A working Windows WebView2 Chromium desktop preview plus 40 packaged extension rules and optional High-Risk Browsing.">
+  <meta property="og:image" content="https://talktoai.org/assets/zero-browser-og.png">
+  <meta property="og:image:width" content="1536">
+  <meta property="og:image:height" content="1024">
+  <meta property="og:image:alt" content="ZSEC Browser Shields Community 0.4 product interface concept">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ZSEC Browser | Desktop Preview + Chromium Shields">
+  <meta name="twitter:description" content="A working Windows Chromium shell and open-source local protection layer—with exact security and release boundaries.">
+  <meta name="twitter:image" content="https://talktoai.org/assets/zero-browser-og.png">
+  <meta name="twitter:image:alt" content="ZSEC Browser Shields Community 0.4 product interface concept">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": "https://talktoai.org/zero-browser/#webpage",
+        "url": "https://talktoai.org/zero-browser/",
+        "name": "ZSEC Browser | Windows Desktop Preview + Chromium Shields",
+        "description": "ZSEC Browser includes a Windows WebView2 Chromium desktop-shell developer preview and an open-source Manifest V3 protection layer with local filtering and optional High-Risk Browsing.",
+        "inLanguage": "en-GB",
+        "dateModified": "2026-08-21",
+        "isPartOf": { "@id": "https://talktoai.org/#website" },
+        "about": { "@id": "https://talktoai.org/zero-browser/#software" },
+        "breadcrumb": { "@id": "https://talktoai.org/zero-browser/#breadcrumb" }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://talktoai.org/#website",
+        "url": "https://talktoai.org/",
+        "name": "TalkToAI"
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://talktoai.org/#organization",
+        "name": "TalkToAI",
+        "url": "https://talktoai.org/",
+        "sameAs": ["https://github.com/ResearchForumOnline"]
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://talktoai.org/zero-browser/#software",
+        "name": "ZSEC Browser Shields Community 0.4",
+        "url": "https://talktoai.org/zero-browser/",
+        "applicationCategory": "SecurityApplication",
+        "applicationSubCategory": "Chromium privacy and security extension",
+        "operatingSystem": "Chromium-based browsers with Manifest V3 extension support",
+        "softwareVersion": "0.4.0 Community",
+        "softwareRequirements": "Chromium 120 or later with Manifest V3 extension support; manual unpacked installation",
+        "isAccessibleForFree": true,
+        "license": "https://www.apache.org/licenses/LICENSE-2.0",
+        "publisher": { "@id": "https://talktoai.org/#organization" },
+        "downloadUrl": "https://talktoai.org/downloads/zero-browser/zsec-browser-shields-0.4.0-chromium-mv3.zip",
+        "releaseNotes": "https://talktoai.org/zero-browser/#high-risk",
+        "description": "An unsigned open-source Manifest V3 extension with 38 packaged network blockers, two link-cleaning rules, per-site controls and an optional two-rule High-Risk Browsing profile. It is manually installed and does not detect spyware or replace browser security updates."
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://talktoai.org/zero-browser/#breadcrumb",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "TalkToAI",
+            "item": "https://talktoai.org/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "ZSEC Browser",
+            "item": "https://talktoai.org/zero-browser/"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://talktoai.org/zero-browser/#faq-schema",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is ZSEC Browser already a standalone browser?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A visible Windows Desktop Preview 0.2.3 now exists as an unsigned developer build powered by Microsoft's Evergreen WebView2 Chromium runtime. It is a hardened browser shell, not a separately maintained Chromium fork or public signed Brave replacement. ZSEC Browser Shields 0.4 remains the public extension download."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does ZSEC Browser block every YouTube ad?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "It applies local declarative blocking rules and best-effort interface cleanup. YouTube and other sites change frequently, so no honest blocker can promise uninterrupted coverage on every site."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does ZSEC Browser collect browsing history?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Community 0.4 does not collect or upload browser history, page content, form data, cookies or search queries. It has no analytics, account or crash-upload endpoint."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does ZSEC Browser install a root certificate or inspect encrypted traffic?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. The extension does not proxy traffic, install a local root certificate or break TLS. It works inside Chromium's extension boundary and does not weaken the browser sandbox or Site Isolation."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I verify the ZSEC Browser Shields package?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Download the versioned ZIP and checksum, calculate SHA-256 locally, compare the exact value, inspect the open source and load the unpacked package only in a dedicated Chromium profile."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How would a ZSEC Browser distribution stay secure as Chromium changes?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Any browser distribution needs a deliberately small patch set, automated upstream monitoring, weekly and emergency security merges, signed update metadata, staged release rings and tested rollback. That operation has not shipped, so the project is not described as a maintained Chromium browser binary."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does High-Risk Browsing stop mercenary spyware or zero-click exploits?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. It applies only two disclosed request restrictions. It does not detect spyware, inspect messages or device memory, scan downloads, judge whether a site is safe, or stop an unknown browser, extension, operating-system, kernel or baseband exploit. A zero-click attack may not involve browser navigation at all."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body class="product-browser">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <header class="site-header">
+    <div class="container nav-shell">
+      <a class="brand" href="https://talktoai.org/" aria-label="TalkToAI home">
+        <span class="brand-mark" aria-hidden="true">Z</span>
+        <span>TalkToAI</span>
+        <span class="brand-product">ZSEC Browser</span>
+        <span class="preview-chip">Community 0.4</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#preview">Protection</a>
+        <a href="#high-risk">High-Risk mode</a>
+        <a class="nav-priority" href="download/">Install</a>
+        <a href="privacy/">Privacy</a>
+        <a href="#faq">FAQ</a>
+        <a class="nav-switch" href="../zero-security/">ZSEC Antivirus <span aria-hidden="true">→</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="hero-kicker">Windows desktop preview · Chromium 120+ extension · local rules</p>
+          <h1 id="hero-title">A visible ZSEC browser. A protection layer you can inspect.</h1>
+          <p class="lede">ZSEC Browser Desktop Preview 0.2.3 is a working Windows shell powered by Microsoft's maintained WebView2 Chromium runtime. ZSEC Browser Shields 0.4 remains the public extension for compatible Chromium-family browsers.</p>
+          <div class="hero-actions">
+            <a class="button" href="download/">Install ZSEC Browser Shields <span aria-hidden="true">↓</span></a>
+            <a class="button button-secondary" href="#desktop-preview">See the desktop preview</a>
+          </div>
+          <p class="microcopy"><strong>Release boundary:</strong> the Windows shell is an unsigned local developer preview, not a maintained Chromium fork or public signed installer. Community 0.4 is the current public extension download. Keep browser and WebView2 updates enabled.</p>
+        </div>
+
+        <!-- Local launch artwork: ../assets/zsec-family-hero-v2.png -->
+        <div class="hero-art" role="img" aria-label="ZSEC Browser product concept showing local privacy controls and transparent blocking status">
+          <span class="concept-label">Product concept · not live browsing data</span>
+          <div class="status-window" aria-hidden="true">
+            <div class="window-bar">
+              <span class="window-dot"></span>
+              <span class="window-dot"></span>
+              <span class="window-dot"></span>
+              <span class="window-title">ZSEC Browser Shields 0.4</span>
+            </div>
+            <div class="window-body">
+              <div class="status-row">
+                <span class="status-name">Protection rules</span>
+                <span class="status-value">40 local</span>
+              </div>
+              <div class="status-row">
+                <span class="status-name">Browsing-data upload</span>
+                <span class="status-value">Off</span>
+              </div>
+              <div class="status-row">
+                <span class="status-name">Per-site control</span>
+                <span class="status-value">Included</span>
+              </div>
+              <div class="status-row">
+                <span class="status-name">High-Risk Browsing</span>
+                <span class="status-value">Optional</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="trust-strip" aria-label="ZSEC Browser Community 0.4 principles">
+      <div class="container trust-grid">
+        <div class="trust-item">
+          <strong>Local blocking rules</strong>
+          <p>Manifest V3 declarative rules can block configured requests without sending visited URLs to ZSEC Browser.</p>
+        </div>
+        <div class="trust-item">
+          <strong>No traffic interception</strong>
+          <p>No proxy, local root certificate, TLS decryption or affiliate-link injection in Community 0.4.</p>
+        </div>
+        <div class="trust-item">
+          <strong>Honest coverage</strong>
+          <p>Dynamic sites change. YouTube cleanup and ad blocking are best effort, never guaranteed on every page.</p>
+        </div>
+      </div>
+    </aside>
+
+    <section class="section section-muted" id="desktop-preview" aria-labelledby="desktop-preview-title">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Working Windows developer build</p>
+            <h2 id="desktop-preview-title">ZSEC Browser Desktop Preview 0.2.3.</h2>
+          </div>
+          <p>The preview has its own executable, branded window, tabs, address bar, Desktop and Start-menu entries, isolated profile and runtime evidence. Microsoft maintains the Evergreen WebView2 Chromium engine; ZSEC maintains the shell and reviewed policy adapter.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="card card-accent"><span class="card-icon" aria-hidden="true">APP</span><h3>Visible native shell</h3><p>Native ZSEC interface, managed tabs and downloads, exact About information and no reuse of Chrome, Edge or Brave profiles.</p></article>
+          <article class="card"><span class="card-icon" aria-hidden="true">81</span><h3>Compiled blocker policy</h3><p>81 reviewed blocker domains and 21 tracking parameters are deterministically adapted from ZSEC Browser Shields 0.4 data rules.</p></article>
+          <article class="card"><span class="card-icon" aria-hidden="true">DENY</span><h3>Hardened defaults</h3><p>Site permissions default to deny; certificate errors are cancelled; password autofill, host objects, web messaging, developer tools and automatic download opening are disabled.</p></article>
+          <article class="card"><span class="card-icon" aria-hidden="true">TEST</span><h3>Runtime acceptance</h3><p>The installed executable passed hash, signed-runtime, isolated-profile, HTTPS, tracking-cleanup and reviewed-domain blocking checks without prohibited weakening flags.</p></article>
+        </div>
+        <div class="callout callout-spaced"><span class="callout-mark" aria-hidden="true">!</span><div><h3>Not a public browser release yet.</h3><p>The ZSEC executable is unsigned and no ZSEC binary updater or independent sandbox/Site Isolation attestation has shipped. <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/pull/6">Draft pull request #6 exposes the source, tests and build pipeline</a>, but this site does not ask ordinary users to bypass SmartScreen for the local developer artifact.</p></div></div>
+      </div>
+    </section>
+
+    <section class="section" id="preview" aria-labelledby="preview-title">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Protection available now</p>
+            <h2 id="preview-title">40 rules. Per-site control. No history service.</h2>
+          </div>
+          <p>The downloadable extension makes the protection layer useful now while keeping its permissions, blocking behaviour and complete source open to review.</p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="card card-accent">
+            <span class="card-icon" aria-hidden="true">01</span>
+            <h3>Declarative local blocking</h3>
+            <p>Configured ad, analytics, fingerprinting and session-replay requests are handled with 38 packaged Manifest V3 rules. No remote browsing-history service is required.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">02</span>
+            <h3>Cleaner tracking links</h3>
+            <p>Two top-level navigation rules remove common campaign identifiers such as <code>utm_*</code>, <code>gclid</code> and <code>fbclid</code> without a remote redirect service.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">03</span>
+            <h3>Best-effort YouTube assistance</h3>
+            <p>A bounded content script can use visible skip controls and hide configured promoted slots. The site changes frequently, so perfect coverage is not promised.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">04</span>
+            <h3>One-click site pause</h3>
+            <p>A local allow rule can recover a broken site without disabling protection everywhere. Paused domains remain visible in extension storage.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">05</span>
+            <h3>No interception or affiliate injection</h3>
+            <p>ZSEC Browser Shields installs no root certificate, proxies no encrypted traffic, replaces no shopping links and forces no search provider.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">06</span>
+            <h3>Inspectable permissions and source</h3>
+            <p>Every requested permission maps to a visible feature. Rules, source modules, tests, privacy contract and deterministic packager are public.</p>
+          </article>
+        </div>
+
+        <div class="callout callout-spaced">
+          <span class="callout-mark" aria-hidden="true">i</span>
+          <div>
+            <h3>Blocking is not the same as total protection</h3>
+            <p>Removing configured ads and trackers can reduce exposure and distraction. It cannot guarantee that every site, extension, download or account is safe. Browser and operating-system updates still matter.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-muted" id="high-risk" aria-labelledby="high-risk-title">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Optional · off by default</p>
+            <h2 id="high-risk-title">Reduce selected browser exposure. Expect some sites to break.</h2>
+          </div>
+          <p>High-Risk Browsing adds two fixed local Manifest V3 request rules. When both the master protection switch and this profile are on, it blocks top-level plaintext HTTP navigation and third-party scripts, subframes, objects and WebSockets.</p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="card card-accent"><span class="card-icon" aria-hidden="true">HTTP</span><h3>Blocks plaintext pages</h3><p>Top-level <code>http://</code> navigation is blocked before the request is sent. HTTPS protects transport, but it does not prove that a site or its content is safe.</p></article>
+          <article class="card"><span class="card-icon" aria-hidden="true">3P</span><h3>Restricts third-party active content</h3><p>Third-party scripts, subframes, objects and WebSockets are blocked. First-party active content, images, media, stylesheets, fonts and fetch/XHR are not blanket-blocked.</p></article>
+          <article class="card"><span class="card-icon" aria-hidden="true">LOCAL</span><h3>Local and explicit</h3><p>The preference stays in browser-local storage. The fixed rules accept no remote feed, URL classifier or domain verdict, and the profile starts off.</p></article>
+          <article class="card"><span class="card-icon" aria-hidden="true">BREAK</span><h3>Designed to break more sites</h3><p>Sign-in, payment, CAPTCHA, embedded-document, video, chat and support services may fail. Turn the profile or master protection off when compatibility is required.</p></article>
+        </div>
+
+        <p>The stricter rules have priority over ordinary per-site pause. While High-Risk Browsing is active, the pause control is unavailable so a lower-priority site exception cannot silently weaken the profile.</p>
+
+        <div class="callout callout-spaced">
+          <span class="callout-mark" aria-hidden="true">!</span>
+          <div>
+            <h3>Exposure reduction is not spyware detection.</h3>
+            <p>High-Risk Browsing does not detect Pegasus or other mercenary spyware, decide that a site is safe or malicious, scan downloads or messages, inspect browser or operating-system memory, or stop an unknown browser, extension, operating-system, kernel or baseband exploit. A zero-click attack may not involve browser navigation at all.</p>
+            <p>ZSEC Antivirus operates later and separately on selected changed files. That post-change companion does not turn these browser rules into exploit detection, pre-access file protection or a clean-device verdict.</p>
+          </div>
+        </div>
+
+        <div class="split">
+          <article class="panel panel-positive">
+            <h3>Runtime-tested enforcement</h3>
+            <p>A disposable Windows smoke test passed in current Brave and Edge builds: both request classes were blocked before reaching loopback test servers, and explicitly switching the profile off removed the rules and restored navigation.</p>
+            <p><a href="high-risk-browsing/">Read the threat research, exact test boundary and high-risk operating guide.</a></p>
+          </article>
+          <article class="panel panel-private">
+            <h3>Independent security context—not an endorsement</h3>
+            <p>Google’s Threat Analysis Group has documented commercial-surveillance campaigns involving injected HTTP redirects, watering holes and browser exploit chains. Citizen Lab has documented NSO Group zero-click chains that do not depend on browser navigation. These sources support layered, bounded controls; they do not test, certify or endorse ZSEC.</p>
+            <p><a href="https://blog.google/threat-analysis-group/0-days-exploited-by-commercial-surveillance-vendor-in-egypt/">Google TAG: injected HTTP delivery</a> · <a href="https://blog.google/threat-analysis-group/state-backed-attackers-and-commercial-surveillance-vendors-repeatedly-use-the-same-exploits/">Google TAG: watering holes</a> · <a href="https://citizenlab.ca/blastpass-nso-group-iphone-zero-click-zero-day-exploit-captured-in-the-wild/">Citizen Lab: BLASTPASS</a></p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-muted" id="privacy" aria-labelledby="privacy-title">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Privacy contract</p>
+            <h2 id="privacy-title">Browsing is not a telemetry product.</h2>
+          </div>
+          <p>Community 0.4 has no analytics endpoint, advertising identifier, account requirement, spyware-verdict service or remote-control channel. Its privacy promise is specific and testable—not a vague “private mode” badge.</p>
+        </div>
+
+        <div class="split">
+          <article class="panel panel-positive">
+            <h3>Community 0.4 does not collect</h3>
+            <ul>
+              <li>Browsing history or visited page content.</li>
+              <li>Form entries, cookies or search queries.</li>
+              <li>Private-browsing history or diagnostics.</li>
+              <li>Affiliate-attribution replacements.</li>
+              <li>Automatic page screenshots or memory contents.</li>
+            </ul>
+          </article>
+          <article class="panel panel-private">
+            <h3>Network expansion requires disclosure</h3>
+            <ul>
+              <li>Update checks disclose only documented release fields.</li>
+              <li>Diagnostics remain a separate opt-in.</li>
+              <li>URLs, query strings and user identifiers are scrubbed.</li>
+              <li>Sync must be independently encrypted before release.</li>
+              <li>Any policy change requires clear release notes.</li>
+            </ul>
+          </article>
+        </div>
+        <p><a href="privacy/">Read the complete ZSEC Browser Shields privacy policy.</a></p>
+      </div>
+    </section>
+
+    <section class="section section-dark" id="security" aria-labelledby="security-title">
+      <div class="container architecture">
+        <div class="architecture-copy">
+          <p class="section-label">Browser security architecture</p>
+          <h2 id="security-title">A browser fork is an update operation, not a paint job.</h2>
+          <p>The Windows Desktop Preview uses Microsoft's serviced WebView2 Chromium runtime. A separately maintained ZSEC Chromium distribution would still have to preserve process separation, renderer sandbox and Site Isolation while sustaining rapid upstream security merges. The preview does not claim to be that fork.</p>
+          <ul class="check-list">
+            <li>Never ship with the Chromium sandbox disabled.</li>
+            <li>Never install a root certificate to inspect traffic.</li>
+            <li>Merge upstream security fixes weekly and on emergency cadence.</li>
+            <li>Use signed update metadata with expiry and rollback protection.</li>
+            <li>Carry complete Chromium and third-party licence notices.</li>
+          </ul>
+        </div>
+
+        <div class="architecture-diagram" role="img" aria-label="ZSEC Browser distribution architecture target preserving Chromium security boundaries">
+          <div class="layer">
+            <strong>Zero interface and privacy defaults</strong>
+            <span>Clear permissions, settings and per-site controls</span>
+          </div>
+          <div class="layer layer-primary">
+            <strong>Small reviewed patch set</strong>
+            <span>Independent branding without weakening core safeguards</span>
+          </div>
+          <div class="layer">
+            <strong>Chromium browser and service processes</strong>
+            <span>Network, GPU, storage and extension boundaries retained</span>
+          </div>
+          <div class="layer">
+            <strong>Sandboxed renderers + Site Isolation</strong>
+            <span>Untrusted web content kept away from browser authority</span>
+          </div>
+          <div class="layer">
+            <strong>Signed updater and staged rings</strong>
+            <span>Fast security releases, health halts and rollback</span>
+          </div>
+          <p class="architecture-note">Current boundary · WebView2 desktop-shell preview + auditable extension</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-muted" id="coverage" aria-labelledby="coverage-title">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Coverage without theatre</p>
+            <h2 id="coverage-title">What blocking can—and cannot—do.</h2>
+          </div>
+          <p>A transparent browser should show the user which controls are active, why a site broke and how to make a narrow site exception. It should not hide limitations behind a green shield.</p>
+        </div>
+
+        <div class="status-matrix">
+          <div class="status-line">
+            <div><span class="status-tag">Community 0.4</span></div>
+            <p>Configured local ad and tracker rules, best-effort YouTube interface cleanup and optional High-Risk Browsing in compatible Chromium-based browsers.</p>
+          </div>
+          <div class="status-line">
+            <div><span class="status-tag implementation">User control</span></div>
+            <p>Clear per-site controls, visible exceptions, permission explanations and no forced search provider or affiliate injection.</p>
+          </div>
+          <div class="status-line">
+            <div><span class="status-tag not-claimed">Not promised</span></div>
+            <p>Every YouTube ad blocked, every malicious site prevented, anonymity, immunity from browser exploits or protection from all hackers.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-muted" id="open-core" aria-labelledby="open-core-title">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="section-label">Open-core boundary</p>
+            <h2 id="open-core-title">The browser core stays inspectable.</h2>
+          </div>
+          <p>Privacy claims are easier to test when the rules, extension source, threat model and packaging are public. Separately licensed services are labelled rather than hidden behind the word “open.”</p>
+        </div>
+
+        <div class="split">
+          <article class="panel panel-positive">
+            <h3>Public and auditable</h3>
+            <ul>
+              <li>ZSEC Browser privacy-extension package.</li>
+              <li>Local ad and tracker rules.</li>
+              <li>Permissions and privacy tests.</li>
+              <li>Threat models and reproducible packaging.</li>
+              <li>A complete Chromium patch inventory and licence notices.</li>
+            </ul>
+          </article>
+          <article class="panel panel-private">
+            <h3>Optional and separately operated</h3>
+            <ul>
+              <li>Production signing and offline root keys.</li>
+              <li>Managed reputation and enterprise administration.</li>
+              <li>Independently encrypted sync infrastructure.</li>
+              <li>Customer-support systems.</li>
+              <li>Licensed commercial threat intelligence.</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="faq" aria-labelledby="faq-title">
+      <div class="container narrow">
+        <p class="section-label">Questions, answered plainly</p>
+        <h2 id="faq-title">ZSEC Browser FAQ</h2>
+        <div class="faq-list">
+          <details>
+            <summary>Is ZSEC Browser already a standalone browser?</summary>
+            <div class="faq-answer"><p>A visible Windows Desktop Preview 0.2.3 now exists as an unsigned developer build powered by Microsoft's Evergreen WebView2 Chromium runtime. It is a hardened browser shell, not a separately maintained Chromium fork or public signed Brave replacement. ZSEC Browser Shields 0.4 remains the public extension download.</p></div>
+          </details>
+          <details>
+            <summary>Does ZSEC Browser block every YouTube ad?</summary>
+            <div class="faq-answer"><p>It applies local declarative blocking rules and best-effort interface cleanup. YouTube and other sites change frequently, so no honest blocker can promise uninterrupted coverage on every site.</p></div>
+          </details>
+          <details>
+            <summary>Does ZSEC Browser collect browsing history?</summary>
+            <div class="faq-answer"><p>Community 0.4 does not collect or upload browser history, page content, form data, cookies or search queries. It has no analytics, account or crash-upload endpoint.</p></div>
+          </details>
+          <details>
+            <summary>Does ZSEC Browser install a root certificate or inspect encrypted traffic?</summary>
+            <div class="faq-answer"><p>No. The extension does not proxy traffic, install a local root certificate or break TLS. It works inside Chromium's extension boundary and does not weaken the browser sandbox or Site Isolation.</p></div>
+          </details>
+          <details>
+            <summary>How do I verify the ZSEC Browser Shields package?</summary>
+            <div class="faq-answer"><p>Download the versioned ZIP and checksum, calculate SHA-256 locally, compare the exact value, inspect the open source and load the unpacked package only in a dedicated Chromium profile.</p></div>
+          </details>
+          <details>
+            <summary>How would a ZSEC Browser distribution stay secure as Chromium changes?</summary>
+            <div class="faq-answer"><p>Any browser distribution needs a deliberately small patch set, automated upstream monitoring, weekly and emergency security merges, signed update metadata, staged release rings and tested rollback. That operation has not shipped, so the project is not described as a maintained Chromium browser binary.</p></div>
+          </details>
+          <details>
+            <summary>Does High-Risk Browsing stop mercenary spyware or zero-click exploits?</summary>
+            <div class="faq-answer"><p>No. It applies only the two request restrictions disclosed on this page. It does not detect mercenary or commercial spyware, inspect messages or device memory, scan downloads, judge whether a site is safe, or stop an unknown browser, extension, operating-system, kernel or baseband exploit. A zero-click attack may not involve browser navigation at all. Keep supported software updated and seek qualified incident-response help after a credible targeting alert.</p></div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="section cta-section" aria-labelledby="cta-title">
+      <div class="container cta-box">
+        <div>
+          <p class="section-label">Privacy people can verify</p>
+          <h2 id="cta-title">Install the protection layer today.</h2>
+          <p>ZSEC Browser Shields 0.4 is the installable open-source protection layer for compatible Chromium-family browsers, with versioned checksums, optional High-Risk Browsing and a complete local privacy contract.</p>
+        </div>
+        <div class="cta-actions">
+          <a class="button" href="download/">Install Community 0.4 <span aria-hidden="true">↓</span></a>
+          <a class="button button-secondary" href="../zero-security/">Meet ZSEC Antivirus</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="https://talktoai.org/">
+          <span class="brand-mark" aria-hidden="true">Z</span>
+          <span>ZSEC Browser</span>
+        </a>
+        <p>Local-first browser protection from TalkToAI: a Windows WebView2 desktop-shell developer preview plus ZSEC Browser Shields 0.4. A maintained signed Chromium distribution remains a separate gated programme.</p>
+      </div>
+      <div>
+        <p class="footer-title">Product</p>
+        <ul class="footer-links">
+          <li><a href="#preview">What it protects</a></li>
+          <li><a href="#high-risk">High-Risk Browsing</a></li>
+          <li><a href="download/">Install Community 0.4</a></li>
+          <li><a href="privacy/">Privacy policy</a></li>
+          <li><a href="#security">Security architecture</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="footer-title">Project</p>
+        <ul class="footer-links">
+          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/47d937df74a2170a17df6563d47af929a4c234f9/browser/zeroq-shields">Immutable extension source</a></li>
+          <li><a href="https://talktoai.org/.well-known/security.txt">Security contact</a></li>
+          <li><a href="https://talktoai.org/">TalkToAI home</a></li>
+          <li><a href="../zero-security/">ZSEC Antivirus</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <p>© 2026 TalkToAI. ZSEC Browser Shields Community 0.4.</p>
+      <p>Last reviewed <time datetime="2026-08-21">21 August 2026</time>.</p>
+    </div>
+  </footer>
+</body>
+</html>

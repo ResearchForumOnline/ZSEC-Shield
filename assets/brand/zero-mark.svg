@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Zero Security mark</title>
+  <desc id="desc">A protected zero formed by three directional boundary segments.</desc>
+  <defs>
+    <linearGradient id="g" x1="38" y1="34" x2="216" y2="224" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#37f2bd"/>
+      <stop offset=".55" stop-color="#00bba0"/>
+      <stop offset="1" stop-color="#238cff"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <path d="M128 14 220 50v69c0 60-35 103-92 123-57-20-92-63-92-123V50l92-36Z" fill="#071411" stroke="#23463f" stroke-width="5"/>
+  <g fill="none" stroke="url(#g)" stroke-linecap="round" stroke-width="22" filter="url(#glow)">
+    <path d="M88 75c11-13 24-20 40-20 35 0 59 30 59 73 0 14-3 27-8 38"/>
+    <path d="M164 190c-10 8-22 12-36 12-35 0-59-30-59-74 0-11 2-22 5-31"/>
+    <path d="m75 97 6-30 28 10"/>
+  </g>
+  <circle cx="128" cy="128" r="22" fill="#071411" stroke="#55ffd0" stroke-width="4"/>
+</svg>

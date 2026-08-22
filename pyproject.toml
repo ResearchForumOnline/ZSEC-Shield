@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zsec-shield"
-version = "0.1.2"
-description = "Deterministic, on-demand file scanning and signed security-rule feeds"
+version = "0.3.0"
+description = "Cross-platform on-demand security scanner with signed feeds and encrypted quarantine"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "ZSEC contributors" }]
-keywords = ["security", "scanner", "sha256", "quarantine", "ed25519"]
+keywords = ["antivirus", "security", "scanner", "sha256", "encrypted-quarantine", "ed25519"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
@@ -26,7 +26,10 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Topic :: Security",
 ]
-dependencies = ["cryptography>=42,<50"]
+dependencies = [
+  "cryptography>=42,<50",
+  "watchdog==6.0.0",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -40,9 +43,11 @@ native = ["pyinstaller==6.21.0"]
 
 [project.scripts]
 zsec-shield = "zsec_shield.cli:entrypoint"
+zsec-antivirus = "zsec_shield.cli:entrypoint"
+zero-security = "zsec_shield.cli:entrypoint"
 
 [project.urls]
-Homepage = "https://talktoai.org/zsec/"
+Homepage = "https://talktoai.org/zero-security/"
 Repository = "https://github.com/ResearchForumOnline/ZSEC-Shield"
 Issues = "https://github.com/ResearchForumOnline/ZSEC-Shield/issues"
 Releases = "https://github.com/ResearchForumOnline/ZSEC-Shield/releases"

@@ -15,6 +15,10 @@ class ScanConfigurationError(ZsecShieldError):
     """A scan option is unsafe or invalid."""
 
 
+class WatchError(ZsecShieldError):
+    """Foreground filesystem monitoring could not maintain honest coverage."""
+
+
 class QuarantineError(ZsecShieldError):
     """A quarantine operation could not be completed safely."""
 

@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+Allow: /zero-security/
+Allow: /zero-browser/
+Disallow: /zero-void-download
+Disallow: /zero-void-download.php
+Disallow: /zero-void-ipn
+Disallow: /zero-void-ipn.php
+Disallow: /zero-void-solana
+Disallow: /zero-void-solana.php
+Disallow: /assets/zero-void-checkout.js
+Disallow: /assets/solana-web3-1.98.4.iife.js
+Disallow: /how-to/files/
+Disallow: /how-to/thanks/
+
+Sitemap: https://talktoai.org/sitemap.xml

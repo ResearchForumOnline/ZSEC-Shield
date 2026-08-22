@@ -20,6 +20,10 @@ keys never belong on the scanning host.
   or a different mounted filesystem.
 - Accidental destructive action: quarantine is opt-in, copy verification precedes
   removal, partial operations are explicit, and restore will not overwrite.
+- Automatic post-change scanning of file create/modify/close/move-destination
+  events while the foreground watcher and its observer remain healthy. A mandatory
+  baseline and periodic reconciliation reduce, but do not eliminate, missed-event
+  risk.
 
 ## Out of scope
 
@@ -27,14 +31,25 @@ keys never belong on the scanning host.
   internals, scripts requiring semantic analysis, behavioral detection, memory and
   process inspection, boot sectors, firmware, browser protection, email filtering,
   cloud reputation, and network traffic.
-- Kernel-enforced or real-time protection. A process can change a path before or
-  after an on-demand scan.
+- Kernel-enforced or pre-access real-time protection. In watch mode, a process can
+  open, execute, rename, replace, or delete a path before the post-change user-mode
+  scan completes.
 - Recovery after an attacker gains write access to both the state directory and
   trusted keyring.
 - Availability against extremely deep, large, permission-hostile, or concurrently
   mutating trees. Limits and errors are reported rather than hidden.
 - Authenticating rule quality. A valid signature proves which trusted key signed a
   payload, not that every detection rule is correct.
+
+## Foreground watch failure model
+
+The watch event queue is finite and events can be lost by an operating system,
+filesystem, observer backend, overload, sleep/resume transition, or network/virtual
+filesystem behavior. Duplicate events are expected and debounced. The state tree is
+excluded before enqueue to prevent quarantine recursion. Known queue overflow,
+backend death, changed root identity, invalid/changed feed trust, or skipped scan
+scope produces an incomplete outcome. Periodic full scans are a reconciliation
+mechanism, not proof that no file executed during a coverage gap.
 
 ## Filesystem race handling
 

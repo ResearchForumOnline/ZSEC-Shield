@@ -1,0 +1,23 @@
+Options -Indexes -MultiViews
+DirectoryIndex index.html
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{THE_REQUEST} \s/+zero-browser/download/index\.html[?\s] [NC]
+  RewriteRule ^index\.html$ https://talktoai.org/zero-browser/download/ [R=301,L,NE]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'self'; script-src 'none'; connect-src 'self'; media-src 'self'; manifest-src 'self'; upgrade-insecure-requests"
+  Header always set Permissions-Policy "accelerometer=(), autoplay=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), publickey-credentials-get=(), usb=()"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  Header always set Cross-Origin-Resource-Policy "same-origin"
+  Header always set X-Permitted-Cross-Domain-Policies "none"
+</IfModule>
+
+<FilesMatch "(?i)(^\.|\.(?:bak|backup|conf|db|env|ini|log|old|orig|phps|py|save|sh|sql|sqlite|swp|tmp)$)">
+  Require all denied
+</FilesMatch>

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ZSEC Browser Shields</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <img src="../assets/zeroq-icon.png" alt="" width="44" height="44">
+        <div>
+          <p class="eyebrow">ZSEC BROWSER</p>
+          <h1>ZSEC Shields</h1>
+        </div>
+        <span class="preview">0.4 COMMUNITY</span>
+      </header>
+
+      <section class="hero" aria-labelledby="status-title">
+        <span class="orb" aria-hidden="true"></span>
+        <div>
+          <p id="status-title" class="status">ZSEC rules are on</p>
+          <p class="substatus">40 bundled protection rules. Local by default.</p>
+        </div>
+        <label class="switch" aria-label="Toggle network protection">
+          <input id="protection" type="checkbox">
+          <span></span>
+        </label>
+      </section>
+
+      <section class="controls" aria-label="Local filtering controls">
+        <label class="row">
+          <span>
+            <strong>High-Risk Browsing</strong>
+            <small>Blocks HTTP pages and third-party active content; may break sites</small>
+          </span>
+          <input id="high-risk" type="checkbox">
+        </label>
+        <label class="row">
+          <span>
+            <strong>YouTube assistance</strong>
+            <small>Best-effort skip and nuisance cleanup</small>
+          </span>
+          <input id="youtube" type="checkbox">
+        </label>
+        <div class="row">
+          <span>
+            <strong>Tracking-link cleanup</strong>
+            <small>Removes common campaign IDs on navigation</small>
+          </span>
+          <span class="always-on" aria-label="Enabled with ZSEC rules">AUTO</span>
+        </div>
+        <label class="row">
+          <span>
+            <strong>Pause on this site</strong>
+            <small id="domain">Unavailable on this page</small>
+          </span>
+          <input id="pause-site" type="checkbox" disabled>
+        </label>
+      </section>
+
+      <p id="message" class="message" role="status" aria-live="polite"></p>
+      <footer>
+        <a href="https://talktoai.org/zero-browser/privacy/" target="_blank" rel="noreferrer">Privacy</a>
+        <span>Local-first · Open core</span>
+      </footer>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

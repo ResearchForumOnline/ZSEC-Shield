@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>High-Risk Browsing Mode | ZSEC Browser Shields</title>
+  <meta name="description" content="How ZSEC High-Risk Browsing reduces two commercial-spyware delivery surfaces, what runtime tests prove, and why it cannot stop every zero-click attack.">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="theme-color" content="#07101f">
+  <link rel="canonical" href="https://talktoai.org/zero-browser/high-risk-browsing/">
+  <link rel="icon" href="../../assets/zero-browser-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../../assets/style.css?v=20260821-zsec2">
+
+  <meta property="og:site_name" content="TalkToAI">
+  <meta property="og:locale" content="en_GB">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://talktoai.org/zero-browser/high-risk-browsing/">
+  <meta property="og:title" content="High-Risk Browsing Mode | ZSEC Browser Shields">
+  <meta property="og:description" content="An evidence-bound browser-hardening guide: exact local restrictions, runtime proof, compatibility costs and zero-click limitations.">
+  <meta property="og:image" content="https://talktoai.org/assets/zero-browser-og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="High-Risk Browsing Mode | ZSEC Browser Shields">
+  <meta name="twitter:description" content="What ZSEC blocks before a request is sent—and what no extension can honestly promise against mercenary spyware.">
+  <meta name="twitter:image" content="https://talktoai.org/assets/zero-browser-og.png">
+</head>
+<body class="product-browser">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <header class="site-header">
+    <div class="container nav-shell">
+      <a class="brand" href="../" aria-label="ZSEC Browser home">
+        <span class="brand-mark" aria-hidden="true">Z</span>
+        <span>ZSEC Browser</span>
+        <span class="brand-product">High-Risk Browsing</span>
+        <span class="preview-chip">Community 0.4</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#research">Research</a>
+        <a href="#enforcement">Enforcement</a>
+        <a href="#response">Response</a>
+        <a class="nav-priority" href="../download/">Install</a>
+        <a href="../privacy/">Privacy</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container narrow">
+        <p class="hero-kicker">Targeted-attack browser hardening · optional · off by default</p>
+        <h1 id="hero-title">Harder browser boundaries, without a false Pegasus promise.</h1>
+        <p class="lede">ZSEC Browser Shields Community 0.4 can block two documented classes of browser delivery before requests are sent. It cannot inspect an iPhone, detect Pegasus, or make an unknown zero-day disappear. This page separates those facts.</p>
+        <div class="hero-actions">
+          <a class="button" href="../download/">Download and verify 0.4 <span aria-hidden="true">↓</span></a>
+          <a class="button button-secondary" href="#enforcement">See the exact rules</a>
+        </div>
+        <p class="microcopy"><strong>Attribution boundary:</strong> Pegasus is publicly attributed to NSO Group, an Israeli company. That is different from claiming every commercial-spyware campaign is Pegasus or attributing a specific attack without forensic evidence.</p>
+      </div>
+    </section>
+
+    <section class="section" id="research" aria-labelledby="research-title">
+      <div class="container">
+        <div class="section-head">
+          <div><p class="section-label">What independent research shows</p><h2 id="research-title">“Just visiting” is real—but it is not the whole threat.</h2></div>
+          <p>Commercial surveillance operators have used drive-by links, injected redirects, compromised websites, hidden frames and multi-stage browser exploits. Other attacks need no browser visit or click at all.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="card card-accent"><span class="card-icon" aria-hidden="true">HTTP</span><h3>Injected plaintext redirects</h3><p>Google TAG documented an Intellexa campaign in which an intercepted HTTP visit silently redirected a selected target to an exploit server. Blocking top-level HTTP removes that exact transport opportunity.</p><p><a href="https://blog.google/threat-analysis-group/0-days-exploited-by-commercial-surveillance-vendor-in-egypt/">Read Google TAG's report</a></p></article>
+          <article class="card"><span class="card-icon" aria-hidden="true">IFR</span><h3>Watering-hole frames</h3><p>Google TAG documented compromised government sites loading hidden third-party iframes and exploit code closely related to tooling previously used by commercial surveillance vendors including NSO Group.</p><p><a href="https://blog.google/threat-analysis-group/state-backed-attackers-and-commercial-surveillance-vendors-repeatedly-use-the-same-exploits/">Read the watering-hole analysis</a></p></article>
+          <article class="card"><span class="card-icon" aria-hidden="true">0C</span><h3>Zero-click mobile chains</h3><p>Citizen Lab's BLASTPASS investigation described an NSO Group exploit delivered through PassKit attachments sent via iMessage. Earlier chains targeted HomeKit, Find My and iMessage. A desktop Chromium extension is not in those paths.</p><p><a href="https://citizenlab.ca/blastpass-nso-group-iphone-zero-click-zero-day-exploit-captured-in-the-wild/">Read the BLASTPASS report</a></p></article>
+          <article class="card"><span class="card-icon" aria-hidden="true">PATCH</span><h3>Updates remain fundamental</h3><p>Researchers repeatedly found exploit chains against devices that had not installed available security fixes. Extension rules add a layer; they do not patch Chromium, WebKit, a kernel, baseband firmware or another application.</p><p><a href="https://blog.google/threat-analysis-group/spyware-vendors-use-0-days-and-n-days-against-popular-platforms/">Read Google's patching analysis</a></p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-muted" id="enforcement" aria-labelledby="enforcement-title">
+      <div class="container">
+        <div class="section-head">
+          <div><p class="section-label">Enforced in Community 0.4</p><h2 id="enforcement-title">Two local rules. Two clear decision points.</h2></div>
+          <p>Both the normal protection switch and High-Risk Browsing must be on. The browser's Manifest V3 engine evaluates the fixed rules locally before a matching network request is sent.</p>
+        </div>
+        <div class="split">
+          <article class="panel panel-positive">
+            <h3>Rule 200000 · plaintext main frames</h3>
+            <p>Blocks top-level URLs beginning with <code>http://</code>. It does not silently upgrade or bypass the decision. HTTPS prevents plaintext network injection but does not certify the destination as benign.</p>
+          </article>
+          <article class="panel panel-positive">
+            <h3>Rule 200001 · third-party active delivery</h3>
+            <p>Blocks third-party <code>script</code>, <code>sub_frame</code>, <code>object</code> and <code>websocket</code> requests. First-party content and unlisted resource types remain outside this rule.</p>
+          </article>
+        </div>
+        <div class="callout callout-spaced">
+          <span class="callout-mark" aria-hidden="true">✓</span>
+          <div><h3>Runtime evidence—not only unit tests</h3><p>On 21 August 2026, disposable tests in Brave 1.93.137 and Edge 151.0.4129.101 on Windows loaded the unpacked extension into fresh temporary profiles. The tests proved the exact rules were installed, a third-party script and top-level HTTP navigation were blocked before reaching loopback servers, and explicitly disabling High-Risk Browsing removed both rules and restored navigation.</p><p>The Chrome 152 command-line harness could not load an unpacked extension, so Chrome is not included in that runtime-smoke claim. Manual Manifest V3 compatibility is a separate install path.</p></div>
+        </div>
+        <p>The rules have priority <code>1000</code>, above the normal site-pause allow priority. The popup disables site pause while the profile is active. A <code>HIGH</code> badge means the two local settings were successfully applied; it is not a threat or infection verdict.</p>
+      </div>
+    </section>
+
+    <section class="section section-dark" aria-labelledby="limits-title">
+      <div class="container architecture">
+        <div class="architecture-copy">
+          <p class="section-label">Non-negotiable limitations</p>
+          <h2 id="limits-title">What remains possible.</h2>
+          <ul class="check-list">
+            <li>An exploit embedded directly in first-party content may still run.</li>
+            <li>Images, media, stylesheets, fonts, fetch/XHR and other permitted channels may still carry hostile data.</li>
+            <li>An unknown browser, extension, kernel, driver, operating-system or hardware vulnerability may bypass this layer.</li>
+            <li>A zero-click message, call, push service, HomeKit, Find My or baseband route may never enter Chromium.</li>
+            <li>A compromised extension or local administrator can change the wider security outcome.</li>
+            <li>No block means only “no configured rule matched”—never “safe” or “clean.”</li>
+          </ul>
+        </div>
+        <div class="architecture-diagram" role="img" aria-label="High-Risk Browsing boundary from blocked browser requests to out-of-scope device attacks">
+          <div class="layer layer-primary"><strong>ZSEC decision point</strong><span>Block matching HTTP navigation and third-party active requests</span></div>
+          <div class="layer"><strong>Browser-managed protections</strong><span>Updates, Safe Browsing, sandbox and Site Isolation remain authoritative</span></div>
+          <div class="layer"><strong>Operating-system protections</strong><span>Native security, primary antivirus and platform mitigations remain active</span></div>
+          <div class="layer"><strong>Outside this extension</strong><span>Messages, memory, kernel, baseband, first-party and permitted content</span></div>
+          <p class="architecture-note">No layer is presented as absolute protection</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="response" aria-labelledby="response-title">
+      <div class="container">
+        <div class="section-head">
+          <div><p class="section-label">High-risk operating guide</p><h2 id="response-title">Use stronger platform controls with ZSEC—not underneath it.</h2></div>
+          <p>High-Risk Browsing is one optional desktop-browser layer. The device vendor remains responsible for patching and its privileged security controls.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="card"><span class="card-icon" aria-hidden="true">ALL</span><h3>Every desktop</h3><p>Install browser and operating-system updates promptly, restart to complete them, keep Safe Browsing or the vendor equivalent enabled, and never bypass certificate or download warnings.</p><p><a href="https://www.chromium.org/Home/chromium-security/site-isolation/">Chromium Site Isolation</a></p></article>
+          <article class="card"><span class="card-icon" aria-hidden="true">EDGE</span><h3>Microsoft Edge</h3><p>Microsoft's Enhanced Security mode can disable JIT on unfamiliar or all sites and enable additional operating-system mitigations. Strict mode may break normal work, so treat it as a separate high-risk choice.</p><p><a href="https://learn.microsoft.com/en-us/deployedge/microsoft-edge-security-browse-safer">Microsoft's configuration guide</a></p></article>
+          <article class="card"><span class="card-icon" aria-hidden="true">APPLE</span><h3>Apple targeting alerts</h3><p>Verify an Apple threat notification by signing in directly at <code>account.apple.com</code>. Apple recommends Lockdown Mode and qualified expert help for notified or credibly targeted users.</p><p><a href="https://support.apple.com/102174">Apple threat-notification guidance</a> · <a href="https://support.apple.com/en-gb/guide/security/sec2437264f0/web">Lockdown Mode security</a></p></article>
+          <article class="card"><span class="card-icon" aria-hidden="true">IR</span><h3>Credible targeting concern</h3><p>Stop interacting with the suspect content, preserve the device state, use a separate trusted device for help, and contact a qualified incident-response channel. Do not “clean up” evidence or treat an antivirus scan as forensic clearance.</p><p><a href="https://www.accessnow.org/help/">Access Now Digital Security Helpline</a> · <a href="https://github.com/mvt-project/mvt">Amnesty MVT limitations</a></p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section cta-section" aria-labelledby="cta-title">
+      <div class="container cta-box">
+        <div><p class="section-label">Inspectable protection</p><h2 id="cta-title">Verify the bytes, then choose the trade-off.</h2><p>Community 0.4 is unsigned and manually updated. Check the published SHA-256, inspect the immutable source and test it in a separate browser profile before relying on it.</p></div>
+        <div class="cta-actions"><a class="button" href="../download/">Verify and install</a><a class="button button-secondary" href="../privacy/">Read the privacy contract</a></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div class="footer-brand"><a class="brand" href="../"><span class="brand-mark" aria-hidden="true">Z</span><span>ZSEC Browser</span></a><p>Evidence-bound local browser protection from TalkToAI.</p></div>
+      <div><p class="footer-title">High-Risk Browsing</p><ul class="footer-links"><li><a href="#research">Threat research</a></li><li><a href="#enforcement">Exact enforcement</a></li><li><a href="#response">Response guide</a></li></ul></div>
+      <div><p class="footer-title">Project</p><ul class="footer-links"><li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/47d937df74a2170a17df6563d47af929a4c234f9/browser/zeroq-shields">Immutable source</a></li><li><a href="https://talktoai.org/.well-known/security.txt">Report a vulnerability</a></li><li><a href="../../zero-security/">ZSEC Antivirus</a></li></ul></div>
+    </div>
+    <div class="container footer-bottom"><p>© 2026 TalkToAI. ZSEC Browser Shields Community 0.4.</p><p>Research and test boundary reviewed <time datetime="2026-08-21">21 August 2026</time>.</p></div>
+  </footer>
+</body>
+</html>

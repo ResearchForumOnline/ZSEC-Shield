@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "ZSEC Browser Shields",
+  "short_name": "ZSEC Shields",
+  "version": "0.4.0",
+  "description": "Local filtering, link cleanup, per-site controls and an opt-in high-risk browsing profile.",
+  "minimum_chrome_version": "120",
+  "permissions": [
+    "activeTab",
+    "declarativeNetRequest",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "src/service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "ZSEC Browser Shields",
+    "default_popup": "popup/index.html",
+    "default_icon": "assets/zeroq-icon.png"
+  },
+  "icons": {
+    "16": "assets/zeroq-icon.png",
+    "32": "assets/zeroq-icon.png",
+    "48": "assets/zeroq-icon.png",
+    "128": "assets/zeroq-icon.png"
+  },
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "privacy_rules",
+        "enabled": true,
+        "path": "rules/privacy.json"
+      },
+      {
+        "id": "link_cleanup",
+        "enabled": true,
+        "path": "rules/link-cleaning.json"
+      }
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://m.youtube.com/*"
+      ],
+      "js": [
+        "src/youtube-cleanup.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}

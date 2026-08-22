@@ -1,0 +1,87 @@
+{
+  "schema": "zero.security.components.v1",
+  "generated_at": "2026-08-21",
+  "release_status": "0.3.0-candidate",
+  "components": [
+    {
+      "id": "zsec-shield",
+      "path": "src/zsec_shield",
+      "role": "deterministic scanner, foreground post-change watcher, signed feed verifier, encrypted quarantine",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "working-candidate"
+    },
+    {
+      "id": "zsv2",
+      "path": "specs/ZSV2.md",
+      "role": "automatic authenticated encrypted quarantine profile",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "single-implementation-candidate"
+    },
+    {
+      "id": "zsec-browser-shields",
+      "path": "browser/zeroq-shields",
+      "role": "ZSEC Browser Manifest V3 local ad and tracker protection layer",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "working-candidate"
+    },
+    {
+      "id": "zsec-browser-desktop-preview",
+      "path": "browser/zsec-desktop-preview",
+      "role": "visible Windows browser shell powered by Microsoft Evergreen WebView2 Chromium with isolated profile and compiled ZSEC policy",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "working-local-developer-preview; unsigned; not-a-maintained-chromium-fork"
+    },
+    {
+      "id": "zero-security-windows-antivirus",
+      "path": "windows",
+      "role": "ZSEC Antivirus per-user post-change companion and future Windows primary-antivirus programme",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "companion-working-candidate; primary-gates-not-met"
+    },
+    {
+      "id": "zsec-antivirus-macos-companion",
+      "path": "packaging/companion/macos",
+      "role": "per-user LaunchAgent post-change companion plus Endpoint Security programme",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "package-implemented; native-activation-not-yet-verified"
+    },
+    {
+      "id": "zsec-antivirus-linux-companion",
+      "path": "packaging/companion/linux",
+      "role": "hardened systemd-user post-change companion plus fanotify programme",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "package-implemented; native-activation-not-yet-verified"
+    },
+    {
+      "id": "native-cli-archives",
+      "path": "packaging/native_release.py",
+      "role": "unsigned self-contained platform CLI archives with native manifests",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "working-candidate"
+    },
+    {
+      "id": "zsec-desktop-intelligence",
+      "path": "src/zsec_shield/intelligence.py",
+      "role": "strict data-only CISA, Microsoft, Apple and Ubuntu desktop advisory catalog",
+      "license": "Apache-2.0",
+      "source_public": true,
+      "status": "working-candidate"
+    },
+    {
+      "id": "commercial-protection-services",
+      "path": null,
+      "role": "future licensed reputation, OEM engine, enterprise and signing operations",
+      "license": "separately-licensed",
+      "source_public": false,
+      "status": "not-in-this-repository"
+    }
+  ]
+}
