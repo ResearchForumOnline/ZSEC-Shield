@@ -205,7 +205,7 @@ function Expand-PinnedPackageToFreshStaging {
                 "staging cleanup could not be verified."
             )
         }
-        throw "The pinned NuGet package could not be extracted: $extractionFailure"
+        throw "The pinned NuGet package could not be extracted. Details: $extractionFailure"
     }
 }
 
