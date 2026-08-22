@@ -60,13 +60,13 @@
       "area": "browser",
       "action_class": "already_enforced",
       "current_state": "implemented",
-      "decision": "Disable host bridges, password saving, autofill, developer tools and script dialogs; deny site permissions and certificate errors.",
+      "decision": "Disable host bridges, WebView2 password autosave and general autofill, developer tools and script dialogs; keep the bounded ZSEC login-message channel disabled unless the user opts in to password saving or exact-origin HTTPS autofill; deny site permissions and certificate errors.",
       "evidence": [
         {
           "path": "browser/zsec-desktop-preview/src/ZsecBrowserApp.cs",
           "contains": [
             "settings.AreHostObjectsAllowed = false",
-            "settings.IsWebMessageEnabled = false",
+            "settings.IsWebMessageEnabled = loginAssistant.Enabled",
             "settings.IsPasswordAutosaveEnabled = false",
             "settings.IsGeneralAutofillEnabled = false",
             "settings.AreDevToolsEnabled = false",
