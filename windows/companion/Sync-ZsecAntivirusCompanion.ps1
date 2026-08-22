@@ -149,10 +149,10 @@ function Wait-CompanionActivation {
             if (
                 $lastStatus.schema -eq "zsec.antivirus.windows-companion-status.v1" -and
                 $lastStatus.installed -eq $true -and
-                $lastStatus.decision -eq "degraded" -and
+                $lastStatus.decision -eq "baseline_in_progress" -and
                 $lastStatus.healthy -eq $false -and
                 $reasons.Count -eq 1 -and
-                $reasons[0] -eq "watch session reports baselining" -and
+                $reasons[0] -eq "initial protected-folder baseline is in progress" -and
                 $lastStatus.health.last_record.operational_state -eq "baselining" -and
                 $integrityReady -and
                 $runtimeReady

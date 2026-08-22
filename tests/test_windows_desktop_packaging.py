@@ -196,6 +196,8 @@ def test_companion_sync_is_bounded_verified_and_rolls_back() -> None:
     assert "windows-companion-sync-result.v1" in sync
     assert "Wait-CompanionActivation" in sync
     assert 'decision = "initializing"' in sync
+    assert '$lastStatus.decision -eq "baseline_in_progress"' in sync
+    assert 'initial protected-folder baseline is in progress' in sync
     assert "activation_verified = $true" in sync
     assert "AddSeconds(30)" in sync
     assert "Get-RollbackInstaller" in sync
