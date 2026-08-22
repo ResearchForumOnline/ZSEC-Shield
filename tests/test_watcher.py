@@ -224,6 +224,28 @@ class WatchQueueTests(unittest.TestCase):
             due = queue.due()
         self.assertEqual([target.absolute()], [item.path for item in due])
 
+    def test_due_can_drain_a_bounded_slice_without_losing_pending_paths(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            now = [1.0]
+            queue = DebouncedPathQueue(
+                excluded_paths=(),
+                debounce_seconds=0.1,
+                max_events=16,
+                clock=lambda: now[0],
+            )
+            for index in range(4):
+                queue.submit(root / f"{index}.bin", "created", False)
+            queue.ingest()
+            now[0] = 1.1
+            first = queue.due(maximum=2)
+            remaining = queue.telemetry()
+            second = queue.due(maximum=2)
+        self.assertEqual(2, len(first))
+        self.assertEqual(2, remaining["event_queue_pending_paths"])
+        self.assertEqual(2, len(second))
+        self.assertEqual(0, queue.telemetry()["event_queue_total_depth"])
+
 
 class WatchEngineTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -425,6 +447,76 @@ class WatchEngineTests(unittest.TestCase):
             summary.stats.event_queue_total_depth,
             summary.stats.event_queue_capacity,
         )
+
+    def test_baseline_interleaves_a_new_file_scan_before_inventory_finishes(self) -> None:
+        first_hashed = threading.Event()
+        producer_done = threading.Event()
+        producer_threads: list[threading.Thread] = []
+        first = self.scan_root / "00-first.bin"
+        first.write_bytes(b"first")
+        (self.scan_root / "50-middle.bin").write_bytes(b"middle")
+        (self.scan_root / "99-tail.bin").write_bytes(b"tail")
+        live = self.scan_root / "25-live.bin"
+
+        class SlowBaselineScanner(Scanner):
+            def scan(self, *args: Any, **kwargs: Any):  # type: ignore[no-untyped-def]
+                original_observer = kwargs.get("file_observer")
+
+                def pause_after_first(
+                    path: Path, metadata: os.stat_result, was_hashed: bool
+                ) -> None:
+                    if original_observer is not None:
+                        original_observer(path, metadata, was_hashed)
+                    if path == first:
+                        first_hashed.set()
+                        if not producer_done.wait(timeout=5):
+                            raise AssertionError("live event producer did not finish")
+
+                kwargs["file_observer"] = pause_after_first
+                return super().scan(*args, **kwargs)
+
+        def start_producer(observer: FakeObserver) -> None:
+            if observer.handler is None:
+                raise AssertionError("observer was started without a handler")
+
+            def produce() -> None:
+                if not first_hashed.wait(timeout=5):
+                    producer_done.set()
+                    return
+                live.write_bytes(make_test_rule().literal or b"")
+                observer.handler.on_created(FileCreatedEvent(str(live)))
+                threading.Event().wait(0.08)
+                producer_done.set()
+
+            thread = threading.Thread(target=produce, daemon=True)
+            producer_threads.append(thread)
+            thread.start()
+
+        records: list[dict[str, Any]] = []
+        watcher = ForegroundProtectionWatcher(
+            SlowBaselineScanner((make_test_rule(),)),
+            self._config(event_queue_size=32),
+            on_record=records.append,
+            polling_observer_factory=lambda timeout: FakeObserver(timeout, start_producer),
+        )
+        summary = watcher.run(duration_seconds=0.1)
+        for thread in producer_threads:
+            thread.join(timeout=5)
+        event_index = next(
+            index
+            for index, record in enumerate(records)
+            if record["event"] == "scan_completed"
+            and record["triggers"] != ["initial_baseline"]
+        )
+        baseline_index = next(
+            index
+            for index, record in enumerate(records)
+            if record["event"] == "scan_completed"
+            and record["triggers"] == ["initial_baseline"]
+        )
+        self.assertLess(event_index, baseline_index)
+        self.assertGreaterEqual(summary.stats.findings, 1)
+        self.assertEqual(0, summary.stats.event_queue_total_depth)
 
     def test_unique_events_during_baseline_overflow_fail_closed(self) -> None:
         baseline_started = threading.Event()

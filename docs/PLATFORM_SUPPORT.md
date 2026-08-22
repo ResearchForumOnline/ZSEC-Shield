@@ -12,19 +12,19 @@ primary-antivirus replacement.
 | Surface | Version/status | What it contains |
 | --- | --- | --- |
 | [Latest public GitHub release](https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.1.2) | `0.1.2` prerelease | Earlier on-demand scanner, feed and status implementation plus unsigned native CLI archives |
-| Current development branch | `0.3.3` candidate | 0.3.2 feature set plus an isolated encrypted-quarantine recovery self-test and Windows GUI evidence surface; ZSEC Browser remains independently versioned |
+| Current development branch | `0.3.4` candidate | 0.3.3 feature set plus stricter Windows GUI evidence, bounded event-priority scanning during the first inventory and fail-closed companion presentation; ZSEC Browser remains independently versioned |
 | `main` branch | May lag the draft branch | The canonical public source only after reviewed changes merge |
 
 Do not publish or distribute the current feature set under `0.1.2`; that version
 and tag already identify different bytes. A passing draft pull request does not
-make `0.3.3` released.
+make `0.3.4` released.
 
 ## Current public native-archive matrix
 
 The `0.1.2` release exposes these self-contained PyInstaller one-directory CLI
 archives. This table describes artifacts, not production desktop support.
 
-| Artifact family | Architecture | Delivery | Automatic companion | Key protection in 0.3.3 development code | Publisher identity | Status |
+| Artifact family | Architecture | Delivery | Automatic companion | Key protection in 0.3.4 development code | Publisher identity | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | Windows | x86-64 | ZIP CLI | Per-user Scheduled Task scripts | CurrentUser DPAPI | No Authenticode signature | Automatic post-change companion candidate |
 | macOS | Apple silicon (`arm64`) | `tar.gz` CLI | Per-user LaunchAgent scripts | `filesystem-0600-preview`; not production Keychain custody | No Developer ID signature/notarization | Native validation still required |
@@ -47,7 +47,7 @@ the published `0.1.2` bytes. It performs post-change scans and has
 `pre_access_enforcement: false` and `real_time_protection: false`; the existing
 platform/endpoint provider must remain active.
 
-## Safe preview use
+## Safe Community use
 
 1. Use an artifact tied to an exact version and source revision.
 2. Verify its SHA-256 and GitHub provenance, while remembering that a checksum
@@ -59,13 +59,13 @@ platform/endpoint provider must remain active.
 6. Test quarantine and authenticated restore only on disposable copies before
    relying on the workflow.
 7. Do not bypass SmartScreen, Gatekeeper, package policy, or another antivirus
-   warning merely to run an unsigned preview on an everyday computer.
+   warning merely to run an unsigned Community build on an everyday computer.
 8. Use `zero-security replacement-readiness --json`; current exit `2` is an
    intentional block on provider removal and cutover.
 
-## Browser desktop preview
+## Browser desktop application
 
-ZSEC Browser Desktop Preview 0.2.3 is a Windows x64 developer build with its own
+ZSEC Browser Community 0.3.5 is a Windows x64 application with its own
 native ZSEC window and isolated profile. Microsoft maintains the Evergreen
 WebView2 Chromium engine; ZSEC maintains the shell, UI and data-only policy
 adapter. The local acceptance run verifies application hashes, the Microsoft

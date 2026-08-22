@@ -6,6 +6,7 @@ import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const cosmeticSource = await readFile(join(root, "src", "youtube-cosmetic-rules.js"), "utf8");
 const source = await readFile(join(root, "src", "youtube-cleanup.js"), "utf8");
 
 function makeHarness({ hostname = "www.youtube.com", topFrame = true } = {}) {
@@ -102,7 +103,7 @@ function makeHarness({ hostname = "www.youtube.com", topFrame = true } = {}) {
     }
   };
 
-  vm.runInNewContext(source, {
+  const context = {
     chrome,
     console,
     document,
@@ -114,7 +115,9 @@ function makeHarness({ hostname = "www.youtube.com", topFrame = true } = {}) {
       return frames.length;
     },
     window
-  }, { filename: "youtube-cleanup.js" });
+  };
+  vm.runInNewContext(cosmeticSource, context, { filename: "youtube-cosmetic-rules.js" });
+  vm.runInNewContext(source, context, { filename: "youtube-cleanup.js" });
 
   return {
     chrome,
@@ -136,7 +139,11 @@ function makeHarness({ hostname = "www.youtube.com", topFrame = true } = {}) {
       const pending = storageCallbacks.shift();
       assert.ok(pending, "expected a pending storage read");
       chrome.runtime.lastError = error;
-      pending.callback({ youtubeCleanup: value });
+      pending.callback(
+        value && typeof value === "object"
+          ? { ...pending.defaults, ...value }
+          : { ...pending.defaults, youtubeCleanup: value }
+      );
       chrome.runtime.lastError = undefined;
     }
   };
@@ -173,13 +180,18 @@ test("clicks a visible enabled skip control once per appearance", () => {
   harness.resolveStorage(true);
   assert.equal(harness.observers[0].observeCalls[0].options.childList, true);
   assert.equal(harness.observers[0].observeCalls[0].options.subtree, true);
-  assert.equal(Object.keys(harness.observers[0].observeCalls[0].options).length, 2);
+  assert.equal(harness.observers[0].observeCalls[0].options.attributes, true);
+  assert.deepEqual(
+    Array.from(harness.observers[0].observeCalls[0].options.attributeFilter),
+    ["class", "style", "hidden", "aria-disabled"]
+  );
   harness.flushFrame();
   assert.equal(button.clickCount, 1);
   const style = harness.elementsById.get("zeroq-youtube-style").textContent;
   assert.match(style, /#player-ads/);
   assert.match(style, /engagement-panel-ads/);
   assert.match(style, /ytd-rich-item-renderer:has/);
+  assert.match(style, /ytm-companion-slot\[data-content-type\]/);
 
   harness.observers[0].callback([]);
   harness.flushFrame();
@@ -237,6 +249,42 @@ test("preference changes stop and restart the bounded observer", () => {
   assert.equal(harness.frames.length, 0);
 });
 
+test("master protection and site pause gate all YouTube page changes", () => {
+  const disabled = makeHarness();
+  disabled.resolveStorage({ protectionEnabled: false, youtubeCleanup: true });
+  assert.equal(disabled.observers[0].connected, false);
+  assert.equal(disabled.elementsById.has("zeroq-youtube-style"), false);
+
+  const paused = makeHarness();
+  paused.resolveStorage({ pausedSites: ["youtube.com"] });
+  assert.equal(paused.observers[0].connected, false);
+  assert.equal(paused.elementsById.has("zeroq-youtube-style"), false);
+
+  paused.storageListeners[0]({ pausedSites: { newValue: [] } }, "local");
+  assert.equal(paused.observers[0].connected, true);
+  paused.flushFrame();
+  assert.equal(paused.elementsById.has("zeroq-youtube-style"), true);
+
+  paused.storageListeners[0]({ protectionEnabled: { newValue: false } }, "local");
+  assert.equal(paused.observers[0].connected, false);
+  assert.equal(paused.elementsById.has("zeroq-youtube-style"), false);
+});
+
+test("an attribute-only transition schedules a bounded skip check", () => {
+  const harness = makeHarness();
+  const button = new harness.FakeElement("button");
+  button.offsetParent = null;
+  harness.selectorResults.set(".ytp-ad-skip-button-modern", button);
+  harness.resolveStorage(true);
+  harness.flushFrame();
+  assert.equal(button.clickCount, 0);
+
+  button.offsetParent = {};
+  harness.observers[0].callback([{ type: "attributes", attributeName: "class" }]);
+  harness.flushFrame();
+  assert.equal(button.clickCount, 1);
+});
+
 test("fails closed if the local preference cannot be read", () => {
   const harness = makeHarness();
   harness.resolveStorage(true, { message: "storage unavailable" });
@@ -258,5 +306,8 @@ test("contains no playback manipulation, polling, remote I/O, or dynamic code", 
     /new\s+Function\s*\(/,
     /https?:\/\//
   ];
-  for (const pattern of forbidden) assert.doesNotMatch(source, pattern);
+  for (const pattern of forbidden) {
+    assert.doesNotMatch(source, pattern);
+    assert.doesNotMatch(cosmeticSource, pattern);
+  }
 });

@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import ctypes
 import json
 import math
 import os
 import threading
+import time
 import tkinter as tk
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -22,7 +24,7 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Any
 
 from zsec_desktop.bridge import BridgeError, CommandResult, WatchSession, ZsecBridge
-from zsec_desktop.contracts import status_presentation
+from zsec_desktop.contracts import companion_presentation, status_presentation
 
 BACKGROUND = "#08111f"
 SURFACE = "#101c2d"
@@ -50,12 +52,33 @@ class ModernStatusCard(tk.Canvas):
         self.title = title
         self.value = "Loading…"
         self.accent = CYAN
+        self.hover_progress = 0.0
+        self.hover_target = 0.0
+        self.hover_job: str | None = None
         self.bind("<Configure>", self._render)
+        self.bind("<Enter>", lambda _event: self._set_hover(1.0))
+        self.bind("<Leave>", lambda _event: self._set_hover(0.0))
 
     def set_value(self, value: str, accent: str) -> None:
         self.value = value
         self.accent = accent
         self._render()
+
+    def _set_hover(self, target: float) -> None:
+        self.hover_target = target
+        if self.hover_job is None:
+            self._animate_hover()
+
+    def _animate_hover(self) -> None:
+        delta = self.hover_target - self.hover_progress
+        if abs(delta) < 0.02:
+            self.hover_progress = self.hover_target
+            self.hover_job = None
+            self._render()
+            return
+        self.hover_progress += delta * 0.28
+        self._render()
+        self.hover_job = self.after(16, self._animate_hover)
 
     def _rounded_rectangle(
         self,
@@ -97,6 +120,16 @@ class ModernStatusCard(tk.Canvas):
     def _render(self, _event: tk.Event[tk.Misc] | None = None) -> None:
         width = max(self.winfo_width(), 260)
         self.delete("all")
+        shadow = int(14 + 18 * self.hover_progress)
+        self._rounded_rectangle(
+            5,
+            7,
+            width - 1,
+            122,
+            18,
+            fill=f"#{shadow:02x}{shadow + 8:02x}{shadow + 18:02x}",
+            outline="",
+        )
         self._rounded_rectangle(
             2,
             2,
@@ -104,8 +137,8 @@ class ModernStatusCard(tk.Canvas):
             120,
             18,
             fill=SURFACE,
-            outline=SURFACE_ALT,
-            width=2,
+            outline=self.accent if self.hover_progress > 0.55 else SURFACE_ALT,
+            width=2 + int(self.hover_progress),
         )
         self.create_rectangle(2, 24, 6, 96, fill=self.accent, outline=self.accent)
         self.create_text(
@@ -148,17 +181,25 @@ class ZsecDesktop:
         self.animation_phase = 0
         self.animation_job: str | None = None
         self.busy_operations = 0
+        self.companion_refresh_generation = 0
+        self.companion_refresh_job: str | None = None
+        self.watch_session_id: str | None = None
+        self.watch_last_sequence = 0
+        self.watch_last_heartbeat_monotonic: float | None = None
+        self.watch_watchdog_job: str | None = None
 
         self.root.title("ZSEC Antivirus")
         self.root.geometry("1180x760")
         self.root.minsize(960, 640)
         self.root.configure(bg=BACKGROUND)
         self.root.protocol("WM_DELETE_WINDOW", self._close)
+        self.root.after(0, self._apply_windows_chrome)
         self._configure_style()
         self._build_header()
         self._build_tabs()
-        self.animation_job = self.root.after(80, self._animate_activity)
+        self._animate_activity()
         self.root.after(120, self.refresh_all)
+        self.companion_refresh_job = self.root.after(30_000, self._periodic_companion_refresh)
 
     def _configure_style(self) -> None:
         style = ttk.Style(self.root)
@@ -283,7 +324,12 @@ class ZsecDesktop:
         title_row.pack(fill=tk.X)
         ttk.Label(title_row, text="ZSEC", style="Title.TLabel", foreground=CYAN).pack(side=tk.LEFT)
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
-        ttk.Label(title_row, text="COMMUNITY 0.3", style="Subtitle.TLabel", foreground=AMBER).pack(
+        ttk.Label(
+            title_row,
+            text="COMMUNITY 0.3.4",
+            style="Subtitle.TLabel",
+            foreground=AMBER,
+        ).pack(
             side=tk.LEFT, padx=(18, 0), pady=(9, 0)
         )
         self.global_busy = ttk.Progressbar(title_row, mode="indeterminate", length=150)
@@ -306,6 +352,18 @@ class ZsecDesktop:
             ),
             style="Subtitle.TLabel",
         ).pack(anchor=tk.W, pady=(4, 0))
+
+    def _apply_windows_chrome(self) -> None:
+        if os.name != "nt":
+            return
+        with contextlib.suppress(OSError, AttributeError):
+            self.root.update_idletasks()
+            hwnd = ctypes.c_void_p(self.root.winfo_id())
+            dark = ctypes.c_int(1)
+            rounded = ctypes.c_int(2)
+            dwm = ctypes.windll.dwmapi
+            dwm.DwmSetWindowAttribute(hwnd, 20, ctypes.byref(dark), ctypes.sizeof(dark))
+            dwm.DwmSetWindowAttribute(hwnd, 33, ctypes.byref(rounded), ctypes.sizeof(rounded))
 
     def _build_tabs(self) -> None:
         workspace = ttk.Frame(self.root, padding=(20, 0, 20, 20))
@@ -414,11 +472,12 @@ class ZsecDesktop:
         ).pack(anchor=tk.W, pady=(5, 0))
         cards = ttk.Frame(self.overview_tab)
         cards.pack(fill=tk.X)
-        for column in range(3):
+        for column in range(4):
             cards.columnconfigure(column, weight=1)
         self.scan_card = self._overview_card(cards, 0, "Last scan")
         self.feed_card = self._overview_card(cards, 1, "Signed rule feed")
         self.quarantine_card = self._overview_card(cards, 2, "Encrypted quarantine")
+        self.companion_card = self._overview_card(cards, 3, "Automatic companion")
         actions = self._panel(self.overview_tab)
         actions.pack(fill=tk.X, pady=(12, 0))
         ttk.Label(actions, text="Quick actions", style="Section.TLabel").pack(anchor=tk.W)
@@ -434,6 +493,11 @@ class ZsecDesktop:
         ).pack(side=tk.LEFT, padx=8)
         ttk.Button(
             row,
+            text="Review automatic monitoring",
+            command=lambda: self.tabs.select(self.monitor_tab),  # type: ignore[no-untyped-call]
+        ).pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(
+            row,
             text="Review replacement blockers",
             command=lambda: self.tabs.select(  # type: ignore[no-untyped-call]
                 self.readiness_tab
@@ -446,7 +510,7 @@ class ZsecDesktop:
             row=0,
             column=column,
             sticky="nsew",
-            padx=(0 if column == 0 else 6, 0 if column == 2 else 6),
+            padx=(0 if column == 0 else 6, 0 if column == 3 else 6),
         )
         return card
 
@@ -872,6 +936,7 @@ class ZsecDesktop:
         self.busy_operations += 1
         if self.busy_operations == 1:
             self.global_busy.start(12)
+            self._animate_activity()
         future = self.executor.submit(operation)
 
         def done(completed: Future[Any]) -> None:
@@ -881,6 +946,11 @@ class ZsecDesktop:
                 self.busy_operations = max(0, self.busy_operations - 1)
                 if self.busy_operations == 0:
                     self.global_busy.stop()
+                    if self.animation_job is not None:
+                        with contextlib.suppress(tk.TclError):
+                            self.root.after_cancel(self.animation_job)
+                        self.animation_job = None
+                    self._animate_activity()
                 try:
                     value = completed.result()
                 except BaseException as exc:
@@ -954,7 +1024,7 @@ class ZsecDesktop:
             tags="activity",
         )
         self.animation_phase = (self.animation_phase + 12) % 360
-        if not reduced:
+        if working and not reduced:
             self.animation_job = self.root.after(80, self._animate_activity)
         else:
             self.animation_job = None
@@ -1143,6 +1213,13 @@ class ZsecDesktop:
         ):
             return
         self.watch_events.delete(0, tk.END)
+        self.watch_session_id = None
+        self.watch_last_sequence = 0
+        self.watch_last_heartbeat_monotonic = None
+        if self.watch_watchdog_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.root.after_cancel(self.watch_watchdog_job)
+        self.watch_watchdog_job = self.root.after(5_000, self._watch_heartbeat_watchdog)
         try:
             self.watch_session = self.bridge.start_watch(
                 [path],
@@ -1159,6 +1236,19 @@ class ZsecDesktop:
 
     def _watch_event(self, event: dict[str, Any]) -> None:
         name = event["event"]
+        session_id = str(event["session_id"])
+        sequence = int(event["sequence"])
+        if self.watch_session_id is None:
+            self.watch_session_id = session_id
+        if session_id != self.watch_session_id or sequence <= self.watch_last_sequence:
+            self.watch_state_label.configure(
+                text="Monitoring evidence rejected — session or sequence integrity failed",
+                foreground=RED,
+            )
+            if self.watch_session is not None:
+                self.watch_session.stop()
+            return
+        self.watch_last_sequence = sequence
         detail = ""
         if name == "scan_completed":
             outcome = event.get("outcome")
@@ -1196,14 +1286,33 @@ class ZsecDesktop:
                 foreground=AMBER,
             )
         elif name == "health_heartbeat":
-            self.watch_state_label.configure(
-                text="Observer active — heartbeat received",
-                foreground=GREEN,
-            )
+            self.watch_last_heartbeat_monotonic = time.monotonic()
+            if event["operational_incomplete"]:
+                self.watch_state_label.configure(
+                    text="Monitoring incomplete — heartbeat reports a coverage gap",
+                    foreground=RED,
+                )
+            else:
+                self.watch_state_label.configure(
+                    text="Observer active — fresh complete heartbeat received",
+                    foreground=GREEN,
+                )
         self.watch_events.insert(tk.END, f"{event['sequence']:>5}  {name}{detail}")
         if self.watch_events.size() > 500:
             self.watch_events.delete(0, self.watch_events.size() - 500)
         self.watch_events.yview_moveto(1.0)
+
+    def _watch_heartbeat_watchdog(self) -> None:
+        self.watch_watchdog_job = None
+        if self.closing or self.watch_session is None:
+            return
+        last = self.watch_last_heartbeat_monotonic
+        if last is not None and time.monotonic() - last > 75:
+            self.watch_state_label.configure(
+                text="Monitoring evidence stale — coverage is unknown",
+                foreground=RED,
+            )
+        self.watch_watchdog_job = self.root.after(5_000, self._watch_heartbeat_watchdog)
 
     def _stop_watch(self) -> None:
         if self.watch_session is not None:
@@ -1212,6 +1321,10 @@ class ZsecDesktop:
 
     def _watch_complete(self, exit_code: int, error: str | None) -> None:
         self.watch_session = None
+        if self.watch_watchdog_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.root.after_cancel(self.watch_watchdog_job)
+            self.watch_watchdog_job = None
         self.watch_start_button.configure(state=tk.NORMAL)
         self.watch_stop_button.configure(state=tk.DISABLED)
         self.watch_quarantine.set(False)
@@ -1224,36 +1337,44 @@ class ZsecDesktop:
             )
         else:
             self.watch_state_label.configure(
-                text="Completed — no configured rule matches",
-                foreground=GREEN,
+                text="Session ended — no configured rule matches in completed scans",
+                foreground=CYAN,
             )
 
     def refresh_companion(self) -> None:
+        self.companion_refresh_generation += 1
+        generation = self.companion_refresh_generation
         self._run_async(
-            self.bridge.companion_status, self._render_companion, failure=self._companion_failure
+            self.bridge.companion_status,
+            lambda result: self._render_companion(result, generation),
+            failure=lambda exc: self._companion_failure(exc, generation),
         )
 
-    def _render_companion(self, result: CommandResult) -> None:
-        payload = result.payload
-        if payload["decision"] == "healthy_companion":
-            text = (
-                "Healthy post-change companion — existing Windows antivirus aggregate "
-                "is also verified"
-            )
-            colour = GREEN
-        elif payload["decision"] == "not_installed":
-            text = "Automatic companion is not installed; existing antivirus must remain active"
-            colour = AMBER
-        else:
-            reasons = "; ".join(str(value) for value in payload["reasons"][:3])
-            text = f"Companion degraded: {reasons}"
-            colour = RED
-        self.companion_status_label.configure(text=text, foreground=colour)
+    def _periodic_companion_refresh(self) -> None:
+        self.companion_refresh_job = None
+        if self.closing:
+            return
+        self.refresh_companion()
+        self.companion_refresh_job = self.root.after(30_000, self._periodic_companion_refresh)
 
-    def _companion_failure(self, exc: BaseException) -> None:
+    def _render_companion(self, result: CommandResult, generation: int) -> None:
+        if generation != self.companion_refresh_generation:
+            return
+        payload = result.payload
+        presentation = companion_presentation(payload)
+        colour = {"green": GREEN, "amber": AMBER, "red": RED}[presentation.accent]
+        self.companion_status_label.configure(
+            text=f"{presentation.headline} — {presentation.detail}", foreground=colour
+        )
+        self.companion_card.set_value(presentation.headline, colour)
+
+    def _companion_failure(self, exc: BaseException, generation: int) -> None:
+        if generation != self.companion_refresh_generation:
+            return
         self.companion_status_label.configure(
             text=f"Companion evidence unavailable: {exc}", foreground=RED
         )
+        self.companion_card.set_value("Evidence unavailable", RED)
 
     def refresh_quarantine(self) -> None:
         self._run_async(
@@ -1480,6 +1601,14 @@ class ZsecDesktop:
             with contextlib.suppress(tk.TclError):
                 self.root.after_cancel(self.animation_job)
             self.animation_job = None
+        if self.companion_refresh_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.root.after_cancel(self.companion_refresh_job)
+            self.companion_refresh_job = None
+        if self.watch_watchdog_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.root.after_cancel(self.watch_watchdog_job)
+            self.watch_watchdog_job = None
         if self.watch_session is not None:
             self.watch_session.stop()
         if self.scan_cancel is not None:

@@ -33,9 +33,9 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
     assert "unsigned" in readme.lower() and "Community" in readme
-    assert 'internal const string ProductVersion = "0.3.4"' in app
-    assert '$ProductVersion = "0.3.4"' in build
-    assert '$ProductVersion = "0.3.4"' in installer
+    assert 'internal const string ProductVersion = "0.3.5"' in app
+    assert '$ProductVersion = "0.3.5"' in build
+    assert '$ProductVersion = "0.3.5"' in installer
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:
@@ -118,7 +118,7 @@ def test_compiled_policy_is_deterministic_and_has_source_provenance(tmp_path: Pa
 
     assert provenance["schema"] == "zsec.browser.desktop-policy.v1"
     assert provenance["source_extension"]["name"] == "ZSEC Browser Shields"
-    assert provenance["source_extension"]["version"] == "0.5.0"
+    assert provenance["source_extension"]["version"] == "0.5.1"
     assert provenance["inputs"]["compiled_rule_files"] == [
         "link-cleaning.json",
         "privacy.json",
@@ -173,7 +173,8 @@ def test_desktop_tabs_popups_and_modern_controls_are_wired() -> None:
     assert "keyData == (Keys.Control | Keys.W)" in app
     assert "view.KeyDown += BrowserKeyDown" in app
     assert '"--zsec-runtime-test=new-tab"' in app
-    assert 'lastTabAction = "runtime_new_tab_verified"' in app
+    assert 'lastTabAction = "new_tab_ready"' in app
+    assert 'lastNewTabCommandSource = source' in app
     assert 'RecordTabCreationFailure("runtime_not_ready")' in app
     assert 'RecordTabCreationFailure("tab_limit_rejected")' in app
     assert 'RecordTabCreationFailure("open_failed")' in app
@@ -189,7 +190,8 @@ def test_runtime_acceptance_retries_transient_evidence_file_locks() -> None:
     assert "$evidence['tab_count'] -eq 2" in runtime_test
     assert "$evidence['ready_tab_count'] -eq 2" in runtime_test
     assert "$evidence['tab_creation_failure_count'] -eq 0" in runtime_test
-    assert "$evidence['last_tab_action'] -eq 'runtime_new_tab_verified'" in runtime_test
+    assert "$evidence['last_tab_action'] -eq 'new_tab_ready'" in runtime_test
+    assert "$evidence['last_new_tab_command_source'] -eq 'runtime_acceptance'" in runtime_test
 
 
 def test_bundled_extension_has_stable_identity_and_bounded_youtube_assist() -> None:
@@ -205,7 +207,7 @@ def test_bundled_extension_has_stable_identity_and_bounded_youtube_assist() -> N
         encoding="utf-8"
     )
 
-    assert manifest["version"] == "0.5.0"
+    assert manifest["version"] == "0.5.1"
     assert extension_id == "ddjbjhnlhapggenanpmcidieimaomiif"
     for required_desktop_asset in (
         '"easylist.lock.json"',
@@ -213,6 +215,7 @@ def test_bundled_extension_has_stable_identity_and_bounded_youtube_assist() -> N
         '"third_party/EASYLIST-LICENSE.txt"',
         '"third_party/easylist-20260817.txt"',
         '"third_party/easylist-provenance.json"',
+        '"src/youtube-cosmetic-rules.js"',
     ):
         assert required_desktop_asset in build
     assert "window.top !== window" in assist
@@ -234,7 +237,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
     payload_sha = hashlib.sha256(payload_file.read_bytes()).hexdigest()
     manifest = {
         "schema": "zsec.browser.desktop-preview-build.v2",
-        "version": "0.3.4",
+        "version": "0.3.5",
         "architecture": "windows-x64-webview2-shell",
         "engine_distribution": "Microsoft Evergreen WebView2 Chromium runtime",
         "engine_maintained_by": "Microsoft",
@@ -245,7 +248,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
         "webview2_nuget_sha512_base64": "catalog-hash",
         "tracker_domain_count": 81,
         "tracking_parameter_count": 21,
-        "source_extension_version": "0.5.0",
+        "source_extension_version": "0.5.1",
         "source_extension_id": "ddjbjhnlhapggenanpmcidieimaomiif",
         "files": [
             {"path": "README.md", "sha256": payload_sha, "bytes": 23}
@@ -272,7 +275,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
             text=True,
         )
 
-    name = "zsec-browser-community-0.3.4-windows-x64-unsigned.zip"
+    name = "zsec-browser-community-0.3.5-windows-x64-unsigned.zip"
     archive_a = release_a / name
     archive_b = release_b / name
     assert archive_a.read_bytes() == archive_b.read_bytes()
@@ -291,7 +294,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
     with zipfile.ZipFile(archive_a) as archive:
         provenance = json.loads(
             archive.read(
-                "zsec-browser-community-0.3.4/release-provenance.json"
+                "zsec-browser-community-0.3.5/release-provenance.json"
             ).decode("utf-8")
         )
     assert provenance["source_revision"] == revision

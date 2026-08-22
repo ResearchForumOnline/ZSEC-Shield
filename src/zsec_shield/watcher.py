@@ -428,13 +428,17 @@ class DebouncedPathQueue:
                         pending.first_seen_at + self._max_coalesce_seconds,
                     )
 
-    def due(self) -> list[PendingPath]:
+    def due(self, maximum: int | None = None) -> list[PendingPath]:
+        if maximum is not None and maximum < 1:
+            raise ValueError("maximum must be positive")
         self.ingest()
         with self._state_lock:
             now = self._clock()
             keys = sorted(
                 key for key, pending in self._pending.items() if pending.due_at <= now
             )
+            if maximum is not None:
+                keys = keys[:maximum]
             return [self._pending.pop(key) for key in keys]
 
     def clear_overflow(self) -> int:
@@ -865,6 +869,7 @@ class ForegroundProtectionWatcher:
         unresolved_in_progress = 0
         reconciliation_started = self._clock()
         next_progress_heartbeat = self._clock() + self.config.heartbeat_seconds
+        next_priority_drain = self._clock()
 
         def emit_progress_heartbeat() -> None:
             nonlocal next_progress_heartbeat
@@ -910,7 +915,8 @@ class ForegroundProtectionWatcher:
         def record_successful_hash(
             path: Path, metadata: os.stat_result, was_hashed: bool
         ) -> None:
-            nonlocal bytes_hashed, hashed_in_progress, unresolved_in_progress
+            nonlocal bytes_hashed, hashed_in_progress
+            nonlocal next_priority_drain, unresolved_in_progress
             key = _path_key(path)
             if was_hashed:
                 # Keep this phase-local counter distinct from the completed-batch
@@ -922,6 +928,18 @@ class ForegroundProtectionWatcher:
                 unresolved_in_progress += 1
                 unresolved.add(key)
             emit_progress_heartbeat()
+            now = self._clock()
+            if now < next_priority_drain:
+                return
+            # The observer starts before the full baseline. Drain a small,
+            # bounded slice of changed paths between baseline files so a large
+            # first inventory cannot postpone a new download or write for many
+            # minutes. The event scan is synchronous and uses the same bounded
+            # scanner only after the current file request has completed.
+            next_priority_drain = now + min(0.1, self.config.debounce_seconds)
+            for pending in self._events.due(maximum=32):
+                if _path_key(pending.path) != key:
+                    self._scan_pending(pending)
 
         self._scan_paths(
             [root.path for root in self.roots],

@@ -83,6 +83,14 @@ class ScanPresentation:
     accent: str
 
 
+@dataclass(frozen=True, slots=True)
+class CompanionPresentation:
+    state: str
+    headline: str
+    detail: str
+    accent: str
+
+
 def validate_status(payload: Any) -> dict[str, Any]:
     root = _schema(payload, "zsec.shield.status.v2")
     if root.get("contract_version") != 2:
@@ -344,13 +352,71 @@ def validate_companion_status(payload: Any) -> dict[str, Any]:
         raise ContractError("companion cannot authorize provider uninstall")
     if _bool(root.get("cutover_allowed"), "cutover_allowed"):
         raise ContractError("companion cannot authorize cutover")
-    _bool(root.get("installed"), "installed")
-    _bool(root.get("healthy"), "healthy")
-    if root.get("decision") not in {"not_installed", "degraded", "healthy_companion"}:
+    installed = _bool(root.get("installed"), "installed")
+    healthy = _bool(root.get("healthy"), "healthy")
+    decision = root.get("decision")
+    if decision not in {"not_installed", "degraded", "healthy_companion"}:
         raise ContractError("companion decision is unknown")
     _list(root.get("reasons"), "reasons")
-    _object(root.get("existing_primary_protection"), "existing_primary_protection")
+    existing = _object(root.get("existing_primary_protection"), "existing_primary_protection")
+    aggregate_good = _bool(
+        existing.get("aggregate_good"),
+        "existing_primary_protection.aggregate_good",
+    )
+
+    if decision == "not_installed":
+        if installed or healthy:
+            raise ContractError(
+                "not_installed companion decision contradicts installed/healthy state"
+            )
+    elif decision == "degraded":
+        if healthy:
+            raise ContractError("degraded companion decision contradicts healthy state")
+    else:
+        if not installed or not healthy or not aggregate_good:
+            raise ContractError("healthy companion decision lacks required protection evidence")
+        supervisor = _object(root.get("supervisor"), "supervisor")
+        if not _bool(supervisor.get("registration_verified"), "supervisor.registration_verified"):
+            raise ContractError("healthy companion supervisor registration is unverified")
+        if supervisor.get("state") not in {"registered_for_logon", "registered_and_running"}:
+            raise ContractError("healthy companion supervisor state is unsupported")
+        integrity = _object(root.get("integrity"), "integrity")
+        for field in ("cli_hash_verified", "runtime_hash_verified", "launcher_hash_verified"):
+            if not _bool(integrity.get(field), f"integrity.{field}"):
+                raise ContractError(f"healthy companion lacks {field}")
+        health = _object(root.get("health"), "health")
+        for field in ("schema_valid", "fresh", "process_verified"):
+            if not _bool(health.get(field), f"health.{field}"):
+                raise ContractError(f"healthy companion lacks {field}")
     return root
+
+
+def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
+    decision = payload["decision"]
+    if decision == "healthy_companion":
+        return CompanionPresentation(
+            state="healthy",
+            headline="Automatic companion active",
+            detail=(
+                "Verified process, hashes, heartbeat, logon supervisor and existing "
+                "antivirus health."
+            ),
+            accent="green",
+        )
+    if decision == "not_installed":
+        return CompanionPresentation(
+            state="not_installed",
+            headline="Automatic companion not installed",
+            detail="Existing Windows antivirus remains required.",
+            accent="amber",
+        )
+    reasons = "; ".join(str(value) for value in payload["reasons"][:3])
+    return CompanionPresentation(
+        state="degraded",
+        headline="Automatic companion degraded",
+        detail=reasons or "Protection evidence is incomplete.",
+        accent="red",
+    )
 
 
 def validate_watch_event(payload: Any) -> dict[str, Any]:
@@ -367,6 +433,13 @@ def validate_watch_event(payload: Any) -> dict[str, Any]:
         raise ContractError("watch event is unknown")
     _string(root.get("session_id"), "session_id", maximum=80)
     _integer(root.get("sequence"), "sequence", minimum=1)
+    generated_at = _string(root.get("generated_at"), "generated_at", maximum=80)
+    if not generated_at.endswith("Z") or "T" not in generated_at:
+        raise ContractError("watch event generated_at must be a UTC timestamp")
+    if root.get("event") == "health_heartbeat":
+        if root.get("backend_active") not in {"native", "polling"}:
+            raise ContractError("watch heartbeat backend is unsupported")
+        _bool(root.get("operational_incomplete"), "operational_incomplete")
     policy = root.get("policy")
     if policy is not None:
         policy_object = _object(policy, "policy")
@@ -378,8 +451,10 @@ def validate_watch_event(payload: Any) -> dict[str, Any]:
 
 
 __all__ = [
+    "CompanionPresentation",
     "ContractError",
     "ScanPresentation",
+    "companion_presentation",
     "status_presentation",
     "validate_companion_status",
     "validate_feed_update",

@@ -147,7 +147,8 @@ $newTabEvidence = Invoke-BrowserEvidenceTest `
         [int]$evidence['tab_count'] -eq 2 -and
         [int]$evidence['ready_tab_count'] -eq 2 -and
         [int]$evidence['tab_creation_failure_count'] -eq 0 -and
-        $evidence['last_tab_action'] -eq 'runtime_new_tab_verified'
+        $evidence['last_tab_action'] -eq 'new_tab_ready' -and
+        $evidence['last_new_tab_command_source'] -eq 'runtime_acceptance'
     }
 Close-ExactBrowser -ExpectedPath $applicationPath
 
@@ -183,6 +184,7 @@ $result = [ordered]@{
             ready_tab_count = [int]$newTabEvidence['ready_tab_count']
             tab_creation_failure_count = [int]$newTabEvidence['tab_creation_failure_count']
             last_tab_action = [string]$newTabEvidence['last_tab_action']
+            command_source = [string]$newTabEvidence['last_new_tab_command_source']
         }
     }
     browser_reopened = (-not [bool]$LeaveClosed)

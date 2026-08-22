@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using System.Windows.Forms;
@@ -21,17 +22,18 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.4.0")]
-[assembly: AssemblyFileVersion("0.3.4.0")]
-[assembly: AssemblyInformationalVersion("0.3.4-community")]
+[assembly: AssemblyVersion("0.3.5.0")]
+[assembly: AssemblyFileVersion("0.3.5.0")]
+[assembly: AssemblyInformationalVersion("0.3.5-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.4";
+        internal const string ProductVersion = "0.3.5";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
+        internal const string NewTabHtml = @"<!doctype html><html><head><meta charset='utf-8'><meta name='color-scheme' content='dark'><title>ZSEC New Tab</title><style>html,body{height:100%;margin:0;background:#040c12;color:#e8f0f5;font-family:'Segoe UI',sans-serif}body{display:grid;place-items:center;background:radial-gradient(circle at 50% 36%,#123845 0,#07151d 36%,#040c12 72%)}main{text-align:center;max-width:720px;padding:48px}.mark{width:76px;height:76px;margin:0 auto 24px;border:1px solid #2acdbb;border-radius:24px;display:grid;place-items:center;color:#00e5aa;font-size:36px;font-weight:800;box-shadow:0 0 42px rgba(0,229,170,.18)}h1{font-size:34px;margin:0 0 12px}p{color:#9fb5c0;font-size:16px;line-height:1.6}.hint{display:inline-block;margin-top:20px;padding:12px 18px;border:1px solid #294b59;border-radius:18px;background:#0d2029;color:#cce3ea}</style></head><body><main><div class='mark'>Z</div><h1>Private by design.</h1><p>This tab is local to ZSEC Browser. Type a web address or search in the address bar.</p><div class='hint'>Ctrl+L focuses search · Ctrl+T opens another local tab</div></main></body></html>";
 
         [STAThread]
         private static void Main(string[] args)
@@ -169,6 +171,69 @@ namespace TalkToAI.ZsecBrowserPreview
         }
     }
 
+    internal sealed class ProtectionPulse : Control
+    {
+        private readonly System.Windows.Forms.Timer timer;
+        private int phase;
+        private bool active;
+
+        internal ProtectionPulse()
+        {
+            DoubleBuffered = true;
+            Size = new Size(34, 34);
+            BackColor = Color.Transparent;
+            AccessibleName = "Protected navigation activity";
+            timer = new System.Windows.Forms.Timer();
+            timer.Interval = 45;
+            timer.Tick += delegate
+            {
+                phase = (phase + 12) % 360;
+                Invalidate();
+            };
+            if (SystemInformation.IsMenuAnimationEnabled) timer.Start();
+        }
+
+        internal bool Active
+        {
+            get { return active; }
+            set
+            {
+                active = value;
+                Invalidate();
+            }
+        }
+
+        protected override void OnPaint(PaintEventArgs args)
+        {
+            base.OnPaint(args);
+            args.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            float wave = active
+                ? (float)((Math.Sin(phase * Math.PI / 180D) + 1D) / 2D)
+                : 0F;
+            float haloRadius = 8F + (wave * 4F);
+            PointF centre = new PointF(Width / 2F, Height / 2F);
+            Color activeColour = Color.FromArgb(0, 229, 170);
+            using (SolidBrush halo = new SolidBrush(Color.FromArgb((int)(28 + wave * 55), activeColour)))
+            using (SolidBrush core = new SolidBrush(active ? activeColour : Color.FromArgb(65, 96, 107)))
+            {
+                args.Graphics.FillEllipse(
+                    halo,
+                    centre.X - haloRadius,
+                    centre.Y - haloRadius,
+                    haloRadius * 2F,
+                    haloRadius * 2F
+                );
+                args.Graphics.FillEllipse(core, centre.X - 4F, centre.Y - 4F, 8F, 8F);
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) timer.Dispose();
+            base.Dispose(disposing);
+        }
+    }
+
     internal sealed class BrowserWindow : Form
     {
         private static readonly Color Background = Color.FromArgb(4, 12, 18);
@@ -209,6 +274,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly ToolStripControlHost addressHost;
         private readonly Label shieldStatus;
         private readonly Label runtimeStatus;
+        private readonly ProtectionPulse protectionPulse;
         private readonly ToolStripButton highRiskButton;
         private readonly ToolStripLabel blockedLabel;
         private readonly ToolStripProgressBar navigationProgress;
@@ -227,7 +293,9 @@ namespace TalkToAI.ZsecBrowserPreview
         private int popupBlockedCount;
         private int tabCreationFailureCount;
         private string lastTabAction = "startup";
+        private string lastNewTabCommandSource = "none";
         private readonly bool runtimeNewTabTest;
+        private readonly TaskCompletionSource<bool> environmentReady;
 
         [DllImport("dwmapi.dll", PreserveSig = true)]
         private static extern int DwmSetWindowAttribute(
@@ -256,6 +324,7 @@ namespace TalkToAI.ZsecBrowserPreview
             trackerDomains = LoadRequiredLines(Path.Combine(policyRoot, "tracker-domains.txt"));
             trackingParameters = LoadRequiredLines(Path.Combine(policyRoot, "tracking-parameters.txt"));
             browserViews = new List<WebView2>();
+            environmentReady = new TaskCompletionSource<bool>();
 
             Text = "ZSEC Browser";
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
@@ -291,18 +360,22 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.4";
+            channel.Text = "COMMUNITY 0.3.5";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
             channel.Location = new Point(184, 22);
             brandBar.Controls.Add(channel);
 
+            protectionPulse = new ProtectionPulse();
+            protectionPulse.Location = new Point(324, 12);
+            brandBar.Controls.Add(protectionPulse);
+
             shieldStatus = new Label();
-            shieldStatus.Text = "  FILTERING: STANDARD  ";
+            shieldStatus.Text = "  FILTERING: VERIFYING  ";
             shieldStatus.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
             shieldStatus.ForeColor = Background;
-            shieldStatus.BackColor = Accent;
+            shieldStatus.BackColor = Color.FromArgb(245, 185, 66);
             shieldStatus.AutoSize = true;
             shieldStatus.Padding = new Padding(8, 6, 8, 6);
             shieldStatus.Anchor = AnchorStyles.Top | AnchorStyles.Right;
@@ -329,7 +402,7 @@ namespace TalkToAI.ZsecBrowserPreview
             ToolStripButton forwardButton = CreateButton("›", "Forward (Alt+Right)", delegate { if (ActiveView != null && ActiveView.CanGoForward) ActiveView.GoForward(); });
             ToolStripButton reloadButton = CreateButton("↻", "Reload (Ctrl+R)", delegate { if (ActiveView != null) ActiveView.Reload(); });
             ToolStripButton homeButton = CreateButton("⌂", "ZSEC home", delegate { Navigate(Program.DefaultStartPage); });
-            ToolStripButton newTabButton = CreateButton("+", "New tab (Ctrl+T)", async delegate { await CreateTabSafelyAsync(Program.DefaultStartPage); });
+            ToolStripButton newTabButton = CreateButton("＋  New tab", "New tab (Ctrl+T)", async delegate { await CreateNewTabCommandAsync("button"); });
             ToolStripButton closeTabButton = CreateButton("×", "Close tab (Ctrl+W)", delegate { if (tabs.TabPages.Count > 1) CloseActiveTab(); });
 
             RoundedSurface addressSurface = new RoundedSurface();
@@ -374,7 +447,7 @@ namespace TalkToAI.ZsecBrowserPreview
             });
             navigation.Resize += delegate
             {
-                int reserved = 550;
+                int reserved = 640;
                 addressHost.Width = Math.Max(280, navigation.ClientSize.Width - reserved);
                 addressSurface.Width = addressHost.Width;
             };
@@ -462,7 +535,7 @@ namespace TalkToAI.ZsecBrowserPreview
             button.ForeColor = Color.White;
             button.Font = new Font("Segoe UI Symbol", text.Length <= 2 ? 14F : 9F, FontStyle.Bold);
             button.AutoSize = false;
-            button.Size = new Size(text.Length > 2 ? 126 : 42, 34);
+            button.Size = new Size(text.Length > 2 ? 118 : 42, 34);
             button.Margin = new Padding(2, 0, 2, 0);
             button.ToolTipText = toolTip;
             button.AccessibleName = toolTip;
@@ -565,16 +638,19 @@ namespace TalkToAI.ZsecBrowserPreview
                 string runtimeVersion = CoreWebView2Environment.GetAvailableBrowserVersionString();
                 runtimeStatus.Text = "Microsoft Chromium runtime " + runtimeVersion;
                 await CreateTab(initialDestination, true);
+                shieldStatus.Text = "  FILTERING: STANDARD  ";
+                shieldStatus.BackColor = Accent;
+                environmentReady.TrySetResult(true);
                 if (runtimeNewTabTest)
                 {
-                    await CreateTab(Program.DefaultStartPage, true, navigate: false);
-                    lastTabAction = "runtime_new_tab_verified";
+                    await CreateNewTabCommandAsync("runtime_acceptance");
                 }
                 ClearStartupFailureEvidence();
                 WriteRuntimeEvidence(runtimeVersion);
             }
             catch (Exception exception)
             {
+                environmentReady.TrySetException(exception);
                 WriteStartupFailureEvidence(exception);
                 runtimeStatus.Text = "Protection unavailable";
                 shieldStatus.Text = "  STARTUP FAILED  ";
@@ -666,11 +742,20 @@ namespace TalkToAI.ZsecBrowserPreview
             }
         }
 
-        private async Task CreateTabSafelyAsync(string destination)
+        private async Task CreateNewTabCommandAsync(string source)
         {
             try
             {
-                await CreateTab(destination, true);
+                runtimeStatus.Text = "Preparing protected tab...";
+                protectionPulse.Active = true;
+                await environmentReady.Task;
+                WebView2 view = await CreateTab(Program.DefaultStartPage, true, navigate: false);
+                view.CoreWebView2.NavigateToString(Program.NewTabHtml);
+                address.Clear();
+                address.Focus();
+                lastTabAction = "new_tab_ready";
+                lastNewTabCommandSource = source;
+                WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
             }
             catch (Exception exception)
             {
@@ -679,6 +764,7 @@ namespace TalkToAI.ZsecBrowserPreview
                     WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
                 }
                 navigationProgress.Visible = false;
+                protectionPulse.Active = false;
                 runtimeStatus.Text = "New tab failed safely";
                 MessageBox.Show(
                     "ZSEC Browser could not open the new tab.\r\n\r\n" + exception.Message,
@@ -722,6 +808,7 @@ namespace TalkToAI.ZsecBrowserPreview
             core.NavigationStarting += delegate(object sender, CoreWebView2NavigationStartingEventArgs args)
             {
                 navigationProgress.Visible = true;
+                protectionPulse.Active = true;
                 runtimeStatus.Text = "Opening protected page...";
                 HandleNavigationStarting(view, args);
             };
@@ -747,6 +834,7 @@ namespace TalkToAI.ZsecBrowserPreview
             core.NavigationCompleted += delegate
             {
                 navigationProgress.Visible = false;
+                protectionPulse.Active = false;
                 runtimeStatus.Text = "Runtime ready · Browser Shields loaded · Microsoft Chromium " + CoreWebView2Environment.GetAvailableBrowserVersionString();
                 lastNavigationHttps = view.Source != null &&
                     String.Equals(view.Source.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
@@ -810,6 +898,7 @@ namespace TalkToAI.ZsecBrowserPreview
             core.DownloadStarting += HandleDownloadStarting;
             core.ProcessFailed += delegate
             {
+                protectionPulse.Active = false;
                 runtimeStatus.Text = "Renderer/runtime failure detected - reload this tab";
             };
         }
@@ -1099,7 +1188,7 @@ namespace TalkToAI.ZsecBrowserPreview
 
         private async void CreateTabFromKeyboardAsync()
         {
-            await CreateTabSafelyAsync(Program.DefaultStartPage);
+            await CreateNewTabCommandAsync("keyboard");
         }
 
         private void NavigateView(WebView2 view, string destination)
@@ -1332,6 +1421,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 "popup_blocked_count=" + popupBlockedCount.ToString(),
                 "tab_creation_failure_count=" + tabCreationFailureCount.ToString(),
                 "last_tab_action=" + lastTabAction,
+                "last_new_tab_command_source=" + lastNewTabCommandSource,
                 "high_risk_mode=" + highRiskMode.ToString().ToLowerInvariant(),
                 "blocked_request_count=" + blockedRequestCount.ToString(),
                 "tracking_cleanup_count=" + trackingCleanupCount.ToString(),

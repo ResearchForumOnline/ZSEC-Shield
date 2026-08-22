@@ -128,14 +128,15 @@ servers; it never opens the normal user profile. See the
 for the exact enforced decision points and non-claims.
 
 The native Windows Community desktop source lives in
-[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.4
+[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.5
 provides a modern rounded dark interface, managed tabs and popups, an address
 and search bar, and a separate WebView2 profile,
 default-deny site permissions, certificate-error cancellation, explicit downloads,
 HTTPS upgrading, Microsoft Balanced tracking prevention, an automatically loaded
-exact-ID Browser Shields 0.5.0 MV3 engine with 49,464 pinned EasyList network
+exact-ID Browser Shields 0.5.1 MV3 engine with 49,464 pinned EasyList-derived network
 rules, 21 tracking-parameter cleaners, a
-bounded YouTube UI assist and an optional stricter cross-site mode. Its build
+19 selected packaged YouTube cosmetic selectors, a bounded YouTube UI assist
+and an optional stricter cross-site mode. Its build
 verifies the pinned Microsoft SDK package against the official NuGet SHA-512 and
 a locked SHA-256; installation requires a validly Microsoft-signed Evergreen runtime.
 

@@ -12,7 +12,10 @@
     "button.ytp-skip-ad-button",
     ".ytp-ad-overlay-close-button"
   ];
-  const HIDE_SELECTORS = [
+  const EASYLIST_COSMETIC_SELECTORS = Array.isArray(
+    globalThis.ZSEC_YOUTUBE_COSMETIC_SELECTORS
+  ) ? globalThis.ZSEC_YOUTUBE_COSMETIC_SELECTORS : [];
+  const HIDE_SELECTORS = Array.from(new Set([
     "#masthead-ad",
     "#player-ads",
     "[target-id=\"engagement-panel-ads\"]",
@@ -28,13 +31,19 @@
     "ytd-promoted-sparkles-text-search-renderer",
     "ytd-in-feed-ad-layout-renderer",
     "ytd-rich-item-renderer:has(> #content > ytd-ad-slot-renderer)",
-    "ytd-search-pyv-renderer"
-  ];
+    "ytd-search-pyv-renderer",
+    ...EASYLIST_COSMETIC_SELECTORS
+  ]));
   let enabled = false;
   let disposed = false;
   let observing = false;
   let queued = false;
   let lastClicked = null;
+  let settings = {
+    protectionEnabled: true,
+    youtubeCleanup: true,
+    pausedSites: []
+  };
 
   const observer = new MutationObserver(schedule);
 
@@ -78,7 +87,12 @@
   function start() {
     if (!enabled || disposed) return;
     if (!observing) {
-      observer.observe(document, { childList: true, subtree: true });
+      observer.observe(document, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["class", "style", "hidden", "aria-disabled"]
+      });
       observing = true;
     }
     schedule();
@@ -91,22 +105,43 @@
     removeStyle();
   }
 
-  chrome.storage.local.get({ youtubeCleanup: true }, (stored) => {
+  function hostIsPaused(pausedSites) {
+    if (!Array.isArray(pausedSites)) return false;
+    return pausedSites.some((value) => {
+      if (typeof value !== "string") return false;
+      const paused = value.trim().toLowerCase().replace(/^\.+|\.+$/g, "");
+      return paused && (host === paused || host.endsWith(`.${paused}`));
+    });
+  }
+
+  function applySettings(next) {
+    settings = {
+      protectionEnabled: next.protectionEnabled !== false,
+      youtubeCleanup: next.youtubeCleanup !== false,
+      pausedSites: Array.isArray(next.pausedSites) ? [...next.pausedSites] : []
+    };
+    enabled = settings.protectionEnabled && settings.youtubeCleanup && !hostIsPaused(settings.pausedSites);
+    if (enabled) start();
+    else stop();
+  }
+
+  chrome.storage.local.get(settings, (stored) => {
     if (chrome.runtime.lastError) {
       enabled = false;
       stop();
       return;
     }
-    enabled = stored.youtubeCleanup !== false;
-    if (enabled) start();
-    else stop();
+    applySettings(stored);
   });
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local" || !changes.youtubeCleanup) return;
-    enabled = changes.youtubeCleanup.newValue !== false;
-    if (enabled) start();
-    else stop();
+    if (area !== "local") return;
+    if (!changes.youtubeCleanup && !changes.protectionEnabled && !changes.pausedSites) return;
+    const next = { ...settings };
+    for (const key of ["youtubeCleanup", "protectionEnabled", "pausedSites"]) {
+      if (changes[key]) next[key] = changes[key].newValue;
+    }
+    applySettings(next);
   });
 
   document.addEventListener("yt-navigate-finish", schedule, { passive: true });

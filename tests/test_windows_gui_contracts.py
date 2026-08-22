@@ -17,6 +17,7 @@ if str(GUI_ROOT) not in sys.path:
 from zsec_desktop.bridge import BridgeError, CommandResult, ZsecBridge, discover_cli  # noqa: E402
 from zsec_desktop.contracts import (  # noqa: E402
     ContractError,
+    companion_presentation,
     status_presentation,
     validate_companion_status,
     validate_quarantine_list,
@@ -112,6 +113,33 @@ def valid_companion() -> dict[str, object]:
     }
 
 
+def valid_healthy_companion() -> dict[str, object]:
+    value = valid_companion()
+    value.update(
+        {
+            "installed": True,
+            "healthy": True,
+            "decision": "healthy_companion",
+            "reasons": [],
+            "supervisor": {
+                "registration_verified": True,
+                "state": "registered_for_logon",
+            },
+            "integrity": {
+                "cli_hash_verified": True,
+                "runtime_hash_verified": True,
+                "launcher_hash_verified": True,
+            },
+            "health": {
+                "schema_valid": True,
+                "fresh": True,
+                "process_verified": True,
+            },
+        }
+    )
+    return value
+
+
 def valid_recovery_drill() -> dict[str, object]:
     return {
         "schema": "zsec.antivirus.recovery-drill.v1",
@@ -141,6 +169,7 @@ def test_watch_contract_accepts_metadata_reconciliation_without_overclaiming() -
         "event": "reconciliation_completed",
         "session_id": str(uuid.uuid4()),
         "sequence": 2,
+        "generated_at": "2026-08-22T03:00:00Z",
         "policy": {"real_time_protection": False, "pre_access_enforcement": False},
     }
     assert validate_watch_event(event)["event"] == "reconciliation_completed"
@@ -191,6 +220,63 @@ def test_replacement_and_companion_contracts_are_hard_interlocks() -> None:
         value[field] = True
         with pytest.raises(ContractError):
             validate_companion_status(value)
+
+
+def test_companion_truth_table_rejects_false_green_decisions() -> None:
+    healthy = validate_companion_status(valid_healthy_companion())
+    assert companion_presentation(healthy).state == "healthy"
+
+    for field, replacement in (
+        ("installed", False),
+        ("healthy", False),
+    ):
+        contradictory = valid_healthy_companion()
+        contradictory[field] = replacement
+        with pytest.raises(ContractError, match="healthy companion"):
+            validate_companion_status(contradictory)
+
+    aggregate = valid_healthy_companion()
+    aggregate["existing_primary_protection"]["aggregate_good"] = False  # type: ignore[index]
+    with pytest.raises(ContractError, match="required protection evidence"):
+        validate_companion_status(aggregate)
+
+    for section, field in (
+        ("supervisor", "registration_verified"),
+        ("integrity", "runtime_hash_verified"),
+        ("health", "fresh"),
+        ("health", "process_verified"),
+    ):
+        contradictory = valid_healthy_companion()
+        contradictory[section][field] = False  # type: ignore[index]
+        with pytest.raises(ContractError, match="healthy companion"):
+            validate_companion_status(contradictory)
+
+    not_installed = valid_companion()
+    not_installed["installed"] = True
+    with pytest.raises(ContractError, match="not_installed"):
+        validate_companion_status(not_installed)
+
+    degraded = valid_companion()
+    degraded.update({"decision": "degraded", "installed": True, "healthy": True})
+    with pytest.raises(ContractError, match="degraded"):
+        validate_companion_status(degraded)
+
+
+def test_watch_heartbeat_contract_exposes_incomplete_state() -> None:
+    heartbeat = {
+        "schema": "zsec.shield.watch-event.v1",
+        "event": "health_heartbeat",
+        "session_id": str(uuid.uuid4()),
+        "sequence": 3,
+        "generated_at": "2026-08-22T03:00:00Z",
+        "backend_active": "native",
+        "operational_incomplete": True,
+        "policy": {"real_time_protection": False, "pre_access_enforcement": False},
+    }
+    assert validate_watch_event(heartbeat)["operational_incomplete"] is True
+    heartbeat["backend_active"] = "unknown"
+    with pytest.raises(ContractError, match="backend"):
+        validate_watch_event(heartbeat)
 
 
 def test_recovery_drill_contract_rejects_certification_and_counter_overclaims() -> None:

@@ -35,6 +35,7 @@ INCLUDE = (
     "src/policy.js",
     "src/high-risk-browsing.js",
     "src/service-worker.js",
+    "src/youtube-cosmetic-rules.js",
     "src/youtube-cleanup.js",
 )
 ZIP_TIMESTAMP = (2026, 1, 1, 0, 0, 0)

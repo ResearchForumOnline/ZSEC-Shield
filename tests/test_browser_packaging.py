@@ -32,9 +32,10 @@ def test_browser_archive_is_complete_deterministic_and_explicitly_unsigned(tmp_p
         assert "third_party/easylist-20260817.txt" in bundle.namelist()
         assert "third_party/easylist-provenance.json" in bundle.namelist()
         assert "third_party/EASYLIST-LICENSE.txt" in bundle.namelist()
+        assert "src/youtube-cosmetic-rules.js" in bundle.namelist()
         archived_manifest = json.loads(bundle.read("manifest.json"))
         assert archived_manifest["manifest_version"] == 3
-        assert archived_manifest["version"] == "0.5.0"
+        assert archived_manifest["version"] == "0.5.1"
         assert all(info.date_time == (2026, 1, 1, 0, 0, 0) for info in bundle.infolist())
 
         easylist_bytes = bundle.read("rules/easylist.json")
@@ -62,7 +63,7 @@ def test_browser_archive_is_complete_deterministic_and_explicitly_unsigned(tmp_p
     assert release["artifact"] == first.name
     assert first.name.startswith("zsec-browser-shields-")
     assert release["product"] == "ZSEC Browser Shields"
-    assert release["version"] == "0.5.0"
+    assert release["version"] == "0.5.1"
     assert release["sha256"] == digest
     assert release["signed_store_package"] is False
     assert release["installation_channel"] == "unpacked-community"

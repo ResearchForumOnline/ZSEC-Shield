@@ -22,6 +22,7 @@ const easyListSource = await readFile(join(root, "third_party", "easylist-202608
 const popup = await readFile(join(root, "popup", "index.html"), "utf8");
 const popupScript = await readFile(join(root, "popup", "popup.js"), "utf8");
 const serviceWorker = await readFile(join(root, "src", "service-worker.js"), "utf8");
+const youtubeCosmeticRules = await readFile(join(root, "src", "youtube-cosmetic-rules.js"), "utf8");
 const youtubeCleanup = await readFile(join(root, "src", "youtube-cleanup.js"), "utf8");
 const totalRules = blockingRules.length + linkRules.length + easyListRules.length;
 
@@ -29,8 +30,8 @@ if (manifest.manifest_version !== 3) throw new Error("Manifest V3 is required");
 if (manifest.name !== "ZSEC Browser Shields" || manifest.short_name !== "ZSEC Shields") {
   throw new Error("Public extension branding is stale");
 }
-if (manifest.version !== "0.5.0" || packageJson.version !== manifest.version) {
-  throw new Error("Manifest/package release version must match the reviewed 0.5.0 release");
+if (manifest.version !== "0.5.1" || packageJson.version !== manifest.version) {
+  throw new Error("Manifest/package release version must match the reviewed 0.5.1 release");
 }
 const resources = manifest.declarative_net_request?.rule_resources || [];
 if (resources.length !== 3) throw new Error("Expected EasyList, privacy and link-cleaning rulesets");
@@ -108,8 +109,17 @@ const youtubeForbidden = [
   [/\b(?:fetch|XMLHttpRequest|WebSocket|EventSource)\b/, "page/network inspection"],
   [/\bsendBeacon\s*\(/, "telemetry"],
 ];
+const youtubeCosmeticSelectorCount = (youtubeCosmeticRules.match(/^  "/gm) || []).length;
+if (youtubeCosmeticSelectorCount !== 19) {
+  throw new Error("Pinned YouTube cosmetic selector count drifted");
+}
+if (!youtubeCosmeticRules.includes("globalThis.ZSEC_YOUTUBE_COSMETIC_SELECTORS = Object.freeze([")) {
+  throw new Error("YouTube cosmetic rules are not exported as an immutable selector list");
+}
 for (const [pattern, behavior] of youtubeForbidden) {
-  if (pattern.test(youtubeCleanup)) throw new Error(`YouTube assistance must not use ${behavior}`);
+  if (pattern.test(youtubeCleanup) || pattern.test(youtubeCosmeticRules)) {
+    throw new Error(`YouTube assistance must not use ${behavior}`);
+  }
 }
 if (!youtubeCleanup.includes('host !== "www.youtube.com" && host !== "m.youtube.com"')) {
   throw new Error("YouTube assistance lacks an exact-host runtime guard");
