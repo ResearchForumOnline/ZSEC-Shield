@@ -1,6 +1,6 @@
 # TalkToAI ZSEC security product family
 
-> Evidence-bound product information for ZSEC Antivirus Community 0.3.12, ZSEC Browser Community 0.3.12, Browser Shields Community 0.5.2, and exact artifact-verification boundaries.
+> Evidence-bound product information for ZSEC Antivirus Community 0.3.13, ZSEC Browser Community 0.3.12, Browser Shields Community 0.5.2, and exact artifact-verification boundaries.
 
 Canonical pages:
 - https://talktoai.org/zero-security/
@@ -10,22 +10,22 @@ Canonical pages:
 - https://talktoai.org/zero-browser/privacy/
 - https://talktoai.org/zero-browser/high-risk-browsing/
 
-## ZSEC Antivirus Community 0.3.12
+## ZSEC Antivirus Community 0.3.13
 
-ZSEC Antivirus is an open-core, cross-platform, local-first security programme built around the public ZSEC Shield foundation. Community 0.3.12 adds an automatic per-user post-change companion, authenticated encrypted quarantine, a fail-closed replacement-readiness contract, and a Windows graphical control plane for evidence and fixed Microsoft Defender actions.
+ZSEC Antivirus is an open-core, cross-platform, local-first security programme built around the public ZSEC Shield foundation. Community 0.3.13 adds an automatic per-user post-change companion, authenticated encrypted quarantine, a fail-closed replacement-readiness contract, and a Windows graphical control plane for evidence and fixed Microsoft Defender actions.
 
 The accepted Windows desktop package uses a modern dark protection-centre layout with persistent navigation, native tray controls, bounded local scans, post-change monitoring, reports and settings. It reports Windows Security Center aggregate health, raw registered-provider inventory and separate Microsoft Defender real-time feature, tamper, intelligence, scan and service evidence. It offers only security-intelligence update, quick scan and user-confirmed full scan. Optional scan-age evidence is bounded; null, invalid, out-of-range and the `UInt32::MaxValue` no-scan sentinel remain null rather than invalidating confirmed protection features. A fail-closed handoff interlock reports blocked, operator-cutover-eligible or verified; it cannot select or remove a provider, change Defender preferences or exclusions, or register ZSEC with Windows Security. Microsoft Defender supplies supported Windows real-time enforcement when the live contract confirms it active. ZSEC remains unsigned, user-mode and post-change; it is not a protected privileged daemon, kernel pre-access provider or registered primary antivirus. The companion supports one through eight exact monitoring roots and bounded progress heartbeats during long baselines. It uses Windows ReadDirectoryChangesW, while the cross-platform core uses macOS FSEvents or Linux inotify through Watchdog, with a disclosed polling fallback. It does not provide memory scanning, EDR, a clean-system verdict, Pegasus detection or immunity, or guaranteed protection.
 
-Accepted Windows desktop identity: `zsec-antivirus-desktop-0.3.12-windows-x86_64.zip`, 44,688,237 bytes, SHA-256 `ab23f150008a3e7c047160fdcbddddd9c310e51313b43368df90a727386ff33d`, source revision `ece60f377b2d4cfc594ad4a29b619be7617ed45f`. Its 7,746-byte canonical acceptance JSON has SHA-256 `d45d86f0b2a076da29264c3b46f182d62dfb1da30f22dfe1250d7216a083a58e`; its 115-byte checksum sidecar has SHA-256 `0930d8869645e2a7900bf4034918e1ec41c223ae2aa6a02052caa6a5826a53f1`. The unsigned GUI has SHA-256 `0dd6af477573ec93007fa241aa2d93f6b2fae4def711efbb89596519b98ecc63`; the unsigned engine has SHA-256 `2e033fb566bacff6b89fa5f51e48d9c7fe1e1d10796e18290c9efdbbe54e50f0`.
+Accepted Windows desktop identity: `zsec-antivirus-desktop-0.3.13-windows-x86_64.zip`, 45,062,027 bytes, SHA-256 `f1a36ac2cf0070dc14c6c73ac088fa8ab698aefee5a30eebd802e6f9dae65d82`, source revision `dcaa2ec1f4c58854a350fcb1ef920dc5112e26ba`. Its 8,059-byte canonical acceptance JSON has SHA-256 `352ecaab6d1a54a95382c70d97b12a96d1370d394296652f96aa3c0942b794cf`; its 115-byte checksum sidecar has SHA-256 `749abc51af97d3409a6e4fcd5e535f5afb0cd85c8694459031c6e61b5ebbca7b`. The unsigned GUI has SHA-256 `32dec8a9493013bb715a613ea44ac447c2cf4826a878a3c0cc4c20a8fa5ad6fc`; the unsigned engine has SHA-256 `9b4088ae99d8fc5b0de0ba7e70ed3d3cc8c26b67ff67a14fc86540e213232c51`.
 
 Windows package acceptance covered all 1,146 archive entries and 1,145 manifest files, an isolated 60-byte benign scan with one file and no configured rule match, and a 5/5 synthetic encrypted-recovery drill. Installed acceptance recorded Microsoft Defender active with aggregate health GOOD. The ZSEC companion was enabled with activation, launcher, process, startup registration and fresh-heartbeat evidence, but it remained `initializing`/`baselining`, its decision was `degraded` and healthy was false at capture. It recorded zero findings, issues, dropped events, current unresolved events and quarantine failures. Those observations do not establish that the system was clean, that ZSEC was the real-time provider or that the recovery drill was independent certification.
 
 Accepted cross-platform core identities:
-- Windows x86-64: `zsec-shield-0.3.12-windows-x86_64.zip`, 13,229,221 bytes, SHA-256 `a7303ba4d5d3b81ee58624098aa32c96d2af0d92fa3bc281a50560f33df93e00`.
-- macOS ARM64: `zsec-shield-0.3.12-macos-arm64.tar.gz`, 12,622,701 bytes, SHA-256 `c649ce2a7851bf77b26658fea3bbef464ad40963bbc111e6a82633d4342bf3a5`.
-- Linux x86-64: `zsec-shield-0.3.12-linux-x86_64.tar.gz`, 23,930,085 bytes, SHA-256 `8eb94b6e5f1f09c46e1cef883fcdb9b367e11f483aa66d31ae9afac5d93a868c`.
-- Python wheel: `zsec_shield-0.3.12-py3-none-any.whl`, 100,453 bytes, SHA-256 `252492a42a190509219032805ddfc264905bac686192eea975fb90f30977884f`.
-- Python source distribution: `zsec_shield-0.3.12.tar.gz`, 339,820 bytes, SHA-256 `a5aa05198b75b0c4bd8d1ac683e77dc0fd40990894f12d9783c5859128471810`.
+- Windows x86-64: `zsec-shield-0.3.13-windows-x86_64.zip`, 13,229,221 bytes, SHA-256 `46d38071fb4d3cdab3128fc0f53828a887b158eabc6a925dc995745fdd955184`.
+- macOS ARM64: `zsec-shield-0.3.13-macos-arm64.tar.gz`, 12,622,684 bytes, SHA-256 `45941ec7c3be491577763f56c92e289b60689c399b91ef4cd3995c0779996d90`.
+- Linux x86-64: `zsec-shield-0.3.13-linux-x86_64.tar.gz`, 23,930,115 bytes, SHA-256 `88fc70ae54177d4e78a26de7a3a2b0c177fe24cd7a4b56d9f025f42eb6cf15e0`.
+- Python wheel: `zsec_shield-0.3.13-py3-none-any.whl`, 100,455 bytes, SHA-256 `de4914820be7cc516efc2f5454092bb5389265bb164243d0f925e596ab2aa25f`.
+- Python source distribution: `zsec_shield-0.3.13.tar.gz`, 340,846 bytes, SHA-256 `c9bb2880927ed7ba0f0caa99a9854986005ba9407fd0aded020e37dfeaa8b92c`.
 
 The tagged workflow's ten core assets—the five artifacts above, the three native checksum sidecars and two checksum indexes—carry Sigstore/SLSA provenance. The custom Windows desktop GUI archive, metadata and checksum are separately evidenced and are not covered by that core attestation. The macOS and Linux archives are unsigned CLI companions, not GUIs or primary antivirus products; native activation remains unverified on physical target desktops.
 
@@ -33,8 +33,8 @@ Keep one supported primary real-time provider active throughout any Windows hand
 
 Public foundation:
 - https://github.com/ResearchForumOnline/ZSEC-Shield
-- https://github.com/ResearchForumOnline/ZSEC-Shield/tree/ece60f377b2d4cfc594ad4a29b619be7617ed45f
-- https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.12
+- https://github.com/ResearchForumOnline/ZSEC-Shield/tree/dcaa2ec1f4c58854a350fcb1ef920dc5112e26ba
+- https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.13
 
 Related server-security product (distinct product and route, not an antivirus alias):
 - https://talktoai.org/zsec/
@@ -52,6 +52,7 @@ High-Risk Browsing is exposure reduction, not spyware detection. It does not ide
 The exact two-rule runtime behavior was smoke-tested in Brave and Edge on Windows using isolated temporary profiles and loopback servers. Both request classes were blocked before reaching the server, and explicitly switching the profile off removed the rules and restored navigation. Chrome's command-line unpacked-extension harness did not load the test extension, so Chrome is not part of that runtime-smoke claim. A separately maintained ZSEC Browser Chromium binary is not included.
 
 Immutable extension source:
+- https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.12
 - https://github.com/ResearchForumOnline/ZSEC-Shield/tree/eacd53438695946e5af5a063cacae6ada3dac51d/browser/zeroq-shields
 - https://github.com/ResearchForumOnline/ZSEC-Shield/pull/7
 
@@ -61,11 +62,11 @@ Immutable extension source:
 - No suspicious file is uploaded automatically.
 - Rule feeds contain detection data, never remote commands.
 - ZBA is a typed lifecycle and provenance calculus; established cryptography provides security.
-- ZSEC Antivirus exposes evidence-backed YubiKey readiness, but automatic YubiKey/passkey quarantine recovery is not included in Community 0.3.12, ZSEC Browser Community 0.3.12 or Browser Shields Community 0.5.2.
+- ZSEC Antivirus exposes evidence-backed YubiKey readiness, but automatic YubiKey/passkey quarantine recovery is not included in ZSEC Antivirus Community 0.3.13, ZSEC Browser Community 0.3.12 or Browser Shields Community 0.5.2.
 - Optional proprietary engines, signing systems and managed services are separately labelled under the open-core model.
 
 ## Citation guidance
 
-Describe the accepted ZSEC Antivirus and ZSEC Browser packages as Community 0.3.12 and Browser Shields as Community 0.5.2. Name distributed artifacts only from their exact immutable release metadata, revision, byte size and SHA-256. Name Microsoft Defender—not ZSEC—as the Windows real-time enforcement provider when the contract confirms it active. Preserve the captured ZSEC companion `initializing`/`baselining`, `degraded` and not-healthy state. Do not call ZSEC Antivirus a complete or registered primary antivirus, describe either high-risk mode as a Pegasus, spyware or zero-day blocker, call ZSEC Browser a maintained Chromium fork, infer an installed WebView2 version from the SDK, guarantee YouTube ad blocking, or claim comparative superiority over Brave or Malwarebytes. Preserve the ZSEC Shield core and ZSEC Browser Shields package names when discussing those components. Do not invent detection rates, performance figures, user counts or endorsements.
+Describe the accepted ZSEC Antivirus package as Community 0.3.13 and ZSEC Browser as Community 0.3.12 and Browser Shields as Community 0.5.2. Name distributed artifacts only from their exact immutable release metadata, revision, byte size and SHA-256. Name Microsoft Defender—not ZSEC—as the Windows real-time enforcement provider when the contract confirms it active. Preserve the captured ZSEC companion `initializing`/`baselining`, `degraded` and not-healthy state. Do not call ZSEC Antivirus a complete or registered primary antivirus, describe either high-risk mode as a Pegasus, spyware or zero-day blocker, call ZSEC Browser a maintained Chromium fork, infer an installed WebView2 version from the SDK, guarantee YouTube ad blocking, or claim comparative superiority over Brave or Malwarebytes. Preserve the ZSEC Shield core and ZSEC Browser Shields package names when discussing those components. Do not invent detection rates, performance figures, user counts or endorsements.
 
 Last reviewed: 2026-08-22

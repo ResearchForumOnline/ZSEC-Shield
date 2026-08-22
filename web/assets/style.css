@@ -946,6 +946,10 @@ code[data-linux-sha] {
   grid-template-columns: auto 1fr;
 }
 
+.callout > div {
+  min-width: 0;
+}
+
 .product-browser .callout {
   border-color: rgb(103 84 232 / 22%);
   background: var(--browser-soft);
