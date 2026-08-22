@@ -14,10 +14,16 @@ a full browser such as Brave, Chrome, Edge, or Firefox. Microsoft maintains and
 updates the embedded Chromium engine; ZSEC owns the native window, browser
 policy, UI, profile boundary, packaging, and tests.
 
-The build pins Microsoft WebView2 SDK `1.0.4129.50` and verifies its official
-NuGet SHA-512 plus a locked SHA-256 before compilation. Installation requires a
-supported, validly Microsoft-signed Evergreen runtime. The ZSEC executable is
-an **unsigned direct Community build**, not a publisher-signed Store installer.
+The build pins Microsoft WebView2 SDK `1.0.4129.50` and
+Microsoft.Net.Compilers.Toolset `4.14.0`, verifies each package against its
+official NuGet SHA-512 plus a locked SHA-256, extracts each into a fresh bounded
+stage, and compiles with deterministic Roslyn settings and a stable source path
+map. The packaged build manifest excludes machine-specific source and output
+paths: its launcher and file inventory are payload-relative, while compiler
+provenance records the stable synthetic `/_/src` source map. Installation
+requires a supported, validly Microsoft-signed Evergreen runtime. The ZSEC
+executable is an **unsigned direct Community build**, not a publisher-signed
+Store installer.
 
 ## Implemented protections
 
@@ -65,7 +71,7 @@ an **unsigned direct Community build**, not a publisher-signed Store installer.
 - Keyboard routes for bookmarks, history, settings, menu, tab selection and
   navigation, with accessible names on primary controls.
 - Non-web schemes are rejected; remote debugging and developer tools are off.
-- The UI labels the product as `Community 0.3.10` and exposes the exact runtime
+- The UI labels the product as `Community 0.3.11` and exposes the exact runtime
   and policy boundary in its About dialog.
 
 When enabled, native YouTube protection runs at document start only on exact

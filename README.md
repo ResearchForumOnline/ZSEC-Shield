@@ -25,7 +25,7 @@ closed on protocol or digest disagreement. The child currently retains the
 invoking user's authority, so it is process separation—not a reduced-privilege
 sandbox or evidence that the hostile-parser replacement gate is complete.
 
-Community 0.3.10 is unsigned and is not itself a replacement primary antivirus on
+Community 0.3.11 is unsigned and is not itself a replacement primary antivirus on
 any platform. A version tag or passing workflow is not artifact acceptance: use the
 published source revision, SHA-256, manifest, and installed-runtime evidence for the
 exact package. ZSEC still has no Windows minifilter/AMSI/ELAM stack, macOS Endpoint
@@ -137,7 +137,7 @@ for the exact enforced decision points and non-claims, and the
 for the implemented-now versus release-gated protection programme.
 
 The native Windows Community desktop source lives in
-[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.10
+[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.11
 provides a modern rounded dark interface, managed tabs and popups, local
 bookmarks and bounded history, typed-address suggestions, seven selectable
 search providers, tray controls, a native settings surface and a separate

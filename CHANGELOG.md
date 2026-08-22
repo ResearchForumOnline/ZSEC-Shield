@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.11 - 2026-08-22
+
+- Replaced the machine-dependent .NET Framework C# compiler in the Windows
+  browser build with checksum-pinned Microsoft.Net.Compilers.Toolset 4.14.0,
+  verified against both SHA-256 and the NuGet catalog SHA-512 before fresh,
+  bounded extraction.
+- Enabled deterministic Roslyn compilation with a stable source path map and
+  removed local source/output paths from the packaged browser build manifest.
+  Separate clean builds now have an exact-byte executable, manifest and archive
+  acceptance gate.
+- Kept 0.3.10 as an unpublished source checkpoint because Browser artifact
+  acceptance found non-deterministic compiler output and local build-path
+  leakage. The 0.3.11 build refuses non-portable launcher and payload paths.
+- Advanced the core, Windows desktop and ZSEC Browser Community identity to
+  0.3.11 while retaining Browser Shields 0.5.2 and the evidence-bound product
+  claims.
+- Split the Windows desktop GUI and scanning-engine version resources and added
+  fail-closed post-build PE checks, so `ZSEC Antivirus.exe` and
+  `zsec-shield.exe` retain their own product and original-filename identities.
+
 ## 0.3.10 - 2026-08-22
 
 - Normalized optional Microsoft Defender quick/full scan-age evidence through a

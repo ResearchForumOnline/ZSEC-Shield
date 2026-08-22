@@ -87,7 +87,7 @@ must return all five exact v1 control results while continuing to state that it 
 not independent certification.
 
 Python/wheel installation exposes the `zsec-antivirus`, `zero-security`, and
-`zsec-shield` command aliases in Community 0.3.10. Native archives
+`zsec-shield` command aliases in Community 0.3.11. Native archives
 retain the `zsec-shield` executable name for compatibility.
 
 Native manifest v2 lists both `on-demand` and

@@ -1,4 +1,4 @@
-"""Package an exact, deterministic ZSEC Browser Community desktop build."""
+"""Package an exact ZSEC Browser Community desktop build."""
 
 from __future__ import annotations
 
@@ -13,6 +13,16 @@ from typing import Any
 ZIP_TIMESTAMP = (2026, 1, 1, 0, 0, 0)
 SOURCE_REPOSITORY = "https://github.com/ResearchForumOnline/ZSEC-Shield"
 SOURCE_REVISION_PATTERN = re.compile(r"[0-9a-f]{40}")
+WINDOWS_ABSOLUTE_PATH_PATTERN = re.compile(r"(?:[A-Za-z]:[\\/]|\\\\)")
+COMPILER_DISTRIBUTION = "Microsoft.Net.Compilers.Toolset"
+COMPILER_VERSION = "4.14.0"
+COMPILER_NUGET_SHA256 = (
+    "941a9cf3ea618d88d01a3dd6b1a45a06bcf07716a9f81ce4031caa3edd24a845"
+)
+COMPILER_NUGET_SHA512_BASE64 = (
+    "h5GExC3fx0fm0qHw8rQ6y5c0uk6cCiAsorLl9Hq/9VlotEvsv/oW60RNo8HOYApv66kNqJq4Bg/TkSAsgQAwbQ=="
+)
+COMPILER_SOURCE_PATHMAP = "/_/src"
 
 
 def sha256(path: Path) -> str:
@@ -21,6 +31,17 @@ def sha256(path: Path) -> str:
 
 def load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def is_portable_payload_path(value: str) -> bool:
+    path = Path(value)
+    return (
+        bool(value)
+        and "\\" not in value
+        and ":" not in value
+        and not value.startswith("/")
+        and all(part not in {"", ".", ".."} for part in path.parts)
+    )
 
 
 def main() -> int:
@@ -50,11 +71,34 @@ def main() -> int:
         raise ValueError("the Community build must not claim to be a Chromium fork")
     if build_manifest.get("signed_zsec_binary") is not False:
         raise ValueError("the local Community build must remain explicitly unsigned")
-
-    expected_files = {
-        str(entry["path"]): str(entry["sha256"])
-        for entry in build_manifest.get("files", [])
+    if build_manifest.get("launcher") != "App/ZSEC Browser.exe":
+        raise ValueError("the build manifest launcher must be payload-relative")
+    if build_manifest.get("payload_root") != "payload":
+        raise ValueError("the build manifest payload root must be the relative label")
+    if WINDOWS_ABSOLUTE_PATH_PATTERN.search(json.dumps(build_manifest)) is not None:
+        raise ValueError("the build manifest contains a machine-specific Windows path")
+    compiler_contract = {
+        "compiler_distribution": COMPILER_DISTRIBUTION,
+        "compiler_version": COMPILER_VERSION,
+        "compiler_nuget_sha256": COMPILER_NUGET_SHA256,
+        "compiler_nuget_sha512_base64": COMPILER_NUGET_SHA512_BASE64,
+        "compiler_deterministic": True,
+        "compiler_source_pathmap": COMPILER_SOURCE_PATHMAP,
     }
+    for field, expected in compiler_contract.items():
+        if build_manifest.get(field) != expected:
+            raise ValueError(f"unexpected deterministic compiler contract: {field}")
+
+    expected_files: dict[str, str] = {}
+    for entry in build_manifest.get("files", []):
+        relative = str(entry["path"])
+        if not is_portable_payload_path(relative):
+            raise ValueError("the build manifest contains an unsafe payload path")
+        if relative in expected_files:
+            raise ValueError("the build manifest contains a duplicate payload path")
+        expected_files[relative] = str(entry["sha256"])
+    if "App/ZSEC Browser.exe" not in expected_files:
+        raise ValueError("the build manifest does not list the launcher")
     actual_files = {
         path.relative_to(payload).as_posix(): sha256(path)
         for path in payload.rglob("*")
@@ -77,6 +121,14 @@ def main() -> int:
         "source_revision": source_revision,
         "signed_zsec_binary": False,
         "standalone_chromium_fork": False,
+        "compiler": {
+            "distribution": COMPILER_DISTRIBUTION,
+            "version": COMPILER_VERSION,
+            "nuget_sha256": COMPILER_NUGET_SHA256,
+            "nuget_sha512_base64": COMPILER_NUGET_SHA512_BASE64,
+            "deterministic": True,
+            "source_pathmap": COMPILER_SOURCE_PATHMAP,
+        },
     }
 
     entries = [
@@ -136,6 +188,15 @@ def main() -> int:
             "sdk_version": build_manifest["webview2_sdk_version"],
             "sdk_nuget_sha256": build_manifest["webview2_nuget_sha256"],
             "sdk_nuget_sha512_base64": build_manifest["webview2_nuget_sha512_base64"],
+        },
+        "build": {
+            "compiler_distribution": COMPILER_DISTRIBUTION,
+            "compiler_version": COMPILER_VERSION,
+            "compiler_nuget_sha256": COMPILER_NUGET_SHA256,
+            "compiler_nuget_sha512_base64": COMPILER_NUGET_SHA512_BASE64,
+            "deterministic": True,
+            "source_pathmap": COMPILER_SOURCE_PATHMAP,
+            "machine_specific_paths_absent": True,
         },
         "policy": {
             "source": (

@@ -36,9 +36,9 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
     assert "unsigned" in readme.lower() and "Community" in readme
-    assert 'internal const string ProductVersion = "0.3.10"' in app
-    assert '$ProductVersion = "0.3.10"' in build
-    assert '$ProductVersion = "0.3.10"' in installer
+    assert 'internal const string ProductVersion = "0.3.11"' in app
+    assert '$ProductVersion = "0.3.11"' in build
+    assert '$ProductVersion = "0.3.11"' in installer
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:
@@ -72,7 +72,7 @@ def test_desktop_preview_preserves_browser_security_controls() -> None:
     assert 'default_browser_changed = $false' in installer
 
 
-def test_webview2_dependency_is_pinned_to_official_catalog_hash() -> None:
+def test_browser_build_dependencies_are_pinned_and_reproducible() -> None:
     build = BUILD.read_text(encoding="utf-8")
     installer = INSTALLER.read_text(encoding="utf-8")
 
@@ -85,6 +85,21 @@ def test_webview2_dependency_is_pinned_to_official_catalog_hash() -> None:
         '"9TM9AZpDUiAb6OJB9s6thxl63BJFgbINcp047Zy+oiz9+cjgLhFrMRZ5Be+5wVHGvMJR3z1rmPWeJipo4g0sJw=="'
         in build
     )
+    assert '$CompilerToolsetVersion = "4.14.0"' in build
+    assert (
+        '$CompilerToolsetSha256 = '
+        '"941a9cf3ea618d88d01a3dd6b1a45a06bcf07716a9f81ce4031caa3edd24a845"'
+    ) in build
+    assert (
+        '"h5GExC3fx0fm0qHw8rQ6y5c0uk6cCiAsorLl9Hq/9VlotEvsv/oW60RNo8HOYApv66kNqJq4Bg/TkSAsgQAwbQ=="'
+        in build
+    )
+    assert "microsoft.net.compilers.toolset" in build.casefold()
+    assert '"tasks\\net472\\csc.exe"' in build
+    assert '"/noconfig"' in build
+    assert '"/deterministic+"' in build
+    assert '"/pathmap:$RepoRoot=$CompilerSourcePathMap"' in build
+    assert "C:\\Windows\\Microsoft.NET\\Framework64" not in build
     assert "Expand-Archive" not in build
     assert 'Join-Path $PackageCache "extracted"' not in build
     assert "Add-Type -AssemblyName System.IO.Compression.FileSystem" in build
@@ -92,13 +107,33 @@ def test_webview2_dependency_is_pinned_to_official_catalog_hash() -> None:
     assert "function Expand-PinnedPackageToFreshStaging" in build
     assert "function Remove-OwnedPackageExtraction" in build
     assert '"extract-$([Guid]::NewGuid().ToString(\'N\'))"' in build
-    staging_call = build.index("$PackageExtract = Expand-PinnedPackageToFreshStaging")
-    assert build.index("if ($actualSha256 -ne $WebView2Sha256)") < staging_call
-    assert build.index("failed the NuGet catalog SHA-512 check") < staging_call
+    webview_staging_call = build.index(
+        "$WebViewPackageExtract = Expand-PinnedPackageToFreshStaging"
+    )
+    compiler_staging_call = build.index(
+        "$CompilerPackageExtract = Expand-PinnedPackageToFreshStaging"
+    )
+    assert build.index("-ExpectedSha256 $WebView2Sha256") < webview_staging_call
+    assert build.index("-ExpectedSha512Base64 $WebView2Sha512Base64") < (
+        webview_staging_call
+    )
+    assert build.index("-ExpectedSha256 $CompilerToolsetSha256") < (
+        compiler_staging_call
+    )
+    assert build.index("-ExpectedSha512Base64 $CompilerToolsetSha512Base64") < (
+        compiler_staging_call
+    )
     assert "Remove-Item -LiteralPath $resolvedPath -Recurse" not in build
     assert "[IO.Directory]::Delete($directory, $false)" in build
     assert "[IO.FileAttributes]::ReparsePoint" in build
-    assert "The pinned Microsoft WebView2 SDK package could not be extracted." in build
+    assert "The pinned NuGet package could not be extracted." in build
+    assert '-Path $CompilerPackageExtract' in build
+    assert '-PackagePath $CompilerPackagePath' in build
+    assert '-Path $WebViewPackageExtract' in build
+    assert 'launcher = "App/ZSEC Browser.exe"' in build
+    assert 'payload_root = "payload"' in build
+    assert "launcher = $LauncherPath" not in build
+    assert "payload_root = $PayloadRoot" not in build
     output_guard = build.index("if (Test-Path -LiteralPath $OutputDirectory)")
     assert output_guard < build.index("New-Item -ItemType Directory -Path $AppRoot")
     assert "OutputDirectory must not already exist" in build
@@ -162,6 +197,9 @@ def test_windows_powershell_uses_fresh_bounded_nupkg_staging(tmp_path: Path) -> 
         "fresh_stage_used": True,
         "partial_stage_not_reused": True,
         "unexpected_nested_object_failed_closed": True,
+        "nested_success_cleanup_verified": True,
+        "nested_build_failure_cleanup_verified": True,
+        "compiler_extraction_failure_cleanup_verified": True,
     }
 
 
@@ -369,14 +407,32 @@ def test_community_release_is_deterministic_and_publishes_provenance(
     payload_file = payload / "README.md"
     payload_file.write_text("ZSEC Browser Community\n", encoding="utf-8")
     payload_sha = hashlib.sha256(payload_file.read_bytes()).hexdigest()
+    launcher_file = payload / "App" / "ZSEC Browser.exe"
+    launcher_file.parent.mkdir()
+    launcher_file.write_bytes(b"synthetic browser executable")
+    launcher_sha = hashlib.sha256(launcher_file.read_bytes()).hexdigest()
     manifest = {
         "schema": "zsec.browser.desktop-preview-build.v2",
-        "version": "0.3.10",
+        "version": "0.3.11",
         "architecture": "windows-x64-webview2-shell",
         "engine_distribution": "Microsoft Evergreen WebView2 Chromium runtime",
         "engine_maintained_by": "Microsoft",
         "standalone_chromium_fork": False,
         "signed_zsec_binary": False,
+        "launcher": "App/ZSEC Browser.exe",
+        "payload_root": "payload",
+        "compiler_distribution": "Microsoft.Net.Compilers.Toolset",
+        "compiler_version": "4.14.0",
+        "compiler_nuget_sha256": (
+            "941a9cf3ea618d88d01a3dd6b1a45a06"
+            "bcf07716a9f81ce4031caa3edd24a845"
+        ),
+        "compiler_nuget_sha512_base64": (
+            "h5GExC3fx0fm0qHw8rQ6y5c0uk6cCiAsorLl9Hq/"
+            "9VlotEvsv/oW60RNo8HOYApv66kNqJq4Bg/TkSAsgQAwbQ=="
+        ),
+        "compiler_deterministic": True,
+        "compiler_source_pathmap": "/_/src",
         "webview2_sdk_version": "1.0.4129.50",
         "webview2_nuget_sha256": "a" * 64,
         "webview2_nuget_sha512_base64": "catalog-hash",
@@ -385,7 +441,12 @@ def test_community_release_is_deterministic_and_publishes_provenance(
         "source_extension_version": "0.5.2",
         "source_extension_id": "ddjbjhnlhapggenanpmcidieimaomiif",
         "files": [
-            {"path": "README.md", "sha256": payload_sha, "bytes": 23}
+            {
+                "path": "App/ZSEC Browser.exe",
+                "sha256": launcher_sha,
+                "bytes": launcher_file.stat().st_size,
+            },
+            {"path": "README.md", "sha256": payload_sha, "bytes": 23},
         ],
     }
     (build / "build-manifest.json").write_text(
@@ -409,7 +470,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
             text=True,
         )
 
-    name = "zsec-browser-community-0.3.10-windows-x64-unsigned.zip"
+    name = "zsec-browser-community-0.3.11-windows-x64-unsigned.zip"
     archive_a = release_a / name
     archive_b = release_b / name
     assert archive_a.read_bytes() == archive_b.read_bytes()
@@ -428,11 +489,78 @@ def test_community_release_is_deterministic_and_publishes_provenance(
     with zipfile.ZipFile(archive_a) as archive:
         provenance = json.loads(
             archive.read(
-                "zsec-browser-community-0.3.10/release-provenance.json"
+                "zsec-browser-community-0.3.11/release-provenance.json"
             ).decode("utf-8")
         )
     assert provenance["source_revision"] == revision
     assert provenance["standalone_chromium_fork"] is False
+    assert provenance["compiler"]["deterministic"] is True
+    assert metadata["build"]["machine_specific_paths_absent"] is True
+
+
+def test_community_release_rejects_machine_specific_manifest_paths(
+    tmp_path: Path,
+) -> None:
+    build = tmp_path / "build"
+    payload = build / "payload"
+    launcher = payload / "App" / "ZSEC Browser.exe"
+    launcher.parent.mkdir(parents=True)
+    launcher.write_bytes(b"synthetic browser")
+    manifest = {
+        "schema": "zsec.browser.desktop-preview-build.v2",
+        "version": "0.3.11",
+        "architecture": "windows-x64-webview2-shell",
+        "engine_distribution": "Microsoft Evergreen WebView2 Chromium runtime",
+        "engine_maintained_by": "Microsoft",
+        "standalone_chromium_fork": False,
+        "signed_zsec_binary": False,
+        "launcher": r"C:\\private\\build\\ZSEC Browser.exe",
+        "payload_root": "payload",
+        "compiler_distribution": "Microsoft.Net.Compilers.Toolset",
+        "compiler_version": "4.14.0",
+        "compiler_nuget_sha256": (
+            "941a9cf3ea618d88d01a3dd6b1a45a06"
+            "bcf07716a9f81ce4031caa3edd24a845"
+        ),
+        "compiler_nuget_sha512_base64": (
+            "h5GExC3fx0fm0qHw8rQ6y5c0uk6cCiAsorLl9Hq/"
+            "9VlotEvsv/oW60RNo8HOYApv66kNqJq4Bg/TkSAsgQAwbQ=="
+        ),
+        "compiler_deterministic": True,
+        "compiler_source_pathmap": "/_/src",
+        "webview2_sdk_version": "1.0.4129.50",
+        "webview2_nuget_sha256": "a" * 64,
+        "webview2_nuget_sha512_base64": "catalog-hash",
+        "tracker_domain_count": 81,
+        "tracking_parameter_count": 21,
+        "source_extension_version": "0.5.2",
+        "source_extension_id": "ddjbjhnlhapggenanpmcidieimaomiif",
+        "files": [
+            {
+                "path": "App/ZSEC Browser.exe",
+                "sha256": hashlib.sha256(launcher.read_bytes()).hexdigest(),
+                "bytes": launcher.stat().st_size,
+            }
+        ],
+    }
+    (build / "build-manifest.json").write_text(
+        json.dumps(manifest), encoding="utf-8"
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(PACKAGER),
+            str(build),
+            str(tmp_path / "release"),
+            "--source-revision",
+            "1" * 40,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode != 0
+    assert "launcher must be payload-relative" in completed.stderr
 
 
 def test_community_package_uses_release_grade_script_names() -> None:
