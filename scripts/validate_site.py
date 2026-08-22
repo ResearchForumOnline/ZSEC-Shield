@@ -26,7 +26,7 @@ FAQ_COUNTS = {
 }
 COPY_REQUIREMENTS = {
     "zero-security": (
-        "ZSEC Antivirus Community 0.3.13",
+        "ZSEC Antivirus Community 0.3.14",
         "Microsoft Defender supplies supported Windows real-time enforcement",
         "ZSEC does not uninstall a provider",
         "is not registered as the primary provider",
@@ -52,12 +52,12 @@ class DownloadPolicy(TypedDict):
 
 
 ANTIVIRUS_RELEASE_BASE = (
-    "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.13/"
+    "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.14/"
 )
 ANTIVIRUS_RELEASE_TAG = (
-    "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.13"
+    "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.14"
 )
-ANTIVIRUS_RELEASE_REVISION = "dcaa2ec1f4c58854a350fcb1ef920dc5112e26ba"
+ANTIVIRUS_RELEASE_REVISION = "57557ae4dd03765a59b05a3a0e0006edc13b7bd4"
 BROWSER_RELEASE_BASE = (
     "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.12/"
 )
@@ -67,7 +67,7 @@ BROWSER_RELEASE_TAG = (
 BROWSER_RELEASE_REVISION = "ece60f377b2d4cfc594ad4a29b619be7617ed45f"
 JSON_LD_DOWNLOADS = {
     "zero-security": ANTIVIRUS_RELEASE_BASE
-    + "zsec-antivirus-desktop-0.3.13-windows-x86_64.zip",
+    + "zsec-antivirus-desktop-0.3.14-windows-x86_64.zip",
     "zero-browser": BROWSER_RELEASE_BASE
     + "zsec-browser-community-0.3.12-windows-x64-unsigned.zip",
 }
@@ -77,38 +77,38 @@ DOWNLOAD_PAGES: dict[str, DownloadPolicy] = {
         "canonical": "https://talktoai.org/zero-security/download/",
         "fingerprints": 8,
         "artifacts": {
-            ANTIVIRUS_RELEASE_BASE + "zsec-antivirus-desktop-0.3.13-windows-x86_64.zip",
-            ANTIVIRUS_RELEASE_BASE + "zsec-antivirus-desktop-0.3.13-windows-x86_64.zip.sha256",
-            ANTIVIRUS_RELEASE_BASE + "zsec-antivirus-desktop-0.3.13-windows-x86_64.zip.json",
-            ANTIVIRUS_RELEASE_BASE + "zsec-shield-0.3.13-windows-x86_64.zip",
-            ANTIVIRUS_RELEASE_BASE + "zsec-shield-0.3.13-windows-x86_64.zip.sha256",
-            ANTIVIRUS_RELEASE_BASE + "zsec-shield-0.3.13-macos-arm64.tar.gz",
-            ANTIVIRUS_RELEASE_BASE + "zsec-shield-0.3.13-macos-arm64.tar.gz.sha256",
-            ANTIVIRUS_RELEASE_BASE + "zsec-shield-0.3.13-linux-x86_64.tar.gz",
-            ANTIVIRUS_RELEASE_BASE + "zsec-shield-0.3.13-linux-x86_64.tar.gz.sha256",
-            ANTIVIRUS_RELEASE_BASE + "zsec_shield-0.3.13-py3-none-any.whl",
-            ANTIVIRUS_RELEASE_BASE + "zsec_shield-0.3.13.tar.gz",
+            ANTIVIRUS_RELEASE_BASE + "zsec-antivirus-desktop-0.3.14-windows-x86_64.zip",
+            ANTIVIRUS_RELEASE_BASE + "zsec-antivirus-desktop-0.3.14-windows-x86_64.zip.sha256",
+            ANTIVIRUS_RELEASE_BASE + "zsec-antivirus-desktop-0.3.14-windows-x86_64.zip.json",
+            ANTIVIRUS_RELEASE_BASE + "zsec-shield-0.3.14-windows-x86_64.zip",
+            ANTIVIRUS_RELEASE_BASE + "zsec-shield-0.3.14-windows-x86_64.zip.sha256",
+            ANTIVIRUS_RELEASE_BASE + "zsec-shield-0.3.14-macos-arm64.tar.gz",
+            ANTIVIRUS_RELEASE_BASE + "zsec-shield-0.3.14-macos-arm64.tar.gz.sha256",
+            ANTIVIRUS_RELEASE_BASE + "zsec-shield-0.3.14-linux-x86_64.tar.gz",
+            ANTIVIRUS_RELEASE_BASE + "zsec-shield-0.3.14-linux-x86_64.tar.gz.sha256",
+            ANTIVIRUS_RELEASE_BASE + "zsec_shield-0.3.14-py3-none-any.whl",
+            ANTIVIRUS_RELEASE_BASE + "zsec_shield-0.3.14.tar.gz",
             ANTIVIRUS_RELEASE_BASE + "SHA256SUMS.txt",
             ANTIVIRUS_RELEASE_BASE + "SHA256SUMS-python.txt",
         },
         "required_text": (
             ANTIVIRUS_RELEASE_REVISION,
-            "45,062,027 bytes",
-            "f1a36ac2cf0070dc14c6c73ac088fa8ab698aefee5a30eebd802e6f9dae65d82",
-            "352ecaab6d1a54a95382c70d97b12a96d1370d394296652f96aa3c0942b794cf",
-            "749abc51af97d3409a6e4fcd5e535f5afb0cd85c8694459031c6e61b5ebbca7b",
-            "32dec8a9493013bb715a613ea44ac447c2cf4826a878a3c0cc4c20a8fa5ad6fc",
-            "9b4088ae99d8fc5b0de0ba7e70ed3d3cc8c26b67ff67a14fc86540e213232c51",
-            "13,229,221 bytes",
-            "46d38071fb4d3cdab3128fc0f53828a887b158eabc6a925dc995745fdd955184",
-            "12,622,684 bytes",
-            "45941ec7c3be491577763f56c92e289b60689c399b91ef4cd3995c0779996d90",
-            "23,930,115 bytes",
-            "88fc70ae54177d4e78a26de7a3a2b0c177fe24cd7a4b56d9f025f42eb6cf15e0",
-            "100,455-byte",
-            "de4914820be7cc516efc2f5454092bb5389265bb164243d0f925e596ab2aa25f",
-            "340,846-byte",
-            "c9bb2880927ed7ba0f0caa99a9854986005ba9407fd0aded020e37dfeaa8b92c",
+            "45,261,418 bytes",
+            "c75dc396c3768fdb0af58331b495ecdfcbd272950e75e303e7354f478a1e1605",
+            "765e096a7eabef2382d340e558ac6997d3fb1922f6963196bb47eb80f01f8580",
+            "9ba1d3d3a065c776e7eaae33a7093c400c9d9eab4f9c64a1c3b152b8ffe51d64",
+            "de606835a11881a24156f5f3cd3ed60a28c0d44f24f98a43500e4e9b3d344646",
+            "3974887cbeb8b697642aa1068ec476296283905d96c92c11a28f458ee92135a0",
+            "13,437,103 bytes",
+            "e822570ea5472b45643350d02d910688f185a2b4917efb48251b652444ffb591",
+            "12,805,932 bytes",
+            "81d28ff2f7077bf779e67363ba28dd107d66d3982d38d8463d197ff10faea950",
+            "24,240,917 bytes",
+            "2d947e8788039aef57bafa8bcd161e9dba891e5a36c6adacc9dc5d868f7f0517",
+            "106,309-byte",
+            "4eb3f1aba3734dcef323285177cc6719b0bf63bdd3f2e1152db586046d4be968",
+            "350,963-byte",
+            "16b7bee7c06117b0084e6ee076bb9f4b2319a1d8fbfbbdd4633003074501b03f",
             "acceptance state was <code>initializing</code>",
             "health decision <code>degraded</code>, not healthy",
             "ZSEC's primary, provider, pre-access and real-time flags all remained false",
@@ -146,16 +146,16 @@ PRIVACY_PAGE = "https://talktoai.org/zero-browser/privacy/"
 
 RELEASE_SURFACE_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     "index.html": (
-        "ZSEC Antivirus 0.3.13 · ZSEC Browser 0.3.12",
+        "ZSEC Antivirus 0.3.14 · ZSEC Browser 0.3.12",
         ANTIVIRUS_RELEASE_REVISION,
         ANTIVIRUS_RELEASE_TAG,
     ),
     "zero-security/index.html": (
-        "0.3.13 Community package",
+        "0.3.14 Community package",
         ANTIVIRUS_RELEASE_REVISION,
-        "45,062,027 bytes",
-        "f1a36ac2cf0070dc14c6c73ac088fa8ab698aefee5a30eebd802e6f9dae65d82",
-        ANTIVIRUS_RELEASE_BASE + "zsec-antivirus-desktop-0.3.13-windows-x86_64.zip",
+        "45,261,418 bytes",
+        "c75dc396c3768fdb0af58331b495ecdfcbd272950e75e303e7354f478a1e1605",
+        ANTIVIRUS_RELEASE_BASE + "zsec-antivirus-desktop-0.3.14-windows-x86_64.zip",
         "initializing/baselining",
         "remained <strong>degraded</strong>",
     ),
@@ -178,7 +178,7 @@ RELEASE_SURFACE_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         ANTIVIRUS_RELEASE_REVISION,
         BROWSER_RELEASE_REVISION,
         "Accepted Windows desktop identity",
-        "45,062,027 bytes",
+        "45,261,418 bytes",
         "Accepted cross-platform core identities",
         "Accepted Windows browser identity",
         "4,206,951 bytes",
@@ -189,11 +189,11 @@ RELEASE_SURFACE_REQUIREMENTS: dict[str, tuple[str, ...]] = {
 }
 
 RELEASE_SURFACE_TAGS: dict[str, set[str]] = {
-    "index.html": {"v0.3.13"},
-    "zero-security/index.html": {"v0.3.13"},
+    "index.html": {"v0.3.14"},
+    "zero-security/index.html": {"v0.3.14"},
     "zero-browser/index.html": {"v0.3.12"},
     "zero-browser/privacy/index.html": {"v0.3.12"},
-    "llms.txt": {"v0.3.12", "v0.3.13"},
+    "llms.txt": {"v0.3.12", "v0.3.14"},
 }
 
 RESIDUAL_OLD_IDENTITIES = (
@@ -384,7 +384,7 @@ def validate_github_pages_landing() -> None:
     require("<script" not in text.casefold(), "web/index.html: executable script is not permitted")
     require_project_prefix_safe(text, "web/index.html")
     for required_copy in (
-        "ZSEC Antivirus 0.3.13 · ZSEC Browser 0.3.12",
+        "ZSEC Antivirus 0.3.14 · ZSEC Browser 0.3.12",
         "Microsoft Defender remains the supported Windows real-time enforcement provider",
         "not a registered primary antivirus",
         "WebView2 is Microsoft-maintained, not a ZSEC Chromium fork",

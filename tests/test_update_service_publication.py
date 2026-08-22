@@ -91,7 +91,7 @@ def test_sequence_cannot_be_reused_for_different_bytes(tmp_path: Path) -> None:
     release = json.loads(
         (ROOT / "updates/application-release.json").read_text(encoding="utf-8")
     )
-    release["version"] = "0.3.14"
+    release["version"] = "9.9.9-test-mutation"
     changed = tmp_path / "release.json"
     changed.write_text(json.dumps(release), encoding="utf-8")
     with pytest.raises(PublishError, match="overwrite an existing sequence"):
