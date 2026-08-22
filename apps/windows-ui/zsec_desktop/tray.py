@@ -32,7 +32,7 @@ class TrayController:
 
     def start(self) -> bool:
         try:
-            import pystray
+            import pystray  # type: ignore[import-untyped]
             from PIL import Image, ImageDraw
 
             image = Image.new("RGBA", (64, 64), (8, 17, 31, 255))
