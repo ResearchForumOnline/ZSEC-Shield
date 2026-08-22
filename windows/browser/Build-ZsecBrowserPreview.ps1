@@ -131,6 +131,7 @@ $ExtensionFiles = @(
     "rules/privacy.json",
     "src/high-risk-browsing.js",
     "src/policy.js",
+    "src/popup-state.js",
     "src/runtime-health.js",
     "src/settings-transaction.js",
     "src/service-worker.js",

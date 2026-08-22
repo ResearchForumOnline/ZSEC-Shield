@@ -65,3 +65,32 @@ test("records rollback failure without persisting an unverified state", async ()
   assert.equal(calls.at(-1)[1].rollback, "failed");
   assert.match(calls.at(-1)[1].rollbackError.message, /rollback_failed/);
 });
+
+test("rolls back when committing verified desired settings fails", async () => {
+  const calls = [];
+  const desired = { name: "desired" };
+  const previous = { name: "previous" };
+  await assert.rejects(
+    applyVerifiedSettings({
+      desired,
+      previous,
+      async apply(value) { calls.push(["apply", value.name]); },
+      async verify(value) { calls.push(["verify", value.name]); return { state: value.name }; },
+      async persist(value, verification, rollback) {
+        calls.push(["persist", value.name, verification.state, rollback]);
+        if (!rollback) throw new Error("commit_failed");
+      },
+      async recordFailure(value) { calls.push(["failure", value.rollback]); }
+    }),
+    /commit_failed/
+  );
+  assert.deepEqual(calls, [
+    ["apply", "desired"],
+    ["verify", "desired"],
+    ["persist", "desired", "desired", false],
+    ["apply", "previous"],
+    ["verify", "previous"],
+    ["persist", "previous", "previous", true],
+    ["failure", "verified"]
+  ]);
+});

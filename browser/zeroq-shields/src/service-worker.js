@@ -9,51 +9,56 @@ import {
 import { buildHighRiskRulesForSettings, highRiskRuleIds } from "./high-risk-browsing.js";
 import {
   EXPECTED_RULESET_IDS,
+  RUNTIME_HEALTH_SCHEMA,
+  RUNTIME_POLICY_REVISION,
+  settingsRevision,
   verifyDnrRuntime
 } from "./runtime-health.js";
 import { applyVerifiedSettings } from "./settings-transaction.js";
 
 const HEALTH_KEY = "runtimeHealth";
 const RULESET_IDS = EXPECTED_RULESET_IDS;
+let operationQueue = Promise.resolve();
 
-async function readRuntimeHealth() {
-  const stored = await chrome.storage.local.get(HEALTH_KEY);
-  const health = stored[HEALTH_KEY];
-  const extensionVersion = chrome.runtime.getManifest().version;
-  return health && typeof health === "object" &&
-    health.schema === "zsec.browser-shields.runtime-health.v2" &&
-    health.extensionVersion === extensionVersion &&
-    typeof health.ok === "boolean"
-    ? health
-    : {
-        schema: "zsec.browser-shields.runtime-health.v2",
-        extensionVersion,
-        state: "unchecked",
-        ok: false,
-        error: "Local filtering has not been verified",
-        diagnostic: "health_record_absent",
-        details: null,
-        recordedAt: null
-      };
+function enqueueOperation(operation) {
+  const run = operationQueue.then(operation);
+  operationQueue = run.then(() => undefined, () => undefined);
+  return run;
 }
 
-function buildRuntimeHealth(ok, error = null, details = null, state = null) {
+function safeDiagnostic(error) {
+  const value = error instanceof Error ? error.message : "unknown_failure";
+  return /^[a-z0-9_:;-]+$/.test(value) ? value : "runtime_api_failure";
+}
+
+async function readSettings() {
+  const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);
+  return normalizeSettings(stored);
+}
+
+function buildRuntimeHealth(ok, settings, error = null, details = null, state = null) {
+  const representativeUnavailable = details?.representativeMatchStatus === "api_unavailable";
   return {
     ok,
-    schema: "zsec.browser-shields.runtime-health.v2",
+    schema: RUNTIME_HEALTH_SCHEMA,
     extensionVersion: chrome.runtime.getManifest().version,
-    state: state || (ok ? details?.filteringMode === "off" ? "disabled_by_user" : "verified" : "degraded"),
+    policyRevision: RUNTIME_POLICY_REVISION,
+    settingsRevision: settingsRevision(settings),
+    state: state || (ok
+      ? details?.filteringMode === "off"
+        ? "disabled_by_user"
+        : representativeUnavailable ? "verified_limited" : "verified"
+      : "degraded"),
     error: ok ? null : "Local filtering verification failed",
-    diagnostic: ok ? null : error instanceof Error ? error.message : "unknown_failure",
+    diagnostic: ok ? null : safeDiagnostic(error),
     details: ok && details ? details : null,
     recordedAt: new Date().toISOString()
   };
 }
 
-async function recordRuntimeHealth(ok, error = null, details = null, state = null) {
-  const health = buildRuntimeHealth(ok, error, details, state);
+async function recordRuntimeHealth(health) {
   await chrome.storage.local.set({ [HEALTH_KEY]: health });
-  if (!ok) {
+  if (!health.ok) {
     await Promise.allSettled([
       chrome.action.setBadgeText({ text: "!" }),
       chrome.action.setBadgeBackgroundColor({ color: "#b42318" })
@@ -62,9 +67,11 @@ async function recordRuntimeHealth(ok, error = null, details = null, state = nul
   return health;
 }
 
-async function readSettings() {
-  const stored = await chrome.storage.local.get(DEFAULT_SETTINGS);
-  return normalizeSettings(stored);
+function dynamicRulesFor(settings) {
+  return [
+    ...buildPauseRules(settings.protectionEnabled ? settings.pausedSites : []),
+    ...buildHighRiskRulesForSettings(settings)
+  ];
 }
 
 async function applyNetworkSettings(normalized) {
@@ -73,115 +80,130 @@ async function applyNetworkSettings(normalized) {
     disableRulesetIds: normalized.protectionEnabled ? [] : [...RULESET_IDS]
   });
   await chrome.declarativeNetRequest.updateDynamicRules({
-      removeRuleIds: [...pauseRuleIds(), ...highRiskRuleIds()],
-      addRules: [
-        ...buildPauseRules(normalized.protectionEnabled ? normalized.pausedSites : []),
-        ...buildHighRiskRulesForSettings(normalized)
-      ]
+    removeRuleIds: [...pauseRuleIds(), ...highRiskRuleIds()],
+    addRules: dynamicRulesFor(normalized)
   });
+}
+
+function verifyNetworkSettings(candidate) {
+  return verifyDnrRuntime(
+    chrome,
+    candidate.protectionEnabled,
+    dynamicRulesFor(candidate)
+  );
+}
+
+async function updateBadge(settings) {
+  const highRiskActive = settings.protectionEnabled && settings.highRiskMode;
+  const text = highRiskActive ? "HIGH" : settings.protectionEnabled ? "ON" : "OFF";
+  await Promise.allSettled([
+    chrome.action.setBadgeText({ text }),
+    chrome.action.setBadgeBackgroundColor({
+      color: highRiskActive ? "#b54708" : settings.protectionEnabled ? "#00a77a" : "#68727d"
+    })
+  ]);
 }
 
 async function writeSettings(settings) {
   const normalized = normalizeSettings(settings);
   const previous = await readSettings();
+  let committedHealth = null;
   const result = await applyVerifiedSettings({
     desired: normalized,
     previous,
     apply: applyNetworkSettings,
-    verify: (candidate) => {
-      const expectedDynamicRuleIds = [
-        ...buildPauseRules(candidate.protectionEnabled ? candidate.pausedSites : []),
-        ...buildHighRiskRulesForSettings(candidate)
-      ].map((rule) => rule.id);
-      return verifyDnrRuntime(chrome, candidate.protectionEnabled, expectedDynamicRuleIds);
-    },
+    verify: verifyNetworkSettings,
     persist: async (candidate, runtime, rollback) => {
       if (rollback) {
         await chrome.storage.local.set(candidate);
         await updateBadge(candidate);
         return;
       }
-      const health = buildRuntimeHealth(true, null, runtime);
-      await chrome.storage.local.set({ ...candidate, [HEALTH_KEY]: health });
+      committedHealth = buildRuntimeHealth(true, candidate, null, runtime);
+      await chrome.storage.local.set({ ...candidate, [HEALTH_KEY]: committedHealth });
       await updateBadge(candidate);
     },
     recordFailure: async ({ error, rollback, rollbackError }) => {
       const diagnostic = new Error(
-        `${error instanceof Error ? error.message : "unknown_failure"};rollback_${rollback}` +
-        (rollbackError instanceof Error ? `:${rollbackError.message}` : "")
+        `${safeDiagnostic(error)};rollback_${rollback}` +
+        (rollbackError ? `:${safeDiagnostic(rollbackError)}` : "")
       );
-      await recordRuntimeHealth(false, diagnostic, null, "degraded");
+      await recordRuntimeHealth(
+        buildRuntimeHealth(false, previous, diagnostic, null, "degraded")
+      );
     }
   });
-  return result.settings;
+  return { settings: result.settings, health: committedHealth };
 }
 
-async function updateBadge(settings) {
-  const highRiskActive = settings.protectionEnabled && settings.highRiskMode;
-  const text = highRiskActive ? "HIGH" : settings.protectionEnabled ? "ON" : "OFF";
-  await chrome.action.setBadgeText({ text });
-  await chrome.action.setBadgeBackgroundColor({
-    color: highRiskActive ? "#b54708" : settings.protectionEnabled ? "#00a77a" : "#68727d"
-  });
-}
-
-async function initialiseRules() {
+async function refreshRuntimeHealth(settings) {
   try {
-    await writeSettings(await readSettings());
+    const details = await verifyNetworkSettings(settings);
+    const health = buildRuntimeHealth(true, settings, null, details);
+    await recordRuntimeHealth(health);
+    await updateBadge(settings);
+    return health;
   } catch (error) {
-    console.error("ZSEC filtering initialization failed closed", error);
+    return recordRuntimeHealth(
+      buildRuntimeHealth(false, settings, error, null, "degraded")
+    );
   }
 }
 
-chrome.runtime.onInstalled.addListener(() => {
-  void initialiseRules();
-});
+async function initialiseRules() {
+  await writeSettings(await readSettings());
+}
 
-chrome.runtime.onStartup.addListener(() => {
-  void initialiseRules();
-});
+function initialiseSafely() {
+  void enqueueOperation(initialiseRules).catch((error) => {
+    console.error("ZSEC filtering initialization failed closed", error);
+  });
+}
+
+chrome.runtime.onInstalled.addListener(initialiseSafely);
+chrome.runtime.onStartup.addListener(initialiseSafely);
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const respond = async () => {
-    const settings = await readSettings();
-    if (!message || typeof message !== "object") {
-      throw new Error("Invalid request");
-    }
+    if (!message || typeof message !== "object") throw new Error("Invalid request");
     if (message.type === "getStatus") {
+      const settings = await readSettings();
+      const health = await refreshRuntimeHealth(settings);
       const domain = domainFromUrl(message.url || sender.tab?.url || "");
       return {
         ok: true,
         settings,
-        health: await readRuntimeHealth(),
+        health,
         domain,
         sitePaused: domain ? settings.pausedSites.includes(domain) : false
       };
     }
-    if (message.type === "setProtection") {
-      settings.protectionEnabled = message.enabled === true;
-      return { ok: true, settings: await writeSettings(settings) };
-    }
-    if (message.type === "setYoutubeCleanup") {
-      settings.youtubeCleanup = message.enabled === true;
-      return { ok: true, settings: await writeSettings(settings) };
-    }
-    if (message.type === "setHighRiskMode") {
-      settings.highRiskMode = message.enabled === true;
-      return { ok: true, settings: await writeSettings(settings) };
-    }
-    if (message.type === "setSitePaused") {
+
+    const settings = await readSettings();
+    if (message.type === "setProtection") settings.protectionEnabled = message.enabled === true;
+    else if (message.type === "setYoutubeCleanup") settings.youtubeCleanup = message.enabled === true;
+    else if (message.type === "setHighRiskMode") settings.highRiskMode = message.enabled === true;
+    else if (message.type === "setSitePaused") {
       const domain = normalizeDomain(message.domain);
       if (!domain) throw new Error("This page cannot be paused");
       const paused = new Set(settings.pausedSites);
       if (message.paused === true) paused.add(domain);
       else paused.delete(domain);
       settings.pausedSites = [...paused].sort();
-      return { ok: true, settings: await writeSettings(settings) };
+    } else {
+      throw new Error("Unsupported request");
     }
-    throw new Error("Unsupported request");
+    const result = await writeSettings(settings);
+    return { ok: true, settings: result.settings, health: result.health };
   };
-  respond().then(sendResponse).catch((error) => {
-    sendResponse({ ok: false, error: error instanceof Error ? error.message : "Request failed" });
+
+  enqueueOperation(respond).then(sendResponse).catch((error) => {
+    sendResponse({
+      ok: false,
+      error: error instanceof Error
+        ? "Local filtering settings could not be verified; the previous settings were restored."
+        : "Request failed"
+    });
   });
   return true;
 });

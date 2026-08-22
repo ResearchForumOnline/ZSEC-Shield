@@ -1,8 +1,8 @@
 # ZSEC Browser Shields
 
 ZSEC Browser Shields is the open-source Manifest V3 protection engine for ZSEC
-Browser. Version 0.5.2 adds verified runtime ruleset/regex health, transactional
-settings rollback, and 49,464 pinned EasyList network rules compiled by
+Browser. Version 0.5.2 adds structured runtime health, transactional settings
+rollback, and 49,464 pinned EasyList network rules compiled by
 eyeo's Adblock Plus release pipeline, while omitting the Acceptable Ads
 allowlist. It also blocks a focused local set of analytics, fingerprinting and
 session-replay domains; removes common campaign identifiers
@@ -31,6 +31,28 @@ cleanup at 40, focused ZSEC privacy blocks at 50, user-selected site pause at
 100 and High-Risk Browsing security rules at 1000. EasyList exceptions cannot
 override ZSEC privacy or High-Risk Browsing rules; site pause remains the
 deliberate breakage-recovery control outside High-Risk mode.
+
+## Runtime health and settings transactions
+
+The popup does not treat an absent or stale health record as healthy. Each
+status request checks the exact enabled static rulesets, individually disabled
+rules, complete dynamic-rule bodies, Chromium's additional static-rule
+capacity, and six pinned regular expressions. In unpacked builds where
+Chromium exposes `testMatchOutcome`, five hypothetical positive and negative
+requests also exercise representative privacy, link-cleaning, and EasyList
+rules without making network requests. Packed runtimes that do not expose that
+test-only API are labelled `verified_limited`; a rejected or contradictory
+probe is a verification failure.
+
+Health records are bound to the extension version, pinned policy hash, and a
+deterministic revision of the local settings. Settings operations are
+serialized. A change is persisted only after Chromium reports the expected
+static and dynamic policy; any apply, verification, or persistence failure
+attempts to restore and reverify the prior settings and records degraded health.
+The displayed 49,505 figure is a packaged-rule inventory, and the capacity
+field is Chromium's *additional* available static capacity. Neither is a count
+of rules exercised against real traffic, and representative matches are not a
+claim that every packaged rule or future request was tested.
 
 ## EasyList provenance and licensing
 

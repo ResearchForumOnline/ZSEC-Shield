@@ -234,6 +234,7 @@ def test_bundled_extension_has_stable_identity_and_bounded_youtube_assist() -> N
         '"third_party/EASYLIST-LICENSE.txt"',
         '"third_party/easylist-20260817.txt"',
         '"third_party/easylist-provenance.json"',
+        '"src/popup-state.js"',
         '"src/youtube-cosmetic-rules.js"',
     ):
         assert required_desktop_asset in build
