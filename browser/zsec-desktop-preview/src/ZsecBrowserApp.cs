@@ -22,16 +22,16 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.16.0")]
-[assembly: AssemblyFileVersion("0.3.16.0")]
-[assembly: AssemblyInformationalVersion("0.3.16-community")]
+[assembly: AssemblyVersion("0.3.17.0")]
+[assembly: AssemblyFileVersion("0.3.17.0")]
+[assembly: AssemblyInformationalVersion("0.3.17-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.16";
+        internal const string ProductVersion = "0.3.17";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
         internal const string NewTabUri = "https://newtab.zsec.local/index.html";
 
@@ -341,13 +341,15 @@ namespace TalkToAI.ZsecBrowserPreview
 
     internal sealed class BrowserWindow : Form
     {
-        private static readonly Color Background = Color.FromArgb(4, 12, 18);
-        private static readonly Color PanelBackground = Color.FromArgb(9, 24, 31);
-        private static readonly Color ElevatedSurface = Color.FromArgb(15, 34, 43);
-        private static readonly Color HoverSurface = Color.FromArgb(24, 52, 63);
-        private static readonly Color Accent = Color.FromArgb(0, 229, 170);
-        private static readonly Color AccentBlue = Color.FromArgb(35, 174, 232);
-        private static readonly Color Muted = Color.FromArgb(151, 170, 181);
+        private readonly BrowserThemePalette theme;
+        private readonly Color Background;
+        private readonly Color PanelBackground;
+        private readonly Color ElevatedSurface;
+        private readonly Color HoverSurface;
+        private readonly Color Foreground;
+        private readonly Color Accent;
+        private readonly Color AccentBlue;
+        private readonly Color Muted;
         private const int DwmUseImmersiveDarkMode = 20;
         private const int DwmWindowCornerPreference = 33;
         private const int DwmRound = 2;
@@ -447,6 +449,9 @@ namespace TalkToAI.ZsecBrowserPreview
             int valueSize
         );
 
+        [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
+        private static extern int SetWindowTheme(IntPtr handle, string subAppName, string subIdList);
+
         internal BrowserWindow(
             string destination,
             bool explicitDestination,
@@ -472,6 +477,16 @@ namespace TalkToAI.ZsecBrowserPreview
                 productDataWarning = "Local bookmarks, history and settings could not be loaded: " +
                     exception.Message;
             }
+            theme = BrowserThemePalette.Resolve(productData.Settings);
+            Background = theme.Background;
+            PanelBackground = theme.Panel;
+            ElevatedSurface = theme.Surface;
+            HoverSurface = theme.Hover;
+            Foreground = theme.Foreground;
+            Accent = theme.Accent;
+            AccentBlue = theme.AccentSecondary;
+            Muted = theme.Muted;
+            BrowserDialogTheme.Configure(theme);
             loginRequestIds = new Dictionary<WebView2, string>();
             loginRequestTracker = new BrowserCredentialRequestTracker();
             loginAssistant = new BrowserLoginAssistant(
@@ -518,7 +533,7 @@ namespace TalkToAI.ZsecBrowserPreview
             WindowState = FormWindowState.Maximized;
             MinimumSize = new Size(960, 640);
             BackColor = Background;
-            ForeColor = Color.White;
+            ForeColor = Foreground;
             KeyPreview = true;
             DoubleBuffered = true;
             AutoScaleMode = AutoScaleMode.Font;
@@ -546,7 +561,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.16";
+            channel.Text = "COMMUNITY 0.3.17";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
@@ -578,7 +593,7 @@ namespace TalkToAI.ZsecBrowserPreview
             navigation.RenderMode = ToolStripRenderMode.Professional;
             navigation.Renderer = new ModernToolStripRenderer(HoverSurface, Color.FromArgb(30, 74, 83));
             navigation.BackColor = PanelBackground;
-            navigation.ForeColor = Color.White;
+            navigation.ForeColor = Foreground;
             navigation.Padding = new Padding(12, 8, 12, 8);
             navigation.ImageScalingSize = new Size(20, 20);
             navigation.AutoSize = false;
@@ -653,7 +668,13 @@ namespace TalkToAI.ZsecBrowserPreview
             tabs.SizeMode = TabSizeMode.Fixed;
             tabs.Padding = new Point(18, 5);
             tabs.HotTrack = true;
+            tabs.BackColor = Background;
+            tabs.ForeColor = Foreground;
             tabs.AccessibleName = "Open browser tabs";
+            tabs.HandleCreated += delegate
+            {
+                SetWindowTheme(tabs.Handle, "DarkMode_Explorer", null);
+            };
             tabs.DrawItem += DrawBrowserTab;
             tabs.MouseDown += BrowserTabMouseDown;
             tabs.SelectedIndexChanged += delegate
@@ -669,7 +690,7 @@ namespace TalkToAI.ZsecBrowserPreview
             newTabButton = new RoundedActionButton();
             newTabButton.Text = "+";
             newTabButton.Font = new Font("Segoe UI", 15F, FontStyle.Regular);
-            newTabButton.ForeColor = Color.White;
+            newTabButton.ForeColor = Foreground;
             newTabButton.Size = new Size(38, 30);
             newTabButton.AccessibleName = "New tab";
             newTabButton.AccessibleDescription = "Open a protected local new tab (Ctrl+T)";
@@ -685,7 +706,7 @@ namespace TalkToAI.ZsecBrowserPreview
             bookmarksBar.WrapContents = false;
             bookmarksBar.AutoScroll = true;
             bookmarksBar.FlowDirection = FlowDirection.LeftToRight;
-            bookmarksBar.BackColor = Color.FromArgb(7, 20, 27);
+            bookmarksBar.BackColor = PanelBackground;
             bookmarksBar.AccessibleName = "Bookmarks bar";
             bookmarksBar.Visible = productData.Settings.ShowBookmarksBar;
             RefreshBookmarksBar();
@@ -772,7 +793,7 @@ namespace TalkToAI.ZsecBrowserPreview
         {
             ToolStripButton button = new ToolStripButton(text);
             button.DisplayStyle = ToolStripItemDisplayStyle.Text;
-            button.ForeColor = Color.White;
+            button.ForeColor = Foreground;
             button.Font = new Font("Segoe UI Symbol", text.Length <= 2 ? 14F : 9F, FontStyle.Bold);
             button.AutoSize = false;
             button.Size = new Size(text.Length > 2 ? ToolbarTextButtonWidth(button) : 42, 34);
@@ -821,6 +842,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private ContextMenuStrip BuildMainMenu()
         {
             ContextMenuStrip menu = new ContextMenuStrip();
+            ApplyMenuTheme(menu);
             menu.ShowImageMargin = false;
             menu.Font = new Font("Segoe UI", 9.5F);
             menu.AccessibleName = "ZSEC Browser main menu";
@@ -856,6 +878,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private ContextMenuStrip BuildTrayMenu()
         {
             ContextMenuStrip menu = new ContextMenuStrip();
+            ApplyMenuTheme(menu);
             menu.ShowImageMargin = false;
             menu.Font = new Font("Segoe UI", 9.5F);
             menu.AccessibleName = "ZSEC Browser notification area menu";
@@ -876,6 +899,13 @@ namespace TalkToAI.ZsecBrowserPreview
             }));
             menu.Items.Add(MenuItem("Exit ZSEC Browser", "", delegate { ExitBrowser(); }));
             return menu;
+        }
+
+        private void ApplyMenuTheme(ContextMenuStrip menu)
+        {
+            menu.BackColor = PanelBackground;
+            menu.ForeColor = Foreground;
+            menu.Renderer = new ModernToolStripRenderer(HoverSurface, ElevatedSurface);
         }
 
         private static ToolStripMenuItem MenuItem(
@@ -1131,6 +1161,13 @@ namespace TalkToAI.ZsecBrowserPreview
                     productData.Settings = dialog.Result;
                     productStore.Save(productData);
                     ApplyProductSettings();
+                    bool themeChanged =
+                        !String.Equals(previous.Theme, productData.Settings.Theme, StringComparison.Ordinal) ||
+                        !String.Equals(previous.AccentColor, productData.Settings.AccentColor, StringComparison.Ordinal);
+                    if (themeChanged)
+                    {
+                        runtimeStatus.Text = "Theme saved · restart ZSEC Browser to recolour every open native surface.";
+                    }
                     if (previous.BlockYoutubeAds != productData.Settings.BlockYoutubeAds)
                     {
                         await ApplyYoutubeProtectionSettingAsync();
@@ -1337,7 +1374,7 @@ namespace TalkToAI.ZsecBrowserPreview
             bounds.Inflate(-3, -3);
             bool selected = args.Index == tabs.SelectedIndex;
             Color fill = selected ? ElevatedSurface : PanelBackground;
-            Color foreground = selected ? Color.White : Muted;
+            Color foreground = selected ? Foreground : Muted;
             using (GraphicsPath path = ModernUi.RoundedRectangle(bounds, 9))
             using (SolidBrush brush = new SolidBrush(fill))
             {
@@ -1374,7 +1411,7 @@ namespace TalkToAI.ZsecBrowserPreview
                     "×",
                     closeFont,
                     closeBounds,
-                    selected ? Color.White : Muted,
+                    selected ? Foreground : Muted,
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix
                 );
             }
@@ -1527,6 +1564,8 @@ namespace TalkToAI.ZsecBrowserPreview
             page.BackColor = Background;
             WebView2 view = new WebView2();
             view.Dock = DockStyle.Fill;
+            view.BackColor = Background;
+            view.DefaultBackgroundColor = Background;
             view.CreationProperties = new CoreWebView2CreationProperties();
             page.Controls.Add(view);
             tabs.TabPages.Add(page);
@@ -1901,6 +1940,17 @@ namespace TalkToAI.ZsecBrowserPreview
                     String.Equals(view.Source.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
                 TryRecordHistory(view, core.DocumentTitle);
                 if (view == ActiveView) UpdateBookmarkButton();
+                if (view.Source != null && String.Equals(
+                    view.Source.Host,
+                    "newtab.zsec.local",
+                    StringComparison.OrdinalIgnoreCase
+                ))
+                {
+                    BeginInvoke(new Action(async delegate
+                    {
+                        await ApplyNewTabThemeAsync(view);
+                    }));
+                }
                 WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
                 if (loginAssistant.Enabled && view == ActiveView)
                 {
@@ -1978,6 +2028,21 @@ namespace TalkToAI.ZsecBrowserPreview
                 protectionPulse.Active = false;
                 runtimeStatus.Text = "Renderer/runtime failure detected - reload this tab";
             };
+        }
+
+        private async Task ApplyNewTabThemeAsync(WebView2 view)
+        {
+            if (view == null || view.CoreWebView2 == null || view.Source == null) return;
+            if (!String.Equals(view.Source.Host, "newtab.zsec.local", StringComparison.OrdinalIgnoreCase)) return;
+            string script = "(()=>{const s=document.documentElement.style;" +
+                "s.setProperty('--z-bg','" + ColorTranslator.ToHtml(Background) + "');" +
+                "s.setProperty('--z-panel','" + ColorTranslator.ToHtml(PanelBackground) + "');" +
+                "s.setProperty('--z-surface','" + ColorTranslator.ToHtml(ElevatedSurface) + "');" +
+                "s.setProperty('--z-text','" + ColorTranslator.ToHtml(Foreground) + "');" +
+                "s.setProperty('--z-muted','" + ColorTranslator.ToHtml(Muted) + "');" +
+                "s.setProperty('--z-accent','" + ColorTranslator.ToHtml(Accent) + "');" +
+                "s.setProperty('--z-border','" + ColorTranslator.ToHtml(theme.Border) + "');})();";
+            await view.ExecuteScriptAsync(script);
         }
 
         private async Task ConfigureLoginPageAsync(WebView2 view)

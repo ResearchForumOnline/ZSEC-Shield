@@ -6,7 +6,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$ProductVersion = "0.3.16"
+$ProductVersion = "0.3.17"
 $WebView2Version = "1.0.4129.50"
 $WebView2Uri = "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/$WebView2Version/microsoft.web.webview2.$WebView2Version.nupkg"
 $WebView2Sha256 = "d3934f482d484b89fb4825df720c710664e1143a1e90f7b3a60794ef33f473d2"
@@ -227,9 +227,11 @@ $ProductDialogsSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\Br
 $VaultContractsSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserVaultUiContracts.cs"
 $PasswordVaultSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserPasswordVault.cs"
 $CredentialWorkflowSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserCredentialWorkflowPolicy.cs"
+$CredentialImportSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserCredentialImport.cs"
 $VaultDialogsSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserVaultDialogs.cs"
 $LoginAssistantSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserLoginAssistant.cs"
 $LoginDialogsSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserLoginDialogs.cs"
+$ThemeSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserTheme.cs"
 $YoutubeProtectionSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\assets\youtube-player-protection.js"
 $ExtensionSource = Join-Path $RepoRoot "browser\zeroq-shields"
 $IconSource = Join-Path $RepoRoot "assets\brand\zeroq-icon.png"
@@ -242,8 +244,8 @@ $CompilerPackagePath = Join-Path $CompilerPackageCache "microsoft.net.compilers.
 
 foreach ($path in @(
     $LauncherSource, $ProductStateSource, $ProductPolicySource, $ProductDialogsSource,
-    $VaultContractsSource, $PasswordVaultSource, $CredentialWorkflowSource, $VaultDialogsSource,
-    $LoginAssistantSource, $LoginDialogsSource,
+    $VaultContractsSource, $PasswordVaultSource, $CredentialWorkflowSource, $CredentialImportSource, $VaultDialogsSource,
+    $LoginAssistantSource, $LoginDialogsSource, $ThemeSource,
     $YoutubeProtectionSource, $IconSource
 )) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
@@ -339,9 +341,11 @@ $compilerArguments = @(
     $VaultContractsSource,
     $PasswordVaultSource,
     $CredentialWorkflowSource,
+    $CredentialImportSource,
     $VaultDialogsSource,
     $LoginAssistantSource,
-    $LoginDialogsSource
+    $LoginDialogsSource,
+    $ThemeSource
 )
 & $CscPath @compilerArguments
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $LauncherPath -PathType Leaf)) {

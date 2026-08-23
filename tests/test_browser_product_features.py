@@ -12,7 +12,10 @@ STATE = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserProductState
 DIALOGS = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserProductDialogs.cs"
 LOGIN_DIALOGS = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserLoginDialogs.cs"
 VAULT_DIALOGS = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserVaultDialogs.cs"
+CREDENTIAL_IMPORT = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserCredentialImport.cs"
 POLICY = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserProductPolicy.cs"
+THEME = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserTheme.cs"
+NEW_TAB = ROOT / "browser" / "zsec-desktop-preview" / "assets" / "new-tab" / "index.html"
 YOUTUBE_PROTECTION = (
     ROOT / "browser" / "zsec-desktop-preview" / "assets" / "youtube-player-protection.js"
 )
@@ -46,6 +49,29 @@ def test_product_state_harness_passes() -> None:
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
     assert "Browser product state tests passed" in completed.stdout
+
+
+def test_theme_system_is_persisted_bounded_and_covers_runtime_surfaces() -> None:
+    state = STATE.read_text(encoding="utf-8")
+    theme = THEME.read_text(encoding="utf-8")
+    app = APP.read_text(encoding="utf-8")
+    dialogs = DIALOGS.read_text(encoding="utf-8")
+    new_tab = NEW_TAB.read_text(encoding="utf-8")
+    build = BUILD.read_text(encoding="utf-8")
+
+    assert 'Theme = "soft_dark"' in state
+    assert 'AccentColor = "teal"' in state
+    assert '"soft_dark", "slate", "midnight"' in theme
+    assert '"teal", "blue", "violet", "amber"' in theme
+    assert "BrowserThemePalette.NormalizeTheme(settings.Theme)" in state
+    assert "BrowserThemePalette.NormalizeAccent(settings.AccentColor)" in state
+    assert "view.DefaultBackgroundColor = Background" in app
+    assert "ApplyNewTabThemeAsync" in app
+    assert "BrowserDialogTheme.Configure(theme)" in app
+    assert "themeChoice.AccessibleName" in dialogs
+    assert "accentChoice.AccessibleName" in dialogs
+    assert "--z-bg:#182028" in new_tab
+    assert "$ThemeSource" in build
 
 
 def test_tray_lifecycle_has_restore_and_explicit_exit() -> None:
@@ -109,7 +135,8 @@ def test_settings_surface_is_complete_and_truthful() -> None:
     ):
         assert category in dialogs
     assert "Per-site permission exceptions are not implemented" in dialogs
-    assert "dark Community shell is the only implemented theme" in dialogs
+    assert "Choose a contrast-tested native browser theme and accent" in dialogs
+    assert "All supplied palettes avoid white startup surfaces" in dialogs
     assert "Default-browser registration is not implemented" in dialogs
     assert "native strict policy and the extension High-Risk mode are separate" in dialogs
     assert "Every download still requires an explicit allow decision" in dialogs
@@ -138,6 +165,30 @@ def test_password_workflow_ui_is_explicit_recoverable_and_accessible() -> None:
     assert 'searchLabel.Text = "Search"' in vault_dialogs
     assert "RefreshActionAvailability" in vault_dialogs
     assert "Replace the password currently in this field" in vault_dialogs
+    assert "BrowserVaultUiPolicy.RevealSeconds" in vault_dialogs
+    assert "reveal.ShouldConceal(DateTime.UtcNow)" in vault_dialogs
+    assert "Deactivate += delegate { ConcealPassword(); }" in vault_dialogs
+    assert "ClearPendingClipboard();" in vault_dialogs
+    assert "if unchanged" in vault_dialogs
+
+
+def test_password_csv_import_is_explicit_bounded_and_never_overwrites() -> None:
+    vault_dialogs = VAULT_DIALOGS.read_text(encoding="utf-8")
+    credential_import = CREDENTIAL_IMPORT.read_text(encoding="utf-8")
+
+    assert 'BrowserDialogTheme.Button("Import CSV"' in vault_dialogs
+    assert "OpenFileDialog" in vault_dialogs
+    assert "BrowserCredentialImportPolicy.ParseExport" in vault_dialogs
+    assert "Delete the plaintext CSV export now?" in vault_dialogs
+    assert "MessageBoxDefaultButton.Button2" in vault_dialogs
+    assert "Cookies, sessions, passkeys, TOTP secrets and history" in vault_dialogs
+    assert "MaximumFileBytes = 2 * 1024 * 1024" in credential_import
+    assert "MaximumRows = 1000" in credential_import
+    assert "NormalizeSecureOrigin" in credential_import
+    assert "existing.Contains(identity)" in credential_import
+    assert "vault.Delete(id)" in credential_import
+    assert "SourceMatchesPlan" in credential_import
+    assert "SourceSha256" in credential_import
 
 
 def test_all_source_native_filter_and_youtube_runtime_evidence_are_wired() -> None:

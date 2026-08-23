@@ -84,6 +84,7 @@ namespace TalkToAI.ZsecBrowserPreview
         internal const int MinimumGeneratedPasswordLength = 12;
         internal const int MaximumGeneratedPasswordLength = 128;
         internal const int ClipboardSeconds = 30;
+        internal const int RevealSeconds = 15;
         internal const int DefaultAutoLockMinutes = 5;
 
         internal static string NormalizeSearch(string query)
@@ -233,6 +234,43 @@ namespace TalkToAI.ZsecBrowserPreview
             string value = pendingValue;
             pendingValue = null;
             return value != null && clipboard.ClearIfUnchanged(value);
+        }
+    }
+
+    internal sealed class BrowserSecretRevealController
+    {
+        private readonly TimeSpan revealTimeout;
+        private DateTime? revealedAtUtc;
+
+        internal BrowserSecretRevealController(int seconds)
+        {
+            if (seconds < 1 || seconds > 60) throw new ArgumentOutOfRangeException("seconds");
+            revealTimeout = TimeSpan.FromSeconds(seconds);
+        }
+
+        internal bool IsRevealed { get { return revealedAtUtc.HasValue; } }
+
+        internal void Reveal(DateTime nowUtc)
+        {
+            RequireUtc(nowUtc);
+            revealedAtUtc = nowUtc;
+        }
+
+        internal void Conceal()
+        {
+            revealedAtUtc = null;
+        }
+
+        internal bool ShouldConceal(DateTime nowUtc)
+        {
+            RequireUtc(nowUtc);
+            return revealedAtUtc.HasValue && nowUtc - revealedAtUtc.Value >= revealTimeout;
+        }
+
+        private static void RequireUtc(DateTime value)
+        {
+            if (value.Kind != DateTimeKind.Utc)
+                throw new ArgumentException("Reveal time must use UTC.", "value");
         }
     }
 }

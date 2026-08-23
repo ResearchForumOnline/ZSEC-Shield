@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
@@ -47,6 +48,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly Button remove;
         private readonly Button copyUser;
         private readonly Button copyPassword;
+        private readonly Button importCsv;
         private readonly Button unlock;
         private readonly Button lockButton;
         private readonly Timer autoLockTimer;
@@ -118,6 +120,7 @@ namespace TalkToAI.ZsecBrowserPreview
             remove = BrowserDialogTheme.Button("Remove", "Remove selected password entry");
             copyUser = BrowserDialogTheme.Button("Copy username", "Copy selected username for 30 seconds");
             copyPassword = BrowserDialogTheme.Button("Copy password", "Copy selected password for 30 seconds");
+            importCsv = BrowserDialogTheme.Button("Import CSV", "Import an explicitly selected browser password CSV");
             unlock = BrowserDialogTheme.Button("Unlock", "Unlock the local password vault");
             lockButton = BrowserDialogTheme.Button("Lock", "Lock the local password vault now");
             Button close = BrowserDialogTheme.Button("Close", "Close and lock the password vault");
@@ -126,12 +129,13 @@ namespace TalkToAI.ZsecBrowserPreview
             remove.Click += delegate { RemoveSelected(); };
             copyUser.Click += delegate { CopySelected(false); };
             copyPassword.Click += delegate { CopySelected(true); };
+            importCsv.Click += delegate { ImportCsv(); };
             unlock.Click += delegate { UnlockVault(); };
             lockButton.Click += delegate { LockVault("Vault locked."); };
             close.Click += delegate { Close(); };
             commands.Controls.AddRange(new Control[]
             {
-                add, edit, remove, copyUser, copyPassword, unlock, lockButton, close
+                add, edit, remove, copyUser, copyPassword, importCsv, unlock, lockButton, close
             });
 
             status = new Label();
@@ -292,6 +296,7 @@ namespace TalkToAI.ZsecBrowserPreview
             remove.Enabled = selected;
             copyUser.Enabled = selected;
             copyPassword.Enabled = selected;
+            importCsv.Enabled = unlocked;
             lockButton.Enabled = unlocked;
         }
 
@@ -420,6 +425,57 @@ namespace TalkToAI.ZsecBrowserPreview
             clipboard.ClearPending();
         }
 
+        private void ImportCsv()
+        {
+            if (!RequireUnlocked()) return;
+            using (OpenFileDialog picker = new OpenFileDialog())
+            {
+                picker.Title = "Choose a browser-exported password CSV";
+                picker.Filter = "Browser password CSV (*.csv)|*.csv";
+                picker.CheckFileExists = true;
+                picker.Multiselect = false;
+                if (picker.ShowDialog(this) != DialogResult.OK) return;
+                try
+                {
+                    BrowserCredentialImportPlan plan = BrowserCredentialImportPolicy.ParseExport(
+                        picker.FileName
+                    );
+                    string preview = plan.SourceFormat + "\r\n\r\n" +
+                        "Rows: " + plan.DataRows.ToString() + "\r\n" +
+                        "Ready to import: " + plan.Candidates.Count.ToString() + "\r\n" +
+                        "Invalid or insecure rows: " + plan.InvalidRows.ToString() + "\r\n" +
+                        "Duplicates inside this file: " + plan.DuplicateRows.ToString() + "\r\n\r\n" +
+                        "Existing exact HTTPS origin + username entries will be skipped and never overwritten. " +
+                        "Cookies, sessions, passkeys, TOTP secrets and history are not imported. Continue?";
+                    if (MessageBox.Show(
+                        preview, "Preview password import", MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2
+                    ) != DialogResult.Yes) return;
+                    BrowserCredentialImportResult result =
+                        BrowserCredentialImportPolicy.ImportNoOverwrite(vault, plan);
+                    RefreshRows();
+                    status.Text = "Imported " + result.Imported.ToString() +
+                        " password(s); skipped " + result.ExistingSkipped.ToString() +
+                        " existing entr" + (result.ExistingSkipped == 1 ? "y." : "ies.");
+                    if (MessageBox.Show(
+                        "Import completed. Delete the plaintext CSV export now? This cannot be undone.",
+                        "Delete plaintext password export", MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2
+                    ) == DialogResult.Yes)
+                    {
+                        if (!BrowserCredentialImportPolicy.SourceMatchesPlan(picker.FileName, plan))
+                            throw new IOException("The selected export changed after preview and was not deleted.");
+                        File.Delete(picker.FileName);
+                        status.Text += " Plaintext CSV deleted at your request.";
+                    }
+                }
+                catch (Exception exception)
+                {
+                    ShowError("Passwords were not imported safely.", exception);
+                }
+            }
+        }
+
         private bool RequireUnlocked()
         {
             BrowserVaultStatus current = SafeStatus();
@@ -453,6 +509,9 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly CheckBox lower;
         private readonly CheckBox digits;
         private readonly CheckBox symbols;
+        private readonly CheckBox show;
+        private readonly Timer revealTimer;
+        private readonly BrowserSecretRevealController reveal;
 
         internal BrowserVaultEntry Result { get { return working.Copy(); } }
 
@@ -464,6 +523,7 @@ namespace TalkToAI.ZsecBrowserPreview
         {
             vault = service;
             activity = activityCallback ?? delegate { };
+            reveal = new BrowserSecretRevealController(BrowserVaultUiPolicy.RevealSeconds);
             working = entry == null ? new BrowserVaultEntry() : entry.Copy();
             Text = entry == null ? "Add password - ZSEC Browser" : "Edit password - ZSEC Browser";
             Size = new Size(720, 600);
@@ -493,11 +553,31 @@ namespace TalkToAI.ZsecBrowserPreview
 
             FlowLayoutPanel passwordControls = new FlowLayoutPanel();
             passwordControls.AutoSize = true;
-            CheckBox show = new CheckBox();
+            show = new CheckBox();
             show.Text = "Show password";
             show.AutoSize = true;
             show.AccessibleName = "Show password characters";
-            show.CheckedChanged += delegate { password.UseSystemPasswordChar = !show.Checked; };
+            show.CheckedChanged += delegate
+            {
+                password.UseSystemPasswordChar = !show.Checked;
+                if (show.Checked)
+                {
+                    reveal.Reveal(DateTime.UtcNow);
+                    revealTimer.Start();
+                }
+                else
+                {
+                    reveal.Conceal();
+                    revealTimer.Stop();
+                }
+                activity();
+            };
+            revealTimer = new Timer();
+            revealTimer.Interval = 1000;
+            revealTimer.Tick += delegate
+            {
+                if (reveal.ShouldConceal(DateTime.UtcNow)) ConcealPassword();
+            };
             generatedLength = new NumericUpDown();
             generatedLength.Minimum = BrowserVaultUiPolicy.MinimumGeneratedPasswordLength;
             generatedLength.Maximum = BrowserVaultUiPolicy.MaximumGeneratedPasswordLength;
@@ -518,7 +598,7 @@ namespace TalkToAI.ZsecBrowserPreview
             AddRow(form, 4, "Notes", notes);
 
             Label guidance = BrowserDialogTheme.Description(
-                "Passwords stay concealed in the list. Copy actions clear unchanged clipboard content after 30 seconds. The vault locks automatically after five idle minutes."
+                "Passwords stay concealed in the list. Reveal automatically ends after 15 seconds. Copy actions clear unchanged clipboard content after 30 seconds. The vault locks automatically after five idle minutes."
             );
             guidance.AccessibleName = "Password vault safety guidance";
             form.Controls.Add(guidance, 0, 5);
@@ -541,6 +621,8 @@ namespace TalkToAI.ZsecBrowserPreview
             Controls.Add(footer);
             AcceptButton = save;
             CancelButton = cancel;
+            Deactivate += delegate { ConcealPassword(); };
+            FormClosed += delegate { revealTimer.Stop(); revealTimer.Dispose(); };
             KeyDown += delegate { activity(); };
             MouseMove += delegate { activity(); };
             foreach (TextBox field in new[] { url, username, password, notes })
@@ -551,10 +633,19 @@ namespace TalkToAI.ZsecBrowserPreview
 
         internal void CloseForLock()
         {
+            ConcealPassword();
             password.Text = String.Empty;
             working.Password = null;
             DialogResult = DialogResult.Cancel;
             Close();
+        }
+
+        private void ConcealPassword()
+        {
+            reveal.Conceal();
+            revealTimer.Stop();
+            if (show.Checked) show.Checked = false;
+            password.UseSystemPasswordChar = true;
         }
 
         private static TextBox Field(string accessibleName, string value, bool secret)

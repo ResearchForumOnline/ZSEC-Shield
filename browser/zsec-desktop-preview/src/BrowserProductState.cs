@@ -41,6 +41,8 @@ namespace TalkToAI.ZsecBrowserPreview
         public bool PasswordSaveEnabled { get; set; }
         public bool PasswordAutofillEnabled { get; set; }
         public List<string> PasswordNeverSaveOrigins { get; set; }
+        public string Theme { get; set; }
+        public string AccentColor { get; set; }
 
         internal static BrowserSettings CreateDefault()
         {
@@ -63,7 +65,9 @@ namespace TalkToAI.ZsecBrowserPreview
                 SearchEngine = "brave",
                 PasswordSaveEnabled = false,
                 PasswordAutofillEnabled = false,
-                PasswordNeverSaveOrigins = new List<string>()
+                PasswordNeverSaveOrigins = new List<string>(),
+                Theme = "soft_dark",
+                AccentColor = "teal"
             };
         }
 
@@ -87,7 +91,9 @@ namespace TalkToAI.ZsecBrowserPreview
                 PasswordAutofillEnabled = PasswordAutofillEnabled,
                 PasswordNeverSaveOrigins = new List<string>(
                     PasswordNeverSaveOrigins ?? new List<string>()
-                )
+                ),
+                Theme = Theme,
+                AccentColor = AccentColor
             };
         }
     }
@@ -468,6 +474,8 @@ namespace TalkToAI.ZsecBrowserPreview
             }
             settings.DownloadDirectory = Path.GetFullPath(downloads);
             settings.SearchEngine = BrowserSearchProviders.NormalizeKey(settings.SearchEngine);
+            settings.Theme = BrowserThemePalette.NormalizeTheme(settings.Theme);
+            settings.AccentColor = BrowserThemePalette.NormalizeAccent(settings.AccentColor);
             settings.PasswordNeverSaveOrigins =
                 BrowserCredentialWorkflowPolicy.NormalizeNeverSaveOrigins(
                     settings.PasswordNeverSaveOrigins

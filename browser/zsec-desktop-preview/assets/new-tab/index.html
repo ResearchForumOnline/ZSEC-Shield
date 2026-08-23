@@ -7,12 +7,13 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
   <title>ZSEC New Tab</title>
   <style>
-    html,body{height:100%;margin:0;background:#040c12;color:#e8f0f5;font-family:"Segoe UI",sans-serif}
-    body{display:grid;place-items:center;background:radial-gradient(circle at 50% 36%,#123845 0,#07151d 36%,#040c12 72%)}
+    :root{--z-bg:#182028;--z-panel:#1f2a34;--z-surface:#283541;--z-text:#f1f5f9;--z-muted:#b8c5d0;--z-accent:#39dcbe;--z-border:#5b6e7e}
+    html,body{height:100%;margin:0;background:var(--z-bg);color:var(--z-text);font-family:"Segoe UI",sans-serif}
+    body{display:grid;place-items:center;background:radial-gradient(circle at 50% 36%,var(--z-surface) 0,var(--z-panel) 40%,var(--z-bg) 78%)}
     main{text-align:center;max-width:720px;padding:48px}
-    .mark{width:76px;height:76px;margin:0 auto 24px;border:1px solid #2acdbb;border-radius:24px;display:grid;place-items:center;color:#00e5aa;font-size:36px;font-weight:800;box-shadow:0 0 42px rgba(0,229,170,.18)}
-    h1{font-size:34px;margin:0 0 12px}p{color:#9fb5c0;font-size:16px;line-height:1.6}
-    .hint{display:inline-block;margin-top:20px;padding:12px 18px;border:1px solid #294b59;border-radius:18px;background:#0d2029;color:#cce3ea}
+    .mark{width:76px;height:76px;margin:0 auto 24px;border:1px solid var(--z-accent);border-radius:24px;display:grid;place-items:center;color:var(--z-accent);font-size:36px;font-weight:800}
+    h1{font-size:34px;margin:0 0 12px}p{color:var(--z-muted);font-size:16px;line-height:1.6}
+    .hint{display:inline-block;margin-top:20px;padding:12px 18px;border:1px solid var(--z-border);border-radius:18px;background:var(--z-surface);color:var(--z-text)}
   </style>
 </head>
 <body><main><div class="mark">Z</div><h1>Private by design.</h1><p>This page is packaged with ZSEC Browser and makes no network request. Type a web address or search in the address bar.</p><div class="hint">Ctrl+L focuses search · Ctrl+T opens another protected tab</div></main></body>

@@ -9,11 +9,23 @@ namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class BrowserDialogTheme
     {
-        internal static readonly Color Background = Color.FromArgb(4, 12, 18);
-        internal static readonly Color Surface = Color.FromArgb(15, 34, 43);
-        internal static readonly Color Foreground = Color.FromArgb(232, 240, 245);
-        internal static readonly Color Muted = Color.FromArgb(157, 181, 192);
-        internal static readonly Color Accent = Color.FromArgb(0, 229, 170);
+        internal static Color Background = Color.FromArgb(24, 32, 40);
+        internal static Color Surface = Color.FromArgb(40, 53, 65);
+        internal static Color Foreground = Color.FromArgb(241, 245, 249);
+        internal static Color Muted = Color.FromArgb(184, 197, 208);
+        internal static Color Accent = Color.FromArgb(57, 220, 190);
+        internal static Color Border = Color.FromArgb(91, 110, 126);
+
+        internal static void Configure(BrowserThemePalette palette)
+        {
+            if (palette == null) throw new ArgumentNullException("palette");
+            Background = palette.Background;
+            Surface = palette.Surface;
+            Foreground = palette.Foreground;
+            Muted = palette.Muted;
+            Accent = palette.Accent;
+            Border = palette.Border;
+        }
 
         internal static void Apply(Form form)
         {
@@ -32,7 +44,7 @@ namespace TalkToAI.ZsecBrowserPreview
             button.AutoSize = true;
             button.MinimumSize = new Size(96, 34);
             button.FlatStyle = FlatStyle.Flat;
-            button.FlatAppearance.BorderColor = Color.FromArgb(42, 75, 88);
+            button.FlatAppearance.BorderColor = Border;
             button.BackColor = Surface;
             button.ForeColor = Foreground;
             button.AccessibleName = accessibleName;
@@ -92,12 +104,36 @@ namespace TalkToAI.ZsecBrowserPreview
             grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             grid.DefaultCellStyle.BackColor = Surface;
             grid.DefaultCellStyle.ForeColor = Foreground;
-            grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(24, 78, 73);
-            grid.DefaultCellStyle.SelectionForeColor = Color.White;
-            grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(9, 24, 31);
+            grid.DefaultCellStyle.SelectionBackColor = Accent;
+            grid.DefaultCellStyle.SelectionForeColor = Background;
+            grid.ColumnHeadersDefaultCellStyle.BackColor = Background;
             grid.ColumnHeadersDefaultCellStyle.ForeColor = Foreground;
             grid.EnableHeadersVisualStyles = false;
             return grid;
+        }
+
+        internal static void ApplyTabs(TabControl tabs)
+        {
+            tabs.DrawMode = TabDrawMode.OwnerDrawFixed;
+            tabs.BackColor = Background;
+            tabs.ForeColor = Foreground;
+            tabs.DrawItem += delegate(object sender, DrawItemEventArgs args)
+            {
+                bool selected = args.Index == tabs.SelectedIndex;
+                Color fill = selected ? Surface : Background;
+                using (SolidBrush brush = new SolidBrush(fill))
+                {
+                    args.Graphics.FillRectangle(brush, args.Bounds);
+                }
+                TextRenderer.DrawText(
+                    args.Graphics,
+                    tabs.TabPages[args.Index].Text,
+                    tabs.Font,
+                    args.Bounds,
+                    selected ? Accent : Foreground,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter
+                );
+            };
         }
     }
 
@@ -371,6 +407,8 @@ namespace TalkToAI.ZsecBrowserPreview
         private ComboBox searchEngine;
         private CheckBox askToSavePasswords;
         private CheckBox autofillPasswords;
+        private ComboBox themeChoice;
+        private ComboBox accentChoice;
 
         internal bool ClearHistoryRequested { get; private set; }
         internal bool OpenShieldsRequested { get; private set; }
@@ -393,6 +431,7 @@ namespace TalkToAI.ZsecBrowserPreview
             TabControl categories = new TabControl();
             categories.Dock = DockStyle.Fill;
             categories.AccessibleName = "ZSEC Browser settings categories";
+            BrowserDialogTheme.ApplyTabs(categories);
             categories.TabPages.Add(BuildPrivacyPage());
             categories.TabPages.Add(BuildPermissionsPage());
             categories.TabPages.Add(BuildShieldsPage());
@@ -641,6 +680,35 @@ namespace TalkToAI.ZsecBrowserPreview
         private TabPage BuildAppearancePage()
         {
             FlowLayoutPanel panel = BrowserDialogTheme.PagePanel();
+            panel.Controls.Add(BrowserDialogTheme.Description(
+                "Choose a contrast-tested native browser theme and accent. The palette applies to browser chrome, tabs, local new-tab surfaces and ZSEC dialogs after ZSEC Browser restarts. Web pages keep their own colours."
+            ));
+            themeChoice = new ComboBox();
+            themeChoice.DropDownStyle = ComboBoxStyle.DropDownList;
+            themeChoice.Width = 360;
+            themeChoice.AccessibleName = "Browser colour theme";
+            foreach (string key in BrowserThemePalette.ThemeKeys)
+            {
+                themeChoice.Items.Add(BrowserThemePalette.ThemeDisplayName(key));
+            }
+            themeChoice.SelectedIndex = Array.IndexOf(
+                BrowserThemePalette.ThemeKeys,
+                BrowserThemePalette.NormalizeTheme(working.Theme)
+            );
+            accentChoice = new ComboBox();
+            accentChoice.DropDownStyle = ComboBoxStyle.DropDownList;
+            accentChoice.Width = 360;
+            accentChoice.AccessibleName = "Browser accent colour";
+            foreach (string key in BrowserThemePalette.AccentKeys)
+            {
+                accentChoice.Items.Add(BrowserThemePalette.AccentDisplayName(key));
+            }
+            accentChoice.SelectedIndex = Array.IndexOf(
+                BrowserThemePalette.AccentKeys,
+                BrowserThemePalette.NormalizeAccent(working.AccentColor)
+            );
+            panel.Controls.Add(themeChoice);
+            panel.Controls.Add(accentChoice);
             showBookmarksBar = BrowserDialogTheme.CheckBox(
                 "Show bookmarks bar",
                 "Show bookmarks bar"
@@ -654,7 +722,7 @@ namespace TalkToAI.ZsecBrowserPreview
             panel.Controls.Add(showBookmarksBar);
             panel.Controls.Add(minimizeToTray);
             panel.Controls.Add(BrowserDialogTheme.Description(
-                "Appearance: the dark Community shell is the only implemented theme. System font scaling is used; a light theme is not claimed in this release."
+                "All supplied palettes avoid white startup surfaces and meet the ZSEC dark-shell contrast floor. System font scaling remains enabled."
             ));
             return Page("Appearance", panel);
         }
@@ -756,6 +824,8 @@ namespace TalkToAI.ZsecBrowserPreview
             working.SearchEngine = selectedProvider == null ? "brave" : selectedProvider.Key;
             working.PasswordSaveEnabled = askToSavePasswords.Checked;
             working.PasswordAutofillEnabled = autofillPasswords.Checked;
+            working.Theme = BrowserThemePalette.ThemeKeys[Math.Max(0, themeChoice.SelectedIndex)];
+            working.AccentColor = BrowserThemePalette.AccentKeys[Math.Max(0, accentChoice.SelectedIndex)];
             DialogResult = DialogResult.OK;
             Close();
         }

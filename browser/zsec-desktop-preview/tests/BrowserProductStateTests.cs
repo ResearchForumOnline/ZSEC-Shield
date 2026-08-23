@@ -34,6 +34,7 @@ internal static class BrowserProductStateTests
             TestPasswordVaultUiPolicy();
             TestPasswordVaultKeyFailure(Path.Combine(parent, "password-vault-key-failure"));
             TestCredentialWorkflowPolicy(Path.Combine(parent, "credential-workflow"));
+            TestCredentialCsvImport(Path.Combine(parent, "credential-import"));
             TestResponsiveToolbarLayout();
             Console.WriteLine("Browser product state tests passed: " + assertions.ToString());
             return 0;
@@ -47,6 +48,77 @@ internal static class BrowserProductStateTests
         {
             if (Directory.Exists(parent)) Directory.Delete(parent, true);
         }
+    }
+
+    private static void TestCredentialCsvImport(string root)
+    {
+        Directory.CreateDirectory(root);
+        string chromium = Path.Combine(root, "chromium.csv");
+        File.WriteAllText(
+            chromium,
+            "name,url,username,password,note\r\n" +
+            "Example,https://EXAMPLE.com/login,reporter,secret,primary\r\n" +
+            "Duplicate,https://example.com/other,reporter,other,duplicate\r\n" +
+            "Unsafe,http://example.net,person,bad,rejected\r\n" +
+            "Quoted,https://news.example,editor,\"comma,password\",\"quoted \"\"note\"\"\"\r\n",
+            new UTF8Encoding(false)
+        );
+        BrowserCredentialImportPlan plan = BrowserCredentialImportPolicy.ParseExport(chromium);
+        Assert(plan.SourceFormat.Contains("Chrome"), "Chromium export format was not recognized.");
+        Assert(plan.DataRows == 4, "Credential import data-row count is wrong.");
+        Assert(plan.Candidates.Count == 2, "Credential import candidate count is wrong.");
+        Assert(plan.DuplicateRows == 1, "Credential import duplicate was not counted.");
+        Assert(plan.InvalidRows == 1, "Credential import insecure row was not counted invalid.");
+        Assert(plan.Candidates[0].Url == "https://example.com", "Imported URL was not origin-bound.");
+        Assert(plan.Candidates[1].Password == "comma,password", "Quoted CSV password was parsed incorrectly.");
+        Assert(BrowserCredentialImportPolicy.SourceMatchesPlan(chromium, plan),
+            "Unchanged credential export did not match its preview hash.");
+
+        FakeImportVault vault = new FakeImportVault(true);
+        vault.Entries.Add(new BrowserVaultEntry
+        {
+            Id = "existing", Url = "https://example.com", Username = "reporter",
+            Password = "do-not-overwrite", Notes = String.Empty
+        });
+        BrowserCredentialImportResult result = BrowserCredentialImportPolicy.ImportNoOverwrite(vault, plan);
+        Assert(result.Imported == 1 && result.ExistingSkipped == 1, "Exact identity dedupe result is wrong.");
+        Assert(vault.Entries.First(entry => entry.Id == "existing").Password == "do-not-overwrite",
+            "Import overwrote an existing credential.");
+
+        string firefox = Path.Combine(root, "firefox.csv");
+        File.WriteAllText(firefox,
+            "url,username,password,httpRealm,formActionOrigin,guid,timeCreated,timeLastUsed,timePasswordChanged\n" +
+            "https://mozilla.example/login,user,pw,,,id,1,2,3\n", new UTF8Encoding(false));
+        Assert(BrowserCredentialImportPolicy.ParseExport(firefox).Candidates.Count == 1,
+            "Firefox password export was not accepted.");
+
+        string chromiumFour = Path.Combine(root, "chromium-four.csv");
+        File.WriteAllText(chromiumFour,
+            "name,url,username,password\nSite,https://four.example/path,user,pw\n", new UTF8Encoding(false));
+        Assert(BrowserCredentialImportPolicy.ParseExport(chromiumFour).Candidates.Count == 1,
+            "Four-column Chromium password export was not accepted.");
+
+        File.AppendAllText(chromium, "changed");
+        Assert(!BrowserCredentialImportPolicy.SourceMatchesPlan(chromium, plan),
+            "Changed credential export still matched its preview hash.");
+
+        string unknown = Path.Combine(root, "unknown.csv");
+        File.WriteAllText(unknown, "site,user,secret\nhttps://example.com,u,p\n", new UTF8Encoding(false));
+        bool unknownRejected = false;
+        try { BrowserCredentialImportPolicy.ParseExport(unknown); }
+        catch (InvalidDataException) { unknownRejected = true; }
+        Assert(unknownRejected, "Unknown credential CSV headers were accepted.");
+
+        bool lockedRejected = false;
+        try { BrowserCredentialImportPolicy.ImportNoOverwrite(new FakeImportVault(false), plan); }
+        catch (InvalidOperationException) { lockedRejected = true; }
+        Assert(lockedRejected, "Locked vault accepted a credential import.");
+
+        FakeImportVault failing = new FakeImportVault(true) { FailOnSaveNumber = 2 };
+        bool failedClosed = false;
+        try { BrowserCredentialImportPolicy.ImportNoOverwrite(failing, plan); }
+        catch (InvalidOperationException) { failedClosed = true; }
+        Assert(failedClosed && failing.Entries.Count == 0, "Failed import did not roll back created records.");
     }
 
     private static void TestCredentialWorkflowPolicy(string root)
@@ -385,6 +457,22 @@ internal static class BrowserProductStateTests
         clipboard.Value = "new-user-value";
         Assert(!sensitive.ClearPending(), "Changed user clipboard content was incorrectly cleared.");
         Assert(clipboard.Value == "new-user-value", "Changed clipboard content was not preserved.");
+
+        BrowserSecretRevealController reveal = new BrowserSecretRevealController(
+            BrowserVaultUiPolicy.RevealSeconds
+        );
+        reveal.Reveal(start);
+        Assert(reveal.IsRevealed, "Password reveal state was not recorded.");
+        Assert(
+            !reveal.ShouldConceal(start.AddSeconds(BrowserVaultUiPolicy.RevealSeconds - 1)),
+            "Password reveal ended before its bounded timeout."
+        );
+        Assert(
+            reveal.ShouldConceal(start.AddSeconds(BrowserVaultUiPolicy.RevealSeconds)),
+            "Password reveal did not end at its bounded timeout."
+        );
+        reveal.Conceal();
+        Assert(!reveal.IsRevealed, "Explicit concealment retained reveal state.");
     }
 
     private sealed class TestClipboard : IBrowserClipboard
@@ -440,15 +528,21 @@ internal static class BrowserProductStateTests
         Assert(data.Settings.AskDownloadLocation, "Download location prompting should default on.");
         Assert(data.Settings.BlockYoutubeAds, "YouTube ad protection should default on.");
         Assert(data.Settings.SearchEngine == "brave", "Brave Search should be the default.");
+        Assert(data.Settings.Theme == "soft_dark", "Soft dark should be the default theme.");
+        Assert(data.Settings.AccentColor == "teal", "Teal should be the default accent.");
 
         data.Settings.StartupMode = "custom";
         data.Settings.CustomStartupUrl = "https://example.com/start";
         data.Settings.NativeStrictMode = true;
+        data.Settings.Theme = "slate";
+        data.Settings.AccentColor = "violet";
         store.Save(data);
         BrowserProductData loaded = store.Load();
         Assert(loaded.Settings.StartupMode == "custom", "Startup mode did not persist.");
         Assert(loaded.Settings.CustomStartupUrl == "https://example.com/start", "Custom startup URL did not normalize.");
         Assert(loaded.Settings.NativeStrictMode, "Native strict mode did not persist.");
+        Assert(loaded.Settings.Theme == "slate", "Theme did not persist.");
+        Assert(loaded.Settings.AccentColor == "violet", "Accent did not persist.");
 
         loaded.Settings.CustomStartupUrl = "javascript:alert(1)";
         loaded.Settings.StartupMode = "custom";
@@ -630,5 +724,42 @@ internal static class BrowserProductStateTests
                 BrowserToolbarLayout.StandardMinimumAddressWidth,
             "Standard toolbar address field fell below its usable minimum."
         );
+    }
+
+    private sealed class FakeImportVault : IVaultService
+    {
+        private readonly bool unlocked;
+        private int saves;
+        internal readonly List<BrowserVaultEntry> Entries = new List<BrowserVaultEntry>();
+        internal int FailOnSaveNumber { get; set; }
+
+        internal FakeImportVault(bool unlockedValue) { unlocked = unlockedValue; }
+        public BrowserVaultStatus GetStatus()
+        {
+            return new BrowserVaultStatus
+            {
+                IsAvailable = true, IsUnlocked = unlocked, EntryCount = Entries.Count,
+                Message = unlocked ? "Unlocked" : "Locked"
+            };
+        }
+        public IList<BrowserVaultEntry> Search(string query)
+        { return Entries.Select(entry => entry.Copy()).ToList(); }
+        public BrowserVaultEntry Get(string id)
+        { return Entries.FirstOrDefault(entry => entry.Id == id); }
+        public BrowserVaultEntry Save(BrowserVaultEntry entry)
+        {
+            saves++;
+            if (FailOnSaveNumber > 0 && saves == FailOnSaveNumber)
+                throw new InvalidOperationException("Injected import write failure.");
+            BrowserVaultEntry saved = entry.Copy();
+            saved.Id = Guid.NewGuid().ToString("N");
+            Entries.Add(saved);
+            return saved.Copy();
+        }
+        public void Delete(string id) { Entries.RemoveAll(entry => entry.Id == id); }
+        public void Unlock() { }
+        public void Lock() { }
+        public string GeneratePassword(BrowserPasswordGenerationOptions options)
+        { return "not-used"; }
     }
 }

@@ -53,6 +53,29 @@ returned to the UI cannot be reliably zeroized by .NET, so the UI must minimize
 their lifetime, never log them, mask password controls, and clear the clipboard
 using the existing timed clipboard policy.
 
+Native password fields conceal characters by default. An explicit reveal lasts at
+most 15 seconds and ends immediately when the entry window loses focus, closes, or
+the vault locks. Copying a username or password replaces any prior pending secret;
+after 30 seconds ZSEC clears it only if the clipboard still contains the exact
+copied value, so newer user clipboard content is never destroyed.
+
+## Credential import boundary
+
+ZSEC does not read installed browser profiles, cookies, session tokens, browsing
+history, passkeys, TOTP seeds, autofill databases, or operating-system credential
+stores. Import begins only when the user chooses **Import browser CSV** in an
+unlocked vault and selects a Chrome, Edge, Brave, or Firefox password-export CSV.
+
+Before writing, ZSEC shows the recognized source format and counts for data rows,
+ready credentials, invalid rows, and duplicates. The parser accepts strict UTF-8
+regular `.csv` files up to 2 MiB and 1,000 data rows, validates bounded fields, and
+accepts HTTPS origins only. Credentials are deduplicated by exact normalized
+origin plus exact username; existing vault entries are skipped and never silently
+overwritten. If a write fails, credentials created by that import are rolled back.
+After a successful import, ZSEC separately offers to delete the plaintext export,
+with **No** as the safe default. It never imports cookies, sessions, passkeys, TOTP
+seeds, or history, and never silently deletes the source export.
+
 ## ZMath/ZBA role
 
 `zmath_commitment` is a SHA-256 commitment over a domain-separated projection of
@@ -78,3 +101,9 @@ vault.Lock();
 and `GeneratePassword` are intended only for trusted native UI code. WebView2 host
 objects and web messaging remain disabled; a webpage must never receive this
 service reference.
+
+There is no vault passphrase to brute-force: unlock delegates to Windows DPAPI for
+the current interactive account. A failed DPAPI, integrity, schema, or key-length
+check leaves the vault locked and does not expose a recovery or override path.
+Adding a cosmetic password-attempt counter would not strengthen this boundary;
+Windows account lockout and session protection remain operating-system controls.
