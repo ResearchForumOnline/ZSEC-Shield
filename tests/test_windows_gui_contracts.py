@@ -442,6 +442,8 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     baseline_view = companion_presentation(baselining)
     assert baseline_view.state == "baselining"
     assert baseline_view.accent == "cyan"
+    assert baseline_view.headline == "Automatic protection is live"
+    assert "one-time coverage inventory completes automatically" in baseline_view.detail
 
     degraded_with_defender = valid_companion()
     degraded_with_defender.update(

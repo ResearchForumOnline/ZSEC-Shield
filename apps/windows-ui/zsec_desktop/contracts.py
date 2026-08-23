@@ -713,10 +713,10 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
     if decision == "baseline_in_progress":
         return CompanionPresentation(
             state="baselining",
-            headline="Automatic protection initialising",
+            headline="Automatic protection is live",
             detail=(
-                "Live change monitoring is active while the first protected-folder "
-                "inventory completes."
+                "Defender enforcement and ZSEC change monitoring are active while the "
+                "one-time coverage inventory completes automatically."
             ),
             accent="cyan",
         )
