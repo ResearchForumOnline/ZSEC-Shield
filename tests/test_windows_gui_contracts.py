@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import queue
 import sys
 import uuid
 from pathlib import Path
@@ -14,6 +15,7 @@ GUI_ROOT = Path(__file__).resolve().parents[1] / "apps" / "windows-ui"
 if str(GUI_ROOT) not in sys.path:
     sys.path.insert(0, str(GUI_ROOT))
 
+from zsec_desktop.app import ZsecDesktop  # noqa: E402
 from zsec_desktop.bridge import BridgeError, CommandResult, ZsecBridge, discover_cli  # noqa: E402
 from zsec_desktop.contracts import (  # noqa: E402
     ContractError,
@@ -206,6 +208,84 @@ def valid_baselining_companion() -> dict[str, object]:
     )
     value["health"]["last_record"] = {"operational_state": "baselining"}
     return value
+
+
+def test_companion_refresh_never_supersedes_a_still_running_evidence_check() -> None:
+    class FakeButton:
+        def __init__(self) -> None:
+            self.states: list[str] = []
+
+        def configure(self, *, state: str) -> None:
+            self.states.append(state)
+
+    desktop = object.__new__(ZsecDesktop)
+    desktop.companion_refresh_inflight = False
+    desktop.companion_refresh_generation = 0
+    buttons = [FakeButton(), FakeButton()]
+    desktop.companion_refresh_buttons = buttons
+    desktop.bridge = type("FakeBridge", (), {"companion_status": lambda self: None})()
+    submissions: list[tuple[object, object, object]] = []
+    desktop._run_async = lambda operation, success, failure: submissions.append(  # type: ignore[method-assign]
+        (operation, success, failure)
+    )
+
+    assert desktop.refresh_companion() is True
+    assert desktop.companion_refresh_generation == 1
+    assert desktop.companion_refresh_inflight is True
+    assert len(submissions) == 1
+    assert all(button.states == ["disabled"] for button in buttons)
+
+    assert desktop.refresh_companion() is False
+    assert desktop.companion_refresh_generation == 1
+    assert len(submissions) == 1
+    assert desktop._finish_companion_refresh(0) is False
+    assert desktop.companion_refresh_inflight is True
+
+    assert desktop._finish_companion_refresh(1) is True
+    assert desktop.companion_refresh_inflight is False
+    assert all(button.states == ["disabled", "normal"] for button in buttons)
+
+
+def test_worker_completion_queue_is_drained_without_cross_thread_tk_calls() -> None:
+    class FakeRoot:
+        def __init__(self) -> None:
+            self.after_calls: list[tuple[int, object]] = []
+            self.callback_errors: list[tuple[type[BaseException], BaseException]] = []
+
+        def after(self, delay: int, callback: object) -> str:
+            self.after_calls.append((delay, callback))
+            return "next-drain"
+
+        def report_callback_exception(
+            self,
+            error_type: type[BaseException],
+            error: BaseException,
+            traceback: object,
+        ) -> None:
+            del traceback
+            self.callback_errors.append((error_type, error))
+
+    desktop = object.__new__(ZsecDesktop)
+    desktop.closing = False
+    desktop.root = FakeRoot()
+    desktop.ui_queue = queue.SimpleQueue()
+    desktop.ui_queue_job = None
+    delivered: list[tuple[str, int]] = []
+
+    def broken_callback() -> None:
+        raise ValueError("synthetic callback failure")
+
+    desktop._post(broken_callback)
+    desktop._post(lambda name, value: delivered.append((name, value)), "companion", 19)
+    assert delivered == []
+    assert desktop.root.after_calls == []
+
+    desktop._drain_ui_queue()
+    assert delivered == [("companion", 19)]
+    assert desktop.ui_queue_job == "next-drain"
+    assert desktop.root.after_calls == [(20, desktop._drain_ui_queue)]
+    assert len(desktop.root.callback_errors) == 1
+    assert desktop.root.callback_errors[0][0] is ValueError
 
 
 def valid_recovery_drill() -> dict[str, object]:

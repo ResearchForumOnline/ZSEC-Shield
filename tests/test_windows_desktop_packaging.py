@@ -156,7 +156,7 @@ def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
     assert "Desktop Preview" not in app
     assert "DESKTOP PREVIEW" not in app
     assert 'self.root.title("ZSEC Antivirus")' in app
-    assert 'text="COMMUNITY 0.3.19"' in app
+    assert 'text="COMMUNITY 0.3.20"' in app
 
 
 def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None:
@@ -202,12 +202,26 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     assert "never treats an unsigned package as trusted" in app
     assert "self.feed_update_refresh_button.configure(state=tk.DISABLED)" in app
     assert "ThreadPoolExecutor(max_workers=4" in app
+    assert "self.companion_refresh_inflight" in app
+    assert "if self.companion_refresh_inflight:" in app
+    assert "def _finish_companion_refresh" in app
+    assert "button.configure(state=tk.DISABLED)" in app
+    assert "Optional diagnostic control; it is not required" in app
+    assert "starts at Windows sign-in, retries after failure" in app
+    assert "queue.SimpleQueue" in app
+    assert "def _drain_ui_queue" in app
+    assert "self.ui_queue.put((callback, arguments))" in app
+    assert "self.root.report_callback_exception(" in app
+    assert "self.root.after(0, callback, *arguments)" not in app
     assert "STARTUP_EVIDENCE_NOTICE_MS = 10_000" in app
+    assert "COMPANION_REFRESH_INTERVAL_MS = 90_000" in app
+    assert "COMPANION_REFRESH_INTERVAL_MS, self._periodic_companion_refresh" in app
     assert 'self.scan_card.set_value("Checking scan evidence…", CYAN)' in app
     assert 'self.windows_card.set_value("Verifying Windows protection…", CYAN)' in app
     assert 'self.windows_card.set_value("Windows verification taking longer", AMBER)' in app
     assert 'self._resolve_startup_evidence("status")' in app
     assert 'self._resolve_startup_evidence("companion")' in app
+    assert '"cyan": CYAN' in app
     assert "Export support snapshot…" in app
     assert "Nothing is uploaded or " in app
     assert '"transmitted automatically."' in app

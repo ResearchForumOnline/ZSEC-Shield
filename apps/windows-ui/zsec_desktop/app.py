@@ -13,6 +13,7 @@ import ctypes
 import json
 import math
 import os
+import queue
 import threading
 import time
 import tkinter as tk
@@ -50,6 +51,7 @@ GREEN = "#32d583"
 AMBER = "#f5b942"
 RED = "#f97066"
 STARTUP_EVIDENCE_NOTICE_MS = 10_000
+COMPANION_REFRESH_INTERVAL_MS = 90_000
 
 
 class ModernStatusCard(tk.Canvas):
@@ -259,6 +261,10 @@ class ZsecDesktop:
         # behind status, readiness and list operations. Every bridge command keeps
         # its own existing timeout and fail-closed contract.
         self.executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="zsec-ui")
+        self.ui_queue: queue.SimpleQueue[
+            tuple[Callable[..., Any], tuple[Any, ...]]
+        ] = queue.SimpleQueue()
+        self.ui_queue_job: str | None = None
         self.closing = False
         self.scan_cancel: threading.Event | None = None
         self.watch_session: WatchSession | None = None
@@ -289,6 +295,8 @@ class ZsecDesktop:
         self.busy_operations = 0
         self.global_busy_visible = False
         self.companion_refresh_generation = 0
+        self.companion_refresh_inflight = False
+        self.companion_refresh_buttons: list[ttk.Button] = []
         self.companion_refresh_job: str | None = None
         self.startup_status_resolved = False
         self.startup_companion_resolved = False
@@ -315,6 +323,7 @@ class ZsecDesktop:
         self._build_header()
         self._build_tabs()
         self._set_initial_evidence_state()
+        self.ui_queue_job = self.root.after(20, self._drain_ui_queue)
         self.tray = TrayController(
             dispatch=lambda callback: self._post(callback),
             open_window=self._open_window,
@@ -329,7 +338,9 @@ class ZsecDesktop:
         self.startup_evidence_deadline_job = self.root.after(
             STARTUP_EVIDENCE_NOTICE_MS, self._startup_evidence_deadline
         )
-        self.companion_refresh_job = self.root.after(30_000, self._periodic_companion_refresh)
+        self.companion_refresh_job = self.root.after(
+            COMPANION_REFRESH_INTERVAL_MS, self._periodic_companion_refresh
+        )
         if startup and self.tray.active:
             self.root.after_idle(self.root.withdraw)
 
@@ -478,7 +489,7 @@ class ZsecDesktop:
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
         ttk.Label(
             title_row,
-            text="COMMUNITY 0.3.19",
+            text="COMMUNITY 0.3.20",
             style="Subtitle.TLabel",
             foreground=AMBER,
         ).pack(
@@ -841,9 +852,11 @@ class ZsecDesktop:
             status_row, text="Companion status not checked", style="Status.TLabel"
         )
         self.companion_status_label.pack(side=tk.LEFT)
-        ttk.Button(
+        companion_check_button = ttk.Button(
             status_row, text="Check installed companion", command=self.refresh_companion
-        ).pack(side=tk.RIGHT)
+        )
+        companion_check_button.pack(side=tk.RIGHT)
+        self.companion_refresh_buttons.append(companion_check_button)
         self.protected_roots_label = ttk.Label(
             panel,
             text="Protected folders: checking installed coverage…",
@@ -858,6 +871,17 @@ class ZsecDesktop:
             style="Surface.TLabel",
             font=("Segoe UI Semibold", 11),
         ).pack(anchor=tk.W)
+        ttk.Label(
+            panel,
+            text=(
+                "Optional diagnostic control; it is not required for normal automatic "
+                "protection. The installed companion selects and monitors its protected "
+                "folders automatically, starts at Windows sign-in, retries after failure, "
+                "and refreshes signed intelligence on its configured schedule."
+            ),
+            style="Muted.TLabel",
+            wraplength=920,
+        ).pack(anchor=tk.W, pady=(4, 2))
         row = ttk.Frame(panel, style="Surface.TFrame")
         row.pack(fill=tk.X, pady=(8, 6))
         self.watch_path = tk.StringVar(value=str(Path.home() / "Downloads"))
@@ -939,9 +963,11 @@ class ZsecDesktop:
             text="Windows protection control plane",
             style="Section.TLabel",
         ).pack(side=tk.LEFT)
-        ttk.Button(header, text="Refresh evidence", command=self.refresh_companion).pack(
-            side=tk.RIGHT
+        windows_refresh_button = ttk.Button(
+            header, text="Refresh evidence", command=self.refresh_companion
         )
+        windows_refresh_button.pack(side=tk.RIGHT)
+        self.companion_refresh_buttons.append(windows_refresh_button)
         ttk.Label(
             panel,
             text=(
@@ -1254,7 +1280,7 @@ class ZsecDesktop:
         self.yubikey_status = ttk.Label(
             panel,
             text=(
-                "Hardware-key recovery is not enabled in Community 0.3.19. When "
+                "Hardware-key recovery is not enabled in Community 0.3.20. When "
                 "quarantine is explicitly enabled, encryption remains automatic, "
                 "authenticated and device-bound."
             ),
@@ -2075,7 +2101,12 @@ class ZsecDesktop:
                 foreground=CYAN,
             )
 
-    def refresh_companion(self) -> None:
+    def refresh_companion(self) -> bool:
+        if self.companion_refresh_inflight:
+            return False
+        self.companion_refresh_inflight = True
+        for button in self.companion_refresh_buttons:
+            button.configure(state=tk.DISABLED)
         self.companion_refresh_generation += 1
         generation = self.companion_refresh_generation
         self._run_async(
@@ -2083,16 +2114,27 @@ class ZsecDesktop:
             lambda result: self._render_companion(result, generation),
             failure=lambda exc: self._companion_failure(exc, generation),
         )
+        return True
+
+    def _finish_companion_refresh(self, generation: int) -> bool:
+        if generation != self.companion_refresh_generation:
+            return False
+        self.companion_refresh_inflight = False
+        for button in self.companion_refresh_buttons:
+            button.configure(state=tk.NORMAL)
+        return True
 
     def _periodic_companion_refresh(self) -> None:
         self.companion_refresh_job = None
         if self.closing:
             return
         self.refresh_companion()
-        self.companion_refresh_job = self.root.after(30_000, self._periodic_companion_refresh)
+        self.companion_refresh_job = self.root.after(
+            COMPANION_REFRESH_INTERVAL_MS, self._periodic_companion_refresh
+        )
 
     def _render_companion(self, result: CommandResult, generation: int) -> None:
-        if generation != self.companion_refresh_generation:
+        if not self._finish_companion_refresh(generation):
             return
         self._resolve_startup_evidence("companion")
         payload = result.payload
@@ -2101,7 +2143,9 @@ class ZsecDesktop:
         presentation = companion_presentation(payload)
         self.tray_companion_status = presentation.headline
         self._update_tray_status()
-        colour = {"green": GREEN, "amber": AMBER, "red": RED}[presentation.accent]
+        colour = {"green": GREEN, "cyan": CYAN, "amber": AMBER, "red": RED}[
+            presentation.accent
+        ]
         self.companion_status_label.configure(
             text=f"{presentation.headline} — {presentation.detail}", foreground=colour
         )
@@ -2279,7 +2323,7 @@ class ZsecDesktop:
         self.refresh_companion()
 
     def _companion_failure(self, exc: BaseException, generation: int) -> None:
-        if generation != self.companion_refresh_generation:
+        if not self._finish_companion_refresh(generation):
             return
         self.latest_companion_payload = None
         self._update_support_export_state()
@@ -2567,13 +2611,37 @@ class ZsecDesktop:
     def _post(self, callback: Callable[..., Any], *arguments: Any) -> None:
         if self.closing:
             return
-        try:
-            self.root.after(0, callback, *arguments)
-        except (RuntimeError, tk.TclError):
+        self.ui_queue.put((callback, arguments))
+
+    def _drain_ui_queue(self) -> None:
+        """Run worker/tray completions only on Tk's owning thread."""
+
+        self.ui_queue_job = None
+        if self.closing:
             return
+        # Schedule the next drain before invoking callbacks so an unexpected UI
+        # callback exception cannot permanently strand later worker completions.
+        self.ui_queue_job = self.root.after(20, self._drain_ui_queue)
+        for _ in range(128):
+            try:
+                callback, arguments = self.ui_queue.get_nowait()
+            except queue.Empty:
+                break
+            try:
+                callback(*arguments)
+            except Exception as exc:
+                self.root.report_callback_exception(
+                    type(exc), exc, exc.__traceback__
+                )
+            if self.closing:
+                return
 
     def _exit_application(self) -> None:
         self.closing = True
+        if self.ui_queue_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.root.after_cancel(self.ui_queue_job)
+            self.ui_queue_job = None
         if hasattr(self, "tray"):
             self.tray.stop()
         if self.animation_job is not None:
