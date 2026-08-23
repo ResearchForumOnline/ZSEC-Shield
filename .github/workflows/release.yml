@@ -5,6 +5,7 @@ on:
   push:
     tags:
       - "v*.*.*"
+      - "!v*-windows"
 
 permissions:
   contents: read
