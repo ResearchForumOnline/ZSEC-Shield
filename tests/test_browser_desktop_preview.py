@@ -36,9 +36,9 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
     assert "unsigned" in readme.lower() and "Community" in readme
-    assert 'internal const string ProductVersion = "0.3.21"' in app
-    assert '$ProductVersion = "0.3.21"' in build
-    assert '$ProductVersion = "0.3.21"' in installer
+    assert 'internal const string ProductVersion = "0.3.22"' in app
+    assert '$ProductVersion = "0.3.22"' in build
+    assert '$ProductVersion = "0.3.22"' in installer
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:
@@ -95,6 +95,13 @@ def test_default_browser_registration_requires_windows_user_confirmation() -> No
     assert 'MenuItem("Set as default browser"' in app
     assert 'FileName = "ms-settings:defaultapps"' in app
     assert "UseShellExecute = true" in app
+
+
+def test_bookmark_bar_is_bounded_and_exposes_search_manager() -> None:
+    app = APP.read_text(encoding="utf-8")
+    assert "productData.Bookmarks.Take(6)" in app
+    assert '"Search all (" + productData.Bookmarks.Count.ToString() + ")"' in app
+    assert '"Search, open, import or organise all bookmarks"' in app
 
 
 def test_browser_build_dependencies_are_pinned_and_reproducible() -> None:

@@ -23,16 +23,16 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.21.0")]
-[assembly: AssemblyFileVersion("0.3.21.0")]
-[assembly: AssemblyInformationalVersion("0.3.21-community")]
+[assembly: AssemblyVersion("0.3.22.0")]
+[assembly: AssemblyFileVersion("0.3.22.0")]
+[assembly: AssemblyInformationalVersion("0.3.22-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.21";
+        internal const string ProductVersion = "0.3.22";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
         internal const string NewTabUri = "https://newtab.zsec.local/index.html";
 
@@ -712,7 +712,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.21";
+            channel.Text = "COMMUNITY 0.3.22";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
@@ -1188,7 +1188,7 @@ namespace TalkToAI.ZsecBrowserPreview
             try
             {
                 bookmarksBar.Controls.Clear();
-                foreach (BrowserBookmark bookmark in productData.Bookmarks.Take(12))
+                foreach (BrowserBookmark bookmark in productData.Bookmarks.Take(6))
                 {
                     Button button = BrowserDialogTheme.Button(
                         Truncate(bookmark.Title, 24),
@@ -1206,7 +1206,10 @@ namespace TalkToAI.ZsecBrowserPreview
                     };
                     bookmarksBar.Controls.Add(button);
                 }
-                Button manage = BrowserDialogTheme.Button("Bookmarks", "Open bookmark manager");
+                Button manage = BrowserDialogTheme.Button(
+                    "Search all (" + productData.Bookmarks.Count.ToString() + ")",
+                    "Search, open, import or organise all bookmarks"
+                );
                 manage.AutoSize = false;
                 manage.Size = new Size(104, 28);
                 manage.Margin = new Padding(4, 0, 2, 0);
