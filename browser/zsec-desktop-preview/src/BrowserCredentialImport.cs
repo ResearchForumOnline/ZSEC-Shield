@@ -66,6 +66,7 @@ namespace TalkToAI.ZsecBrowserPreview
             else if (header.SequenceEqual(FirefoxHeaders)) format = "Firefox password CSV";
             else throw new InvalidDataException("CSV headers are not an accepted browser password export.");
             int urlIndex = header.IndexOf("url");
+            int nameIndex = header.IndexOf("name");
             int usernameIndex = header.IndexOf("username");
             int passwordIndex = header.IndexOf("password");
             int noteIndex = header.IndexOf("note");
@@ -83,6 +84,7 @@ namespace TalkToAI.ZsecBrowserPreview
                     string origin = BrowserCredentialWorkflowPolicy.NormalizeSecureOrigin(row[urlIndex]);
                     BrowserVaultEntry entry = new BrowserVaultEntry
                     {
+                        DisplayName = nameIndex >= 0 ? row[nameIndex] ?? String.Empty : String.Empty,
                         Url = origin,
                         Username = row[usernameIndex] ?? String.Empty,
                         Password = row[passwordIndex] ?? String.Empty,

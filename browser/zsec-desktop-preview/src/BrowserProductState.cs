@@ -235,6 +235,39 @@ namespace TalkToAI.ZsecBrowserPreview
             return removed > 0;
         }
 
+        internal static IReadOnlyList<BrowserBookmark> SearchBookmarks(
+            IEnumerable<BrowserBookmark> bookmarks,
+            string query
+        )
+        {
+            List<BrowserBookmark> source = (bookmarks ?? Enumerable.Empty<BrowserBookmark>())
+                .Where(item => item != null)
+                .ToList();
+            string normalized = (query ?? String.Empty).Trim();
+            if (normalized.Length == 0) return source;
+            if (normalized.Length > 256) normalized = normalized.Substring(0, 256);
+            string[] terms = normalized.Split(
+                new[] { ' ', '\t', '\r', '\n' },
+                StringSplitOptions.RemoveEmptyEntries
+            );
+            return source.Where(bookmark =>
+            {
+                string host = String.Empty;
+                Uri parsed;
+                if (TryNormalizeWebUrl(bookmark.Url, out parsed)) host = parsed.Host;
+                string searchable = String.Join("\n", new[]
+                {
+                    bookmark.Title ?? String.Empty,
+                    bookmark.Url ?? String.Empty,
+                    host
+                });
+                return terms.All(term => searchable.IndexOf(
+                    term,
+                    StringComparison.OrdinalIgnoreCase
+                ) >= 0);
+            }).ToList();
+        }
+
         internal void AddHistory(BrowserProductData data, string title, string url)
         {
             AddHistory(data, title, url, false);

@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal sealed class BrowserVaultEntry
     {
         public string Id { get; set; }
+        public string DisplayName { get; set; }
         public string Url { get; set; }
         public string Username { get; set; }
         public string Password { get; set; }
@@ -18,6 +20,7 @@ namespace TalkToAI.ZsecBrowserPreview
             return new BrowserVaultEntry
             {
                 Id = Id,
+                DisplayName = DisplayName,
                 Url = Url,
                 Username = Username,
                 Password = Password,
@@ -77,6 +80,7 @@ namespace TalkToAI.ZsecBrowserPreview
     internal static class BrowserVaultUiPolicy
     {
         internal const int MaximumUrlLength = 2048;
+        internal const int MaximumDisplayNameLength = 256;
         internal const int MaximumUsernameLength = 320;
         internal const int MaximumPasswordLength = 4096;
         internal const int MaximumNotesLength = 4096;
@@ -102,9 +106,12 @@ namespace TalkToAI.ZsecBrowserPreview
             if (entry == null) return false;
             string normalized = NormalizeSearch(query);
             if (normalized.Length == 0) return true;
-            return Contains(entry.Url, normalized) ||
-                Contains(entry.Username, normalized) ||
-                Contains(entry.Notes, normalized);
+            string[] terms = normalized.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            return terms.All(term =>
+                Contains(entry.DisplayName, term) || Contains(entry.Url, term) ||
+                Contains(DisplaySite(entry.Url), term) || Contains(entry.Username, term) ||
+                Contains(entry.Notes, term)
+            );
         }
 
         internal static string ValidateEntry(BrowserVaultEntry entry)
@@ -113,6 +120,8 @@ namespace TalkToAI.ZsecBrowserPreview
             string url = (entry.Url ?? String.Empty).Trim();
             if (url.Length == 0) return "Enter the website address.";
             if (url.Length > MaximumUrlLength) return "The website address is too long.";
+            if ((entry.DisplayName ?? String.Empty).Length > MaximumDisplayNameLength)
+                return "The display name is too long.";
             Uri parsed;
             if (!Uri.TryCreate(url, UriKind.Absolute, out parsed) ||
                 (parsed.Scheme != Uri.UriSchemeHttps && parsed.Scheme != Uri.UriSchemeHttp))

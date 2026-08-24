@@ -13,7 +13,10 @@ namespace TalkToAI.ZsecBrowserPreview
         public string Name { get; set; }
         public string Root { get; set; }
         public string BookmarkPath { get; set; }
+        public string HistoryPath { get; set; }
         public string SessionPath { get; set; }
+        public string HistoryBoundary { get; set; }
+        public string PasswordBoundary { get; set; }
         public string DisplayName { get { return Browser + " - " + Name; } }
     }
 
@@ -30,6 +33,11 @@ namespace TalkToAI.ZsecBrowserPreview
         public List<BrowserMigrationItem> Items { get; set; }
         public int DuplicateCount { get; set; }
         public string SessionBoundary { get; set; }
+        public string HistoryBoundary { get; set; }
+        public string PasswordBoundary { get; set; }
+        public int BookmarkCount { get { return Items.Count(item => item.Kind == "bookmark"); } }
+        public int HistoryCount { get { return Items.Count(item => item.Kind == "history"); } }
+        public int TabCount { get { return Items.Count(item => item.Kind == "tab"); } }
     }
 
     internal static class BrowserMigrationPolicy
@@ -53,23 +61,36 @@ namespace TalkToAI.ZsecBrowserPreview
             BrowserMigrationProfile profile, IEnumerable<BrowserBookmark> existing)
         {
             if (profile == null) throw new ArgumentNullException("profile");
-            HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, HashSet<string>> seen = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
+            {
+                { "bookmark", new HashSet<string>(StringComparer.OrdinalIgnoreCase) },
+                { "history", new HashSet<string>(StringComparer.OrdinalIgnoreCase) },
+                { "tab", new HashSet<string>(StringComparer.OrdinalIgnoreCase) }
+            };
             foreach (BrowserBookmark bookmark in existing ?? new List<BrowserBookmark>())
-                if (bookmark != null && !String.IsNullOrWhiteSpace(bookmark.Url)) seen.Add(bookmark.Url);
+                if (bookmark != null && !String.IsNullOrWhiteSpace(bookmark.Url)) seen["bookmark"].Add(bookmark.Url);
             BrowserMigrationPlan plan = new BrowserMigrationPlan
             {
                 Profile = profile,
                 Items = new List<BrowserMigrationItem>(),
+                HistoryBoundary = profile.HistoryBoundary ??
+                    "History is not available from this profile through a reviewed, read-only format.",
+                PasswordBoundary = profile.PasswordBoundary ??
+                    "Passwords require an explicit CSV export from the source browser; encrypted browser databases are never decrypted or copied.",
                 SessionBoundary = profile.Browser == "Firefox"
                     ? "Only web URLs from a readable recovery session are offered; cookies, form data and authentication tokens are never copied."
                     : "Open-tab import is unavailable for this Chromium profile because its session format cannot be read here without unsafe state handling. Use the source browser's Bookmark all tabs command, then import bookmarks."
             };
-            foreach (BrowserMigrationItem candidate in ReadBookmarks(profile).Concat(ReadSafeSessionUrls(profile)))
+            foreach (BrowserMigrationItem candidate in ReadBookmarks(profile)
+                .Concat(ReadPortableHistory(profile))
+                .Concat(ReadSafeSessionUrls(profile)))
             {
                 Uri parsed;
                 if (!BrowserDataStore.TryNormalizeWebUrl(candidate.Url, out parsed)) continue;
                 string normalized = parsed.AbsoluteUri;
-                if (!seen.Add(normalized)) { plan.DuplicateCount++; continue; }
+                HashSet<string> kindSeen;
+                if (!seen.TryGetValue(candidate.Kind ?? String.Empty, out kindSeen)) continue;
+                if (!kindSeen.Add(normalized)) { plan.DuplicateCount++; continue; }
                 candidate.Url = normalized;
                 if (String.IsNullOrWhiteSpace(candidate.Title)) candidate.Title = parsed.Host;
                 plan.Items.Add(candidate);
@@ -90,6 +111,25 @@ namespace TalkToAI.ZsecBrowserPreview
             return added;
         }
 
+        internal static int ImportHistory(BrowserDataStore store, BrowserProductData data, BrowserMigrationPlan plan)
+        {
+            if (store == null || data == null || plan == null) throw new ArgumentNullException("plan");
+            if (!data.Settings.RecordHistory) return 0;
+            HashSet<string> existing = new HashSet<string>(
+                data.History.Where(item => item != null).Select(item => item.Url),
+                StringComparer.OrdinalIgnoreCase
+            );
+            int added = 0;
+            foreach (BrowserMigrationItem item in plan.Items.Where(item => item.Kind == "history"))
+            {
+                if (data.History.Count >= BrowserDataStore.MaximumHistoryEntries) break;
+                if (!existing.Add(item.Url)) continue;
+                store.AddHistory(data, item.Title, item.Url, false);
+                added++;
+            }
+            return added;
+        }
+
         private static void AddChromiumProfiles(List<BrowserMigrationProfile> result, string browser, string userData)
         {
             if (!Directory.Exists(userData) || IsReparse(userData)) return;
@@ -98,8 +138,20 @@ namespace TalkToAI.ZsecBrowserPreview
                 string name = Path.GetFileName(root);
                 if (!(name == "Default" || name.StartsWith("Profile ", StringComparison.Ordinal))) continue;
                 string bookmarks = Path.Combine(root, "Bookmarks");
-                if (!File.Exists(bookmarks) || IsReparse(bookmarks)) continue;
-                result.Add(new BrowserMigrationProfile { Browser = browser, Name = name, Root = root, BookmarkPath = bookmarks });
+                string history = Path.Combine(root, "History");
+                string sessions = Path.Combine(root, "Sessions");
+                if (!File.Exists(bookmarks) && !File.Exists(history) && !Directory.Exists(sessions)) continue;
+                result.Add(new BrowserMigrationProfile
+                {
+                    Browser = browser,
+                    Name = name,
+                    Root = root,
+                    BookmarkPath = File.Exists(bookmarks) && !IsReparse(bookmarks) ? bookmarks : null,
+                    HistoryPath = File.Exists(history) && !IsReparse(history) ? history : null,
+                    SessionPath = Directory.Exists(sessions) && !IsReparse(sessions) ? sessions : null,
+                    HistoryBoundary = "This profile stores history in a live Chromium SQLite database. ZSEC does not copy or query the live database; export history to a reviewed JSON file first.",
+                    PasswordBoundary = "Use the source browser's password manager to export CSV, then import it in ZSEC Passwords. The encrypted Login Data database is never decrypted or copied."
+                });
             }
         }
 
@@ -115,8 +167,16 @@ namespace TalkToAI.ZsecBrowserPreview
                     : null;
                 string session = new[] { Path.Combine(root, "sessionstore.json"), Path.Combine(root, "sessionstore-backups", "recovery.json") }
                     .FirstOrDefault(File.Exists);
-                if (bookmark == null && session == null) continue;
-                result.Add(new BrowserMigrationProfile { Browser = "Firefox", Name = Path.GetFileName(root), Root = root, BookmarkPath = bookmark, SessionPath = session });
+                string places = Path.Combine(root, "places.sqlite");
+                if (bookmark == null && session == null && !File.Exists(places)) continue;
+                result.Add(new BrowserMigrationProfile
+                {
+                    Browser = "Firefox", Name = Path.GetFileName(root), Root = root,
+                    BookmarkPath = bookmark, SessionPath = session,
+                    HistoryPath = File.Exists(places) && !IsReparse(places) ? places : null,
+                    HistoryBoundary = "This profile stores history in a live Firefox places.sqlite database. ZSEC does not copy or query the live database; export history to a reviewed JSON file first.",
+                    PasswordBoundary = "Use Firefox Passwords to export CSV, then import it in ZSEC Passwords. logins.json and key4.db are never decrypted or copied."
+                });
             }
         }
 
@@ -133,9 +193,55 @@ namespace TalkToAI.ZsecBrowserPreview
         {
             if (profile.Browser != "Firefox" || String.IsNullOrWhiteSpace(profile.SessionPath))
                 return new List<BrowserMigrationItem>();
-            object root = ReadJson(profile.SessionPath);
             List<BrowserMigrationItem> items = new List<BrowserMigrationItem>();
-            Walk(root, items, "tab", false);
+            object root = ReadJson(profile.SessionPath);
+            IDictionary<string, object> rootMap = root as IDictionary<string, object>;
+            object windowsValue;
+            object[] windows = rootMap != null && rootMap.TryGetValue("windows", out windowsValue)
+                ? windowsValue as object[] : null;
+            if (windows == null) return items;
+            foreach (object windowValue in windows)
+            {
+                IDictionary<string, object> window = windowValue as IDictionary<string, object>;
+                object tabsValue;
+                object[] tabs = window != null && window.TryGetValue("tabs", out tabsValue)
+                    ? tabsValue as object[] : null;
+                if (tabs == null) continue;
+                foreach (object tabValue in tabs)
+                {
+                    IDictionary<string, object> tab = tabValue as IDictionary<string, object>;
+                    object entriesValue;
+                    object[] entries = tab != null && tab.TryGetValue("entries", out entriesValue)
+                        ? entriesValue as object[] : null;
+                    if (entries == null || entries.Length == 0) continue;
+                    int selected = entries.Length - 1;
+                    object indexValue;
+                    int index;
+                    if (tab.TryGetValue("index", out indexValue) && Int32.TryParse(Convert.ToString(indexValue), out index))
+                        selected = Math.Max(0, Math.Min(entries.Length - 1, index - 1));
+                    IDictionary<string, object> entry = entries[selected] as IDictionary<string, object>;
+                    object urlValue;
+                    if (entry == null || !entry.TryGetValue("url", out urlValue)) continue;
+                    object titleValue;
+                    entry.TryGetValue("title", out titleValue);
+                    items.Add(new BrowserMigrationItem { Kind = "tab", Title = titleValue as string, Url = urlValue as string });
+                    if (items.Count >= MaximumCandidates) return items;
+                }
+            }
+            return items;
+        }
+
+        private static IEnumerable<BrowserMigrationItem> ReadPortableHistory(BrowserMigrationProfile profile)
+        {
+            // Live Chromium/Firefox history stores are SQLite databases which may be
+            // locked and contain more state than URLs. Only an explicitly assigned,
+            // regular JSON export is accepted by this policy layer.
+            if (String.IsNullOrWhiteSpace(profile.HistoryPath) ||
+                !String.Equals(Path.GetExtension(profile.HistoryPath), ".json", StringComparison.OrdinalIgnoreCase))
+                return new List<BrowserMigrationItem>();
+            object root = ReadJson(profile.HistoryPath);
+            List<BrowserMigrationItem> items = new List<BrowserMigrationItem>();
+            Walk(root, items, "history", false);
             return items;
         }
 

@@ -83,7 +83,7 @@ namespace TalkToAI.ZsecBrowserPreview
             search = new TextBox();
             search.Dock = DockStyle.Fill;
             search.AccessibleName = "Search saved passwords";
-            search.AccessibleDescription = "Search website addresses, usernames and notes.";
+            search.AccessibleDescription = "Search display names, websites, domains, usernames and notes. Password text is never searched.";
             search.TextChanged += delegate { Touch(); RefreshRows(); };
             Label searchLabel = new Label();
             searchLabel.Text = "Search";
@@ -99,13 +99,15 @@ namespace TalkToAI.ZsecBrowserPreview
             grid.AccessibleDescription =
                 "Passwords are not displayed. Select an entry to edit or copy its fields.";
             grid.Columns.Add("Site", "Website");
+            grid.Columns.Add("DisplayName", "Name");
             grid.Columns.Add("Username", "Username");
             grid.Columns.Add("Updated", "Updated (UTC)");
             grid.Columns.Add("Id", "Id");
-            grid.Columns[0].FillWeight = 42;
-            grid.Columns[1].FillWeight = 38;
-            grid.Columns[2].FillWeight = 20;
-            grid.Columns[3].Visible = false;
+            grid.Columns[0].FillWeight = 30;
+            grid.Columns[1].FillWeight = 25;
+            grid.Columns[2].FillWeight = 30;
+            grid.Columns[3].FillWeight = 15;
+            grid.Columns[4].Visible = false;
             grid.CellDoubleClick += delegate { EditSelected(); };
             grid.SelectionChanged += delegate { Touch(); RefreshActionAvailability(); };
 
@@ -185,7 +187,7 @@ namespace TalkToAI.ZsecBrowserPreview
             get
             {
                 if (grid.SelectedRows.Count != 1) return null;
-                return grid.SelectedRows[0].Cells[3].Value as string;
+                return grid.SelectedRows[0].Cells["Id"].Value as string;
             }
         }
 
@@ -271,6 +273,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 {
                     grid.Rows.Add(
                         BrowserVaultUiPolicy.DisplaySite(entry.Url),
+                        entry.DisplayName,
                         entry.Username,
                         entry.UpdatedAtUtc,
                         entry.Id
@@ -502,6 +505,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly BrowserVaultEntry working;
         private readonly TextBox url;
         private readonly TextBox username;
+        private readonly TextBox displayName;
         private readonly TextBox password;
         private readonly TextBox notes;
         private readonly NumericUpDown generatedLength;
@@ -536,11 +540,12 @@ namespace TalkToAI.ZsecBrowserPreview
             form.Dock = DockStyle.Fill;
             form.Padding = new Padding(16);
             form.ColumnCount = 2;
-            form.RowCount = 9;
+            form.RowCount = 10;
             form.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 125));
             form.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             url = Field("Website address", working.Url, false);
+            displayName = Field("Display name", working.DisplayName, false);
             username = Field("Username", working.Username, false);
             password = Field("Password", working.Password, true);
             notes = Field("Notes", working.Notes, false);
@@ -548,8 +553,9 @@ namespace TalkToAI.ZsecBrowserPreview
             notes.Height = 100;
             notes.ScrollBars = ScrollBars.Vertical;
             AddRow(form, 0, "Website", url);
-            AddRow(form, 1, "Username", username);
-            AddRow(form, 2, "Password", password);
+            AddRow(form, 1, "Name", displayName);
+            AddRow(form, 2, "Username", username);
+            AddRow(form, 3, "Password", password);
 
             FlowLayoutPanel passwordControls = new FlowLayoutPanel();
             passwordControls.AutoSize = true;
@@ -594,14 +600,14 @@ namespace TalkToAI.ZsecBrowserPreview
             {
                 show, generatedLength, upper, lower, digits, symbols, generate
             });
-            AddRow(form, 3, "Generator", passwordControls);
-            AddRow(form, 4, "Notes", notes);
+            AddRow(form, 4, "Generator", passwordControls);
+            AddRow(form, 5, "Notes", notes);
 
             Label guidance = BrowserDialogTheme.Description(
                 "Passwords stay concealed in the list. Reveal automatically ends after 15 seconds. Copy actions clear unchanged clipboard content after 30 seconds. The vault locks automatically after five idle minutes."
             );
             guidance.AccessibleName = "Password vault safety guidance";
-            form.Controls.Add(guidance, 0, 5);
+            form.Controls.Add(guidance, 0, 6);
             form.SetColumnSpan(guidance, 2);
 
             FlowLayoutPanel footer = new FlowLayoutPanel();
@@ -625,7 +631,7 @@ namespace TalkToAI.ZsecBrowserPreview
             FormClosed += delegate { revealTimer.Stop(); revealTimer.Dispose(); };
             KeyDown += delegate { activity(); };
             MouseMove += delegate { activity(); };
-            foreach (TextBox field in new[] { url, username, password, notes })
+            foreach (TextBox field in new[] { url, displayName, username, password, notes })
             {
                 field.TextChanged += delegate { activity(); };
             }
@@ -725,6 +731,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private void Save()
         {
             working.Url = url.Text.Trim();
+            working.DisplayName = displayName.Text.Trim();
             working.Username = username.Text;
             working.Password = password.Text;
             working.Notes = notes.Text;

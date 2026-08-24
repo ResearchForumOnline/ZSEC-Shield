@@ -88,6 +88,7 @@ internal static class BrowserProductStateTests
         Assert(plan.InvalidRows == 1, "Credential import insecure row was not counted invalid.");
         Assert(plan.Candidates[0].Url == "https://example.com", "Imported URL was not origin-bound.");
         Assert(plan.Candidates[1].Password == "comma,password", "Quoted CSV password was parsed incorrectly.");
+        Assert(plan.Candidates[0].DisplayName == "Example", "Imported Chromium display name was not retained.");
         Assert(BrowserCredentialImportPolicy.SourceMatchesPlan(chromium, plan),
             "Unchanged credential export did not match its preview hash.");
 
@@ -367,6 +368,7 @@ internal static class BrowserProductStateTests
         service.Unlock();
         BrowserVaultEntry saved = service.Save(new BrowserVaultEntry
         {
+            DisplayName = "Investigations mailbox",
             Url = "https://example.com/login",
             Username = "journalist@example.com",
             Password = "test-only-secret-value",
@@ -375,6 +377,10 @@ internal static class BrowserProductStateTests
         Assert(saved.Id.Length == 32, "Password record ID is invalid.");
         Assert(service.GetStatus().EntryCount == 1, "Password vault count is wrong.");
         Assert(service.Search("journalist").Count == 1, "Password vault search failed.");
+        Assert(service.Search("Investigations").Count == 1, "Password vault display-name search failed.");
+        Assert(service.Search("example.com journalist").Count == 1, "Password vault multi-field search failed.");
+        Assert(service.Search("test-only-secret-value").Count == 0, "Password plaintext was searched.");
+        Assert(service.Search(String.Empty)[0].Password == null, "Password was returned in search metadata.");
         service.Lock();
         bool locked = false;
         try { service.Get(saved.Id); }
@@ -437,6 +443,7 @@ internal static class BrowserProductStateTests
     {
         BrowserVaultEntry entry = new BrowserVaultEntry
         {
+            DisplayName = "Daily News Login",
             Url = "https://news.example/login",
             Username = "Reporter@Example.com",
             Password = "test-only-value",
@@ -444,7 +451,10 @@ internal static class BrowserProductStateTests
         };
         Assert(BrowserVaultUiPolicy.ValidateEntry(entry) == null, "Valid vault entry was rejected.");
         Assert(BrowserVaultUiPolicy.Matches(entry, "reporter"), "Username search is not case-insensitive.");
+        Assert(BrowserVaultUiPolicy.Matches(entry, "daily news"), "Display-name multi-term search failed.");
+        Assert(BrowserVaultUiPolicy.Matches(entry, "news.example reporter"), "Cross-field search failed.");
         Assert(BrowserVaultUiPolicy.Matches(entry, "investigations"), "Notes search failed.");
+        Assert(!BrowserVaultUiPolicy.Matches(entry, "test-only-value"), "Password content was included in search.");
         Assert(!BrowserVaultUiPolicy.Matches(entry, "unrelated"), "Search matched unrelated content.");
         entry.Url = "javascript:alert(1)";
         Assert(BrowserVaultUiPolicy.ValidateEntry(entry) != null, "Unsafe vault URL was accepted.");
@@ -581,6 +591,20 @@ internal static class BrowserProductStateTests
         Assert(data.Bookmarks[0].Title == "Updated", "Duplicate bookmark title was not updated.");
         Assert(!store.AddBookmark(data, "Unsafe", "javascript:alert(1)"), "Unsafe bookmark URL was accepted.");
 
+        store.AddBookmark(data, "Privacy News", "https://updates.example.org/articles/one");
+        IReadOnlyList<BrowserBookmark> titleMatches = BrowserDataStore.SearchBookmarks(data.Bookmarks, "privacy");
+        Assert(titleMatches.Count == 1 && titleMatches[0].Title == "Privacy News",
+            "Bookmark title search did not match case-insensitively.");
+        IReadOnlyList<BrowserBookmark> domainMatches = BrowserDataStore.SearchBookmarks(data.Bookmarks, "EXAMPLE.ORG");
+        Assert(domainMatches.Count == 1 && domainMatches[0].Url.Contains("updates.example.org"),
+            "Bookmark domain search did not match case-insensitively.");
+        IReadOnlyList<BrowserBookmark> multiTermMatches = BrowserDataStore.SearchBookmarks(data.Bookmarks, "updates one");
+        Assert(multiTermMatches.Count == 1, "Bookmark multi-term URL search did not require every term.");
+        Assert(BrowserDataStore.SearchBookmarks(data.Bookmarks, "missing").Count == 0,
+            "Bookmark search returned an unrelated item.");
+        Assert(BrowserDataStore.SearchBookmarks(data.Bookmarks, "   ").Count == data.Bookmarks.Count,
+            "Empty bookmark search did not return every item.");
+
         Directory.CreateDirectory(root);
         string export = Path.Combine(root, "bookmarks.html");
         store.ExportBookmarksHtml(data, export);
@@ -665,13 +689,20 @@ internal static class BrowserProductStateTests
         Assert(plan.Items[0].Kind == "bookmark" && plan.Items[0].Url == "https://news.example/story",
             "Migration preview did not preserve the safe bookmark.");
         Assert(plan.SessionBoundary.Contains("Bookmark all tabs"), "Chromium session safety boundary is absent.");
+        Assert(plan.HistoryBoundary.Contains("not available"), "Unavailable-history boundary is absent.");
+        Assert(plan.PasswordBoundary.Contains("never decrypted"), "Chromium password boundary is absent.");
+        Assert(plan.BookmarkCount == 1 && plan.HistoryCount == 0 && plan.TabCount == 0,
+            "Migration per-kind preview counts are wrong.");
         Assert(BrowserMigrationPolicy.ImportBookmarks(store, data, plan) == 1,
             "One-click bookmark migration count is wrong.");
         Assert(data.Bookmarks.Count == 2, "One-click migration did not preserve existing bookmarks.");
 
         string session = Path.Combine(root, "sessionstore.json");
         File.WriteAllText(session,
-            "{\"windows\":[{\"tabs\":[{\"entries\":[{\"title\":\"Mail\",\"url\":\"https://mail.example/inbox\"},{\"url\":\"file:///secret\"}]}]}]}",
+            "{\"cookies\":[{\"host\":\"mail.example\",\"value\":\"secret-token\"}]," +
+            "\"windows\":[{\"tabs\":[{\"index\":1,\"entries\":[" +
+            "{\"title\":\"Mail\",\"url\":\"https://mail.example/inbox\"}," +
+            "{\"title\":\"Old page\",\"url\":\"https://old.example/\"}]}]}]}",
             new UTF8Encoding(false));
         BrowserMigrationProfile firefox = new BrowserMigrationProfile
         {
@@ -679,9 +710,31 @@ internal static class BrowserProductStateTests
         };
         BrowserMigrationPlan sessionPlan = BrowserMigrationPolicy.Preview(firefox, data.Bookmarks);
         Assert(sessionPlan.Items.Count == 1 && sessionPlan.Items[0].Kind == "tab",
-            "Firefox URL-only session preview did not filter non-web state.");
+            "Firefox URL-only session preview did not select only the current tab entry.");
+        Assert(sessionPlan.Items[0].Url == "https://mail.example/inbox",
+            "Firefox session preview restored tab back-history instead of the selected entry.");
         Assert(sessionPlan.SessionBoundary.Contains("authentication tokens"),
             "Firefox session credential boundary is absent.");
+
+        string history = Path.Combine(root, "history-export.json");
+        File.WriteAllText(history,
+            "[{\"title\":\"Article\",\"url\":\"https://history.example/story\"}," +
+            "{\"title\":\"Unsafe\",\"url\":\"file:///private\"}]", new UTF8Encoding(false));
+        BrowserMigrationProfile portable = new BrowserMigrationProfile
+        {
+            Browser = "Firefox", Name = "portable", Root = root, HistoryPath = history
+        };
+        BrowserMigrationPlan historyPlan = BrowserMigrationPolicy.Preview(portable, new List<BrowserBookmark>());
+        Assert(historyPlan.HistoryCount == 1 && historyPlan.Items[0].Kind == "history",
+            "Reviewed portable history JSON was not previewed safely.");
+        int importedHistory = BrowserMigrationPolicy.ImportHistory(store, data, historyPlan);
+        Assert(importedHistory == 1 && data.History.Any(item => item.Url == "https://history.example/story"),
+            "One-click portable history import failed.");
+        Assert(BrowserMigrationPolicy.ImportHistory(store, data, historyPlan) == 0 && data.History.Count == 1,
+            "Portable history import overwrote or duplicated an existing address.");
+        data.Settings.RecordHistory = false;
+        Assert(BrowserMigrationPolicy.ImportHistory(store, data, historyPlan) == 0,
+            "History migration bypassed the user's disabled history setting.");
     }
 
     private static void TestAddressSuggestionsAndSearch(string root)

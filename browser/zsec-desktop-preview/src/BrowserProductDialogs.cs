@@ -143,6 +143,8 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly BrowserProductData data;
         private readonly Action<string> openUrl;
         private readonly DataGridView grid;
+        private readonly TextBox search;
+        private readonly Label resultCount;
 
         internal BookmarksDialog(
             BrowserDataStore browserStore,
@@ -158,6 +160,32 @@ namespace TalkToAI.ZsecBrowserPreview
             MinimumSize = new Size(660, 420);
             BrowserDialogTheme.Apply(this);
 
+            TableLayoutPanel searchPanel = new TableLayoutPanel();
+            searchPanel.Dock = DockStyle.Top;
+            searchPanel.Height = 52;
+            searchPanel.Padding = new Padding(10, 10, 10, 7);
+            searchPanel.ColumnCount = 3;
+            searchPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            searchPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            searchPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            searchPanel.BackColor = BrowserDialogTheme.Background;
+            Label searchLabel = new Label();
+            searchLabel.Text = "&Search:";
+            searchLabel.AutoSize = true;
+            searchLabel.ForeColor = BrowserDialogTheme.Foreground;
+            searchLabel.Anchor = AnchorStyles.Left;
+            search = new TextBox();
+            search.Dock = DockStyle.Fill;
+            search.AccessibleName = "Search bookmarks by name, address or domain";
+            resultCount = new Label();
+            resultCount.ForeColor = BrowserDialogTheme.Muted;
+            resultCount.Anchor = AnchorStyles.Left;
+            resultCount.AutoSize = true;
+            resultCount.AccessibleName = "Bookmark search result count";
+            searchPanel.Controls.Add(searchLabel, 0, 0);
+            searchPanel.Controls.Add(search, 1, 0);
+            searchPanel.Controls.Add(resultCount, 2, 0);
+
             grid = BrowserDialogTheme.Grid();
             grid.AccessibleName = "Saved bookmarks";
             grid.Columns.Add("Title", "Name");
@@ -165,6 +193,9 @@ namespace TalkToAI.ZsecBrowserPreview
             grid.Columns[0].FillWeight = 35;
             grid.Columns[1].FillWeight = 65;
             grid.CellDoubleClick += delegate { OpenSelected(); };
+            grid.KeyDown += GridKeyDown;
+            search.TextChanged += delegate { RefreshRows(); };
+            search.KeyDown += SearchKeyDown;
 
             FlowLayoutPanel commands = new FlowLayoutPanel();
             commands.Dock = DockStyle.Bottom;
@@ -186,10 +217,14 @@ namespace TalkToAI.ZsecBrowserPreview
             commands.Controls.AddRange(new Control[] { open, remove, import, migrate, export, close });
 
             Controls.Add(grid);
+            Controls.Add(searchPanel);
             Controls.Add(commands);
             AcceptButton = open;
             CancelButton = close;
+            KeyPreview = true;
+            KeyDown += DialogKeyDown;
             RefreshRows();
+            Shown += delegate { search.Focus(); };
         }
 
         private string SelectedUrl
@@ -203,10 +238,77 @@ namespace TalkToAI.ZsecBrowserPreview
 
         private void RefreshRows()
         {
+            string selected = SelectedUrl;
             grid.Rows.Clear();
-            foreach (BrowserBookmark bookmark in data.Bookmarks)
+            IReadOnlyList<BrowserBookmark> matches = BrowserDataStore.SearchBookmarks(
+                data.Bookmarks,
+                search.Text
+            );
+            foreach (BrowserBookmark bookmark in matches)
             {
-                grid.Rows.Add(bookmark.Title, bookmark.Url);
+                int index = grid.Rows.Add(bookmark.Title, bookmark.Url);
+                grid.Rows[index].Tag = bookmark;
+            }
+            resultCount.Text = String.IsNullOrWhiteSpace(search.Text)
+                ? matches.Count.ToString() + " bookmark(s)"
+                : matches.Count.ToString() + " of " + data.Bookmarks.Count.ToString();
+            if (!String.IsNullOrWhiteSpace(selected))
+            {
+                foreach (DataGridViewRow row in grid.Rows)
+                    if (String.Equals(row.Cells[1].Value as string, selected, StringComparison.OrdinalIgnoreCase))
+                    { row.Selected = true; grid.CurrentCell = row.Cells[0]; break; }
+            }
+        }
+
+        private void DialogKeyDown(object sender, KeyEventArgs args)
+        {
+            if (args.Control && args.KeyCode == Keys.F)
+            {
+                search.Focus();
+                search.SelectAll();
+                args.Handled = true;
+                args.SuppressKeyPress = true;
+            }
+        }
+
+        private void SearchKeyDown(object sender, KeyEventArgs args)
+        {
+            if (args.KeyCode == Keys.Down && grid.Rows.Count > 0)
+            {
+                grid.Focus();
+                grid.CurrentCell = grid.Rows[0].Cells[0];
+                grid.Rows[0].Selected = true;
+                args.Handled = true;
+                args.SuppressKeyPress = true;
+            }
+            else if (args.KeyCode == Keys.Escape && search.TextLength > 0)
+            {
+                search.Clear();
+                args.Handled = true;
+                args.SuppressKeyPress = true;
+            }
+        }
+
+        private void GridKeyDown(object sender, KeyEventArgs args)
+        {
+            if (args.KeyCode == Keys.Enter)
+            {
+                OpenSelected();
+                args.Handled = true;
+                args.SuppressKeyPress = true;
+            }
+            else if (args.KeyCode == Keys.Delete)
+            {
+                RemoveSelected();
+                args.Handled = true;
+                args.SuppressKeyPress = true;
+            }
+            else if (args.Control && args.KeyCode == Keys.F)
+            {
+                search.Focus();
+                search.SelectAll();
+                args.Handled = true;
+                args.SuppressKeyPress = true;
             }
         }
 
@@ -319,19 +421,21 @@ namespace TalkToAI.ZsecBrowserPreview
             Text = "Migration centre - ZSEC Browser";
             Size = new Size(860, 590); MinimumSize = new Size(700, 460);
             BrowserDialogTheme.Apply(this);
-            FlowLayoutPanel top = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 105, Padding = new Padding(10), BackColor = BrowserDialogTheme.Background };
+            FlowLayoutPanel top = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 120, Padding = new Padding(10), BackColor = BrowserDialogTheme.Background };
             profiles = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 280, AccessibleName = "Source browser profile" };
             profiles.SelectedIndexChanged += delegate { Preview(); };
             Button scan = BrowserDialogTheme.Button("Scan profiles", "Discover installed browser profiles");
             Button inspect = BrowserDialogTheme.Button("Preview", "Preview safe migration items");
+            Button history = BrowserDialogTheme.Button("History JSON", "Choose an explicitly exported browser history JSON file");
             scan.Click += delegate { Discover(); }; inspect.Click += delegate { Preview(); };
+            history.Click += delegate { ChooseHistoryExport(); };
             status = BrowserDialogTheme.Description("Select a discovered Brave, Chrome, Edge or Firefox profile. Reading is local and read-only.");
-            top.Controls.AddRange(new Control[] { profiles, scan, inspect, status });
+            top.Controls.AddRange(new Control[] { profiles, scan, inspect, history, status });
             preview = BrowserDialogTheme.Grid(); preview.AccessibleName = "Migration preview";
             preview.Columns.Add("Kind", "Kind"); preview.Columns.Add("Title", "Name"); preview.Columns.Add("Url", "Address");
             preview.Columns[0].FillWeight = 12; preview.Columns[1].FillWeight = 30; preview.Columns[2].FillWeight = 58;
             FlowLayoutPanel bottom = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 58, Padding = new Padding(8), BackColor = BrowserDialogTheme.Background };
-            Button import = BrowserDialogTheme.Button("Import bookmarks", "Import all previewed bookmarks");
+            Button import = BrowserDialogTheme.Button("Import safe data", "Import all previewed bookmarks and portable history");
             Button tabs = BrowserDialogTheme.Button("Open safe tabs", "Open previewed URL-only tabs");
             Button passwords = BrowserDialogTheme.Button("Passwords: export CSV", "Explain password migration boundary");
             Button close = BrowserDialogTheme.Button("Close", "Close migration centre");
@@ -358,16 +462,39 @@ namespace TalkToAI.ZsecBrowserPreview
             {
                 plan = BrowserMigrationPolicy.Preview(discovered[profiles.SelectedIndex], data.Bookmarks);
                 preview.Rows.Clear(); foreach (BrowserMigrationItem item in plan.Items) preview.Rows.Add(item.Kind, item.Title, item.Url);
-                status.Text = plan.Items.Count + " safe unique item(s); " + plan.DuplicateCount + " duplicate(s) skipped. " + plan.SessionBoundary;
+                status.Text = plan.BookmarkCount + " bookmark(s), " + plan.HistoryCount +
+                    " history item(s), " + plan.TabCount + " restorable tab(s); " +
+                    plan.DuplicateCount + " duplicate(s) skipped. " + plan.HistoryBoundary + " " +
+                    plan.SessionBoundary + " " + plan.PasswordBoundary;
             }
             catch (Exception exception) { MessageBox.Show("The profile could not be previewed.\r\n\r\n" + exception.Message, "Migration centre", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+        }
+
+        private void ChooseHistoryExport()
+        {
+            if (profiles.SelectedIndex < 0 || discovered == null) return;
+            using (OpenFileDialog picker = new OpenFileDialog())
+            {
+                picker.Title = "Choose an exported browser history JSON file";
+                picker.Filter = "JSON history export (*.json)|*.json";
+                picker.CheckFileExists = true;
+                picker.Multiselect = false;
+                if (picker.ShowDialog(this) != DialogResult.OK) return;
+                discovered[profiles.SelectedIndex].HistoryPath = picker.FileName;
+                discovered[profiles.SelectedIndex].HistoryBoundary =
+                    "History is being read from the selected regular JSON export; the live browser database remains untouched.";
+                Preview();
+            }
         }
 
         private void Import()
         {
             if (plan == null) return;
-            int count = BrowserMigrationPolicy.ImportBookmarks(store, data, plan);
-            status.Text = count + " bookmark(s) imported; duplicates were left unchanged. " + plan.SessionBoundary;
+            int bookmarks = BrowserMigrationPolicy.ImportBookmarks(store, data, plan);
+            int history = BrowserMigrationPolicy.ImportHistory(store, data, plan);
+            status.Text = bookmarks + " bookmark(s) and " + history +
+                " history item(s) imported; existing same-address records were left unchanged. " +
+                plan.SessionBoundary + " " + plan.PasswordBoundary;
         }
 
         private void OpenTabs()

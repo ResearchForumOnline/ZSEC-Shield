@@ -13,6 +13,7 @@ namespace TalkToAI.ZsecBrowserPreview
     internal sealed class BrowserVaultCredential
     {
         public string Id { get; set; }
+        public string DisplayName { get; set; }
         public string Url { get; set; }
         public string Username { get; set; }
         public string Password { get; set; }
@@ -24,6 +25,7 @@ namespace TalkToAI.ZsecBrowserPreview
     internal sealed class BrowserVaultCredentialSummary
     {
         public string Id { get; set; }
+        public string DisplayName { get; set; }
         public string Url { get; set; }
         public string Username { get; set; }
         public string UpdatedAtUtc { get; set; }
@@ -162,15 +164,16 @@ namespace TalkToAI.ZsecBrowserPreview
 
         internal string Store(string url, string username, string password)
         {
-            return SaveCredential(null, url, username, password, String.Empty).Id;
+            return SaveCredential(null, String.Empty, url, username, password, String.Empty).Id;
         }
 
         internal BrowserVaultCredential SaveCredential(
-            string id, string url, string username, string password, string notes
+            string id, string displayName, string url, string username, string password, string notes
         )
         {
             RequireUnlocked();
             string normalizedUrl = NormalizeUrl(url);
+            string normalizedDisplayName = BoundedText(displayName ?? String.Empty, "display name", 256);
             string normalizedUser = BoundedText(username, "username", 512);
             string normalizedPassword = BoundedText(password, "password", 8192);
             string normalizedNotes = BoundedText(notes ?? String.Empty, "notes", 8192);
@@ -184,6 +187,7 @@ namespace TalkToAI.ZsecBrowserPreview
             BrowserVaultCredential record = new BrowserVaultCredential
             {
                 Id = safeId,
+                DisplayName = normalizedDisplayName,
                 Url = normalizedUrl,
                 Username = normalizedUser,
                 Password = normalizedPassword,
@@ -232,6 +236,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 if (credential == null || credential.Id != safeId)
                     throw new InvalidDataException("Password record identity is invalid.");
                 credential.Url = NormalizeUrl(credential.Url);
+                credential.DisplayName = BoundedText(credential.DisplayName ?? String.Empty, "display name", 256);
                 credential.Username = BoundedText(credential.Username, "username", 512);
                 credential.Password = BoundedText(credential.Password, "password", 8192);
                 credential.Notes = BoundedText(credential.Notes ?? String.Empty, "notes", 8192);
@@ -252,6 +257,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 result.Add(new BrowserVaultCredentialSummary
                 {
                     Id = item.Id,
+                    DisplayName = item.DisplayName,
                     Url = item.Url,
                     Username = item.Username,
                     UpdatedAtUtc = item.UpdatedAtUtc
@@ -635,9 +641,14 @@ namespace TalkToAI.ZsecBrowserPreview
         public IList<BrowserVaultEntry> Search(string query)
         {
             string normalized = BrowserVaultUiPolicy.NormalizeSearch(query);
-            return vault.List().Select(item => ToEntry(vault.Retrieve(item.Id))).Where(
-                item => BrowserVaultUiPolicy.Matches(item, normalized)
-            ).ToList();
+            return vault.List().Select(item =>
+            {
+                BrowserVaultCredential record = vault.Retrieve(item.Id);
+                BrowserVaultEntry metadata = ToEntry(record);
+                metadata.Password = null;
+                record.Password = String.Empty;
+                return metadata;
+            }).Where(item => BrowserVaultUiPolicy.Matches(item, normalized)).ToList();
         }
 
         public BrowserVaultEntry Get(string id)
@@ -651,6 +662,7 @@ namespace TalkToAI.ZsecBrowserPreview
             if (error != null) throw new ArgumentException(error, "entry");
             BrowserVaultCredential saved = vault.SaveCredential(
                 entry.Id,
+                entry.DisplayName ?? String.Empty,
                 entry.Url,
                 entry.Username ?? String.Empty,
                 entry.Password,
@@ -701,6 +713,7 @@ namespace TalkToAI.ZsecBrowserPreview
             return new BrowserVaultEntry
             {
                 Id = value.Id,
+                DisplayName = value.DisplayName,
                 Url = value.Url,
                 Username = value.Username,
                 Password = value.Password,
