@@ -36,9 +36,9 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
     assert "unsigned" in readme.lower() and "Community" in readme
-    assert 'internal const string ProductVersion = "0.3.22"' in app
-    assert '$ProductVersion = "0.3.22"' in build
-    assert '$ProductVersion = "0.3.22"' in installer
+    assert 'internal const string ProductVersion = "0.3.23"' in app
+    assert '$ProductVersion = "0.3.23"' in build
+    assert '$ProductVersion = "0.3.23"' in installer
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:
@@ -72,6 +72,19 @@ def test_desktop_preview_preserves_browser_security_controls() -> None:
     assert 'ExpectedShieldsExtensionId = "ddjbjhnlhapggenanpmcidieimaomiif"' in app
     assert 'system_security_products_modified = $false' in installer
     assert 'default_browser_changed = $false' in installer
+
+
+def test_bookmark_import_and_profile_discovery_have_bounded_parser_paths() -> None:
+    state = (ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserProductState.cs").read_text(
+        encoding="utf-8"
+    )
+    migration = (ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserMigration.cs").read_text(
+        encoding="utf-8"
+    )
+    assert state.count("TimeSpan.FromSeconds(2)") >= 2
+    assert "catch (RegexMatchTimeoutException exception)" in state
+    assert "The bookmark HTML took too long to parse safely." in state
+    assert migration.count("if (IsReparse(root)) continue;") >= 2
 
 
 def test_default_browser_registration_requires_windows_user_confirmation() -> None:
@@ -350,7 +363,20 @@ def test_desktop_tabs_popups_and_modern_controls_are_wired() -> None:
     assert "tabs = new DarkTabControl()" in app
     assert "tabs.StripBackColor = Background" in app
     assert "tabs.StripBorderColor = theme.Border" in app
+    assert "tabs.ContentBackColor = Background" in app
+    assert "tabs.ContentBorderColor = theme.Border" in app
     assert "RoundedSurface" in app
+    assert "args.Graphics.Clear(CanvasColor)" in app
+    assert "addressSurface.CanvasColor = PanelBackground" in app
+    assert "addressHost.BackColor = PanelBackground" in app
+    assert "newTabButton.CanvasColor = Background" in app
+    assert "newTabButton.SurfaceColor = PanelBackground" in app
+    assert "newTabButton.HoverColor = HoverSurface" in app
+    assert "newTabButton.BorderColor = theme.Border" in app
+    assert "newTabButton.FocusBorderColor = Accent" in app
+    assert "OnRenderToolStripBackground" in app
+    assert "OnRenderSeparator" in app
+    assert "new ModernToolStripRenderer(HoverSurface, ElevatedSurface, theme.Border)" in app
     assert "ControlStyles.SupportsTransparentBackColor" in app
     assert 'WriteStartupStage("runtime_evidence_ready")' in app
     assert "Profile: isolated" not in app

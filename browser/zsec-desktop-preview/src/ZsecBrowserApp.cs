@@ -23,16 +23,16 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.22.0")]
-[assembly: AssemblyFileVersion("0.3.22.0")]
-[assembly: AssemblyInformationalVersion("0.3.22-community")]
+[assembly: AssemblyVersion("0.3.23.0")]
+[assembly: AssemblyFileVersion("0.3.23.0")]
+[assembly: AssemblyInformationalVersion("0.3.23-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.22";
+        internal const string ProductVersion = "0.3.23";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
         internal const string NewTabUri = "https://newtab.zsec.local/index.html";
 
@@ -153,6 +153,7 @@ namespace TalkToAI.ZsecBrowserPreview
 
     internal sealed class RoundedSurface : Panel
     {
+        internal Color CanvasColor { get; set; }
         internal Color SurfaceColor { get; set; }
         internal Color BorderColor { get; set; }
         internal Color FocusBorderColor { get; set; }
@@ -162,17 +163,19 @@ namespace TalkToAI.ZsecBrowserPreview
         internal RoundedSurface()
         {
             DoubleBuffered = true;
+            CanvasColor = Color.FromArgb(31, 42, 52);
             SurfaceColor = Color.FromArgb(17, 35, 44);
             BorderColor = Color.FromArgb(44, 73, 84);
             FocusBorderColor = Color.FromArgb(57, 220, 190);
             CornerRadius = 14;
-            BackColor = Color.Transparent;
+            BackColor = CanvasColor;
             Padding = new Padding(14, 7, 14, 7);
         }
 
         protected override void OnPaintBackground(PaintEventArgs args)
         {
             args.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            args.Graphics.Clear(CanvasColor);
             Rectangle bounds = new Rectangle(1, 1, Math.Max(1, Width - 3), Math.Max(1, Height - 3));
             using (GraphicsPath path = ModernUi.RoundedRectangle(bounds, CornerRadius))
             using (SolidBrush brush = new SolidBrush(SurfaceColor))
@@ -295,17 +298,39 @@ namespace TalkToAI.ZsecBrowserPreview
     {
         private readonly Color hoverColor;
         private readonly Color pressedColor;
+        private readonly Color separatorColor;
 
-        internal ModernToolStripRenderer(Color hover, Color pressed)
+        internal ModernToolStripRenderer(Color hover, Color pressed, Color separator)
             : base(new ProfessionalColorTable())
         {
             hoverColor = hover;
             pressedColor = pressed;
+            separatorColor = separator;
             RoundedEdges = false;
+        }
+
+        protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs args)
+        {
+            using (SolidBrush background = new SolidBrush(args.ToolStrip.BackColor))
+            {
+                args.Graphics.FillRectangle(background, args.AffectedBounds);
+            }
         }
 
         protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs args)
         {
+        }
+
+        protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs args)
+        {
+            int centre = args.Item.ContentRectangle.Left + args.Item.ContentRectangle.Width / 2;
+            using (Pen separator = new Pen(separatorColor, 1F))
+            {
+                if (args.Vertical)
+                    args.Graphics.DrawLine(separator, centre, 7, centre, Math.Max(7, args.Item.Height - 8));
+                else
+                    args.Graphics.DrawLine(separator, 8, args.Item.Height / 2, Math.Max(8, args.Item.Width - 9), args.Item.Height / 2);
+            }
         }
 
         protected override void OnRenderButtonBackground(ToolStripItemRenderEventArgs args)
@@ -332,9 +357,11 @@ namespace TalkToAI.ZsecBrowserPreview
         private bool pressed;
 
         internal Color SurfaceColor { get; set; }
+        internal Color CanvasColor { get; set; }
         internal Color HoverColor { get; set; }
         internal Color PressedColor { get; set; }
         internal Color BorderColor { get; set; }
+        internal Color FocusBorderColor { get; set; }
         internal int CornerRadius { get; set; }
 
         internal RoundedActionButton()
@@ -348,13 +375,16 @@ namespace TalkToAI.ZsecBrowserPreview
             );
             FlatStyle = FlatStyle.Flat;
             FlatAppearance.BorderSize = 0;
+            CanvasColor = Color.FromArgb(24, 32, 40);
             SurfaceColor = Color.FromArgb(15, 34, 43);
             HoverColor = Color.FromArgb(24, 52, 63);
             PressedColor = Color.FromArgb(30, 74, 83);
             BorderColor = Color.FromArgb(42, 75, 88);
+            FocusBorderColor = Color.FromArgb(57, 220, 190);
             CornerRadius = 10;
             Cursor = Cursors.Hand;
             TabStop = true;
+            BackColor = CanvasColor;
         }
 
         protected override void OnMouseEnter(EventArgs args)
@@ -389,11 +419,12 @@ namespace TalkToAI.ZsecBrowserPreview
         protected override void OnPaint(PaintEventArgs args)
         {
             args.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            args.Graphics.Clear(CanvasColor);
             Rectangle bounds = new Rectangle(1, 1, Math.Max(1, Width - 3), Math.Max(1, Height - 3));
             Color fill = pressed ? PressedColor : hovered ? HoverColor : SurfaceColor;
             using (GraphicsPath path = ModernUi.RoundedRectangle(bounds, CornerRadius))
             using (SolidBrush brush = new SolidBrush(fill))
-            using (Pen border = new Pen(Focused ? Color.FromArgb(0, 229, 170) : BorderColor, Focused ? 1.5F : 1F))
+            using (Pen border = new Pen(Focused ? FocusBorderColor : BorderColor, Focused ? 1.5F : 1F))
             {
                 args.Graphics.FillPath(brush, path);
                 args.Graphics.DrawPath(border, path);
@@ -712,7 +743,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.22";
+            channel.Text = "COMMUNITY 0.3.23";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
@@ -742,7 +773,7 @@ namespace TalkToAI.ZsecBrowserPreview
             navigation.Dock = DockStyle.Top;
             navigation.GripStyle = ToolStripGripStyle.Hidden;
             navigation.RenderMode = ToolStripRenderMode.Professional;
-            navigation.Renderer = new ModernToolStripRenderer(HoverSurface, Color.FromArgb(30, 74, 83));
+            navigation.Renderer = new ModernToolStripRenderer(HoverSurface, ElevatedSurface, theme.Border);
             navigation.BackColor = PanelBackground;
             navigation.ForeColor = Foreground;
             navigation.Padding = new Padding(12, 8, 12, 8);
@@ -758,6 +789,8 @@ namespace TalkToAI.ZsecBrowserPreview
 
             addressSurface = new RoundedSurface();
             addressSurface.Size = new Size(660, 36);
+            addressSurface.CanvasColor = PanelBackground;
+            addressSurface.BackColor = PanelBackground;
             addressSurface.SurfaceColor = ElevatedSurface;
             addressSurface.BorderColor = theme.Border;
             addressSurface.FocusBorderColor = Accent;
@@ -787,6 +820,7 @@ namespace TalkToAI.ZsecBrowserPreview
             addressSurface.Controls.Add(address);
             RefreshAddressSuggestions();
             addressHost = new ToolStripControlHost(addressSurface);
+            addressHost.BackColor = PanelBackground;
             addressHost.AutoSize = false;
             addressHost.Width = 660;
             addressHost.Height = 38;
@@ -863,6 +897,13 @@ namespace TalkToAI.ZsecBrowserPreview
             newTabButton.Text = "+";
             newTabButton.Font = new Font("Segoe UI", 15F, FontStyle.Regular);
             newTabButton.ForeColor = Foreground;
+            newTabButton.CanvasColor = Background;
+            newTabButton.BackColor = Background;
+            newTabButton.SurfaceColor = PanelBackground;
+            newTabButton.HoverColor = HoverSurface;
+            newTabButton.PressedColor = ElevatedSurface;
+            newTabButton.BorderColor = theme.Border;
+            newTabButton.FocusBorderColor = Accent;
             newTabButton.Size = new Size(38, 30);
             newTabButton.AccessibleName = "New tab";
             newTabButton.AccessibleDescription = "Open a protected local new tab (Ctrl+T)";
@@ -887,7 +928,7 @@ namespace TalkToAI.ZsecBrowserPreview
             status.BackColor = PanelBackground;
             status.ForeColor = Muted;
             status.RenderMode = ToolStripRenderMode.Professional;
-            status.Renderer = new ModernToolStripRenderer(HoverSurface, ElevatedSurface);
+            status.Renderer = new ModernToolStripRenderer(HoverSurface, ElevatedSurface, theme.Border);
             status.SizingGrip = false;
             runtimeStatus = new Label();
             runtimeStatus.Text = "Starting Microsoft Chromium runtime...";
@@ -1125,7 +1166,7 @@ namespace TalkToAI.ZsecBrowserPreview
         {
             menu.BackColor = PanelBackground;
             menu.ForeColor = Foreground;
-            menu.Renderer = new ModernToolStripRenderer(HoverSurface, ElevatedSurface);
+            menu.Renderer = new ModernToolStripRenderer(HoverSurface, ElevatedSurface, theme.Border);
         }
 
         private static ToolStripMenuItem MenuItem(

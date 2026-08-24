@@ -135,6 +135,7 @@ namespace TalkToAI.ZsecBrowserPreview
             if (!Directory.Exists(userData) || IsReparse(userData)) return;
             foreach (string root in Directory.GetDirectories(userData))
             {
+                if (IsReparse(root)) continue;
                 string name = Path.GetFileName(root);
                 if (!(name == "Default" || name.StartsWith("Profile ", StringComparison.Ordinal))) continue;
                 string bookmarks = Path.Combine(root, "Bookmarks");
@@ -161,6 +162,7 @@ namespace TalkToAI.ZsecBrowserPreview
             if (!Directory.Exists(profiles) || IsReparse(profiles)) return;
             foreach (string root in Directory.GetDirectories(profiles))
             {
+                if (IsReparse(root)) continue;
                 string backupRoot = Path.Combine(root, "bookmarkbackups");
                 string bookmark = Directory.Exists(backupRoot)
                     ? Directory.GetFiles(backupRoot, "*.json").OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault()

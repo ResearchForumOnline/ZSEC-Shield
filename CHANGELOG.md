@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.23 ZSEC Browser Community - 2026-08-24
+
+- Removed native system-black paint leakage around the rounded address field,
+  new-tab button, toolbar backgrounds and separators. Every browser-owned shell
+  surface now paints from the selected Soft Dark, Slate or Midnight palette and
+  the chosen accent without changing the user's stored theme.
+- Bounded bookmark HTML regular-expression work to two seconds and made timeout
+  failure transactional, so a pathological import cannot leave partially added
+  bookmarks in memory or block the browser UI indefinitely.
+- Rejected discovered Chrome, Edge, Brave and Firefox profile directories when
+  the profile root is a reparse point or junction, closing an automatic-import
+  traversal boundary while retaining the existing file-level checks.
+
 ## 0.3.22 Windows desktop - 2026-08-24
 
 - Replaced the one-shot post-change launcher with a bounded self-restarting

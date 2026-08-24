@@ -126,11 +126,13 @@ namespace TalkToAI.ZsecBrowserPreview
 
         private static readonly Regex BookmarkAnchor = new Regex(
             "<a\\b[^>]*\\bhref\\s*=\\s*(?:\\\"(?<double>[^\\\"]*)\\\"|'(?<single>[^']*)')[^>]*>(?<title>.*?)</a>",
-            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant
+            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant,
+            TimeSpan.FromSeconds(2)
         );
         private static readonly Regex HtmlTag = new Regex(
             @"<[^>]+>",
-            RegexOptions.Singleline | RegexOptions.CultureInvariant
+            RegexOptions.Singleline | RegexOptions.CultureInvariant,
+            TimeSpan.FromSeconds(2)
         );
 
         private readonly string root;
@@ -350,30 +352,48 @@ namespace TalkToAI.ZsecBrowserPreview
             FileInfo file = GetRegularBoundedFile(path, MaximumImportBytes);
             string html = File.ReadAllText(file.FullName, Encoding.UTF8);
             int added = 0;
-            foreach (Match match in BookmarkAnchor.Matches(html))
+            int originalCount = data.Bookmarks.Count;
+            try
             {
-                if (data.Bookmarks.Count >= MaximumBookmarks) break;
-                string candidate = match.Groups["double"].Success
-                    ? match.Groups["double"].Value
-                    : match.Groups["single"].Value;
-                candidate = HttpUtility.HtmlDecode(candidate);
-                Uri parsed;
-                if (!TryNormalizeWebUrl(candidate, out parsed)) continue;
-                if (data.Bookmarks.Any(item =>
-                    String.Equals(item.Url, parsed.AbsoluteUri, StringComparison.OrdinalIgnoreCase)))
+                foreach (Match match in BookmarkAnchor.Matches(html))
                 {
-                    continue;
+                    if (data.Bookmarks.Count >= MaximumBookmarks) break;
+                    string candidate = match.Groups["double"].Success
+                        ? match.Groups["double"].Value
+                        : match.Groups["single"].Value;
+                    candidate = HttpUtility.HtmlDecode(candidate);
+                    Uri parsed;
+                    if (!TryNormalizeWebUrl(candidate, out parsed)) continue;
+                    if (data.Bookmarks.Any(item =>
+                        String.Equals(item.Url, parsed.AbsoluteUri, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        continue;
+                    }
+                    string title = HttpUtility.HtmlDecode(
+                        HtmlTag.Replace(match.Groups["title"].Value, String.Empty)
+                    );
+                    data.Bookmarks.Add(new BrowserBookmark
+                    {
+                        Title = NormalizeTitle(title, parsed.Host),
+                        Url = parsed.AbsoluteUri,
+                        CreatedAtUtc = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                    });
+                    added++;
                 }
-                string title = HttpUtility.HtmlDecode(
-                    HtmlTag.Replace(match.Groups["title"].Value, String.Empty)
-                );
-                data.Bookmarks.Add(new BrowserBookmark
+            }
+            catch (RegexMatchTimeoutException exception)
+            {
+                if (data.Bookmarks.Count > originalCount)
                 {
-                    Title = NormalizeTitle(title, parsed.Host),
-                    Url = parsed.AbsoluteUri,
-                    CreatedAtUtc = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
-                });
-                added++;
+                    data.Bookmarks.RemoveRange(
+                        originalCount,
+                        data.Bookmarks.Count - originalCount
+                    );
+                }
+                throw new InvalidDataException(
+                    "The bookmark HTML took too long to parse safely.",
+                    exception
+                );
             }
             if (added > 0) Save(data);
             return added;
