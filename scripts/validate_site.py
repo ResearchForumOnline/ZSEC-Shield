@@ -71,7 +71,7 @@ BROWSER_RELEASE_BASE = (
 BROWSER_RELEASE_TAG = (
     "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.23-browser"
 )
-BROWSER_RELEASE_REVISION = "516b05f7aefdf76dbd4b1d051c8ec719619f5106"
+BROWSER_RELEASE_REVISION = "5b7628724373ff86e139b028a3de4202ae65195f"
 JSON_LD_DOWNLOADS = {
     "zero-security": ANTIVIRUS_RELEASE_BASE
     + "zsec-antivirus-desktop-0.3.22-windows-x86_64.zip",
@@ -131,12 +131,12 @@ DOWNLOAD_PAGES: dict[str, DownloadPolicy] = {
         },
         "required_text": (
             BROWSER_RELEASE_REVISION,
-            "4,254,752 bytes",
-            "c3dbb21044e7af76e76e86a2b56c44e5c9a74e208c2f23a5e3efbbb825931293",
+            "4,254,721 bytes",
+            "46ee2a47c68425ef8665e16930ba1c22c08dc1e2c0e6386cf182089998418630",
             "2,123 bytes",
-            "8333baf39726ce0c05dd67b78ee2d1919586f75ac73a22e3ed92aed13e40ab68",
+            "dd64dbe81e9711c6dd4c2285f083d58879eb5ac2f99f9982f643dba7ddea72fb",
             "122 bytes",
-            "646e56970b6f67b2c150e42e8d57e224cf3f693fbffee8799f9d9659d28e4b4c",
+            "36aa5226c1fbd4ea45d7b6187958eb2ef52d152f00f01dee984a2f778ef82694",
             "b571451fa2b3c6f7c69072bee8942d5191d8dfe0df4bde0aa10ac9c2d08f856f",
             "WebView2 SDK 1.0.4129.50",
             "not an installed Evergreen runtime version or a Microsoft signature on ZSEC",
@@ -158,18 +158,18 @@ RELEASE_SURFACE_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     "zero-browser/index.html": (
         "0.3.23 Community package",
         BROWSER_RELEASE_REVISION,
-        "4,254,752 bytes",
-        "c3dbb21044e7af76e76e86a2b56c44e5c9a74e208c2f23a5e3efbbb825931293",
+        "4,254,721 bytes",
+        "46ee2a47c68425ef8665e16930ba1c22c08dc1e2c0e6386cf182089998418630",
         BROWSER_RELEASE_BASE + "zsec-browser-community-0.3.23-windows-x64-unsigned.zip",
         "user-operated local encrypted password vault",
         "release-specific installed-runtime result",
     ),
     "zero-browser/privacy/index.html": (
         BROWSER_RELEASE_REVISION,
-        "4,254,752-byte Windows archive",
-        "c3dbb21044e7af76e76e86a2b56c44e5c9a74e208c2f23a5e3efbbb825931293",
+        "4,254,721-byte Windows archive",
+        "46ee2a47c68425ef8665e16930ba1c22c08dc1e2c0e6386cf182089998418630",
         "2,123-byte metadata JSON",
-        "8333baf39726ce0c05dd67b78ee2d1919586f75ac73a22e3ed92aed13e40ab68",
+        "dd64dbe81e9711c6dd4c2285f083d58879eb5ac2f99f9982f643dba7ddea72fb",
         "Password saving and filling are independent opt-in settings",
     ),
     "llms.txt": (
@@ -179,7 +179,7 @@ RELEASE_SURFACE_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         "44,756,203 bytes",
         "Accepted cross-platform core identities",
         "Accepted Windows browser identity",
-        "4,254,752 bytes",
+        "4,254,721 bytes",
         "No release-specific installed-runtime result is claimed",
         ANTIVIRUS_RELEASE_TAG,
         BROWSER_RELEASE_TAG,
