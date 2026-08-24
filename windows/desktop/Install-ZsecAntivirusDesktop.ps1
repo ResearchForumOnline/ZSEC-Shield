@@ -33,6 +33,116 @@ function Test-IsBelow {
     return $child.StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)
 }
 
+function Invoke-ObsoleteDesktopHandoff {
+    param(
+        [Parameter(Mandatory = $true)][string]$ApplicationRoot,
+        [Parameter(Mandatory = $true)][string]$CurrentDesktopExecutable,
+        [int]$GracefulWaitMilliseconds = 8000
+    )
+    $ownedRoot = Get-NormalizedPath $ApplicationRoot
+    $currentExecutable = Get-NormalizedPath $CurrentDesktopExecutable
+    $verified = @()
+    $inspectionErrors = 0
+    try {
+        foreach ($candidate in @(Get-CimInstance Win32_Process -Filter "Name = 'ZSEC Antivirus.exe'" -ErrorAction Stop)) {
+            try {
+                $candidatePath = Get-NormalizedPath ([string]$candidate.ExecutablePath)
+                if (
+                    (Test-IsBelow -Candidate $candidatePath -Parent $ownedRoot) -and
+                    -not [String]::Equals($candidatePath, $currentExecutable, [StringComparison]::OrdinalIgnoreCase)
+                ) {
+                    $verified += [pscustomobject]@{
+                        ProcessId = [int]$candidate.ProcessId
+                        ExecutablePath = $candidatePath
+                    }
+                }
+            }
+            catch { $inspectionErrors++ }
+        }
+    }
+    catch { $inspectionErrors++ }
+
+    $closeRequested = 0
+    foreach ($candidate in $verified) {
+        try {
+            $live = Get-CimInstance Win32_Process -Filter "ProcessId = $($candidate.ProcessId)" -ErrorAction Stop
+            if ($null -eq $live) { continue }
+            $livePath = Get-NormalizedPath ([string]$live.ExecutablePath)
+            if (-not [String]::Equals($livePath, $candidate.ExecutablePath, [StringComparison]::OrdinalIgnoreCase)) {
+                continue
+            }
+            $process = Get-Process -Id $candidate.ProcessId -ErrorAction Stop
+            $closeRequested++
+            [void]$process.CloseMainWindow()
+        }
+        catch { $inspectionErrors++ }
+    }
+
+    $deadline = [DateTime]::UtcNow.AddMilliseconds([Math]::Max(0, $GracefulWaitMilliseconds))
+    do {
+        $remaining = @($verified | Where-Object {
+            $candidate = $_
+            try {
+                $live = Get-CimInstance Win32_Process -Filter "ProcessId = $($candidate.ProcessId)" -ErrorAction Stop
+                if ($null -eq $live) { return $false }
+                $livePath = Get-NormalizedPath ([string]$live.ExecutablePath)
+                return [String]::Equals($livePath, $candidate.ExecutablePath, [StringComparison]::OrdinalIgnoreCase)
+            }
+            catch { return $false }
+        })
+        if ($remaining.Count -eq 0 -or [DateTime]::UtcNow -ge $deadline) { break }
+        Start-Sleep -Milliseconds 200
+    } while ($true)
+    $gracefullyClosed = [Math]::Max(0, $verified.Count - $remaining.Count)
+
+    $forced = @()
+    foreach ($candidate in $remaining) {
+        try {
+            # Re-resolve both PID and executable immediately before force. This
+            # prevents a recycled PID or an outside process from being stopped.
+            $live = Get-CimInstance Win32_Process -Filter "ProcessId = $($candidate.ProcessId)" -ErrorAction Stop
+            if ($null -eq $live) { continue }
+            $livePath = Get-NormalizedPath ([string]$live.ExecutablePath)
+            if (
+                [String]::Equals($livePath, $candidate.ExecutablePath, [StringComparison]::OrdinalIgnoreCase) -and
+                (Test-IsBelow -Candidate $livePath -Parent $ownedRoot) -and
+                -not [String]::Equals($livePath, $currentExecutable, [StringComparison]::OrdinalIgnoreCase)
+            ) {
+                Stop-Process -Id $candidate.ProcessId -Force -ErrorAction Stop
+                $forced += [int]$candidate.ProcessId
+            }
+        }
+        catch { $inspectionErrors++ }
+    }
+    if ($forced.Count -gt 0) { Start-Sleep -Milliseconds 500 }
+
+    $stillRunning = 0
+    foreach ($candidate in $verified) {
+        try {
+            $live = Get-CimInstance Win32_Process -Filter "ProcessId = $($candidate.ProcessId)" -ErrorAction Stop
+            if ($null -ne $live) {
+                $livePath = Get-NormalizedPath ([string]$live.ExecutablePath)
+                if ([String]::Equals($livePath, $candidate.ExecutablePath, [StringComparison]::OrdinalIgnoreCase)) {
+                    $stillRunning++
+                }
+            }
+        }
+        catch { }
+    }
+    return [ordered]@{
+        owned_candidates = [int]$verified.Count
+        graceful_close_requested = [int]$closeRequested
+        closed_during_grace_period = [int]$gracefullyClosed
+        graceful_wait_milliseconds = [int]$GracefulWaitMilliseconds
+        forced_process_ids = @($forced)
+        forced_termination = $forced.Count -gt 0
+        still_running = [int]$stillRunning
+        inspection_errors = [int]$inspectionErrors
+        profiles_preserved = $true
+        security_products_modified = $false
+    }
+}
+
 function Assert-RegularDirectory {
     param([string]$Path)
     $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
@@ -275,6 +385,10 @@ try {
     }
     $companionSynchronized = $true
 
+    $obsoleteWindows = Invoke-ObsoleteDesktopHandoff `
+        -ApplicationRoot (Join-Path $productRoot "App") `
+        -CurrentDesktopExecutable $desktopExe
+
     $result = [ordered]@{
         schema = "zsec.antivirus.windows-desktop-install-result.v1"
         installed = $true
@@ -293,6 +407,8 @@ try {
         companion_activation_verified = $true
         companion_healthy = [bool]$companionResult.healthy
         companion_decision = [string]$companionResult.decision
+        obsolete_windows = $obsoleteWindows
+        profiles_preserved = $true
     }
     $result | ConvertTo-Json -Depth 8
     if ($Open) {

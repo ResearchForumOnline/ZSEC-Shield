@@ -29,6 +29,7 @@ from zsec_desktop.bridge import BridgeError, CommandResult, WatchSession, ZsecBr
 from zsec_desktop.contracts import (
     companion_presentation,
     status_presentation,
+    update_presentation,
     windows_cutover_presentation,
 )
 from zsec_desktop.settings import (
@@ -489,7 +490,7 @@ class ZsecDesktop:
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
         ttk.Label(
             title_row,
-            text="COMMUNITY 0.3.21",
+            text="COMMUNITY 0.3.22",
             style="Subtitle.TLabel",
             foreground=AMBER,
         ).pack(
@@ -516,10 +517,12 @@ class ZsecDesktop:
         ).pack(anchor=tk.W, pady=(4, 0))
 
     def _apply_brand_icon(self) -> None:
+        self.brand_icon: Any | None = None
         try:
             from PIL import ImageTk
 
-            self.brand_icon = ImageTk.PhotoImage(render_mark(64), master=self.root)
+            icon: Any = ImageTk.PhotoImage(render_mark(64), master=self.root)
+            self.brand_icon = icon
             self.root.iconphoto(True, self.brand_icon)
         except (ImportError, OSError, RuntimeError, tk.TclError):
             self.brand_icon = None
@@ -648,7 +651,7 @@ class ZsecDesktop:
         self.overview_cards_frame = ttk.Frame(self.overview_tab)
         self.overview_cards_frame.pack(fill=tk.X)
         self.scan_card = self._overview_card(self.overview_cards_frame, "Last scan")
-        self.feed_card = self._overview_card(self.overview_cards_frame, "Security intelligence")
+        self.feed_card = self._overview_card(self.overview_cards_frame, "Advisory updates")
         self.quarantine_card = self._overview_card(
             self.overview_cards_frame, "Encrypted quarantine"
         )
@@ -1034,7 +1037,7 @@ class ZsecDesktop:
     def _build_feeds(self) -> None:
         panel = self._panel(self.feeds_tab)
         panel.pack(fill=tk.BOTH, expand=True)
-        ttk.Label(panel, text="Security intelligence updates", style="Section.TLabel").pack(
+        ttk.Label(panel, text="Scanner rules and advisory updates", style="Section.TLabel").pack(
             anchor=tk.W
         )
         self.feed_status_label = ttk.Label(
@@ -1050,7 +1053,7 @@ class ZsecDesktop:
         update_heading.pack(fill=tk.X)
         ttk.Label(
             update_heading,
-            text="Automatic update service",
+            text="Automatic advisory catalog",
             style="Surface.TLabel",
             background=SURFACE_ALT,
             font=("Segoe UI Semibold", 11),
@@ -1091,7 +1094,8 @@ class ZsecDesktop:
         ttk.Label(
             update_controls,
             text=(
-                "Signed intelligence updates activate automatically after verification. "
+                "Signed advisory data activates automatically after verification, but it "
+                "does not create malware detection rules or remediate the PC. "
                 "Application releases remain notification-only and require a reviewed "
                 "installer; this interface never treats an unsigned package as trusted."
             ),
@@ -1111,10 +1115,10 @@ class ZsecDesktop:
         ttk.Label(
             panel,
             text=(
-                "Update checks accept data only from the release-owned endpoint. A candidate "
+                "Advisory checks accept data only from the release-owned endpoint. A candidate "
                 "must pass Ed25519 signature, sequence, expiry, schema and payload-digest "
                 "validation before atomic activation. The last valid feed remains active if a "
-                "check fails."
+                "check fails. Scanner rules are the separately verified feed shown above."
             ),
             style="Muted.TLabel",
             wraplength=900,
@@ -1280,7 +1284,7 @@ class ZsecDesktop:
         self.yubikey_status = ttk.Label(
             panel,
             text=(
-                "Hardware-key recovery is not enabled in Community 0.3.21. When "
+                "Hardware-key recovery is not enabled in Community 0.3.22. When "
                 "quarantine is explicitly enabled, encryption remains automatic, "
                 "authenticated and device-bound."
             ),
@@ -1715,25 +1719,11 @@ class ZsecDesktop:
         feed_colour = (
             GREEN if feed["state"] == "valid" else AMBER if feed["state"] == "absent" else RED
         )
-        update = status.get("update_status")
-        update_state = (
-            str(update.get("state") or "unknown").strip().lower()
-            if isinstance(update, dict)
-            else "unknown"
-        )
-        if update_state in {"current", "updated", "healthy"}:
-            intelligence_text = "Current · signed advisory catalog"
-            intelligence_colour = GREEN
-        elif update_state in {"checking", "scheduled"}:
-            intelligence_text = "Checking signed advisory catalog"
-            intelligence_colour = CYAN
-        elif update_state in {"never_checked", "unknown"}:
-            intelligence_text = "Update evidence unavailable"
-            intelligence_colour = AMBER
-        else:
-            intelligence_text = "Signed advisory update needs attention"
-            intelligence_colour = RED
-        self.feed_card.set_value(intelligence_text, intelligence_colour)
+        update_view = update_presentation(status.get("update_status"))
+        update_colour = {
+            "green": GREEN, "cyan": CYAN, "amber": AMBER, "red": RED
+        }[update_view.accent]
+        self.feed_card.set_value(update_view.headline, update_colour)
         self.quarantine_card.set_value(
             (
                 f"{status['quarantine_count']} recovery "
@@ -1769,17 +1759,12 @@ class ZsecDesktop:
             )
             return
 
-        state = str(update.get("state") or "unknown").strip().lower()
-        if state in {"current", "updated", "healthy"}:
-            colour = GREEN
-        elif state in {"checking", "scheduled"}:
-            colour = CYAN
-        elif state in {"never_checked", "unknown"}:
-            colour = AMBER
-        else:
-            colour = RED
+        update_view = update_presentation(update)
+        colour = {"green": GREEN, "cyan": CYAN, "amber": AMBER, "red": RED}[
+            update_view.accent
+        ]
         self.feed_update_state_label.configure(
-            text=state.replace("_", " ").upper(), foreground=colour
+            text=update_view.headline.upper(), foreground=colour
         )
         last_checked = str(update.get("last_checked_at") or "not yet recorded")
         last_success = str(update.get("last_success_at") or "not yet recorded")
@@ -1794,8 +1779,8 @@ class ZsecDesktop:
         sequence = update.get("feed_sequence")
         expires = str(update.get("feed_expires_at") or "not reported")
         sequence_text = str(sequence) if sequence is not None else "not reported"
-        evidence = (
-            f"Source: {source}  ·  Feed sequence: {sequence_text}  ·  Expires: {expires}"
+        evidence = update_view.detail + "  ·  " + (
+            f"Source: {source}  ·  Advisory sequence: {sequence_text}  ·  Expires: {expires}"
         )
         error = update.get("error")
         if error:

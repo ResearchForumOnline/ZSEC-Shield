@@ -13,7 +13,7 @@ installer, or registered primary-antivirus replacement.
 
 | Surface | Version/status | What it contains |
 | --- | --- | --- |
-| Community release represented by this source | `0.3.12` | Defender-backed Windows control plane, bounded local scanning, post-change monitoring, encrypted quarantine, signed data-only feeds, and browser controls described below |
+| Current Windows desktop source | `0.3.22` | Defender-backed Windows control plane, bounded local scanning, self-restarting post-change monitoring, encrypted quarantine, signed data-only feeds, and browser controls described below |
 | Unpublished artifact checkpoint | [`v0.3.11`](https://github.com/ResearchForumOnline/ZSEC-Shield/tree/v0.3.11) | Exact extracted-package acceptance found that the no-argument Antivirus installer and nested companion synchronizer could receive an empty sibling root under built-in Windows PowerShell 5.1; the draft release was not promoted or accepted for installation |
 | Unpublished source checkpoint | [`v0.3.10`](https://github.com/ResearchForumOnline/ZSEC-Shield/tree/v0.3.10) | Browser artifact acceptance found non-deterministic compiler output and machine-specific build paths in the packaged manifest, so this checkpoint was not promoted to an accepted Browser package |
 | Published release rejected for site cutover | [`v0.3.9`](https://github.com/ResearchForumOnline/ZSEC-Shield/tree/v0.3.9) | Rejected for the TalkToAI site cutover because the installed Windows status path could reject Defender evidence when `FullScanAge` carried the no-scan sentinel; its immutable bytes remain available for historical verification and should not be used for provider-handoff decisions |

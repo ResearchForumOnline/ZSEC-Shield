@@ -6,6 +6,7 @@ import os
 import queue
 import sys
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -21,6 +22,7 @@ from zsec_desktop.contracts import (  # noqa: E402
     ContractError,
     companion_presentation,
     status_presentation,
+    update_presentation,
     validate_companion_status,
     validate_quarantine_list,
     validate_readiness,
@@ -380,6 +382,48 @@ def test_status_contract_never_turns_incomplete_or_inconsistent_evidence_green()
         validate_status(overclaim)
 
 
+def test_advisory_update_presentation_exposes_failures_retention_and_overdue_state() -> None:
+    update = {
+        "state": "current",
+        "last_checked_at": "2026-08-24T08:00:00Z",
+        "last_success_at": "2026-08-24T08:00:00Z",
+        "next_check_at": "2026-08-25T08:00:00Z",
+        "feed_sequence": 12,
+        "feed_expires_at": "2026-09-01T08:00:00Z",
+        "source": "https://talktoai.org/zsec/intelligence/v1/feed.json",
+        "error": None,
+    }
+    status = valid_status()
+    status["update_status"] = update
+    validate_status(status)
+    current = update_presentation(update, now=datetime(2026, 8, 24, 12, tzinfo=UTC))
+    assert current.state == "current" and "creates no detection rule" in current.detail
+
+    failed = dict(update, state="error", error="FeedError: offline")
+    retained = update_presentation(failed, now=datetime(2026, 8, 24, 12, tzinfo=UTC))
+    assert retained.state == "degraded_retained"
+    assert "prior catalog retained" in retained.headline
+    assert "offline" in retained.detail
+
+    never_succeeded = update_presentation(
+        dict(failed, last_success_at=None), now=datetime(2026, 8, 24, 12, tzinfo=UTC)
+    )
+    assert never_succeeded.state == "failed" and never_succeeded.accent == "red"
+
+    overdue = update_presentation(update, now=datetime(2026, 8, 25, 11, 1, tzinfo=UTC))
+    assert overdue.state == "overdue" and overdue.accent == "amber"
+
+    unowned = copy.deepcopy(status)
+    unowned["update_status"]["source"] = "https://example.invalid/feed.json"
+    with pytest.raises(ContractError, match="release-owned"):
+        validate_status(unowned)
+
+    malformed_schedule = copy.deepcopy(status)
+    malformed_schedule["update_status"]["next_check_at"] = "tomorrow"
+    with pytest.raises(ContractError, match="UTC timestamp"):
+        validate_status(malformed_schedule)
+
+
 def test_scan_contract_keeps_review_observations_ineligible_for_quarantine() -> None:
     payload = {
         "schema": "zsec.shield.report.v1",
@@ -454,8 +498,8 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     )
     assert degraded_view.state == "degraded"
     assert degraded_view.accent == "amber"
-    assert "Windows protection active" in degraded_view.headline
-    assert "automatic companion is degraded" in degraded_view.detail
+    assert "Microsoft Defender is protecting this PC" in degraded_view.headline
+    assert "restart local monitoring automatically" in degraded_view.detail
 
     degraded_without_verified_primary = copy.deepcopy(degraded_with_defender)
     degraded_without_verified_primary["existing_primary_protection"][

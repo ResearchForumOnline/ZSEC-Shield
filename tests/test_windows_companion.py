@@ -90,6 +90,25 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn('$arguments += "--quarantine"', content)
         self.assertIn("Start-Process", content)
         self.assertIn("-WindowStyle Hidden", content)
+        self.assertIn("$maximumRapidFailures = 5", content)
+        self.assertIn("$lifetimeSeconds -ge 300.0", content)
+        self.assertIn("[Math]::Pow(2, $rapidFailures)", content)
+        self.assertIn("Start-Sleep -Seconds", content)
+        self.assertIn("exit $process.ExitCode", content)
+        self.assertIn("function Invoke-DefenderSecurityIntelligenceMaintenance", content)
+        self.assertIn("Get-MpComputerStatus -ErrorAction Stop", content)
+        self.assertIn("Update-MpSignature -ErrorAction Stop", content)
+        self.assertIn('return "provider_not_active"', content)
+        self.assertIn(
+            "Bring local monitoring online before any network-backed maintenance", content
+        )
+        for forbidden in (
+            "Set-MpPreference",
+            "Add-MpPreference",
+            "Remove-MpPreference",
+            "DisableRealtimeMonitoring",
+        ):
+            self.assertNotIn(forbidden, content)
         self.assertIn("$actualRuntimeHash = Get-Sha256 $runtimeExecutable", content)
         self.assertIn(
             "@(Compare-Object -ReferenceObject $wanted -DifferenceObject $actual).Count",

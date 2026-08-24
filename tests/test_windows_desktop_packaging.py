@@ -102,6 +102,24 @@ def test_desktop_installer_has_no_security_provider_mutation_surface() -> None:
     assert "existing_provider_must_remain_active = $true" in installer
 
 
+def test_desktop_installer_hands_off_only_verified_owned_obsolete_windows() -> None:
+    installer = (ROOT / "windows" / "desktop" / "Install-ZsecAntivirusDesktop.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert "function Invoke-ObsoleteDesktopHandoff" in installer
+    assert 'Get-CimInstance Win32_Process -Filter "Name = \'ZSEC Antivirus.exe\'"' in installer
+    assert '(Test-IsBelow -Candidate $candidatePath -Parent $ownedRoot)' in installer
+    assert "-not [String]::Equals($candidatePath, $currentExecutable" in installer
+    assert "$process.CloseMainWindow()" in installer
+    assert "GracefulWaitMilliseconds = 8000" in installer
+    assert "Start-Sleep -Milliseconds 200" in installer
+    assert "Re-resolve both PID and executable immediately before force" in installer
+    assert "Stop-Process -Id $candidate.ProcessId -Force" in installer
+    assert "forced_process_ids = @($forced)" in installer
+    assert "profiles_preserved = $true" in installer
+    assert "obsolete_windows = $obsoleteWindows" in installer
+
+
 def test_windows_protection_orchestration_has_only_update_and_scan_actions() -> None:
     action = (
         ROOT / "windows" / "companion" / "Invoke-ZsecWindowsProtectionAction.ps1"
@@ -156,7 +174,7 @@ def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
     assert "Desktop Preview" not in app
     assert "DESKTOP PREVIEW" not in app
     assert 'self.root.title("ZSEC Antivirus")' in app
-    assert 'text="COMMUNITY 0.3.21"' in app
+    assert 'text="COMMUNITY 0.3.22"' in app
 
 
 def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None:
@@ -192,9 +210,10 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     assert "TrayController" in app
     assert "_tray_scan_protected_folders" in app
     assert "Scan protected folders now" in app
-    assert '"Security intelligence"' in app
-    assert '"Current · signed advisory catalog"' in app
-    assert '"Signed advisory update needs attention"' in app
+    assert '"Advisory updates"' in app
+    assert '"Scanner rules and advisory updates"' in app
+    assert "update_presentation" in app
+    assert "does not create malware detection rules" in app
     assert "_window_close" in app
     assert "Start ZSEC Antivirus in the notification area" in app
     assert "Refresh update evidence" in app

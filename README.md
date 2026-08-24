@@ -25,10 +25,11 @@ closed on protocol or digest disagreement. The child currently retains the
 invoking user's authority, so it is process separation—not a reduced-privilege
 sandbox or evidence that the hostile-parser replacement gate is complete.
 
-Community 0.3.12 is unsigned and is not itself a replacement primary antivirus on
-any platform. A version tag or passing workflow is not artifact acceptance: use the
-published source revision, SHA-256, manifest, and installed-runtime evidence for the
-exact package. ZSEC still has no Windows minifilter/AMSI/ELAM stack, macOS Endpoint
+Windows desktop Community 0.3.22 is unsigned and is not itself a replacement
+primary antivirus. The separately distributed cross-platform CLI remains 0.3.14.
+A version tag or passing workflow is not artifact acceptance: use the published
+source revision, SHA-256, manifest, and installed-runtime evidence for the exact
+package. ZSEC still has no Windows minifilter/AMSI/ELAM stack, macOS Endpoint
 Security system extension, Linux fanotify broker, production platform-keychain
 profile, publisher-signed installer, or independent efficacy certification. Those
 are explicit engineering and release gates, not features claimed by a dashboard.

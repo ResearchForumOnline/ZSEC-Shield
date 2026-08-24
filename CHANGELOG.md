@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.22 Windows desktop - 2026-08-24
+
+- Replaced the one-shot post-change launcher with a bounded self-restarting
+  supervisor: monitoring starts first, rapid failures use exponential backoff,
+  and a crash loop remains visibly degraded instead of being painted green.
+- Added hourly Microsoft Defender health verification and a bounded signature
+  refresh request only when active Defender reports stale or missing security
+  intelligence. The automation never changes preferences, exclusions, provider
+  selection, Windows Security registration, or installed security products.
+- Separated the signed ZSEC advisory catalog from executable scanner rules in
+  the desktop interface. Advisory failures, retained prior catalogs, invalid
+  schedules and overdue checks now have distinct evidence-backed states.
+- Added a safe desktop-version handoff after successful companion activation.
+  The installer closes only revalidated obsolete ZSEC Antivirus processes below
+  its owned application root, preserves profiles, and records exact handoff
+  evidence in the install result.
+- Replaced the vague amber “monitoring needs attention” text with an exact
+  distinction between verified Defender protection and automatic ZSEC recovery.
+
 ## 0.3.14 - 2026-08-22
 
 - Added decentralized, credential-free daily security-intelligence updates from

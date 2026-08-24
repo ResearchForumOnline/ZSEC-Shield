@@ -10,6 +10,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Any, TypeGuard
 
 
@@ -56,6 +57,19 @@ def _optional_string(value: Any, field: str, *, maximum: int = 4096) -> str | No
     return _string(value, field, maximum=maximum)
 
 
+def _optional_utc_timestamp(value: Any, field: str) -> str | None:
+    text = _optional_string(value, field, maximum=80)
+    if text is None:
+        return None
+    if not text.endswith("Z"):
+        raise ContractError(f"{field} must be a UTC timestamp")
+    try:
+        datetime.fromisoformat(text[:-1] + "+00:00")
+    except ValueError as exc:
+        raise ContractError(f"{field} must be a UTC timestamp") from exc
+    return text
+
+
 def _bool(value: Any, field: str) -> bool:
     if type(value) is not bool:
         raise ContractError(f"{field} must be a boolean")
@@ -85,6 +99,14 @@ class ScanPresentation:
 
 @dataclass(frozen=True, slots=True)
 class CompanionPresentation:
+    state: str
+    headline: str
+    detail: str
+    accent: str
+
+
+@dataclass(frozen=True, slots=True)
+class UpdatePresentation:
     state: str
     headline: str
     detail: str
@@ -168,10 +190,13 @@ def validate_status(payload: Any) -> dict[str, Any]:
         update = _object(root.get("update_status"), "update_status")
         if update.get("state") not in {"never_checked", "current", "updated", "error"}:
             raise ContractError("update_status.state is unknown")
-        for field in ("last_checked_at", "last_success_at", "feed_expires_at", "error"):
-            _optional_string(update.get(field), f"update_status.{field}", maximum=500)
-        _string(update.get("next_check_at"), "update_status.next_check_at", maximum=80)
-        _string(update.get("source"), "update_status.source", maximum=2048)
+        for field in ("last_checked_at", "last_success_at", "feed_expires_at"):
+            _optional_utc_timestamp(update.get(field), f"update_status.{field}")
+        _optional_string(update.get("error"), "update_status.error", maximum=500)
+        _optional_utc_timestamp(update.get("next_check_at"), "update_status.next_check_at")
+        source = _string(update.get("source"), "update_status.source", maximum=2048)
+        if source != "https://talktoai.org/zsec/intelligence/v1/feed.json":
+            raise ContractError("automatic advisory update source is not release-owned")
         sequence = update.get("feed_sequence")
         if sequence is not None and _integer(sequence, "update_status.feed_sequence") < 1:
             raise ContractError("update_status.feed_sequence is invalid")
@@ -181,6 +206,88 @@ def validate_status(payload: Any) -> dict[str, Any]:
         raise ContractError("quarantine counters are inconsistent")
     _list(quarantine.get("metadata_errors"), "quarantine.metadata_errors")
     return root
+
+
+def update_presentation(
+    update: Mapping[str, Any] | None,
+    *,
+    now: datetime | None = None,
+) -> UpdatePresentation:
+    """Describe the advisory-only updater without conflating it with scanner rules."""
+
+    if not isinstance(update, Mapping):
+        return UpdatePresentation(
+            state="unavailable",
+            headline="Advisory update evidence unavailable",
+            detail="No successful check is inferred; scanner-rule status is shown separately.",
+            accent="amber",
+        )
+    state = str(update.get("state") or "unknown").strip().lower()
+    last_success = update.get("last_success_at")
+    error = update.get("error")
+    if state == "error":
+        if last_success:
+            return UpdatePresentation(
+                state="degraded_retained",
+                headline="Advisory check failed · prior catalog retained",
+                detail=(
+                    f"Last valid advisory update: {last_success}. "
+                    f"Last error: {error or 'not reported'}."
+                ),
+                accent="amber",
+            )
+        return UpdatePresentation(
+            state="failed",
+            headline="Advisory update has never succeeded",
+            detail=f"Last error: {error or 'not reported'}.",
+            accent="red",
+        )
+    if state == "never_checked":
+        return UpdatePresentation(
+            state="never_checked",
+            headline="Advisory catalog not checked yet",
+            detail="The signed advisory catalog is informational and does not add scanner rules.",
+            accent="amber",
+        )
+    if state in {"current", "updated"}:
+        next_check = update.get("next_check_at")
+        try:
+            due = datetime.fromisoformat(str(next_check).replace("Z", "+00:00"))
+            if due.tzinfo is None:
+                raise ValueError("missing timezone")
+            current = (now or datetime.now(UTC)).astimezone(UTC)
+        except (TypeError, ValueError):
+            return UpdatePresentation(
+                state="invalid_schedule",
+                headline="Advisory schedule evidence invalid",
+                detail="The interface cannot establish when the next signed check is due.",
+                accent="red",
+            )
+        if current > due + timedelta(hours=2):
+            return UpdatePresentation(
+                state="overdue",
+                headline="Advisory update check overdue",
+                detail=(
+                    f"Last valid update: {last_success or 'not recorded'}; "
+                    f"scheduled check was {next_check}."
+                ),
+                accent="amber",
+            )
+        return UpdatePresentation(
+            state="current",
+            headline="Signed advisory catalog current",
+            detail=(
+                f"Last valid update: {last_success or 'not recorded'}; next check: {next_check}. "
+                "This catalog is informational and creates no detection rule."
+            ),
+            accent="green",
+        )
+    return UpdatePresentation(
+        state="unknown",
+        headline="Advisory update state unknown",
+        detail="No update success is inferred from an unknown state.",
+        accent="red",
+    )
 
 
 def status_presentation(status: Mapping[str, Any]) -> ScanPresentation:
@@ -736,9 +843,10 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
     if primary_protection_healthy and not integrity_failed:
         return CompanionPresentation(
             state="degraded",
-            headline="Windows protection active · monitoring needs attention",
+            headline="Microsoft Defender is protecting this PC · ZSEC is recovering",
             detail=(
-                "The ZSEC automatic companion is degraded: "
+                "The registered ZSEC supervisor will restart local monitoring automatically. "
+                "Current evidence: "
                 + (reasons or "protection evidence is incomplete.")
             ),
             accent="amber",
@@ -853,9 +961,11 @@ __all__ = [
     "CompanionPresentation",
     "ContractError",
     "ScanPresentation",
+    "UpdatePresentation",
     "WindowsCutoverPresentation",
     "companion_presentation",
     "status_presentation",
+    "update_presentation",
     "validate_companion_status",
     "validate_feed_update",
     "validate_quarantine_list",

@@ -250,28 +250,88 @@ function Invoke-IntelligenceCheck {
     }
 }
 
-$null = Invoke-IntelligenceCheck
-$process = Start-Process `
-    -FilePath $cli `
-    -ArgumentList $argumentLine `
-    -WorkingDirectory (Split-Path -Parent $cli) `
-    -WindowStyle Hidden `
-    -RedirectStandardOutput $stdout `
-    -RedirectStandardError $stderr `
-    -PassThru
-try {
-    $process.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::BelowNormal
+function Get-OptionalProperty {
+    param(
+        [Parameter(Mandatory = $true)]$InputObject,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+    $property = $InputObject.PSObject.Properties[$Name]
+    if ($null -eq $property) { return $null }
+    return $property.Value
 }
-catch {
-    Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-    throw "Could not apply BelowNormal priority to the companion process."
-}
-while (-not $process.HasExited) {
-    $null = $process.WaitForExit([int]([double]$config.intelligence_check_seconds * 1000.0))
-    if (-not $process.HasExited) {
-        # The CLI persists a randomized next-check time, so hourly supervision
-        # results in one fleet-spread check per day rather than synchronized load.
-        $null = Invoke-IntelligenceCheck
+
+function Invoke-DefenderSecurityIntelligenceMaintenance {
+    try {
+        # Defender remains the Windows real-time provider. This bounded maintenance
+        # path reads its own health signal and requests a signature refresh only
+        # when Defender is active and reports stale or missing signature material.
+        # It never changes preferences, exclusions, provider selection, Security
+        # Center registration, or installed security products.
+        $status = Get-MpComputerStatus -ErrorAction Stop
+        $active = (
+            [bool]$status.AMServiceEnabled -and
+            [bool]$status.AntivirusEnabled -and
+            [bool]$status.RealTimeProtectionEnabled
+        )
+        if (-not $active) { return "provider_not_active" }
+
+        $outOfDate = Get-OptionalProperty -InputObject $status -Name "DefenderSignaturesOutOfDate"
+        $version = [string](Get-OptionalProperty -InputObject $status -Name "AntivirusSignatureVersion")
+        $updated = Get-OptionalProperty -InputObject $status -Name "AntivirusSignatureLastUpdated"
+        $missingMaterial = [string]::IsNullOrWhiteSpace($version) -or $null -eq $updated
+        if ($outOfDate -eq $true -or $missingMaterial) {
+            Update-MpSignature -ErrorAction Stop | Out-Null
+            return "refresh_requested"
+        }
+        return "current"
+    }
+    catch {
+        # Defender and Windows Update keep their normal servicing authority. A
+        # failed maintenance request never stops ZSEC post-change monitoring.
+        return "unavailable"
     }
 }
-exit $process.ExitCode
+
+$rapidFailures = 0
+$maximumRapidFailures = 5
+while ($true) {
+    $startedAt = [DateTimeOffset]::UtcNow
+    $process = Start-Process `
+        -FilePath $cli `
+        -ArgumentList $argumentLine `
+        -WorkingDirectory (Split-Path -Parent $cli) `
+        -WindowStyle Hidden `
+        -RedirectStandardOutput $stdout `
+        -RedirectStandardError $stderr `
+        -PassThru
+    try {
+        $process.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::BelowNormal
+    }
+    catch {
+        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+        throw "Could not apply BelowNormal priority to the companion process."
+    }
+    # Bring local monitoring online before any network-backed maintenance.
+    $null = Invoke-DefenderSecurityIntelligenceMaintenance
+    $null = Invoke-IntelligenceCheck
+    while (-not $process.HasExited) {
+        $null = $process.WaitForExit([int]([double]$config.intelligence_check_seconds * 1000.0))
+        if (-not $process.HasExited) {
+            # The CLI persists a randomized next-check time, so hourly supervision
+            # results in one fleet-spread check per day rather than synchronized load.
+            $null = Invoke-DefenderSecurityIntelligenceMaintenance
+            $null = Invoke-IntelligenceCheck
+        }
+    }
+
+    $lifetimeSeconds = ([DateTimeOffset]::UtcNow - $startedAt).TotalSeconds
+    if ($lifetimeSeconds -ge 300.0) { $rapidFailures = 0 }
+    else { $rapidFailures++ }
+    if ($rapidFailures -ge $maximumRapidFailures) {
+        # Fail visibly after a bounded crash loop. Status retains the stale
+        # heartbeat/process evidence instead of claiming monitoring is active.
+        exit $process.ExitCode
+    }
+    $restartDelaySeconds = [Math]::Min(60, [Math]::Pow(2, $rapidFailures))
+    Start-Sleep -Seconds ([int]$restartDelaySeconds)
+}
