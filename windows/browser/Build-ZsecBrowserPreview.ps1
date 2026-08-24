@@ -6,7 +6,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$ProductVersion = "0.3.23"
+$ProductVersion = "0.3.24"
 $WebView2Version = "1.0.4129.50"
 $WebView2Uri = "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/$WebView2Version/microsoft.web.webview2.$WebView2Version.nupkg"
 $WebView2Sha256 = "d3934f482d484b89fb4825df720c710664e1143a1e90f7b3a60794ef33f473d2"
@@ -363,12 +363,13 @@ Copy-Item -LiteralPath $YoutubeProtectionSource -Destination (Join-Path $AppRoot
 $NewTabSourceRoot = Join-Path $RepoRoot "browser\zsec-desktop-preview\assets\new-tab"
 $NewTabSource = Join-Path $NewTabSourceRoot "index.html"
 if (-not (Test-Path -LiteralPath $NewTabSource -PathType Leaf) -or
-    -not (Test-Path -LiteralPath (Join-Path $NewTabSourceRoot "native-request-probe.html") -PathType Leaf)) {
+    -not (Test-Path -LiteralPath (Join-Path $NewTabSourceRoot "native-request-probe.html") -PathType Leaf) -or
+    -not (Test-Path -LiteralPath (Join-Path $NewTabSourceRoot "popup-regression.html") -PathType Leaf)) {
     throw "The packaged ZSEC Browser new-tab/probe pages are absent."
 }
 $NewTabRoot = Join-Path $AppRoot "new-tab"
 New-Item -ItemType Directory -Path $NewTabRoot -Force | Out-Null
-foreach ($newTabFile in @("index.html", "native-request-probe.html")) {
+foreach ($newTabFile in @("index.html", "native-request-probe.html", "popup-regression.html")) {
     Copy-Item -LiteralPath (Join-Path $NewTabSourceRoot $newTabFile) -Destination (Join-Path $NewTabRoot $newTabFile) -Force
 }
 $ExtensionRoot = Join-Path $AppRoot "extension"

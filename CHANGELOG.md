@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.24 ZSEC Browser Community - 2026-08-24
+
+- Changed page-requested windows to fail closed: every WebView2 popup is
+  cancelled synchronously, and the runtime's user-initiated flag is no longer
+  treated as consent because advertising code can attach a popup to an ordinary
+  click.
+- Added revocable exact-HTTPS popup permissions with immutable default blocking,
+  a WebView2 user-action requirement, HTTPS-only destinations, a two-second
+  burst limit, the existing 32-tab limit and reason-specific non-modal feedback.
+- Opened an explicitly permitted request as an independent normal ZSEC tab
+  instead of assigning it as the page's child window, preventing the requesting
+  page from retaining a `window.opener` relationship or creating a pop-under.
+- Added a themed, keyboard-accessible Settings manager for popup permissions and
+  a loopback-only black-box regression harness covering load, timer, synthetic,
+  target-blank, popup-storm, unsafe-scheme and trusted-keyboard activation cases.
+- Bounded popup destinations and permission inputs, rejected credentials,
+  control characters, empty and `about:blank` targets, and retained only local
+  reason counters rather than full requested URLs in runtime evidence.
+
 ## 0.3.23 ZSEC Browser Community - 2026-08-24
 
 - Removed native system-black paint leakage around the rounded address field,

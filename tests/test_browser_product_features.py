@@ -134,7 +134,10 @@ def test_settings_surface_is_complete_and_truthful() -> None:
         'Page("Default behavior"',
     ):
         assert category in dialogs
-    assert "Per-site permission exceptions are not implemented" in dialogs
+    assert "Popup default: block every page-requested window" in dialogs
+    assert "Exact HTTPS sites allowed to request popup tabs" in dialogs
+    assert "Background requests and popup bursts remain blocked" in dialogs
+    assert "working.PopupAllowedOrigins" in dialogs
     assert "Choose a contrast-tested native browser theme and accent" in dialogs
     assert "All supplied palettes avoid white startup surfaces" in dialogs
     assert "Windows protects the actual default-app choice" in dialogs

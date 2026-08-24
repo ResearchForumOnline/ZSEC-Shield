@@ -12,6 +12,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "browser" / "zsec-desktop-preview" / "src" / "ZsecBrowserApp.cs"
+AUTOMATION = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserLocalAutomation.cs"
 BUILD = ROOT / "windows" / "browser" / "Build-ZsecBrowserPreview.ps1"
 INSTALLER = ROOT / "windows" / "browser" / "Install-ZsecBrowserPreview.ps1"
 STATUS = ROOT / "windows" / "browser" / "Get-ZsecBrowserPreviewStatus.ps1"
@@ -36,9 +37,9 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
     assert "unsigned" in readme.lower() and "Community" in readme
-    assert 'internal const string ProductVersion = "0.3.23"' in app
-    assert '$ProductVersion = "0.3.23"' in build
-    assert '$ProductVersion = "0.3.23"' in installer
+    assert 'internal const string ProductVersion = "0.3.24"' in app
+    assert '$ProductVersion = "0.3.24"' in build
+    assert '$ProductVersion = "0.3.24"' in installer
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:
@@ -87,6 +88,32 @@ def test_bookmark_import_and_profile_discovery_have_bounded_parser_paths() -> No
     assert "catch (RegexMatchTimeoutException exception)" in state
     assert "The bookmark HTML took too long to parse safely." in state
     assert migration.count("if (IsReparse(root)) continue;") >= 2
+
+
+def test_page_requested_windows_fail_closed_and_sever_the_opener() -> None:
+    app = APP.read_text(encoding="utf-8")
+    handler_start = app.index("core.NewWindowRequested += delegate")
+    handler_end = app.index("core.PermissionRequested += delegate", handler_start)
+    handler = app[handler_start:handler_end]
+    assert handler.index("args.Handled = true;") < handler.index("BrowserPopupPolicy.Evaluate")
+    assert "args.NewWindow" not in handler
+    assert "await CreateTab(requestedUri, true);" in handler
+    assert "args.IsUserInitiated" in handler
+    assert "productData.Settings.PopupAllowedOrigins" in handler
+    assert "TimeSpan.FromSeconds(2)" in handler
+    assert "Popup blocked from " in handler
+    assert "Unsafe or non-HTTPS popup blocked from " in handler
+
+
+def test_local_automation_waits_for_runtime_and_bounds_command_failures() -> None:
+    app = APP.read_text(encoding="utf-8")
+    automation = AUTOMATION.read_text(encoding="utf-8")
+    assert "public bool RuntimeReady { get; set; }" in automation
+    assert 'Error = "command_failed_" + exception.GetType().Name.ToLowerInvariant()' in automation
+    assert "activeView != null && activeView.CoreWebView2 != null" in app
+    assert 'Error = "runtime_not_ready"' in app
+    assert "NavigateView(activeView, normalized);" in app
+    assert "activeView.Focus();" in app
 
 
 def test_default_browser_registration_requires_windows_user_confirmation() -> None:
@@ -353,10 +380,11 @@ def test_desktop_tabs_popups_and_modern_controls_are_wired() -> None:
     assert 'CreateNewTabCommandAsync("tab_strip")' in app
     assert "PositionNewTabButton()" in app
     assert "RoundedActionButton" in app
-    assert "GetDeferral()" in app
-    assert "args.NewWindow = popupView.CoreWebView2" in app
+    assert "args.Handled = true;" in app
+    assert "await CreateTab(requestedUri, true);" in app
+    assert "args.NewWindow" not in app
     assert "args.IsUserInitiated" in app
-    assert "deferral.Complete()" in app
+    assert "BrowserPopupPolicy.Evaluate" in app
     assert "MaximumTabs = 32" in app
     assert "DrawMode = TabDrawMode.OwnerDrawFixed" in app
     assert "internal sealed class DarkTabControl : TabControl" in app
@@ -406,7 +434,7 @@ def test_desktop_tabs_popups_and_modern_controls_are_wired() -> None:
     assert 'NewTabUri = "https://newtab.zsec.local/index.html"' in app
     assert "SetVirtualHostNameToFolderMapping" in app
     assert "CoreWebView2HostResourceAccessKind.DenyCors" in app
-    assert '"index.html", "native-request-probe.html"' in build
+    assert '"index.html", "native-request-probe.html", "popup-regression.html"' in build
     assert "await completion.Task" in app
     assert "expectedNavigationId" in app
     assert "args.NavigationId == expectedNavigationId.Value" in app

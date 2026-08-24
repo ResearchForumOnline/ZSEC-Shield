@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ZSEC packaged popup regression fixture</title>
+</head>
+<body>
+  <h1>ZSEC packaged popup regression fixture</h1>
+  <p id="case"></p>
+  <button id="direct" autofocus type="button">Open direct-click popup</button>
+  <button id="synthetic" type="button">Open synthetic-click popup</button>
+  <a id="blank-link" href="https://example.invalid/sink?source=target-blank" target="_blank">Target blank</a>
+  <script>
+    'use strict';
+    const selectedCase = new URLSearchParams(location.search).get('case') || 'idle';
+    document.getElementById('case').textContent = selectedCase;
+    const openSink = source => window.open(
+      'https://example.invalid/sink?source=' + encodeURIComponent(source),
+      '_blank'
+    );
+    document.getElementById('direct').addEventListener('click', () => openSink('direct-click'));
+    document.getElementById('synthetic').addEventListener('click', () => openSink('synthetic-click'));
+
+    if (selectedCase === 'load') openSink('load');
+    if (selectedCase === 'timer') setTimeout(() => openSink('timer'), 100);
+    if (selectedCase === 'synthetic-click') {
+      setTimeout(() => document.getElementById('synthetic').click(), 100);
+    }
+    if (selectedCase === 'target-blank') {
+      setTimeout(() => document.getElementById('blank-link').click(), 100);
+    }
+    if (selectedCase === 'storm') {
+      setTimeout(() => {
+        for (let index = 0; index < 8; index += 1) openSink('storm-' + index);
+      }, 100);
+    }
+    if (selectedCase === 'javascript-scheme') {
+      setTimeout(() => window.open('javascript:void(document.title="unsafe")', '_blank'), 100);
+    }
+    if (selectedCase === 'data-scheme') {
+      setTimeout(() => window.open('data:text/html,unsafe', '_blank'), 100);
+    }
+    if (selectedCase === 'file-scheme') {
+      setTimeout(() => window.open('file:///C:/Windows/win.ini', '_blank'), 100);
+    }
+  </script>
+</body>
+</html>

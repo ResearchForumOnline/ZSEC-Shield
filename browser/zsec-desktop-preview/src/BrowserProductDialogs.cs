@@ -731,9 +731,123 @@ namespace TalkToAI.ZsecBrowserPreview
             panel.Controls.Add(BrowserDialogTheme.Description(
                 "Community permission policy: deny by default. Camera, microphone, location, notifications and other WebView2 permission requests are denied and are not silently remembered."
             ));
-            panel.Controls.Add(BrowserDialogTheme.Description(
-                "Per-site permission exceptions are not implemented in this release. This page is intentionally read-only so the UI does not imply a capability the shell cannot enforce."
-            ));
+            Label defaultPolicy = BrowserDialogTheme.Description(
+                "Popup default: block every page-requested window. This default is fixed. A site appears below only after you explicitly allow its exact HTTPS origin from the main menu."
+            );
+            defaultPolicy.Height = 52;
+            defaultPolicy.AccessibleName = "Immutable popup blocking policy";
+            panel.Controls.Add(defaultPolicy);
+
+            Label allowedHeading = BrowserDialogTheme.Description(
+                "Exact HTTPS sites allowed to request popup tabs"
+            );
+            allowedHeading.Height = 28;
+            allowedHeading.ForeColor = BrowserDialogTheme.Foreground;
+            allowedHeading.Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold);
+            allowedHeading.AccessibleName = "Allowed popup sites heading";
+            panel.Controls.Add(allowedHeading);
+
+            ListBox allowedOrigins = new ListBox();
+            allowedOrigins.Width = 680;
+            allowedOrigins.Height = 150;
+            allowedOrigins.IntegralHeight = false;
+            allowedOrigins.SelectionMode = SelectionMode.One;
+            allowedOrigins.BackColor = BrowserDialogTheme.Surface;
+            allowedOrigins.ForeColor = BrowserDialogTheme.Foreground;
+            allowedOrigins.BorderStyle = BorderStyle.None;
+            allowedOrigins.AccessibleName = "Exact HTTPS sites allowed to request popup tabs";
+            allowedOrigins.AccessibleDescription =
+                "Select an exact HTTPS origin to remove its popup permission. Press Delete to remove the selected origin.";
+            working.PopupAllowedOrigins = BrowserPopupPolicy.NormalizeAllowedOrigins(
+                working.PopupAllowedOrigins
+            );
+            foreach (string origin in working.PopupAllowedOrigins) allowedOrigins.Items.Add(origin);
+            panel.Controls.Add(allowedOrigins);
+
+            Label allowedStatus = BrowserDialogTheme.Description(String.Empty);
+            allowedStatus.Height = 28;
+            allowedStatus.AccessibleName = "Allowed popup site count";
+            Action refreshAllowedStatus = delegate
+            {
+                int count = allowedOrigins.Items.Count;
+                allowedStatus.Text = count == 0
+                    ? "No popup site permissions are saved."
+                    : count.ToString() + (count == 1
+                        ? " exact HTTPS site permission is saved."
+                        : " exact HTTPS site permissions are saved.");
+            };
+            refreshAllowedStatus();
+            panel.Controls.Add(allowedStatus);
+
+            FlowLayoutPanel actions = new FlowLayoutPanel();
+            actions.Width = 680;
+            actions.Height = 44;
+            actions.WrapContents = false;
+            actions.BackColor = BrowserDialogTheme.Background;
+            Button removeSelected = BrowserDialogTheme.Button(
+                "Remove selected",
+                "Remove the selected exact HTTPS popup permission"
+            );
+            Button clearAll = BrowserDialogTheme.Button(
+                "Clear all",
+                "Remove every exact HTTPS popup permission"
+            );
+            Action removeSelection = delegate
+            {
+                int selected = allowedOrigins.SelectedIndex;
+                if (selected < 0) return;
+                allowedOrigins.Items.RemoveAt(selected);
+                working.PopupAllowedOrigins = BrowserPopupPolicy.NormalizeAllowedOrigins(
+                    allowedOrigins.Items.Cast<string>()
+                );
+                if (allowedOrigins.Items.Count > 0)
+                    allowedOrigins.SelectedIndex = Math.Min(selected, allowedOrigins.Items.Count - 1);
+                refreshAllowedStatus();
+                removeSelected.Enabled = allowedOrigins.SelectedIndex >= 0;
+                clearAll.Enabled = allowedOrigins.Items.Count > 0;
+            };
+            removeSelected.Enabled = false;
+            removeSelected.Click += delegate { removeSelection(); };
+            allowedOrigins.SelectedIndexChanged += delegate
+            {
+                removeSelected.Enabled = allowedOrigins.SelectedIndex >= 0;
+            };
+            allowedOrigins.KeyDown += delegate(object sender, KeyEventArgs args)
+            {
+                if (args.KeyCode != Keys.Delete) return;
+                removeSelection();
+                args.Handled = true;
+                args.SuppressKeyPress = true;
+            };
+            clearAll.Enabled = allowedOrigins.Items.Count > 0;
+            clearAll.Click += delegate
+            {
+                if (allowedOrigins.Items.Count == 0) return;
+                DialogResult answer = MessageBox.Show(
+                    "Remove every saved popup permission? Popup requests from those sites will return to the fixed default-block policy after you save Settings.",
+                    "Clear popup permissions",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button2
+                );
+                if (answer != DialogResult.Yes) return;
+                allowedOrigins.Items.Clear();
+                working.PopupAllowedOrigins = new List<string>();
+                removeSelected.Enabled = false;
+                clearAll.Enabled = false;
+                refreshAllowedStatus();
+                allowedOrigins.Focus();
+            };
+            actions.Controls.Add(removeSelected);
+            actions.Controls.Add(clearAll);
+            panel.Controls.Add(actions);
+
+            Label boundary = BrowserDialogTheme.Description(
+                "A saved site still needs a WebView2-confirmed user request. Background requests and popup bursts remain blocked. Permission never bypasses native request filtering, HTTPS or certificate checks, download confirmation, the global tab limit, or independent no-opener tab isolation."
+            );
+            boundary.Height = 68;
+            boundary.AccessibleName = "Popup permission security boundary";
+            panel.Controls.Add(boundary);
             return Page("Permissions", panel);
         }
 

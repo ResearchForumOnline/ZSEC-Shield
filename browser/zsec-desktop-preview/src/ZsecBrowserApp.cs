@@ -23,16 +23,16 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.23.0")]
-[assembly: AssemblyFileVersion("0.3.23.0")]
-[assembly: AssemblyInformationalVersion("0.3.23-community")]
+[assembly: AssemblyVersion("0.3.24.0")]
+[assembly: AssemblyFileVersion("0.3.24.0")]
+[assembly: AssemblyInformationalVersion("0.3.24-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.23";
+        internal const string ProductVersion = "0.3.24";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
         internal const string NewTabUri = "https://newtab.zsec.local/index.html";
 
@@ -607,6 +607,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private int popupRequestCount;
         private int popupAllowedCount;
         private int popupBlockedCount;
+        private DateTime lastAllowedPopupUtc = DateTime.MinValue;
         private int tabCreationFailureCount;
         private string lastTabAction = "startup";
         private string lastNewTabCommandSource = "none";
@@ -743,7 +744,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.23";
+            channel.Text = "COMMUNITY 0.3.24";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
@@ -996,6 +997,9 @@ namespace TalkToAI.ZsecBrowserPreview
                 );
             }
 
+            WebView2 activeView = ActiveView;
+            bool runtimeReady = environment != null &&
+                activeView != null && activeView.CoreWebView2 != null;
             BrowserAutomationResponse response = new BrowserAutomationResponse
             {
                 Ok = true,
@@ -1003,7 +1007,8 @@ namespace TalkToAI.ZsecBrowserPreview
                 TabCount = tabs.TabPages.Count,
                 ActiveTab = tabs.SelectedIndex,
                 WindowVisible = Visible && WindowState != FormWindowState.Minimized,
-                AutomationEnabled = true
+                AutomationEnabled = true,
+                RuntimeReady = runtimeReady
             };
             if (request.Command == "ping" || request.Command == "get_state") return response;
             if (request.Command == "activate")
@@ -1019,10 +1024,27 @@ namespace TalkToAI.ZsecBrowserPreview
 
             if (request.Command == "open_url")
             {
-                Navigate(normalized);
+                if (!runtimeReady)
+                    return new BrowserAutomationResponse
+                    {
+                        Ok = false,
+                        Error = "runtime_not_ready",
+                        AutomationEnabled = true,
+                        RuntimeReady = false
+                    };
+                NavigateView(activeView, normalized);
+                activeView.Focus();
             }
             else if (request.Command == "open_tab")
             {
+                if (environment == null)
+                    return new BrowserAutomationResponse
+                    {
+                        Ok = false,
+                        Error = "runtime_not_ready",
+                        AutomationEnabled = true,
+                        RuntimeReady = false
+                    };
                 if (tabs.TabPages.Count >= MaximumTabs)
                     return new BrowserAutomationResponse { Ok = false, Error = "tab_limit", AutomationEnabled = true };
                 BeginInvoke(new Action(async delegate { await CreateTab(normalized, true); }));
@@ -1128,6 +1150,7 @@ namespace TalkToAI.ZsecBrowserPreview
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(MenuItem("ZSEC Shields", "", async delegate { await OpenShieldsSettingsAsync(); }));
             menu.Items.Add(MenuItem("Settings", "Ctrl+,", async delegate { await ShowSettingsAsync(); }));
+            menu.Items.Add(MenuItem("Popup permission for this site…", "", TogglePopupPermissionForActiveSite));
             menu.Items.Add(MenuItem("Set as default browser", "", OpenDefaultApps));
             menu.Items.Add(MenuItem("About ZSEC Browser", "", ShowAbout));
             menu.Items.Add(new ToolStripSeparator());
@@ -1220,6 +1243,44 @@ namespace TalkToAI.ZsecBrowserPreview
                     MessageBoxIcon.Information
                 );
             }
+        }
+
+        private void TogglePopupPermissionForActiveSite(object sender, EventArgs args)
+        {
+            WebView2 view = ActiveView;
+            string origin;
+            if (view == null || view.Source == null ||
+                !BrowserPopupPolicy.TryNormalizeOrigin(view.Source.AbsoluteUri, out origin))
+            {
+                runtimeStatus.Text = "Popup permission is available only for an open HTTPS site.";
+                return;
+            }
+            bool allowed = BrowserPopupPolicy.IsOriginAllowed(
+                productData.Settings.PopupAllowedOrigins,
+                origin
+            );
+            if (!allowed && MessageBox.Show(
+                "Allow user-requested popup tabs for this exact HTTPS site? " +
+                "This exact-site permission can be removed from the same menu.",
+                "Allow site popups",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question
+            ) != DialogResult.Yes) return;
+            List<string> values = BrowserPopupPolicy.NormalizeAllowedOrigins(
+                productData.Settings.PopupAllowedOrigins
+            );
+            values.RemoveAll(value => String.Equals(
+                value,
+                origin,
+                StringComparison.OrdinalIgnoreCase
+            ));
+            if (!allowed) values.Add(origin);
+            productData.Settings.PopupAllowedOrigins =
+                BrowserPopupPolicy.NormalizeAllowedOrigins(values);
+            productStore.Save(productData);
+            runtimeStatus.Text = allowed
+                ? "Popup permission removed for " + origin + "."
+                : "Popup permission saved for " + origin + ".";
         }
 
         private void RefreshBookmarksBar()
@@ -2258,49 +2319,85 @@ namespace TalkToAI.ZsecBrowserPreview
             };
             core.NewWindowRequested += delegate(object sender, CoreWebView2NewWindowRequestedEventArgs args)
             {
-                CoreWebView2Deferral deferral = args.GetDeferral();
+                // Cancel the WebView popup synchronously. Even IsUserInitiated can
+                // represent ad code attached to an ordinary page click, so it is
+                // never an implicit allow signal.
+                args.Handled = true;
                 string requestedUri = args.Uri;
-                bool userInitiated = args.IsUserInitiated;
                 popupRequestCount++;
-                if (!userInitiated || !IsAllowedPopupUri(requestedUri) || tabs.TabPages.Count >= MaximumTabs)
+                BrowserPopupDecision popupDecision = BrowserPopupPolicy.Evaluate(
+                    requestedUri,
+                    view.Source == null ? null : view.Source.AbsoluteUri,
+                    args.IsUserInitiated,
+                    productData.Settings.PopupAllowedOrigins,
+                    tabs.TabPages.Count < MaximumTabs,
+                    DateTime.UtcNow - lastAllowedPopupUtc >= TimeSpan.FromSeconds(2)
+                );
+                if (!popupDecision.Allowed)
                 {
-                    args.Handled = true;
                     popupBlockedCount++;
-                    lastTabAction = "popup_blocked";
+                    lastTabAction = "popup_blocked_" + popupDecision.Reason;
+                    if (view == ActiveView)
+                    {
+                        string site = String.IsNullOrWhiteSpace(popupDecision.OpenerOrigin)
+                            ? "this page"
+                            : popupDecision.OpenerOrigin;
+                        switch (popupDecision.Reason)
+                        {
+                            case "tab_limit":
+                                runtimeStatus.Text = "Popup blocked because the tab limit is reached.";
+                                break;
+                            case "unsafe_target":
+                                runtimeStatus.Text = "Unsafe or non-HTTPS popup blocked from " + site + ".";
+                                break;
+                            case "background_request":
+                                runtimeStatus.Text = "Background popup blocked from " + site + ".";
+                                break;
+                            case "rate_limited":
+                                runtimeStatus.Text = "Popup burst blocked from " + site + ".";
+                                break;
+                            default:
+                                runtimeStatus.Text = "Popup blocked from " + site +
+                                    ". Use the main menu to allow user-requested popups for this exact HTTPS site.";
+                                break;
+                        }
+                    }
                     WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
-                    deferral.Complete();
                     return;
                 }
-                BeginInvoke(new Action(async delegate
+                lastAllowedPopupUtc = DateTime.UtcNow;
+                try
                 {
-                    try
+                    BeginInvoke(new Action(async delegate
                     {
-                        WebView2 popupView = await CreateTab(
-                            Program.DefaultStartPage,
-                            true,
-                            false,
-                            true
-                        );
-                        args.NewWindow = popupView.CoreWebView2;
-                        AttachRequestPolicy(popupView);
-                        args.Handled = true;
-                        popupAllowedCount++;
-                        lastTabAction = "popup_opened";
-                    }
-                    catch (Exception exception)
-                    {
-                        args.Handled = true;
-                        popupBlockedCount++;
-                        lastTabAction = "popup_failed";
-                        navigationProgress.Visible = false;
-                        runtimeStatus.Text = "Popup tab failed safely: " + Truncate(exception.Message, 90);
-                    }
-                    finally
-                    {
-                        WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
-                        deferral.Complete();
-                    }
-                }));
+                        try
+                        {
+                            // Open as a normal independent tab without retaining
+                            // the requesting page as its opener.
+                            await CreateTab(requestedUri, true);
+                            popupAllowedCount++;
+                            lastTabAction = "popup_opened_explicit_site_permission";
+                        }
+                        catch (Exception exception)
+                        {
+                            popupBlockedCount++;
+                            lastTabAction = "popup_failed";
+                            navigationProgress.Visible = false;
+                            runtimeStatus.Text = "Popup tab failed safely: " + Truncate(exception.Message, 90);
+                        }
+                        finally
+                        {
+                            WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
+                        }
+                    }));
+                }
+                catch (Exception exception)
+                {
+                    popupBlockedCount++;
+                    lastTabAction = "popup_schedule_failed";
+                    runtimeStatus.Text = "Popup remained blocked: " + Truncate(exception.Message, 90);
+                    WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
+                }
             };
             core.PermissionRequested += delegate(object sender, CoreWebView2PermissionRequestedEventArgs args)
             {
@@ -2801,7 +2898,11 @@ namespace TalkToAI.ZsecBrowserPreview
             if (view == null || view.Source == null) return;
             string url = view.Source.AbsoluteUri;
             if (!IsAllowedWebUri(url, true) ||
-                String.Equals(url, Program.NewTabUri, StringComparison.OrdinalIgnoreCase) ||
+                String.Equals(
+                    view.Source.Host,
+                    "newtab.zsec.local",
+                    StringComparison.OrdinalIgnoreCase
+                ) ||
                 IsExpectedShieldsSettingsUri(url))
             {
                 return;
@@ -3240,13 +3341,6 @@ namespace TalkToAI.ZsecBrowserPreview
             return allowHttp && uri.Scheme == Uri.UriSchemeHttp;
         }
 
-        private static bool IsAllowedPopupUri(string candidate)
-        {
-            return String.IsNullOrWhiteSpace(candidate) ||
-                IsAboutBlank(candidate) ||
-                IsAllowedWebUri(candidate, true);
-        }
-
         private static bool IsAboutBlank(string candidate)
         {
             return String.Equals(candidate, "about:blank", StringComparison.OrdinalIgnoreCase);
@@ -3426,6 +3520,9 @@ namespace TalkToAI.ZsecBrowserPreview
                 "popup_request_count=" + popupRequestCount.ToString(),
                 "popup_allowed_count=" + popupAllowedCount.ToString(),
                 "popup_blocked_count=" + popupBlockedCount.ToString(),
+                "popup_allowed_origin_count=" +
+                    productData.Settings.PopupAllowedOrigins.Count.ToString(),
+                "popup_default=deny_unsolicited",
                 "tab_creation_failure_count=" + tabCreationFailureCount.ToString(),
                 "last_tab_action=" + lastTabAction,
                 "last_new_tab_command_source=" + lastNewTabCommandSource,

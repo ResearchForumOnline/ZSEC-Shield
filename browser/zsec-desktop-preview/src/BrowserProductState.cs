@@ -41,6 +41,7 @@ namespace TalkToAI.ZsecBrowserPreview
         public bool PasswordSaveEnabled { get; set; }
         public bool PasswordAutofillEnabled { get; set; }
         public List<string> PasswordNeverSaveOrigins { get; set; }
+        public List<string> PopupAllowedOrigins { get; set; }
         public string Theme { get; set; }
         public string AccentColor { get; set; }
 
@@ -66,6 +67,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 PasswordSaveEnabled = false,
                 PasswordAutofillEnabled = false,
                 PasswordNeverSaveOrigins = new List<string>(),
+                PopupAllowedOrigins = new List<string>(),
                 Theme = "soft_dark",
                 AccentColor = "teal"
             };
@@ -92,8 +94,118 @@ namespace TalkToAI.ZsecBrowserPreview
                 PasswordNeverSaveOrigins = new List<string>(
                     PasswordNeverSaveOrigins ?? new List<string>()
                 ),
+                PopupAllowedOrigins = new List<string>(
+                    PopupAllowedOrigins ?? new List<string>()
+                ),
                 Theme = Theme,
                 AccentColor = AccentColor
+            };
+        }
+    }
+
+    internal sealed class BrowserPopupDecision
+    {
+        public bool Allowed { get; set; }
+        public string Reason { get; set; }
+        public string OpenerOrigin { get; set; }
+    }
+
+    internal static class BrowserPopupPolicy
+    {
+        internal const int MaximumAllowedOrigins = 100;
+        internal const int MaximumPopupUriLength = 4096;
+        private const int MaximumOriginInputLength = 32768;
+
+        internal static BrowserPopupDecision Evaluate(
+            string requestedUri,
+            string openerUri,
+            bool webViewUserInitiated,
+            IEnumerable<string> allowedOrigins,
+            bool tabCapacityAvailable,
+            bool popupBurstAvailable
+        )
+        {
+            string openerOrigin;
+            TryNormalizeOrigin(openerUri, out openerOrigin);
+            if (!tabCapacityAvailable)
+                return Denied("tab_limit", openerOrigin);
+            if (!IsSafePopupTarget(requestedUri))
+                return Denied("unsafe_target", openerOrigin);
+            if (!String.IsNullOrWhiteSpace(openerOrigin) &&
+                NormalizeAllowedOrigins(allowedOrigins).Contains(
+                    openerOrigin,
+                    StringComparer.OrdinalIgnoreCase
+                ))
+            {
+                if (!webViewUserInitiated)
+                    return Denied("background_request", openerOrigin);
+                if (!popupBurstAvailable)
+                    return Denied("rate_limited", openerOrigin);
+                return new BrowserPopupDecision
+                {
+                    Allowed = true,
+                    Reason = "explicit_site_permission",
+                    OpenerOrigin = openerOrigin
+                };
+            }
+            return Denied("page_new_window_denied", openerOrigin);
+        }
+
+        internal static List<string> NormalizeAllowedOrigins(IEnumerable<string> values)
+        {
+            List<string> result = new List<string>();
+            foreach (string value in values ?? Enumerable.Empty<string>())
+            {
+                string origin;
+                if (!TryNormalizeOrigin(value, out origin) || result.Contains(
+                    origin,
+                    StringComparer.OrdinalIgnoreCase
+                )) continue;
+                result.Add(origin);
+                if (result.Count >= MaximumAllowedOrigins) break;
+            }
+            return result.OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        internal static bool TryNormalizeOrigin(string candidate, out string origin)
+        {
+            origin = null;
+            Uri parsed;
+            if (String.IsNullOrWhiteSpace(candidate) ||
+                candidate.Length > MaximumOriginInputLength ||
+                !String.Equals(candidate, candidate.Trim(), StringComparison.Ordinal) ||
+                candidate.Any(Char.IsControl) ||
+                !Uri.TryCreate(candidate, UriKind.Absolute, out parsed) ||
+                parsed.Scheme != Uri.UriSchemeHttps ||
+                String.IsNullOrWhiteSpace(parsed.Host) || !String.IsNullOrEmpty(parsed.UserInfo))
+                return false;
+            origin = parsed.GetLeftPart(UriPartial.Authority);
+            return true;
+        }
+
+        internal static bool IsOriginAllowed(IEnumerable<string> values, string candidate)
+        {
+            string origin;
+            return TryNormalizeOrigin(candidate, out origin) &&
+                NormalizeAllowedOrigins(values).Contains(origin, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static bool IsSafePopupTarget(string candidate)
+        {
+            if (String.IsNullOrWhiteSpace(candidate) ||
+                candidate.Length > MaximumPopupUriLength ||
+                candidate.Any(Char.IsControl)) return false;
+            string ignored;
+            return TryNormalizeOrigin(candidate, out ignored);
+        }
+
+        private static BrowserPopupDecision Denied(string reason, string openerOrigin)
+        {
+            return new BrowserPopupDecision
+            {
+                Allowed = false,
+                Reason = reason,
+                OpenerOrigin = openerOrigin
             };
         }
     }
@@ -533,6 +645,9 @@ namespace TalkToAI.ZsecBrowserPreview
                 BrowserCredentialWorkflowPolicy.NormalizeNeverSaveOrigins(
                     settings.PasswordNeverSaveOrigins
                 );
+            settings.PopupAllowedOrigins = BrowserPopupPolicy.NormalizeAllowedOrigins(
+                settings.PopupAllowedOrigins
+            );
         }
 
         private static bool AddressSuggestionMatches(string url, string term)

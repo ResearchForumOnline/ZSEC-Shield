@@ -27,6 +27,7 @@ namespace TalkToAI.ZsecBrowserPreview
         public int ActiveTab { get; set; }
         public bool WindowVisible { get; set; }
         public bool AutomationEnabled { get; set; }
+        public bool RuntimeReady { get; set; }
     }
 
     internal static class BrowserLocalAutomationPolicy
@@ -123,7 +124,18 @@ namespace TalkToAI.ZsecBrowserPreview
                         response = new BrowserAutomationResponse { Ok = false, Error = "unauthorized" };
                     else if (!BrowserLocalAutomationPolicy.IsSupportedCommand(request.Command))
                         response = new BrowserAutomationResponse { Ok = false, Error = "unsupported_command" };
-                    else response = handler(request);
+                    else
+                    {
+                        try { response = handler(request); }
+                        catch (Exception exception)
+                        {
+                            response = new BrowserAutomationResponse
+                            {
+                                Ok = false,
+                                Error = "command_failed_" + exception.GetType().Name.ToLowerInvariant()
+                            };
+                        }
+                    }
                 }
                 catch
                 {

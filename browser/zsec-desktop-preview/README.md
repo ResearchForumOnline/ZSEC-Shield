@@ -97,7 +97,8 @@ Store installer.
   `activate`, `open_url`, and `open_tab`; messages are newline-delimited JSON
   capped at 4 KiB and URL input is capped at 2,048 characters. Only HTTP/HTTPS
   URLs without embedded credentials are accepted. State exposes only version,
-  tab count, active tab index, window visibility, and the enabled flag. It does
+  tab count, active tab index, window visibility, runtime readiness and the
+  enabled flag. URL commands return `runtime_not_ready` until WebView2 is ready. It does
   not expose page content, titles, URLs, history, bookmarks, cookies, storage,
   passwords, tokens, downloads, filesystem access, arbitrary script execution,
   DevTools, or a TCP/remote-debugging port. Closing the process destroys the
@@ -105,8 +106,18 @@ Store installer.
 - Command-line launches accept up to 32 URL or search arguments and open each
   in a bounded tab. Switches are never interpreted as navigation input;
   unsupported/non-web schemes become a search query under the selected provider.
-- The UI labels the product as `Community 0.3.23` and exposes the exact runtime
+- The UI labels the product as `Community 0.3.24` and exposes the exact runtime
   and policy boundary in its About dialog.
+
+Every page-requested new window is blocked by default, including requests tied
+to an ordinary click. A user can grant a revocable permission only to the exact
+current HTTPS origin. Even then, the request must be WebView2-confirmed as user
+initiated, the target must be HTTPS, the global tab limit must have capacity and
+the two-second popup-burst guard must be clear. Accepted requests open as normal
+protected ZSEC tabs without a `window.opener` relationship. Empty,
+`about:blank`, HTTP, credential-bearing, overlong, control-character and
+non-web targets stay blocked. Saved exact-origin permissions are local, bounded
+to 100 entries and manageable under Settings > Permissions.
 
 When enabled, native YouTube protection runs at document start only on exact
 YouTube/YouTube-nocookie hosts. It removes bounded advertising fields from
@@ -131,7 +142,9 @@ separately under `password-vault` using the local encrypted vault and Windows
 DPAPI CurrentUser key protection; the manager never displays password values in
 its list. Save/fill settings and normalized never-save HTTPS origins are stored
 in `browser-data.json`, but submitted usernames and passwords are not. The
-never-save list can be cleared from Settings > Passwords. The WebView2 profile
+never-save list can be cleared from Settings > Passwords. Revocable exact-HTTPS
+popup permissions are also stored in this settings file; no requested popup URL
+is persisted. The WebView2 profile
 remains a separate Microsoft-runtime data store under `User Data`.
 
 Implemented shortcuts:

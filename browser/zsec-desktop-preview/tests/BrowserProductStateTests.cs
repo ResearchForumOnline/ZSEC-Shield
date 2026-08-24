@@ -38,6 +38,7 @@ internal static class BrowserProductStateTests
             TestCredentialCsvImport(Path.Combine(parent, "credential-import"));
             TestResponsiveToolbarLayout();
             TestLocalAutomationPolicy();
+            TestPopupPolicy();
             Console.WriteLine("Browser product state tests passed: " + assertions.ToString());
             return 0;
         }
@@ -65,6 +66,79 @@ internal static class BrowserProductStateTests
         Assert(!BrowserLocalAutomationPolicy.TryNormalizeUrl("https://user:pass@example.com/", out normalized), "Credential-bearing URL accepted.");
         Assert(BrowserLocalAutomationPolicy.FixedTimeTokenEquals("abc", "abc"), "Equal automation tokens rejected.");
         Assert(!BrowserLocalAutomationPolicy.FixedTimeTokenEquals("abc", "abd"), "Unequal automation tokens accepted.");
+    }
+
+    private static void TestPopupPolicy()
+    {
+        BrowserPopupDecision unsolicited = BrowserPopupPolicy.Evaluate(
+            "https://popup.example/ad", "https://news.example/story",
+            false, new string[0], true, true
+        );
+        Assert(!unsolicited.Allowed && unsolicited.Reason == "page_new_window_denied",
+            "Unsolicited popup was not denied by default.");
+        BrowserPopupDecision clickBound = BrowserPopupPolicy.Evaluate(
+            "https://popup.example/", "https://news.example/",
+            true, new string[0], true, true
+        );
+        Assert(!clickBound.Allowed,
+            "Page popup was allowed without exact permission.");
+        BrowserPopupDecision permission = BrowserPopupPolicy.Evaluate(
+            "https://popup.example/", "https://news.example/article",
+            true, new[] { "https://news.example" }, true, true
+        );
+        Assert(permission.Allowed && permission.Reason == "explicit_site_permission",
+            "Exact-site popup permission was not honored.");
+        Assert(!BrowserPopupPolicy.Evaluate(
+            "https://popup.example/", "https://sub.news.example/",
+            true, new[] { "https://news.example" }, true, true
+        ).Allowed, "Popup permission widened silently to a subdomain.");
+        Assert(!BrowserPopupPolicy.Evaluate(
+            "file:///c:/secret.txt", "https://news.example/",
+            true, new string[0], true, true
+        ).Allowed, "User gesture allowed an unsafe popup target.");
+        Assert(!BrowserPopupPolicy.Evaluate(
+            "about:blank", "https://news.example/",
+            true, new[] { "https://news.example" }, true, true
+        ).Allowed, "Exact-site permission allowed an opener-dependent blank popup.");
+        Assert(!BrowserPopupPolicy.Evaluate(
+            "http://popup.example/", "https://news.example/",
+            true, new[] { "https://news.example" }, true, true
+        ).Allowed, "Exact-site permission allowed an insecure popup target.");
+        Assert(!BrowserPopupPolicy.Evaluate(
+            "https://user:password@popup.example/", "https://news.example/",
+            true, new[] { "https://news.example" }, true, true
+        ).Allowed, "Exact-site permission allowed a credential-bearing popup target.");
+        Assert(!BrowserPopupPolicy.Evaluate(
+            "https://popup.example/" + new string('a', BrowserPopupPolicy.MaximumPopupUriLength),
+            "https://news.example/", true, new[] { "https://news.example" }, true, true
+        ).Allowed, "Exact-site permission allowed an overlong popup target.");
+        Assert(!BrowserPopupPolicy.Evaluate(
+            "https://popup.example/\nunsafe", "https://news.example/",
+            true, new[] { "https://news.example" }, true, true
+        ).Allowed, "Exact-site permission allowed a control character in a popup target.");
+        Assert(!BrowserPopupPolicy.Evaluate(
+            "https://popup.example/", "https://news.example/",
+            true, new string[0], false, true
+        ).Allowed, "Popup bypassed the tab limit.");
+        Assert(!BrowserPopupPolicy.Evaluate(
+            "https://popup.example/", "https://news.example/",
+            false, new[] { "https://news.example" }, true, true
+        ).Allowed, "Background popup bypassed exact-site permission.");
+        Assert(!BrowserPopupPolicy.Evaluate(
+            "https://popup.example/", "https://news.example/",
+            true, new[] { "https://news.example" }, true, false
+        ).Allowed, "Burst popup bypassed the native rate limit.");
+        List<string> normalized = BrowserPopupPolicy.NormalizeAllowedOrigins(new[]
+        {
+            "https://NEWS.example/path", "https://news.example", "http://news.example",
+            "file:///tmp/a"
+        });
+        Assert(normalized.Count == 1 && normalized[0] == "https://news.example",
+            "Popup permission origins were not normalized and deduplicated exactly.");
+        Assert(BrowserPopupPolicy.NormalizeAllowedOrigins(
+            Enumerable.Range(0, 150).Select(index => "https://site" + index.ToString() + ".example")
+        ).Count == BrowserPopupPolicy.MaximumAllowedOrigins,
+            "Popup permission origin list exceeded its storage bound.");
     }
 
     private static void TestCredentialCsvImport(string root)
