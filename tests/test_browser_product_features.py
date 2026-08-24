@@ -283,3 +283,16 @@ def test_build_compiles_product_sources_and_docs_keep_engine_boundary() -> None:
     assert "Chromium fork" in normalized_readme
     assert "Default-browser registration is not implemented" in normalized_readme
     assert "browsing metadata, not passwords or encryption keys" in normalized_readme
+
+
+def test_native_shell_integrates_supported_media_fullscreen_without_codec_flags() -> None:
+    app = APP.read_text(encoding="utf-8")
+    readme = README.read_text(encoding="utf-8")
+
+    assert "ContainsFullScreenElementChanged" in app
+    assert "core.ContainsFullScreenElement" in app
+    assert "SetFullScreen(!isFullScreen)" in app
+    assert "Keys.F11" in app
+    assert "Keys.Escape && isFullScreen" in app
+    assert "--disable-gpu" not in app
+    assert "does not force codec or GPU flags" in readme

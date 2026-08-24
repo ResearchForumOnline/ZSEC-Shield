@@ -22,16 +22,16 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.17.0")]
-[assembly: AssemblyFileVersion("0.3.17.0")]
-[assembly: AssemblyInformationalVersion("0.3.17-community")]
+[assembly: AssemblyVersion("0.3.18.0")]
+[assembly: AssemblyFileVersion("0.3.18.0")]
+[assembly: AssemblyInformationalVersion("0.3.18-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.17";
+        internal const string ProductVersion = "0.3.18";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
         internal const string NewTabUri = "https://newtab.zsec.local/index.html";
 
@@ -145,6 +145,86 @@ namespace TalkToAI.ZsecBrowserPreview
             {
                 args.Graphics.FillPath(brush, path);
                 args.Graphics.DrawPath(pen, path);
+            }
+        }
+    }
+
+    // WinForms only owner-draws the individual tab headers. The native control still
+    // paints the unused part of the tab well with a system colour, which produces a
+    // bright strip in dark mode. Repaint the complete header after native painting so
+    // the result is deterministic on Windows versions that ignore DarkMode_Explorer.
+    internal sealed class DarkTabControl : TabControl
+    {
+        private const int WmPaint = 0x000F;
+        private const int WmEraseBackground = 0x0014;
+        internal Color StripBackColor { get; set; }
+        internal Color StripBorderColor { get; set; }
+
+        internal DarkTabControl()
+        {
+            StripBackColor = Color.FromArgb(10, 23, 30);
+            StripBorderColor = Color.FromArgb(42, 68, 78);
+            SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
+            ResizeRedraw = true;
+        }
+
+        private int TabStripHeight
+        {
+            get
+            {
+                int bottom = 0;
+                for (int index = 0; index < TabPages.Count; index++)
+                {
+                    bottom = Math.Max(bottom, GetTabRect(index).Bottom);
+                }
+                if (bottom > 0) return Math.Min(ClientSize.Height, bottom + 2);
+                return Math.Min(ClientSize.Height, Math.Max(ItemSize.Height + 4, DisplayRectangle.Top));
+            }
+        }
+
+        private void PaintTabStrip(Graphics graphics, bool paintTabs)
+        {
+            int height = TabStripHeight;
+            if (height <= 0 || ClientSize.Width <= 0) return;
+            using (SolidBrush background = new SolidBrush(StripBackColor))
+            using (Pen border = new Pen(StripBorderColor))
+            {
+                graphics.FillRectangle(background, 0, 0, ClientSize.Width, height);
+                graphics.DrawLine(border, 0, height - 1, ClientSize.Width, height - 1);
+            }
+            if (!paintTabs) return;
+            for (int index = 0; index < TabPages.Count; index++)
+            {
+                Rectangle bounds = GetTabRect(index);
+                OnDrawItem(new DrawItemEventArgs(
+                    graphics,
+                    Font,
+                    bounds,
+                    index,
+                    index == SelectedIndex ? DrawItemState.Selected : DrawItemState.Default,
+                    ForeColor,
+                    StripBackColor
+                ));
+            }
+        }
+
+        protected override void WndProc(ref Message message)
+        {
+            if (message.Msg == WmEraseBackground && message.WParam != IntPtr.Zero)
+            {
+                using (Graphics graphics = Graphics.FromHdc(message.WParam))
+                {
+                    PaintTabStrip(graphics, false);
+                }
+                message.Result = new IntPtr(1);
+                return;
+            }
+
+            base.WndProc(ref message);
+            if (message.Msg != WmPaint || !IsHandleCreated) return;
+            using (Graphics graphics = Graphics.FromHwnd(Handle))
+            {
+                PaintTabStrip(graphics, true);
             }
         }
     }
@@ -383,7 +463,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly List<WebView2> browserViews;
         private readonly Dictionary<WebView2, string> youtubeScriptRegistrations;
         private readonly HashSet<WebView2> typedNavigationPending;
-        private readonly TabControl tabs;
+        private readonly DarkTabControl tabs;
         private readonly Panel tabHost;
         private readonly RoundedActionButton newTabButton;
         private readonly ToolStrip navigation;
@@ -440,6 +520,11 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly TaskCompletionSource<bool> environmentReady;
         private readonly SemaphoreSlim tabMutationGate;
         private readonly System.Windows.Forms.Timer youtubeStatusTimer;
+        private readonly Dictionary<Control, bool> fullScreenControlVisibility;
+        private bool isFullScreen;
+        private FormBorderStyle windowedBorderStyle;
+        private FormWindowState windowedState;
+        private Size windowedTabItemSize;
 
         [DllImport("dwmapi.dll", PreserveSig = true)]
         private static extern int DwmSetWindowAttribute(
@@ -512,6 +597,7 @@ namespace TalkToAI.ZsecBrowserPreview
             browserViews = new List<WebView2>();
             youtubeScriptRegistrations = new Dictionary<WebView2, string>();
             typedNavigationPending = new HashSet<WebView2>();
+            fullScreenControlVisibility = new Dictionary<Control, bool>();
             environmentReady = new TaskCompletionSource<bool>(
                 TaskCreationOptions.RunContinuationsAsynchronously
             );
@@ -561,7 +647,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.17";
+            channel.Text = "COMMUNITY 0.3.18";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
@@ -660,7 +746,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 LayoutNavigationToolbar();
             };
 
-            tabs = new TabControl();
+            tabs = new DarkTabControl();
             tabs.Dock = DockStyle.Fill;
             tabs.Font = new Font("Segoe UI Semibold", 9F);
             tabs.DrawMode = TabDrawMode.OwnerDrawFixed;
@@ -670,6 +756,8 @@ namespace TalkToAI.ZsecBrowserPreview
             tabs.HotTrack = true;
             tabs.BackColor = Background;
             tabs.ForeColor = Foreground;
+            tabs.StripBackColor = Background;
+            tabs.StripBorderColor = theme.Border;
             tabs.AccessibleName = "Open browser tabs";
             tabs.HandleCreated += delegate
             {
@@ -681,6 +769,12 @@ namespace TalkToAI.ZsecBrowserPreview
             {
                 UpdateAddressFromActiveView();
                 PositionNewTabButton();
+                WebView2 selected = ActiveView;
+                SetFullScreen(
+                    selected != null &&
+                    selected.CoreWebView2 != null &&
+                    selected.CoreWebView2.ContainsFullScreenElement
+                );
             };
 
             tabHost = new Panel();
@@ -2023,6 +2117,16 @@ namespace TalkToAI.ZsecBrowserPreview
                 args.Action = CoreWebView2ServerCertificateErrorAction.Cancel;
             };
             core.DownloadStarting += HandleDownloadStarting;
+            core.ContainsFullScreenElementChanged += delegate
+            {
+                BeginInvoke(new Action(delegate
+                {
+                    if (view == ActiveView)
+                    {
+                        SetFullScreen(core.ContainsFullScreenElement);
+                    }
+                }));
+            };
             core.ProcessFailed += delegate
             {
                 protectionPulse.Active = false;
@@ -2648,6 +2752,16 @@ namespace TalkToAI.ZsecBrowserPreview
 
         protected override bool ProcessCmdKey(ref Message message, Keys keyData)
         {
+            if (keyData == Keys.F11)
+            {
+                SetFullScreen(!isFullScreen);
+                return true;
+            }
+            if (keyData == Keys.Escape && isFullScreen)
+            {
+                SetFullScreen(false);
+                return true;
+            }
             if (keyData == (Keys.Control | Keys.L))
             {
                 address.Focus();
@@ -2736,6 +2850,44 @@ namespace TalkToAI.ZsecBrowserPreview
                 return true;
             }
             return base.ProcessCmdKey(ref message, keyData);
+        }
+
+        private void SetFullScreen(bool enabled)
+        {
+            if (enabled == isFullScreen) return;
+            isFullScreen = enabled;
+            if (enabled)
+            {
+                fullScreenControlVisibility.Clear();
+                foreach (Control control in Controls)
+                {
+                    if (control == tabHost) continue;
+                    fullScreenControlVisibility[control] = control.Visible;
+                    control.Visible = false;
+                }
+                windowedBorderStyle = FormBorderStyle;
+                windowedState = WindowState;
+                windowedTabItemSize = tabs.ItemSize;
+                FormBorderStyle = FormBorderStyle.None;
+                WindowState = FormWindowState.Maximized;
+                tabs.ItemSize = new Size(tabs.ItemSize.Width, 1);
+                newTabButton.Visible = false;
+                runtimeStatus.Text = "Fullscreen media · F11 or Esc to exit";
+                return;
+            }
+
+            FormBorderStyle = windowedBorderStyle;
+            WindowState = windowedState;
+            tabs.ItemSize = windowedTabItemSize;
+            newTabButton.Visible = true;
+            foreach (KeyValuePair<Control, bool> entry in fullScreenControlVisibility)
+            {
+                entry.Key.Visible = entry.Value;
+            }
+            fullScreenControlVisibility.Clear();
+            PositionNewTabButton();
+            runtimeStatus.Text = "Runtime ready · Microsoft Chromium " +
+                CoreWebView2Environment.GetAvailableBrowserVersionString();
         }
 
         private void SelectRelativeTab(int delta)

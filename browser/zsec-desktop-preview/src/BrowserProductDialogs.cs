@@ -174,14 +174,16 @@ namespace TalkToAI.ZsecBrowserPreview
             Button open = BrowserDialogTheme.Button("Open", "Open selected bookmark");
             Button remove = BrowserDialogTheme.Button("Remove", "Remove selected bookmark");
             Button import = BrowserDialogTheme.Button("Import HTML", "Import bookmarks from HTML");
+            Button migrate = BrowserDialogTheme.Button("Migration centre", "Import from an installed browser profile");
             Button export = BrowserDialogTheme.Button("Export HTML", "Export bookmarks to HTML");
             Button close = BrowserDialogTheme.Button("Close", "Close bookmarks");
             open.Click += delegate { OpenSelected(); };
             remove.Click += delegate { RemoveSelected(); };
             import.Click += delegate { ImportBookmarks(); };
+            migrate.Click += delegate { OpenMigrationCentre(); };
             export.Click += delegate { ExportBookmarks(); };
             close.Click += delegate { Close(); };
-            commands.Controls.AddRange(new Control[] { open, remove, import, export, close });
+            commands.Controls.AddRange(new Control[] { open, remove, import, migrate, export, close });
 
             Controls.Add(grid);
             Controls.Add(commands);
@@ -264,6 +266,13 @@ namespace TalkToAI.ZsecBrowserPreview
             }
         }
 
+        private void OpenMigrationCentre()
+        {
+            using (BrowserMigrationDialog dialog = new BrowserMigrationDialog(store, data, openUrl))
+                dialog.ShowDialog(this);
+            RefreshRows();
+        }
+
         private void ExportBookmarks()
         {
             SaveFileDialog picker = new SaveFileDialog();
@@ -290,6 +299,85 @@ namespace TalkToAI.ZsecBrowserPreview
                     MessageBoxIcon.Warning
                 );
             }
+        }
+    }
+
+    internal sealed class BrowserMigrationDialog : Form
+    {
+        private readonly BrowserDataStore store;
+        private readonly BrowserProductData data;
+        private readonly Action<string> openUrl;
+        private readonly ComboBox profiles;
+        private readonly DataGridView preview;
+        private readonly Label status;
+        private List<BrowserMigrationProfile> discovered;
+        private BrowserMigrationPlan plan;
+
+        internal BrowserMigrationDialog(BrowserDataStore browserStore, BrowserProductData productData, Action<string> opener)
+        {
+            store = browserStore; data = productData; openUrl = opener;
+            Text = "Migration centre - ZSEC Browser";
+            Size = new Size(860, 590); MinimumSize = new Size(700, 460);
+            BrowserDialogTheme.Apply(this);
+            FlowLayoutPanel top = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 105, Padding = new Padding(10), BackColor = BrowserDialogTheme.Background };
+            profiles = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 280, AccessibleName = "Source browser profile" };
+            profiles.SelectedIndexChanged += delegate { Preview(); };
+            Button scan = BrowserDialogTheme.Button("Scan profiles", "Discover installed browser profiles");
+            Button inspect = BrowserDialogTheme.Button("Preview", "Preview safe migration items");
+            scan.Click += delegate { Discover(); }; inspect.Click += delegate { Preview(); };
+            status = BrowserDialogTheme.Description("Select a discovered Brave, Chrome, Edge or Firefox profile. Reading is local and read-only.");
+            top.Controls.AddRange(new Control[] { profiles, scan, inspect, status });
+            preview = BrowserDialogTheme.Grid(); preview.AccessibleName = "Migration preview";
+            preview.Columns.Add("Kind", "Kind"); preview.Columns.Add("Title", "Name"); preview.Columns.Add("Url", "Address");
+            preview.Columns[0].FillWeight = 12; preview.Columns[1].FillWeight = 30; preview.Columns[2].FillWeight = 58;
+            FlowLayoutPanel bottom = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 58, Padding = new Padding(8), BackColor = BrowserDialogTheme.Background };
+            Button import = BrowserDialogTheme.Button("Import bookmarks", "Import all previewed bookmarks");
+            Button tabs = BrowserDialogTheme.Button("Open safe tabs", "Open previewed URL-only tabs");
+            Button passwords = BrowserDialogTheme.Button("Passwords: export CSV", "Explain password migration boundary");
+            Button close = BrowserDialogTheme.Button("Close", "Close migration centre");
+            import.Click += delegate { Import(); }; tabs.Click += delegate { OpenTabs(); };
+            passwords.Click += delegate { MessageBox.Show("For passwords, export a CSV explicitly from Brave, Chrome, Edge or Firefox, then open ZSEC Passwords and choose Import CSV. ZSEC never decrypts another browser's password database. Delete the plaintext export after a verified import.", "Password migration", MessageBoxButtons.OK, MessageBoxIcon.Information); };
+            close.Click += delegate { Close(); };
+            bottom.Controls.AddRange(new Control[] { import, tabs, passwords, close });
+            Controls.Add(preview); Controls.Add(top); Controls.Add(bottom);
+            CancelButton = close; Discover();
+        }
+
+        private void Discover()
+        {
+            discovered = BrowserMigrationPolicy.DiscoverInstalledProfiles();
+            profiles.Items.Clear(); foreach (BrowserMigrationProfile profile in discovered) profiles.Items.Add(profile.DisplayName);
+            if (profiles.Items.Count > 0) profiles.SelectedIndex = 0;
+            else status.Text = "No readable supported profiles were found.";
+        }
+
+        private void Preview()
+        {
+            if (profiles.SelectedIndex < 0 || discovered == null) return;
+            try
+            {
+                plan = BrowserMigrationPolicy.Preview(discovered[profiles.SelectedIndex], data.Bookmarks);
+                preview.Rows.Clear(); foreach (BrowserMigrationItem item in plan.Items) preview.Rows.Add(item.Kind, item.Title, item.Url);
+                status.Text = plan.Items.Count + " safe unique item(s); " + plan.DuplicateCount + " duplicate(s) skipped. " + plan.SessionBoundary;
+            }
+            catch (Exception exception) { MessageBox.Show("The profile could not be previewed.\r\n\r\n" + exception.Message, "Migration centre", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+        }
+
+        private void Import()
+        {
+            if (plan == null) return;
+            int count = BrowserMigrationPolicy.ImportBookmarks(store, data, plan);
+            status.Text = count + " bookmark(s) imported; duplicates were left unchanged. " + plan.SessionBoundary;
+        }
+
+        private void OpenTabs()
+        {
+            if (plan == null) return;
+            List<BrowserMigrationItem> tabs = plan.Items.Where(item => item.Kind == "tab").Take(50).ToList();
+            if (tabs.Count == 0) { MessageBox.Show(plan.SessionBoundary, "Open-tab migration", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            if (MessageBox.Show("Open " + tabs.Count + " URL-only tab(s)? No cookies, login state, form data or authentication tokens will be copied.", "Open safe tabs", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            foreach (BrowserMigrationItem tab in tabs) openUrl(tab.Url);
+            status.Text = tabs.Count + " URL-only tab(s) opened without session credentials.";
         }
     }
 

@@ -11,6 +11,7 @@ $vaultContractsSource = Join-Path $packageRoot "src\BrowserVaultUiContracts.cs"
 $passwordVaultSource = Join-Path $packageRoot "src\BrowserPasswordVault.cs"
 $credentialWorkflowSource = Join-Path $packageRoot "src\BrowserCredentialWorkflowPolicy.cs"
 $credentialImportSource = Join-Path $packageRoot "src\BrowserCredentialImport.cs"
+$migrationSource = Join-Path $packageRoot "src\BrowserMigration.cs"
 $loginAssistantSource = Join-Path $packageRoot "src\BrowserLoginAssistant.cs"
 $themeSource = Join-Path $packageRoot "src\BrowserTheme.cs"
 $testSource = Join-Path $PSScriptRoot "BrowserProductStateTests.cs"
@@ -20,7 +21,7 @@ $executable = Join-Path $temporary "BrowserProductStateTests.exe"
 
 foreach ($path in @(
     $stateSource, $policySource, $vaultContractsSource, $passwordVaultSource,
-    $credentialWorkflowSource, $credentialImportSource, $loginAssistantSource, $themeSource, $testSource, $compiler
+    $credentialWorkflowSource, $credentialImportSource, $migrationSource, $loginAssistantSource, $themeSource, $testSource, $compiler
 )) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Required browser product test input is absent: $path"
@@ -46,6 +47,7 @@ try {
         $passwordVaultSource `
         $credentialWorkflowSource `
         $credentialImportSource `
+        $migrationSource `
         $loginAssistantSource `
         $themeSource `
         $testSource

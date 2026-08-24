@@ -26,6 +26,7 @@ internal static class BrowserProductStateTests
         {
             TestDefaultsAndRoundTrip(Path.Combine(parent, "roundtrip"));
             TestBookmarksAndImportExport(Path.Combine(parent, "bookmarks"));
+            TestBrowserMigration(Path.Combine(parent, "migration"));
             TestHistoryPolicyAndBounds(Path.Combine(parent, "history"));
             TestAddressSuggestionsAndSearch(Path.Combine(parent, "suggestions"));
             TestNativeRequestPolicy();
@@ -623,6 +624,48 @@ internal static class BrowserProductStateTests
         );
         store.ClearHistory(bounded);
         Assert(store.Load().History.Count == 0, "History clear did not persist.");
+    }
+
+    private static void TestBrowserMigration(string root)
+    {
+        Directory.CreateDirectory(root);
+        string bookmarks = Path.Combine(root, "Bookmarks");
+        File.WriteAllText(bookmarks,
+            "{\"roots\":{\"bookmark_bar\":{\"children\":[" +
+            "{\"name\":\"Existing\",\"url\":\"https://example.com/\"}," +
+            "{\"name\":\"News\",\"url\":\"https://news.example/story\"}," +
+            "{\"name\":\"Unsafe\",\"url\":\"javascript:alert(1)\"}]}}}",
+            new UTF8Encoding(false));
+        BrowserMigrationProfile profile = new BrowserMigrationProfile
+        {
+            Browser = "Brave", Name = "Default", Root = root, BookmarkPath = bookmarks
+        };
+        BrowserDataStore store = new BrowserDataStore(Path.Combine(root, "zsec"));
+        BrowserProductData data = store.Load();
+        store.AddBookmark(data, "Already here", "https://example.com/");
+        BrowserMigrationPlan plan = BrowserMigrationPolicy.Preview(profile, data.Bookmarks);
+        Assert(plan.Items.Count == 1, "Migration preview did not filter duplicate and unsafe URLs.");
+        Assert(plan.DuplicateCount == 1, "Migration preview duplicate count is wrong.");
+        Assert(plan.Items[0].Kind == "bookmark" && plan.Items[0].Url == "https://news.example/story",
+            "Migration preview did not preserve the safe bookmark.");
+        Assert(plan.SessionBoundary.Contains("Bookmark all tabs"), "Chromium session safety boundary is absent.");
+        Assert(BrowserMigrationPolicy.ImportBookmarks(store, data, plan) == 1,
+            "One-click bookmark migration count is wrong.");
+        Assert(data.Bookmarks.Count == 2, "One-click migration did not preserve existing bookmarks.");
+
+        string session = Path.Combine(root, "sessionstore.json");
+        File.WriteAllText(session,
+            "{\"windows\":[{\"tabs\":[{\"entries\":[{\"title\":\"Mail\",\"url\":\"https://mail.example/inbox\"},{\"url\":\"file:///secret\"}]}]}]}",
+            new UTF8Encoding(false));
+        BrowserMigrationProfile firefox = new BrowserMigrationProfile
+        {
+            Browser = "Firefox", Name = "test.default", Root = root, SessionPath = session
+        };
+        BrowserMigrationPlan sessionPlan = BrowserMigrationPolicy.Preview(firefox, data.Bookmarks);
+        Assert(sessionPlan.Items.Count == 1 && sessionPlan.Items[0].Kind == "tab",
+            "Firefox URL-only session preview did not filter non-web state.");
+        Assert(sessionPlan.SessionBoundary.Contains("authentication tokens"),
+            "Firefox session credential boundary is absent.");
     }
 
     private static void TestAddressSuggestionsAndSearch(string root)

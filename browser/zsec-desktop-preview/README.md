@@ -46,6 +46,9 @@ Store installer.
 - Certificate errors are cancelled; there is no bypass path in the UI.
 - Downloads require a confirmation and destination choice and are never opened
   automatically by ZSEC.
+- Video and page fullscreen requests are integrated with the native window;
+  `F11` toggles fullscreen and `Esc` exits it. WebView2's supported default GPU
+  acceleration path is preserved (ZSEC does not force codec or GPU flags).
 - WebView2's built-in password autosave and general form autofill are disabled.
   Independent ZSEC local-vault save and fill options are off by default. When a
   user opts in, save still requires confirmation, fill uses an exact top-level
@@ -58,6 +61,17 @@ Store installer.
   binding, transactional failure cleanup and a 32-tab resource bound.
 - A Brave-style native main menu, bookmark star, local bookmarks bar and
   bookmark manager. Import and export use standard Netscape bookmark HTML;
+  the bookmark manager also includes a local Migration centre that discovers
+  readable Brave, Chrome, Edge and Firefox profiles, automatically previews safe web URLs,
+  deduplicates them, and imports bookmarks directly without requiring an export.
+  Password migration remains an explicit browser-exported CSV workflow: ZSEC
+  does not decrypt another browser's credential database. Firefox plain recovery
+  plain-JSON bookmark backups and recovery sessions may be previewed; recovery
+  tabs are URL-only. Compressed Firefox `.jsonlz4` files and `places.sqlite` are
+  not read by this build. Cookies, login state, form data,
+  passkeys and authentication tokens are never copied. Chromium sessions are not
+  parsed; use the source browser's **Bookmark all tabs** command, then migrate
+  those bookmarks.
   only bounded HTTP/HTTPS entries are accepted.
 - Local per-user browsing history with a history window, explicit clear,
   optional recording and optional clear-on-clean-exit. ZSEC adds no cloud
@@ -76,7 +90,7 @@ Store installer.
 - Keyboard routes for bookmarks, history, settings, menu, tab selection and
   navigation, with accessible names on primary controls.
 - Non-web schemes are rejected; remote debugging and developer tools are off.
-- The UI labels the product as `Community 0.3.17` and exposes the exact runtime
+- The UI labels the product as `Community 0.3.18` and exposes the exact runtime
   and policy boundary in its About dialog.
 
 When enabled, native YouTube protection runs at document start only on exact

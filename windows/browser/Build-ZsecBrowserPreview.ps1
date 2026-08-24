@@ -6,7 +6,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-$ProductVersion = "0.3.17"
+$ProductVersion = "0.3.18"
 $WebView2Version = "1.0.4129.50"
 $WebView2Uri = "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/$WebView2Version/microsoft.web.webview2.$WebView2Version.nupkg"
 $WebView2Sha256 = "d3934f482d484b89fb4825df720c710664e1143a1e90f7b3a60794ef33f473d2"
@@ -228,6 +228,7 @@ $VaultContractsSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\Br
 $PasswordVaultSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserPasswordVault.cs"
 $CredentialWorkflowSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserCredentialWorkflowPolicy.cs"
 $CredentialImportSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserCredentialImport.cs"
+$MigrationSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserMigration.cs"
 $VaultDialogsSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserVaultDialogs.cs"
 $LoginAssistantSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserLoginAssistant.cs"
 $LoginDialogsSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\BrowserLoginDialogs.cs"
@@ -244,7 +245,7 @@ $CompilerPackagePath = Join-Path $CompilerPackageCache "microsoft.net.compilers.
 
 foreach ($path in @(
     $LauncherSource, $ProductStateSource, $ProductPolicySource, $ProductDialogsSource,
-    $VaultContractsSource, $PasswordVaultSource, $CredentialWorkflowSource, $CredentialImportSource, $VaultDialogsSource,
+    $VaultContractsSource, $PasswordVaultSource, $CredentialWorkflowSource, $CredentialImportSource, $MigrationSource, $VaultDialogsSource,
     $LoginAssistantSource, $LoginDialogsSource, $ThemeSource,
     $YoutubeProtectionSource, $IconSource
 )) {
@@ -342,6 +343,7 @@ $compilerArguments = @(
     $PasswordVaultSource,
     $CredentialWorkflowSource,
     $CredentialImportSource,
+    $MigrationSource,
     $VaultDialogsSource,
     $LoginAssistantSource,
     $LoginDialogsSource,

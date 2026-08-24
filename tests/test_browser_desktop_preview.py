@@ -36,9 +36,9 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
     assert "unsigned" in readme.lower() and "Community" in readme
-    assert 'internal const string ProductVersion = "0.3.17"' in app
-    assert '$ProductVersion = "0.3.17"' in build
-    assert '$ProductVersion = "0.3.17"' in installer
+    assert 'internal const string ProductVersion = "0.3.18"' in app
+    assert '$ProductVersion = "0.3.18"' in build
+    assert '$ProductVersion = "0.3.18"' in installer
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:
@@ -314,6 +314,12 @@ def test_desktop_tabs_popups_and_modern_controls_are_wired() -> None:
     assert "deferral.Complete()" in app
     assert "MaximumTabs = 32" in app
     assert "DrawMode = TabDrawMode.OwnerDrawFixed" in app
+    assert "internal sealed class DarkTabControl : TabControl" in app
+    assert "PaintTabStrip(graphics, true)" in app
+    assert "graphics.FillRectangle(background, 0, 0, ClientSize.Width, height)" in app
+    assert "tabs = new DarkTabControl()" in app
+    assert "tabs.StripBackColor = Background" in app
+    assert "tabs.StripBorderColor = theme.Border" in app
     assert "RoundedSurface" in app
     assert "ControlStyles.SupportsTransparentBackColor" in app
     assert 'WriteStartupStage("runtime_evidence_ready")' in app
