@@ -75,12 +75,14 @@ def test_desktop_preview_preserves_browser_security_controls() -> None:
 
 
 def test_bookmark_import_and_profile_discovery_have_bounded_parser_paths() -> None:
-    state = (ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserProductState.cs").read_text(
-        encoding="utf-8"
+    state_path = (
+        ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserProductState.cs"
     )
-    migration = (ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserMigration.cs").read_text(
-        encoding="utf-8"
+    migration_path = (
+        ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserMigration.cs"
     )
+    state = state_path.read_text(encoding="utf-8")
+    migration = migration_path.read_text(encoding="utf-8")
     assert state.count("TimeSpan.FromSeconds(2)") >= 2
     assert "catch (RegexMatchTimeoutException exception)" in state
     assert "The bookmark HTML took too long to parse safely." in state
