@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ZSEC Browser | Windows Community Client and Browser Shields</title>
-  <meta name="description" content="ZSEC Browser Community 0.3.24 adds a local encrypted password vault, native filtering, bounded YouTube protection and verifiable release evidence.">
+  <meta name="description" content="ZSEC Browser Community 0.3.25 adds a local encrypted password vault, native filtering, bounded YouTube protection and verifiable release evidence.">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#07101f">
@@ -40,7 +40,7 @@
         "@id": "https://talktoai.org/zero-browser/#webpage",
         "url": "https://talktoai.org/zero-browser/",
         "name": "ZSEC Browser | Windows Community Client and Browser Shields",
-        "description": "ZSEC Browser Community 0.3.24 for Windows adds deterministic exact-byte build gates, a user-operated local encrypted password vault, native document-and-subresource filtering, bounded YouTube protection, local typed-history suggestions, seven search providers and a Journalist high-risk preset; Browser Shields 0.5.2 remains available for compatible Chromium-family browsers.",
+        "description": "ZSEC Browser Community 0.3.25 for Windows adds a review-first Sign-in Setup Assistant, deterministic exact-byte build gates, a user-operated local encrypted password vault, native document-and-subresource filtering, bounded YouTube protection, local typed-history suggestions, seven search providers and a Journalist high-risk preset; Browser Shields 0.5.2 remains available for compatible Chromium-family browsers.",
         "inLanguage": "en-GB",
         "dateModified": "2026-08-24",
         "isPartOf": { "@id": "https://talktoai.org/#website" },
@@ -83,17 +83,17 @@
       {
         "@type": "SoftwareApplication",
         "@id": "https://talktoai.org/zero-browser/#desktop-software",
-        "name": "ZSEC Browser Community 0.3.24",
+        "name": "ZSEC Browser Community 0.3.25",
         "url": "https://talktoai.org/zero-browser/",
         "applicationCategory": "BrowserApplication",
         "applicationSubCategory": "Privacy-focused WebView2 Chromium browser shell",
         "operatingSystem": "Windows 10 x64",
-        "softwareVersion": "0.3.24 Community package",
+        "softwareVersion": "0.3.25 Community package",
         "softwareRequirements": "Microsoft-signed Evergreen WebView2 runtime version 120 or later",
         "isAccessibleForFree": true,
         "license": "https://www.apache.org/licenses/LICENSE-2.0",
         "publisher": { "@id": "https://talktoai.org/#organization" },
-        "downloadUrl": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.24-browser/zsec-browser-community-0.3.24-windows-x64-unsigned.zip",
+        "downloadUrl": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.25-browser/zsec-browser-community-0.3.25-windows-x64-unsigned.zip",
         "description": "An unsigned Windows Community browser shell with a separate profile, local bookmarks and bounded history suggestions, seven search providers, native document-and-subresource filtering, bounded YouTube protection, the exact Browser Shields 0.5.2 engine, Balanced tracking prevention and default-deny site permissions. Microsoft maintains its Evergreen WebView2 Chromium engine; it is not a separately maintained Chromium fork."
       },
       {
@@ -123,7 +123,15 @@
             "name": "Is ZSEC Browser already a standalone browser?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "ZSEC Browser Community 0.3.24 is an unsigned Windows WebView2 Community package with its own local profile and a separate user-operated encrypted password vault. It is not a separately maintained Chromium fork or a publisher-signed installer. Microsoft maintains and services the Evergreen WebView2 Chromium engine; ZSEC owns the shell, local policy and packaged Browser Shields controls."
+              "text": "ZSEC Browser Community 0.3.25 is an unsigned Windows WebView2 Community package with its own local profile and a separate user-operated encrypted password vault. It is not a separately maintained Chromium fork or a publisher-signed installer. Microsoft maintains and services the Evergreen WebView2 Chromium engine; ZSEC owns the shell, local policy and packaged Browser Shields controls."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can ZSEC Browser import my signed-in sessions from another browser?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. ZSEC deliberately does not extract or copy cookies, login sessions, authentication tokens, passwords, form data or another browser profile. Its Sign-in Setup Assistant shows reviewed HTTPS origins from local ZSEC bookmarks and history plus a built-in catalog, requires explicit confirmation, and lets the user sign in once inside ZSEC's separate profile."
             }
           },
           {
@@ -131,7 +139,7 @@
             "name": "Does ZSEC Browser block every YouTube ad?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "When enabled on exact YouTube hosts, Community 0.3.24 combines packaged and native request blocking with bounded document-start player-data sanitisation, known promotional-container hiding and visible skip-control activation. It does not seek, accelerate or mute playback. YouTube changes frequently, so uninterrupted coverage cannot be guaranteed."
+              "text": "When enabled on exact YouTube hosts, Community 0.3.25 combines packaged and native request blocking with bounded document-start player-data sanitisation, known promotional-container hiding and visible skip-control activation. It does not seek, accelerate or mute playback. YouTube changes frequently, so uninterrupted coverage cannot be guaranteed."
             }
           },
           {
@@ -163,7 +171,7 @@
             "name": "How would a ZSEC Browser distribution stay secure as Chromium changes?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Community 0.3.24 is deliberately a WebView2 shell rather than a separately maintained Chromium fork. Microsoft services the Evergreen WebView2 engine; ZSEC maintains its shell, local profile, native request policy and bundled Browser Shields controls."
+              "text": "Community 0.3.25 is deliberately a WebView2 shell rather than a separately maintained Chromium fork. Microsoft services the Evergreen WebView2 engine; ZSEC maintains its shell, local profile, native request policy and bundled Browser Shields controls."
             }
           },
           {
@@ -218,9 +226,9 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="container hero-grid">
         <div class="hero-copy">
-          <p class="hero-kicker">Windows Community 0.3.24 package · Browser Shields 0.5.2</p>
+          <p class="hero-kicker">Windows Community 0.3.25 package · Browser Shields 0.5.2</p>
           <h1 id="hero-title">A modern Windows browser with an inspectable protection engine.</h1>
-          <p class="lede">ZSEC Browser Community 0.3.24 brings a separate local profile, tabs, bookmarks, bounded history suggestions, seven search providers, a user-operated encrypted password vault, Balanced tracking prevention and 49,505 packaged network rules to Microsoft’s serviced WebView2 engine. Bounded YouTube controls and a Journalist high-risk preset stay transparent about their limits.</p>
+          <p class="lede">ZSEC Browser Community 0.3.25 brings a separate local profile, tabs, bookmarks, bounded history suggestions, seven search providers, a review-first Sign-in Setup Assistant, a user-operated encrypted password vault, Balanced tracking prevention and 49,505 packaged network rules to Microsoft’s serviced WebView2 engine. Bounded YouTube controls and a Journalist high-risk preset stay transparent about their limits.</p>
           <div class="hero-actions">
             <a class="button" href="download/">Download the Windows browser <span aria-hidden="true">↓</span></a>
             <a class="button button-secondary" href="download/#install">Install Browser Shields</a>
@@ -230,7 +238,7 @@
             <span><strong>7</strong> search providers</span>
             <span><strong>Local</strong> bookmarks and bounded history</span>
           </div>
-          <p class="microcopy"><strong>Accepted Windows archive:</strong> 4,258,862 bytes · SHA-256 <code>c08b0cee599c0cae8bc03ed8a13c78bbf9de0eff6a6b081baca3a87b27691684</code> · source <code>37798a7a57abb7f4f50bb95beddb9804087fa599</code>. The ZSEC executable is unsigned and uses Microsoft's maintained Evergreen WebView2 Chromium runtime. Its package gates pin Microsoft.Net.Compilers.Toolset 4.14.0, require deterministic compilation and reject machine-specific build paths. Keep WebView2 updates enabled and never bypass operating-system security warnings.</p>
+          <p class="microcopy"><strong>Accepted Windows archive:</strong> 4,265,007 bytes · SHA-256 <code>ecd59e8fb86560f0f2a4b5c645f956ef59e9140debcbbb25d6f3d3bd571ee548</code> · source <code>cd0fff58072403dddaf3810aacbdb2288a01139d</code>. The ZSEC executable is unsigned and uses Microsoft's maintained Evergreen WebView2 Chromium runtime. Its package gates pin Microsoft.Net.Compilers.Toolset 4.14.0, require deterministic compilation and reject machine-specific build paths. Keep WebView2 updates enabled and never bypass operating-system security warnings.</p>
         </div>
 
         <!-- Local launch artwork: ../assets/zsec-family-hero-v2.png -->
@@ -287,7 +295,7 @@
       <div class="container">
         <div class="section-head">
           <div>
-            <p class="section-label">Accepted Windows Community 0.3.24 package</p>
+            <p class="section-label">Accepted Windows Community 0.3.25 package</p>
             <h2 id="desktop-package-title">A verifiable browser shell with its own local profile.</h2>
           </div>
           <p>The Community client has its own executable, rounded tabs, address bar, Desktop and Start-menu entries, separate profile, packaged network-isolated new-tab surface and runtime evidence. Microsoft maintains the Evergreen WebView2 Chromium engine; ZSEC maintains the shell, native request policy and bundled Browser Shields policy.</p>
@@ -299,9 +307,10 @@
           <article class="card"><span class="card-icon" aria-hidden="true">PRESS</span><h3>Journalist preset</h3><p>One explicit preset disables new app-history recording, requests app-history clearing on clean exit, and enables native strict cross-site and YouTube controls. It does not clear the WebView2 profile or detect spyware.</p></article>
           <article class="card"><span class="card-icon" aria-hidden="true">DENY</span><h3>Restrictive defaults</h3><p>Page-requested windows are blocked by default without creating or focusing another tab. A revocable exact-HTTPS origin permission still requires a WebView2-confirmed user request, an accepted HTTPS destination, the tab limit and burst guard; accepted requests open as independent tabs without a usable opener relationship. Site permissions default to deny; certificate errors are cancelled; ZSEC password saving and filling are opt-in; WebView2 password autosave, general autofill, host objects, developer tools and automatic download opening remain disabled. Popup blocking reduces exposure but cannot guarantee protection against every malicious site or browser-engine exploit.</p></article>
           <article class="card"><span class="card-icon" aria-hidden="true">KEY</span><h3>Encrypted login workflow</h3><p>The local vault stores website origins, usernames, passwords and notes under the Windows account. Optional save/update prompts require a native choice; optional fill matches only the exact HTTPS origin, never auto-submits and never syncs to ZSEC. It cannot protect an already compromised Windows session.</p></article>
+          <article class="card"><span class="card-icon" aria-hidden="true">SIGN</span><h3>Review-first sign-in setup</h3><p>Choose from a searchable built-in account catalog and exact HTTPS origins already in local ZSEC bookmarks/history. Every item starts unselected, paths and query strings are removed, and the exact origins are confirmed before opening. Source-browser cookies, sessions, tokens, passwords and profiles are never copied.</p></article>
           <article class="card"><span class="card-icon" aria-hidden="true">TEST</span><h3>Runtime evidence contract</h3><p>Acceptance separately records the extension declarative-rule probe, native policy self-test, actual native subresource probe, YouTube hook loading and observed interventions. No ad served is not treated as a failed intervention.</p></article>
         </div>
-        <div class="callout callout-spaced"><span class="callout-mark" aria-hidden="true">↓</span><div><h3>Accepted v0.3.24-browser Windows package</h3><p><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.24-browser/zsec-browser-community-0.3.24-windows-x64-unsigned.zip">Download the 4,258,862-byte unsigned archive</a> · <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.24-browser/zsec-browser-community-0.3.24-windows-x64-unsigned.zip.sha256">checksum sidecar</a> · <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.24-browser/zsec-browser-community-0.3.24-windows-x64-unsigned.zip.json">release metadata</a> · <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/37798a7a57abb7f4f50bb95beddb9804087fa599/browser/zsec-desktop-preview">immutable source</a>.</p><p><strong>Archive SHA-256:</strong> <code>c08b0cee599c0cae8bc03ed8a13c78bbf9de0eff6a6b081baca3a87b27691684</code>. The 2,123-byte metadata JSON has SHA-256 <code>0ffb3a44092b029b7c2d0e97df477e0bcd24167b2e64b57de666e3df61b7a982</code>; the 122-byte checksum sidecar has SHA-256 <code>49e959394d5e306fe94916aefb96e66088e9dcef73cb9c035947a5218c0c5210</code>. Clean-build acceptance established same-toolchain exact bytes and no machine-specific manifest paths. It did not establish publisher signing, a maintained standalone Chromium fork or a release-specific installed-runtime result.</p></div></div>
+        <div class="callout callout-spaced"><span class="callout-mark" aria-hidden="true">↓</span><div><h3>Accepted v0.3.25-browser Windows package</h3><p><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.25-browser/zsec-browser-community-0.3.25-windows-x64-unsigned.zip">Download the 4,265,007-byte unsigned archive</a> · <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.25-browser/zsec-browser-community-0.3.25-windows-x64-unsigned.zip.sha256">checksum sidecar</a> · <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.25-browser/zsec-browser-community-0.3.25-windows-x64-unsigned.zip.json">release metadata</a> · <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/cd0fff58072403dddaf3810aacbdb2288a01139d/browser/zsec-desktop-preview">immutable source</a>.</p><p><strong>Archive SHA-256:</strong> <code>ecd59e8fb86560f0f2a4b5c645f956ef59e9140debcbbb25d6f3d3bd571ee548</code>. The 2,123-byte metadata JSON has SHA-256 <code>67f230dcbad5c04c023285691bfe487f270162ce2f9ab49b596b46d558705857</code>; the 122-byte checksum sidecar has SHA-256 <code>488c50ea52a8e44c940541a0d8c21207b79e165ef8ba12f309d6dd8758c7f15a</code>. Clean-build acceptance established same-toolchain exact bytes and no machine-specific manifest paths. It did not establish publisher signing, a maintained standalone Chromium fork or a release-specific installed-runtime result.</p></div></div>
       </div>
     </section>
 
@@ -490,7 +499,7 @@
 
         <div class="status-matrix">
           <div class="status-line">
-            <div><span class="status-tag">Community 0.3.24 package / 0.5.2</span></div>
+            <div><span class="status-tag">Community 0.3.25 package / 0.5.2</span></div>
             <p>Native document-and-subresource filtering, bounded exact-host YouTube protection, local browser-data controls, 49,505 packaged network rules and optional strict browsing modes.</p>
           </div>
           <div class="status-line">
@@ -547,11 +556,15 @@
         <div class="faq-list">
           <details>
             <summary>Is ZSEC Browser already a standalone browser?</summary>
-            <div class="faq-answer"><p>ZSEC Browser Community 0.3.24 is an unsigned Windows WebView2 Community package with its own local profile and separate local encrypted password vault. It is not a separately maintained Chromium fork or a publisher-signed installer. Microsoft maintains and services the Evergreen WebView2 Chromium engine; ZSEC owns the shell, local policy and packaged Browser Shields controls.</p></div>
+            <div class="faq-answer"><p>ZSEC Browser Community 0.3.25 is an unsigned Windows WebView2 Community package with its own local profile and separate local encrypted password vault. It is not a separately maintained Chromium fork or a publisher-signed installer. Microsoft maintains and services the Evergreen WebView2 Chromium engine; ZSEC owns the shell, local policy and packaged Browser Shields controls.</p></div>
+          </details>
+          <details>
+            <summary>Can ZSEC import my signed-in Facebook, X or Google session?</summary>
+            <div class="faq-answer"><p>No. Copying live browser cookies or authentication tokens would move bearer credentials and create a high-value theft path. The Sign-in Setup Assistant instead shows exact HTTPS account origins from local ZSEC bookmarks/history and a reviewed built-in catalog, leaves every item unselected, asks for confirmation, and opens only the chosen origins. Sign in once inside ZSEC; the site's cookies can then persist in ZSEC's separate WebView2 profile.</p></div>
           </details>
           <details>
             <summary>Does ZSEC Browser block every YouTube ad?</summary>
-            <div class="faq-answer"><p>When enabled on exact YouTube hosts, Community 0.3.24 combines packaged and native request blocking with bounded document-start player-data sanitisation, known promotional-container hiding and visible skip-control activation. It does not seek, accelerate or mute playback. Same-origin, server-inserted and changed advertising can still evade it, so uninterrupted coverage is not guaranteed.</p></div>
+            <div class="faq-answer"><p>When enabled on exact YouTube hosts, Community 0.3.25 combines packaged and native request blocking with bounded document-start player-data sanitisation, known promotional-container hiding and visible skip-control activation. It does not seek, accelerate or mute playback. Same-origin, server-inserted and changed advertising can still evade it, so uninterrupted coverage is not guaranteed.</p></div>
           </details>
           <details>
             <summary>Does ZSEC Browser collect browsing history?</summary>
@@ -567,7 +580,7 @@
           </details>
           <details>
             <summary>Why is ZSEC Browser not called a maintained Chromium fork?</summary>
-            <div class="faq-answer"><p>Community 0.3.24 is deliberately a WebView2 shell rather than a separately maintained Chromium fork. Microsoft services the Evergreen WebView2 engine; ZSEC maintains its shell, local profile, native request policy and bundled Browser Shields controls.</p></div>
+            <div class="faq-answer"><p>Community 0.3.25 is deliberately a WebView2 shell rather than a separately maintained Chromium fork. Microsoft services the Evergreen WebView2 engine; ZSEC maintains its shell, local profile, native request policy and bundled Browser Shields controls.</p></div>
           </details>
           <details>
             <summary>Does High-Risk Browsing stop mercenary spyware or zero-click exploits?</summary>
@@ -582,7 +595,7 @@
         <div>
           <p class="section-label">Privacy people can verify</p>
           <h2 id="cta-title">Download the Windows browser or add the verifiable Shields package.</h2>
-          <p>ZSEC Browser Community 0.3.24 is the accepted unsigned Windows WebView2 package. Browser Shields 0.5.2 remains the installable open-source protection layer for compatible Chromium-family browsers, with versioned checksums, optional High-Risk Browsing and a complete local privacy contract.</p>
+          <p>ZSEC Browser Community 0.3.25 is the accepted unsigned Windows WebView2 package. Browser Shields 0.5.2 remains the installable open-source protection layer for compatible Chromium-family browsers, with versioned checksums, optional High-Risk Browsing and a complete local privacy contract.</p>
         </div>
         <div class="cta-actions">
           <a class="button" href="download/">Choose a browser download <span aria-hidden="true">↓</span></a>
@@ -599,7 +612,7 @@
           <span class="brand-mark" aria-hidden="true">Z</span>
           <span>ZSEC Browser</span>
         </a>
-        <p>Local-first browser protection from TalkToAI: the accepted unsigned ZSEC Browser Community 0.3.24 Windows package plus ZSEC Browser Shields 0.5.2. The desktop engine is Microsoft Evergreen WebView2, not a separately maintained Chromium fork.</p>
+        <p>Local-first browser protection from TalkToAI: the accepted unsigned ZSEC Browser Community 0.3.25 Windows package plus ZSEC Browser Shields 0.5.2. The desktop engine is Microsoft Evergreen WebView2, not a separately maintained Chromium fork.</p>
       </div>
       <div>
         <p class="footer-title">Product</p>
@@ -615,8 +628,8 @@
         <p class="footer-title">Project</p>
         <ul class="footer-links">
           <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/eacd53438695946e5af5a063cacae6ada3dac51d/browser/zeroq-shields">Immutable extension source</a></li>
-          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/37798a7a57abb7f4f50bb95beddb9804087fa599/browser/zsec-desktop-preview">Immutable desktop source</a></li>
-          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.24-browser">Community 0.3.24 release</a></li>
+          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/cd0fff58072403dddaf3810aacbdb2288a01139d/browser/zsec-desktop-preview">Immutable desktop source</a></li>
+          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.25-browser">Community 0.3.25 release</a></li>
           <li><a href="https://talktoai.org/.well-known/security.txt">Security contact</a></li>
           <li><a href="https://talktoai.org/">TalkToAI home</a></li>
           <li><a href="../zero-security/">ZSEC Antivirus</a></li>
@@ -624,7 +637,7 @@
       </div>
     </div>
     <div class="container footer-bottom">
-      <p>© 2026 TalkToAI. ZSEC Browser Community 0.3.24 and Browser Shields 0.5.2.</p>
+      <p>© 2026 TalkToAI. ZSEC Browser Community 0.3.25 and Browser Shields 0.5.2.</p>
       <p>Last reviewed <time datetime="2026-08-24">24 August 2026</time>.</p>
     </div>
   </footer>
