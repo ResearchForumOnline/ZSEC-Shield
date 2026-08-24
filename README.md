@@ -166,6 +166,13 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\
 powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\windows\browser\Test-ZsecBrowserPreviewRuntime.ps1
 ```
 
+The per-user installer registers ZSEC Browser with Windows Default Apps for
+`http`, `https`, `.htm`, and `.html`. It does not modify protected `UserChoice`
+values. Choose **Set as default browser** in ZSEC Browser's main menu and confirm
+the desired associations in Windows Settings. Status reports registration and
+the current user-confirmed associations; uninstall removes only ZSEC-owned
+registration values.
+
 The extension and desktop shell are working Community layers, not a separately
 maintained Chromium distribution. The direct ZSEC Community executable is unsigned
 and no rollback-resistant ZSEC binary updater has shipped. Keep the

@@ -90,7 +90,22 @@ Store installer.
 - Keyboard routes for bookmarks, history, settings, menu, tab selection and
   navigation, with accessible names on primary controls.
 - Non-web schemes are rejected; remote debugging and developer tools are off.
-- The UI labels the product as `Community 0.3.18` and exposes the exact runtime
+- An optional local automation surface can be enabled for a single launch with
+`--enable-local-automation`. It creates a random 256-bit session token and a
+  current-Windows-user-only named pipe, printing both to the launching process's
+  standard error. The five allowed operations are `ping`, `get_state`,
+  `activate`, `open_url`, and `open_tab`; messages are newline-delimited JSON
+  capped at 4 KiB and URL input is capped at 2,048 characters. Only HTTP/HTTPS
+  URLs without embedded credentials are accepted. State exposes only version,
+  tab count, active tab index, window visibility, and the enabled flag. It does
+  not expose page content, titles, URLs, history, bookmarks, cookies, storage,
+  passwords, tokens, downloads, filesystem access, arbitrary script execution,
+  DevTools, or a TCP/remote-debugging port. Closing the process destroys the
+  token and endpoint. Automation is off on every ordinary launch.
+- Command-line launches accept up to 32 URL or search arguments and open each
+  in a bounded tab. Switches are never interpreted as navigation input;
+  unsupported/non-web schemes become a search query under the selected provider.
+- The UI labels the product as `Community 0.3.19` and exposes the exact runtime
   and policy boundary in its About dialog.
 
 When enabled, native YouTube protection runs at document start only on exact
@@ -130,11 +145,35 @@ Implemented shortcuts:
 - `Ctrl+,` settings and `Alt+F` main menu;
 - `Ctrl+Tab` / `Ctrl+Shift+Tab` select the next/previous tab.
 
+### Explicit local automation contract
+
+Launch ZSEC Browser from an automation host that can securely capture stderr:
+
+```text
+ZSEC Browser.exe --enable-local-automation
+```
+
+The host reads the emitted `ZSEC_AUTOMATION_PIPE` and `ZSEC_AUTOMATION_TOKEN`,
+connects to that named pipe as the same Windows user, and sends one request per
+connection, for example:
+
+```json
+{"Token":"SESSION_TOKEN","Command":"open_tab","Url":"https://example.com/"}
+```
+
+The response is one bounded JSON line. Tokens must not be logged, persisted, put
+on a command line, or shared with another process. There is deliberately no DOM
+inspection or click/type API: UI automation and accessibility clients should use
+the browser's native accessible controls for those actions, while this IPC
+surface remains a small navigation/state capability.
+
 Permissions remain deny-by-default and do not currently support per-site
-exceptions. Dark is the only implemented Community shell theme. Default-browser
-registration is not implemented and the installer does not change Windows
-defaults. The native strict navigation policy and the extension High-Risk mode
-are separate, truthfully labelled controls.
+exceptions. Soft dark, Slate and Midnight blue are the implemented bounded
+palettes, with Teal, Blue, Violet and Amber accents. The installer registers
+ZSEC Browser as an available per-user handler for HTTP, HTTPS, HTM and HTML;
+Windows keeps authority over the protected default-app choice, and the user
+confirms any change in Settings. The native strict navigation policy and the
+extension High-Risk mode are separate, truthfully labelled controls.
 
 ## Install the Community package
 

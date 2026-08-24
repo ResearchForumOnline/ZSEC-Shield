@@ -36,9 +36,9 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
     assert "unsigned" in readme.lower() and "Community" in readme
-    assert 'internal const string ProductVersion = "0.3.18"' in app
-    assert '$ProductVersion = "0.3.18"' in build
-    assert '$ProductVersion = "0.3.18"' in installer
+    assert 'internal const string ProductVersion = "0.3.19"' in app
+    assert '$ProductVersion = "0.3.19"' in build
+    assert '$ProductVersion = "0.3.19"' in installer
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:
@@ -72,6 +72,27 @@ def test_desktop_preview_preserves_browser_security_controls() -> None:
     assert 'ExpectedShieldsExtensionId = "ddjbjhnlhapggenanpmcidieimaomiif"' in app
     assert 'system_security_products_modified = $false' in installer
     assert 'default_browser_changed = $false' in installer
+
+
+def test_default_browser_registration_requires_windows_user_confirmation() -> None:
+    installer = INSTALLER.read_text(encoding="utf-8")
+    uninstaller = (ROOT / "windows" / "browser" / "Uninstall-ZsecBrowserPreview.ps1").read_text(encoding="utf-8")
+    status = STATUS.read_text(encoding="utf-8")
+    app = APP.read_text(encoding="utf-8")
+    assert "Software\\RegisteredApplications" in installer
+    assert "ZSECBrowserHTML" in installer
+    assert 'foreach ($scheme in @(\"http\", \"https\"))' in installer
+    assert 'foreach ($extension in @(\".htm\", \".html\"))' in installer
+    assert 'user_confirmation_required = $true' in installer
+    assert "UrlAssociations\\http\\UserChoice" not in installer
+    assert "FileExts\\.html\\UserChoice" not in installer
+    assert "UserChoice" in status
+    assert "user_choice_modified_by_status = $false" in status
+    assert "UserChoice" in uninstaller
+    assert "user_choice_modified = $false" in uninstaller
+    assert 'MenuItem("Set as default browser"' in app
+    assert 'FileName = "ms-settings:defaultapps"' in app
+    assert "UseShellExecute = true" in app
 
 
 def test_browser_build_dependencies_are_pinned_and_reproducible() -> None:

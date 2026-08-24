@@ -39,6 +39,42 @@ if (
     throw "The installation marker does not belong to ZSEC Browser."
 }
 
+# Remove only ZSEC-owned per-user registration. Never write or remove Windows'
+# protected UserChoice keys; Windows will retain or request a replacement default.
+$registeredApplicationRemoved = $false
+$clientRegistrationRemoved = $false
+$progIdRemoved = $false
+$registeredApps = "HKCU:\Software\RegisteredApplications"
+if (Test-Path $registeredApps) {
+    $registeredValue = (Get-ItemProperty -Path $registeredApps -Name "ZSEC Browser" -ErrorAction SilentlyContinue)."ZSEC Browser"
+    if ($registeredValue -eq "Software\Clients\StartMenuInternet\ZSECBrowser\Capabilities" -and
+        $PSCmdlet.ShouldProcess("ZSEC Browser default-app registration", "Remove owned registration")) {
+        Remove-ItemProperty -Path $registeredApps -Name "ZSEC Browser" -Force
+        $registeredApplicationRemoved = $true
+    }
+}
+$clientKey = "HKCU:\Software\Clients\StartMenuInternet\ZSECBrowser"
+if (Test-Path $clientKey) {
+    $registeredCommand = $null
+    try { $registeredCommand = (Get-Item -Path (Join-Path $clientKey "shell\open\command") -ErrorAction Stop).GetValue("") } catch { }
+    if ($registeredCommand -eq ('"' + [string]$state.launcher.path + '"') -and
+        $PSCmdlet.ShouldProcess($clientKey, "Remove owned ZSEC Browser client registration")) {
+        Remove-Item -Path $clientKey -Recurse -Force
+        $clientRegistrationRemoved = $true
+    }
+}
+$progIdKey = "HKCU:\Software\Classes\ZSECBrowserHTML"
+if (Test-Path $progIdKey) {
+    $registeredCommand = $null
+    try { $registeredCommand = (Get-Item -Path (Join-Path $progIdKey "shell\open\command") -ErrorAction Stop).GetValue("") } catch { }
+    $expectedCommand = '"' + [string]$state.launcher.path + '" "%1"'
+    if ($registeredCommand -eq $expectedCommand -and
+        $PSCmdlet.ShouldProcess($progIdKey, "Remove owned ZSEC Browser ProgID")) {
+        Remove-Item -Path $progIdKey -Recurse -Force
+        $progIdRemoved = $true
+    }
+}
+
 foreach ($shortcutPath in @($state.shortcuts)) {
     if (Test-Path -LiteralPath ([string]$shortcutPath) -PathType Leaf) {
         $shell = New-Object -ComObject WScript.Shell
@@ -82,6 +118,11 @@ if ($PSCmdlet.ShouldProcess($statePath, "Remove ZSEC Browser installation marker
     product = "ZSEC Browser"
     application_removed = $true
     shortcuts_removed = $true
+    default_browser_registration_removed = ($registeredApplicationRemoved -and $clientRegistrationRemoved -and $progIdRemoved)
+    registered_application_removed = $registeredApplicationRemoved
+    client_registration_removed = $clientRegistrationRemoved
+    prog_id_removed = $progIdRemoved
+    user_choice_modified = $false
     profile_removed = [bool]$RemoveProfile
     profile_recoverable = (-not [bool]$RemoveProfile)
 } | ConvertTo-Json -Depth 4

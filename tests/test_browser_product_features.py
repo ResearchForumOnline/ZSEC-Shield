@@ -137,7 +137,7 @@ def test_settings_surface_is_complete_and_truthful() -> None:
     assert "Per-site permission exceptions are not implemented" in dialogs
     assert "Choose a contrast-tested native browser theme and accent" in dialogs
     assert "All supplied palettes avoid white startup surfaces" in dialogs
-    assert "Default-browser registration is not implemented" in dialogs
+    assert "Windows protects the actual default-app choice" in dialogs
     assert "native strict policy and the extension High-Risk mode are separate" in dialogs
     assert "Every download still requires an explicit allow decision" in dialogs
     assert "Default address bar search engine" in dialogs
@@ -281,7 +281,7 @@ def test_build_compiles_product_sources_and_docs_keep_engine_boundary() -> None:
     assert "not" in normalized_readme
     assert "separately built or maintained" in normalized_readme
     assert "Chromium fork" in normalized_readme
-    assert "Default-browser registration is not implemented" in normalized_readme
+    assert "Windows keeps authority over the protected default-app choice" in normalized_readme
     assert "browsing metadata, not passwords or encryption keys" in normalized_readme
 
 

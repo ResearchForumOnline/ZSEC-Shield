@@ -9,7 +9,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $ProductName = "ZSEC Browser"
-$ProductVersion = "0.3.18"
+$ProductVersion = "0.3.19"
 
 function Get-NormalizedPath {
     param([Parameter(Mandatory = $true)][string]$Path)
@@ -59,6 +59,49 @@ function Write-Utf8JsonAtomic {
         if (Test-Path -LiteralPath $temporary -PathType Leaf) {
             Remove-Item -LiteralPath $temporary -Force
         }
+    }
+}
+
+function Set-DefaultBrowserRegistration {
+    param([Parameter(Mandatory = $true)][string]$LauncherPath)
+    # Registration only makes ZSEC available in Windows Default Apps. Windows owns
+    # the protected UserChoice values and the user must confirm any actual change.
+    $clientKey = "HKCU:\Software\Clients\StartMenuInternet\ZSECBrowser"
+    $capabilitiesKey = Join-Path $clientKey "Capabilities"
+    $command = '"' + $LauncherPath + '" "%1"'
+    New-Item -Path (Join-Path $clientKey "Capabilities\URLAssociations") -Force | Out-Null
+    New-Item -Path (Join-Path $clientKey "Capabilities\FileAssociations") -Force | Out-Null
+    New-Item -Path (Join-Path $clientKey "shell\open\command") -Force | Out-Null
+    New-Item -Path (Join-Path $clientKey "DefaultIcon") -Force | Out-Null
+    New-Item -Path "HKCU:\Software\Classes\ZSECBrowserHTML\shell\open\command" -Force | Out-Null
+    New-Item -Path "HKCU:\Software\Classes\ZSECBrowserHTML\DefaultIcon" -Force | Out-Null
+    Set-Item -Path $clientKey -Value $ProductName
+    New-ItemProperty -Path $capabilitiesKey -Name "ApplicationName" -Value $ProductName -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $capabilitiesKey -Name "ApplicationDescription" -Value "Privacy-focused browser powered by Microsoft WebView2" -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $capabilitiesKey -Name "ApplicationIcon" -Value "$LauncherPath,0" -PropertyType String -Force | Out-Null
+    foreach ($scheme in @("http", "https")) {
+        New-ItemProperty -Path (Join-Path $capabilitiesKey "URLAssociations") -Name $scheme -Value "ZSECBrowserHTML" -PropertyType String -Force | Out-Null
+    }
+    foreach ($extension in @(".htm", ".html")) {
+        New-ItemProperty -Path (Join-Path $capabilitiesKey "FileAssociations") -Name $extension -Value "ZSECBrowserHTML" -PropertyType String -Force | Out-Null
+    }
+    Set-Item -Path (Join-Path $clientKey "DefaultIcon") -Value "$LauncherPath,0"
+    Set-Item -Path (Join-Path $clientKey "shell\open\command") -Value ('"' + $LauncherPath + '"')
+    $progIdKey = "HKCU:\Software\Classes\ZSECBrowserHTML"
+    Set-Item -Path $progIdKey -Value "ZSEC Browser HTML Document"
+    New-ItemProperty -Path $progIdKey -Name "FriendlyTypeName" -Value "ZSEC Browser HTML Document" -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $progIdKey -Name "URL Protocol" -Value "" -PropertyType String -Force | Out-Null
+    Set-Item -Path (Join-Path $progIdKey "DefaultIcon") -Value "$LauncherPath,0"
+    Set-Item -Path (Join-Path $progIdKey "shell\open\command") -Value $command
+    New-Item -Path "HKCU:\Software\RegisteredApplications" -Force | Out-Null
+    New-ItemProperty -Path "HKCU:\Software\RegisteredApplications" -Name $ProductName -Value "Software\Clients\StartMenuInternet\ZSECBrowser\Capabilities" -PropertyType String -Force | Out-Null
+    return [ordered]@{
+        registered = $true
+        registered_application = $ProductName
+        prog_id = "ZSECBrowserHTML"
+        protocols = @("http", "https")
+        file_extensions = @(".htm", ".html")
+        user_confirmation_required = $true
     }
 }
 
@@ -295,6 +338,7 @@ foreach ($shortcutPath in @($desktopShortcut, $startMenuShortcut)) {
         throw "Shortcut creation failed: $shortcutPath"
     }
 }
+$defaultBrowserRegistration = Set-DefaultBrowserRegistration -LauncherPath $installedLauncher
 
 $state = [ordered]@{
     schema = "zsec.browser.desktop-preview-installation.v2"
@@ -328,6 +372,7 @@ $state = [ordered]@{
     profile_root = $profileRoot
     runtime_evidence_path = (Join-Path $productRoot "runtime-state.txt")
     shortcuts = @($desktopShortcut, $startMenuShortcut)
+    default_browser_registration = $defaultBrowserRegistration
     security_boundary = [ordered]@{
         default_browser_changed = $false
         system_security_products_modified = $false
@@ -365,6 +410,8 @@ if ($Open) {
     engine_version = $runtime.Version.ToString()
     tracker_domain_count = [int]$policy.outputs.tracker_domain_count
     obsolete_windows = $obsoleteWindows
+    default_browser_registered = $true
+    default_browser_user_confirmation_required = $true
     default_browser_changed = $false
     system_security_products_modified = $false
 } | ConvertTo-Json -Depth 8

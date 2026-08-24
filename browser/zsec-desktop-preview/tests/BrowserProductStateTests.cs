@@ -37,6 +37,7 @@ internal static class BrowserProductStateTests
             TestCredentialWorkflowPolicy(Path.Combine(parent, "credential-workflow"));
             TestCredentialCsvImport(Path.Combine(parent, "credential-import"));
             TestResponsiveToolbarLayout();
+            TestLocalAutomationPolicy();
             Console.WriteLine("Browser product state tests passed: " + assertions.ToString());
             return 0;
         }
@@ -49,6 +50,21 @@ internal static class BrowserProductStateTests
         {
             if (Directory.Exists(parent)) Directory.Delete(parent, true);
         }
+    }
+
+    private static void TestLocalAutomationPolicy()
+    {
+        Assert(BrowserLocalAutomationPolicy.IsSupportedCommand("ping"), "Automation ping missing.");
+        Assert(BrowserLocalAutomationPolicy.IsSupportedCommand("get_state"), "Automation state query missing.");
+        Assert(!BrowserLocalAutomationPolicy.IsSupportedCommand("cookies"), "Sensitive automation command accepted.");
+        Assert(!BrowserLocalAutomationPolicy.IsSupportedCommand("execute_script"), "Script execution command accepted.");
+        string normalized;
+        Assert(BrowserLocalAutomationPolicy.TryNormalizeUrl("https://example.com/a", out normalized), "HTTPS URL rejected.");
+        Assert(normalized == "https://example.com/a", "Automation URL normalization changed unexpectedly.");
+        Assert(!BrowserLocalAutomationPolicy.TryNormalizeUrl("file:///c:/secret.txt", out normalized), "File URL accepted.");
+        Assert(!BrowserLocalAutomationPolicy.TryNormalizeUrl("https://user:pass@example.com/", out normalized), "Credential-bearing URL accepted.");
+        Assert(BrowserLocalAutomationPolicy.FixedTimeTokenEquals("abc", "abc"), "Equal automation tokens rejected.");
+        Assert(!BrowserLocalAutomationPolicy.FixedTimeTokenEquals("abc", "abd"), "Unequal automation tokens accepted.");
     }
 
     private static void TestCredentialCsvImport(string root)

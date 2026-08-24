@@ -860,7 +860,7 @@ namespace TalkToAI.ZsecBrowserPreview
             closeToTray.Checked = working.CloseToTray;
             panel.Controls.Add(closeToTray);
             panel.Controls.Add(BrowserDialogTheme.Description(
-                "Default-browser registration is not implemented. This unsigned Community WebView2 shell does not change Windows default-browser settings."
+                "ZSEC Browser is registered as an available HTTP, HTTPS, HTM and HTML handler. Windows protects the actual default-app choice; use Set as default browser from the main menu and confirm the associations in Windows Settings."
             ));
             panel.Controls.Add(BrowserDialogTheme.Description(
                 "HTTPS upgrades, certificate-error blocking, separate profile storage, disabled WebView2 password storage and disabled host objects remain enforced. Optional ZSEC local-vault save and fill are controlled on the Passwords page."

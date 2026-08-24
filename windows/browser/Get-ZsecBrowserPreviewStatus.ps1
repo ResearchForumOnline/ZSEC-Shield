@@ -140,6 +140,26 @@ foreach ($shortcutPath in @($state.shortcuts)) {
     }
 }
 
+$registeredCapabilities = "Software\Clients\StartMenuInternet\ZSECBrowser\Capabilities"
+$registeredApplicationValue = $null
+try { $registeredApplicationValue = (Get-ItemProperty -Path "HKCU:\Software\RegisteredApplications" -Name "ZSEC Browser" -ErrorAction Stop)."ZSEC Browser" } catch { }
+$progIdCommand = $null
+try { $progIdCommand = (Get-Item -Path "HKCU:\Software\Classes\ZSECBrowserHTML\shell\open\command" -ErrorAction Stop).GetValue("") } catch { }
+$expectedProgIdCommand = '"' + [string]$state.launcher.path + '" "%1"'
+$defaultRegistrationVerified = ($registeredApplicationValue -eq $registeredCapabilities -and $progIdCommand -eq $expectedProgIdCommand)
+if (-not $defaultRegistrationVerified) { $reasons += "per-user Windows Default Apps registration is absent or changed" }
+$associationStates = @()
+foreach ($association in @("http", "https", ".htm", ".html")) {
+    $userChoicePath = if ($association.StartsWith('.')) {
+        "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\$association\UserChoice"
+    } else {
+        "HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\$association\UserChoice"
+    }
+    $currentProgId = $null
+    try { $currentProgId = (Get-ItemProperty -Path $userChoicePath -Name "ProgId" -ErrorAction Stop).ProgId } catch { }
+    $associationStates += [ordered]@{ association = $association; current_prog_id = $currentProgId; zsec_is_default = $currentProgId -eq "ZSECBrowserHTML" }
+}
+
 $runtimeEvidence = [ordered]@{
     present = $false
     valid = $false
@@ -271,6 +291,15 @@ $healthy = $reasons.Count -eq 0
     }
     runtime_evidence = $runtimeEvidence
     shortcuts = $shortcutStates
+    default_browser = [ordered]@{
+        registered = $defaultRegistrationVerified
+        registered_application = "ZSEC Browser"
+        prog_id = "ZSECBrowserHTML"
+        associations = $associationStates
+        http_and_https_default = (@($associationStates | Where-Object { $_.association -in @("http", "https") -and -not $_.zsec_is_default }).Count -eq 0)
+        user_confirmation_required = $true
+        user_choice_modified_by_status = $false
+    }
     running = $running
     running_instance_verified = $running.Count -gt 0
     runtime_process_boundary = [ordered]@{

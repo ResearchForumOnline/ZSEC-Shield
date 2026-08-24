@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
+using System.IO.Pipes;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -22,16 +23,16 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.18.0")]
-[assembly: AssemblyFileVersion("0.3.18.0")]
-[assembly: AssemblyInformationalVersion("0.3.18-community")]
+[assembly: AssemblyVersion("0.3.19.0")]
+[assembly: AssemblyFileVersion("0.3.19.0")]
+[assembly: AssemblyInformationalVersion("0.3.19-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.18";
+        internal const string ProductVersion = "0.3.19";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
         internal const string NewTabUri = "https://newtab.zsec.local/index.html";
 
@@ -45,7 +46,10 @@ namespace TalkToAI.ZsecBrowserPreview
                 !String.IsNullOrWhiteSpace(value) &&
                 !value.StartsWith("--", StringComparison.Ordinal)
             );
-            string destination = ResolveDestination(args);
+            IList<string> destinations = ResolveDestinations(args, "brave");
+            string destination = destinations[0];
+            bool automationEnabled = args.Any(value => String.Equals(
+                value, "--enable-local-automation", StringComparison.OrdinalIgnoreCase));
             try
             {
                 bool runtimeNewTabTest = args.Any(value =>
@@ -55,11 +59,27 @@ namespace TalkToAI.ZsecBrowserPreview
                         StringComparison.OrdinalIgnoreCase
                     )
                 );
-                Application.Run(new BrowserWindow(
+                BrowserWindow window = new BrowserWindow(
                     destination,
                     explicitDestination,
-                    runtimeNewTabTest
-                ));
+                    runtimeNewTabTest,
+                    destinations.Skip(1)
+                );
+                BrowserLocalAutomationServer automation = null;
+                if (automationEnabled)
+                {
+                    string token = BrowserAutomationToken.CreateSessionToken();
+                    automation = new BrowserLocalAutomationServer(
+                        "zsec-browser-automation-" + Process.GetCurrentProcess().Id,
+                        token,
+                        window.HandleAutomationRequest
+                    );
+                    automation.Start();
+                    Console.Error.WriteLine("ZSEC_AUTOMATION_PIPE=zsec-browser-automation-" + Process.GetCurrentProcess().Id);
+                    Console.Error.WriteLine("ZSEC_AUTOMATION_TOKEN=" + token);
+                }
+                try { Application.Run(window); }
+                finally { if (automation != null) automation.Dispose(); }
             }
             catch (Exception exception)
             {
@@ -102,6 +122,18 @@ namespace TalkToAI.ZsecBrowserPreview
 
             return BrowserSearchProviders.BuildSearchUrl(searchEngine, candidate);
         }
+
+        internal static IList<string> ResolveDestinations(string[] args, string searchEngine)
+        {
+            List<string> result = new List<string>();
+            foreach (string candidate in args.Where(value =>
+                !String.IsNullOrWhiteSpace(value) && !value.StartsWith("--", StringComparison.Ordinal)).Take(32))
+            {
+                result.Add(ResolveDestination(new[] { candidate }, searchEngine));
+            }
+            if (result.Count == 0) result.Add(DefaultStartPage);
+            return result;
+        }
     }
 
     internal static class ModernUi
@@ -123,6 +155,8 @@ namespace TalkToAI.ZsecBrowserPreview
     {
         internal Color SurfaceColor { get; set; }
         internal Color BorderColor { get; set; }
+        internal Color FocusBorderColor { get; set; }
+        internal bool ShowFocusCue { get; set; }
         internal int CornerRadius { get; set; }
 
         internal RoundedSurface()
@@ -130,6 +164,7 @@ namespace TalkToAI.ZsecBrowserPreview
             DoubleBuffered = true;
             SurfaceColor = Color.FromArgb(17, 35, 44);
             BorderColor = Color.FromArgb(44, 73, 84);
+            FocusBorderColor = Color.FromArgb(57, 220, 190);
             CornerRadius = 14;
             BackColor = Color.Transparent;
             Padding = new Padding(14, 7, 14, 7);
@@ -141,7 +176,7 @@ namespace TalkToAI.ZsecBrowserPreview
             Rectangle bounds = new Rectangle(1, 1, Math.Max(1, Width - 3), Math.Max(1, Height - 3));
             using (GraphicsPath path = ModernUi.RoundedRectangle(bounds, CornerRadius))
             using (SolidBrush brush = new SolidBrush(SurfaceColor))
-            using (Pen pen = new Pen(BorderColor, 1F))
+            using (Pen pen = new Pen(ShowFocusCue ? FocusBorderColor : BorderColor, ShowFocusCue ? 1.5F : 1F))
             {
                 args.Graphics.FillPath(brush, path);
                 args.Graphics.DrawPath(pen, path);
@@ -159,11 +194,15 @@ namespace TalkToAI.ZsecBrowserPreview
         private const int WmEraseBackground = 0x0014;
         internal Color StripBackColor { get; set; }
         internal Color StripBorderColor { get; set; }
+        internal Color ContentBackColor { get; set; }
+        internal Color ContentBorderColor { get; set; }
 
         internal DarkTabControl()
         {
             StripBackColor = Color.FromArgb(10, 23, 30);
             StripBorderColor = Color.FromArgb(42, 68, 78);
+            ContentBackColor = StripBackColor;
+            ContentBorderColor = StripBorderColor;
             SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
             ResizeRedraw = true;
         }
@@ -208,6 +247,28 @@ namespace TalkToAI.ZsecBrowserPreview
             }
         }
 
+        private void PaintContentFrame(Graphics graphics)
+        {
+            Rectangle content = DisplayRectangle;
+            if (content.Width <= 0 || content.Height <= 0) return;
+
+            // Cover the native TabControl frame without painting over the hosted
+            // WebView. This prevents a system black edge leaking into a themed
+            // window while retaining a visible surface boundary.
+            using (SolidBrush background = new SolidBrush(ContentBackColor))
+            using (Pen border = new Pen(ContentBorderColor, 1F))
+            {
+                int stripHeight = TabStripHeight;
+                if (content.Left > 0)
+                    graphics.FillRectangle(background, 0, stripHeight, content.Left, ClientSize.Height - stripHeight);
+                if (content.Right < ClientSize.Width)
+                    graphics.FillRectangle(background, content.Right, stripHeight, ClientSize.Width - content.Right, ClientSize.Height - stripHeight);
+                if (content.Bottom < ClientSize.Height)
+                    graphics.FillRectangle(background, 0, content.Bottom, ClientSize.Width, ClientSize.Height - content.Bottom);
+                graphics.DrawRectangle(border, content.Left, content.Top, Math.Max(0, content.Width - 1), Math.Max(0, content.Height - 1));
+            }
+        }
+
         protected override void WndProc(ref Message message)
         {
             if (message.Msg == WmEraseBackground && message.WParam != IntPtr.Zero)
@@ -225,6 +286,7 @@ namespace TalkToAI.ZsecBrowserPreview
             using (Graphics graphics = Graphics.FromHwnd(Handle))
             {
                 PaintTabStrip(graphics, true);
+                PaintContentFrame(graphics);
             }
         }
     }
@@ -448,6 +510,7 @@ namespace TalkToAI.ZsecBrowserPreview
         };
 
         private readonly string initialDestination;
+        private readonly IList<string> additionalDestinations;
         private readonly string applicationRoot;
         private readonly string productRoot;
         private readonly string profileRoot;
@@ -540,10 +603,12 @@ namespace TalkToAI.ZsecBrowserPreview
         internal BrowserWindow(
             string destination,
             bool explicitDestination,
-            bool testNewTab = false
+            bool testNewTab = false,
+            IEnumerable<string> extraDestinations = null
         )
         {
             runtimeNewTabTest = testNewTab;
+            additionalDestinations = (extraDestinations ?? Enumerable.Empty<string>()).Take(MaximumTabs - 1).ToList();
             applicationRoot = AppDomain.CurrentDomain.BaseDirectory;
             productRoot = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -647,7 +712,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.18";
+            channel.Text = "COMMUNITY 0.3.19";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
@@ -694,7 +759,8 @@ namespace TalkToAI.ZsecBrowserPreview
             addressSurface = new RoundedSurface();
             addressSurface.Size = new Size(660, 36);
             addressSurface.SurfaceColor = ElevatedSurface;
-            addressSurface.BorderColor = Color.FromArgb(42, 75, 88);
+            addressSurface.BorderColor = theme.Border;
+            addressSurface.FocusBorderColor = Accent;
             addressSurface.CornerRadius = 16;
             address = new TextBox();
             address.BorderStyle = BorderStyle.None;
@@ -708,6 +774,16 @@ namespace TalkToAI.ZsecBrowserPreview
             address.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
             address.AutoCompleteSource = AutoCompleteSource.CustomSource;
             address.KeyDown += AddressKeyDown;
+            address.Enter += delegate
+            {
+                addressSurface.ShowFocusCue = true;
+                addressSurface.Invalidate();
+            };
+            address.Leave += delegate
+            {
+                addressSurface.ShowFocusCue = false;
+                addressSurface.Invalidate();
+            };
             addressSurface.Controls.Add(address);
             RefreshAddressSuggestions();
             addressHost = new ToolStripControlHost(addressSurface);
@@ -758,6 +834,8 @@ namespace TalkToAI.ZsecBrowserPreview
             tabs.ForeColor = Foreground;
             tabs.StripBackColor = Background;
             tabs.StripBorderColor = theme.Border;
+            tabs.ContentBackColor = Background;
+            tabs.ContentBorderColor = theme.Border;
             tabs.AccessibleName = "Open browser tabs";
             tabs.HandleCreated += delegate
             {
@@ -808,6 +886,9 @@ namespace TalkToAI.ZsecBrowserPreview
             StatusStrip status = new StatusStrip();
             status.BackColor = PanelBackground;
             status.ForeColor = Muted;
+            status.RenderMode = ToolStripRenderMode.Professional;
+            status.Renderer = new ModernToolStripRenderer(HoverSurface, ElevatedSurface);
+            status.SizingGrip = false;
             runtimeStatus = new Label();
             runtimeStatus.Text = "Starting Microsoft Chromium runtime...";
             runtimeStatus.ForeColor = Muted;
@@ -862,6 +943,50 @@ namespace TalkToAI.ZsecBrowserPreview
                 }
                 return tabs.SelectedTab.Controls[0] as WebView2;
             }
+        }
+
+        internal BrowserAutomationResponse HandleAutomationRequest(BrowserAutomationRequest request)
+        {
+            if (InvokeRequired)
+            {
+                return (BrowserAutomationResponse)Invoke(
+                    new Func<BrowserAutomationRequest, BrowserAutomationResponse>(HandleAutomationRequest),
+                    request
+                );
+            }
+
+            BrowserAutomationResponse response = new BrowserAutomationResponse
+            {
+                Ok = true,
+                Version = Program.ProductVersion,
+                TabCount = tabs.TabPages.Count,
+                ActiveTab = tabs.SelectedIndex,
+                WindowVisible = Visible && WindowState != FormWindowState.Minimized,
+                AutomationEnabled = true
+            };
+            if (request.Command == "ping" || request.Command == "get_state") return response;
+            if (request.Command == "activate")
+            {
+                RestoreFromTray();
+                Activate();
+                return response;
+            }
+
+            string normalized;
+            if (!BrowserLocalAutomationPolicy.TryNormalizeUrl(request.Url, out normalized))
+                return new BrowserAutomationResponse { Ok = false, Error = "invalid_url", AutomationEnabled = true };
+
+            if (request.Command == "open_url")
+            {
+                Navigate(normalized);
+            }
+            else if (request.Command == "open_tab")
+            {
+                if (tabs.TabPages.Count >= MaximumTabs)
+                    return new BrowserAutomationResponse { Ok = false, Error = "tab_limit", AutomationEnabled = true };
+                BeginInvoke(new Action(async delegate { await CreateTab(normalized, true); }));
+            }
+            return response;
         }
 
         protected override void OnHandleCreated(EventArgs args)
@@ -962,6 +1087,7 @@ namespace TalkToAI.ZsecBrowserPreview
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(MenuItem("ZSEC Shields", "", async delegate { await OpenShieldsSettingsAsync(); }));
             menu.Items.Add(MenuItem("Settings", "Ctrl+,", async delegate { await ShowSettingsAsync(); }));
+            menu.Items.Add(MenuItem("Set as default browser", "", OpenDefaultApps));
             menu.Items.Add(MenuItem("About ZSEC Browser", "", ShowAbout));
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(MenuItem("Minimize to tray", "", delegate { HideToTray(); }));
@@ -1032,6 +1158,27 @@ namespace TalkToAI.ZsecBrowserPreview
                 }
             }
             mainMenu.Show(menuButton.GetCurrentParent(), new Point(menuButton.Bounds.Left, menuButton.Bounds.Bottom));
+        }
+
+        private void OpenDefaultApps(object sender, EventArgs args)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "ms-settings:defaultapps",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(
+                    "Windows Default Apps could not be opened. Open Settings > Apps > Default apps, select ZSEC Browser, and confirm the associations you want.\r\n\r\n" + exception.Message,
+                    "Set ZSEC Browser as default",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
+            }
         }
 
         private void RefreshBookmarksBar()
@@ -1575,6 +1722,10 @@ namespace TalkToAI.ZsecBrowserPreview
                 string runtimeVersion = CoreWebView2Environment.GetAvailableBrowserVersionString();
                 runtimeStatus.Text = "Microsoft Chromium runtime " + runtimeVersion;
                 await CreateTab(initialDestination, true);
+                foreach (string additionalDestination in additionalDestinations)
+                {
+                    await CreateTab(additionalDestination, false);
+                }
                 WriteStartupStage("protected_tab_ready");
                 shieldStatus.Text = "  SHIELDS: INSTALLED  ";
                 shieldStatus.BackColor = Accent;
