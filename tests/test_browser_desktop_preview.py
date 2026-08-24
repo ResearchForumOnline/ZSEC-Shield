@@ -76,7 +76,9 @@ def test_desktop_preview_preserves_browser_security_controls() -> None:
 
 def test_default_browser_registration_requires_windows_user_confirmation() -> None:
     installer = INSTALLER.read_text(encoding="utf-8")
-    uninstaller = (ROOT / "windows" / "browser" / "Uninstall-ZsecBrowserPreview.ps1").read_text(encoding="utf-8")
+    uninstaller = (
+        ROOT / "windows" / "browser" / "Uninstall-ZsecBrowserPreview.ps1"
+    ).read_text(encoding="utf-8")
     status = STATUS.read_text(encoding="utf-8")
     app = APP.read_text(encoding="utf-8")
     assert "Software\\RegisteredApplications" in installer
