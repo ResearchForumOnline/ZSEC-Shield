@@ -370,7 +370,11 @@ namespace TalkToAI.ZsecBrowserPreview
 
         private void OpenMigrationCentre()
         {
-            using (BrowserMigrationDialog dialog = new BrowserMigrationDialog(store, data, openUrl))
+            using (BrowserMigrationDialog dialog = new BrowserMigrationDialog(
+                store,
+                data,
+                openUrl
+            ))
                 dialog.ShowDialog(this);
             RefreshRows();
         }
@@ -415,7 +419,10 @@ namespace TalkToAI.ZsecBrowserPreview
         private List<BrowserMigrationProfile> discovered;
         private BrowserMigrationPlan plan;
 
-        internal BrowserMigrationDialog(BrowserDataStore browserStore, BrowserProductData productData, Action<string> opener)
+        internal BrowserMigrationDialog(
+            BrowserDataStore browserStore,
+            BrowserProductData productData,
+            Action<string> opener)
         {
             store = browserStore; data = productData; openUrl = opener;
             Text = "Migration centre - ZSEC Browser";
@@ -505,6 +512,200 @@ namespace TalkToAI.ZsecBrowserPreview
             if (MessageBox.Show("Open " + tabs.Count + " URL-only tab(s)? No cookies, login state, form data or authentication tokens will be copied.", "Open safe tabs", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
             foreach (BrowserMigrationItem tab in tabs) openUrl(tab.Url);
             status.Text = tabs.Count + " URL-only tab(s) opened without session credentials.";
+        }
+    }
+
+    internal sealed class BrowserSignInMigrationDialog : Form
+    {
+        private readonly IList<BrowserSignInCandidate> candidates;
+        private readonly DataGridView grid;
+        private readonly TextBox search;
+        private readonly Label status;
+        private readonly int maximumSelection;
+        private readonly HashSet<string> selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        internal BrowserSignInMigrationDialog(IList<BrowserSignInCandidate> available, int availableTabSlots)
+        {
+            candidates = available ?? new List<BrowserSignInCandidate>();
+            maximumSelection = Math.Max(0, Math.Min(
+                BrowserSignInMigrationPolicy.MaximumBatchSize,
+                availableTabSlots
+            ));
+            SelectedOrigins = new List<string>();
+            Text = "Open sign-in sites - ZSEC Browser";
+            Size = new Size(900, 620);
+            MinimumSize = new Size(720, 500);
+            BrowserDialogTheme.Apply(this);
+
+            TableLayoutPanel introduction = new TableLayoutPanel();
+            introduction.Dock = DockStyle.Top;
+            introduction.Height = 126;
+            introduction.Padding = new Padding(14, 12, 14, 4);
+            introduction.ColumnCount = 1;
+            introduction.RowCount = 3;
+            introduction.BackColor = BrowserDialogTheme.Background;
+            Label title = new Label();
+            title.Text = "Choose account sites to open";
+            title.Font = new Font("Segoe UI Semibold", 15F);
+            title.ForeColor = BrowserDialogTheme.Foreground;
+            title.AutoSize = true;
+            Label explanation = BrowserDialogTheme.Description(
+                "Suggestions come only from ZSEC bookmarks/history and a reviewed built-in list; no source browser is scanned. " +
+                "ZSEC opens only the selected HTTPS origins. Source-browser cookies, login state, " +
+                "authentication tokens, form data and passwords are not copied. Existing ZSEC cookies " +
+                "may already sign you in; otherwise sign in once and the site can persist in your ZSEC profile."
+            );
+            explanation.Width = 820;
+            explanation.Height = 52;
+            TableLayoutPanel searchRow = new TableLayoutPanel();
+            searchRow.Dock = DockStyle.Fill;
+            searchRow.ColumnCount = 2;
+            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            searchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            Label searchLabel = new Label { Text = "&Search:", AutoSize = true, Anchor = AnchorStyles.Left, ForeColor = BrowserDialogTheme.Foreground };
+            search = new TextBox { Dock = DockStyle.Fill, AccessibleName = "Search account sites by name, HTTPS origin or source" };
+            search.TextChanged += delegate { RefreshRows(); };
+            searchRow.Controls.Add(searchLabel, 0, 0);
+            searchRow.Controls.Add(search, 1, 0);
+            introduction.Controls.Add(title, 0, 0);
+            introduction.Controls.Add(explanation, 0, 1);
+            introduction.Controls.Add(searchRow, 0, 2);
+
+            grid = BrowserDialogTheme.Grid();
+            grid.AccessibleName = "Account sites available for sign-in setup";
+            grid.MultiSelect = true;
+            DataGridViewCheckBoxColumn choose = new DataGridViewCheckBoxColumn();
+            choose.Name = "Choose";
+            choose.HeaderText = "Open";
+            choose.FillWeight = 10;
+            grid.Columns.Add(choose);
+            grid.Columns.Add("Name", "Site");
+            grid.Columns.Add("Origin", "HTTPS origin to open");
+            grid.Columns.Add("Source", "Found from");
+            grid.Columns[1].FillWeight = 25;
+            grid.Columns[2].FillWeight = 45;
+            grid.Columns[3].FillWeight = 20;
+            grid.CurrentCellDirtyStateChanged += delegate
+            {
+                if (grid.IsCurrentCellDirty) grid.CommitEdit(DataGridViewDataErrorContexts.Commit);
+            };
+            grid.CellValueChanged += delegate(object sender, DataGridViewCellEventArgs args)
+            {
+                if (args.RowIndex < 0 || args.ColumnIndex != 0) return;
+                DataGridViewRow row = grid.Rows[args.RowIndex];
+                BrowserSignInCandidate candidate = row.Tag as BrowserSignInCandidate;
+                if (candidate == null) return;
+                if (Convert.ToBoolean(row.Cells[0].Value))
+                {
+                    if (selected.Count >= maximumSelection && !selected.Contains(candidate.Origin))
+                    {
+                        row.Cells[0].Value = false;
+                        status.Text = "The available-tab limit allows " + maximumSelection.ToString() + " selection(s).";
+                        return;
+                    }
+                    selected.Add(candidate.Origin);
+                }
+                else selected.Remove(candidate.Origin);
+                UpdateStatus();
+            };
+
+            FlowLayoutPanel commands = new FlowLayoutPanel();
+            commands.Dock = DockStyle.Bottom;
+            commands.Height = 86;
+            commands.Padding = new Padding(10, 8, 10, 8);
+            commands.BackColor = BrowserDialogTheme.Background;
+            Button selectVisible = BrowserDialogTheme.Button("Select visible", "Select every visible account site");
+            Button clear = BrowserDialogTheme.Button("Clear", "Clear all selected account sites");
+            Button open = BrowserDialogTheme.Button("Review and open", "Confirm and open selected HTTPS account sites");
+            Button cancel = BrowserDialogTheme.Button("Cancel", "Close without opening account sites");
+            status = BrowserDialogTheme.Description(String.Empty);
+            status.Width = 820;
+            status.Height = 26;
+            selectVisible.Click += delegate { SetVisibleSelection(true); };
+            clear.Click += delegate { selected.Clear(); RefreshRows(); };
+            open.Click += delegate { ConfirmSelection(); };
+            cancel.Click += delegate { DialogResult = DialogResult.Cancel; Close(); };
+            commands.Controls.AddRange(new Control[] { selectVisible, clear, open, cancel, status });
+
+            Controls.Add(grid);
+            Controls.Add(introduction);
+            Controls.Add(commands);
+            AcceptButton = open;
+            CancelButton = cancel;
+            Shown += delegate { search.Focus(); };
+            RefreshRows();
+        }
+
+        internal List<string> SelectedOrigins { get; private set; }
+
+        private void RefreshRows()
+        {
+            IList<BrowserSignInCandidate> visible = BrowserSignInMigrationPolicy.FilterCandidates(candidates, search.Text);
+            grid.Rows.Clear();
+            foreach (BrowserSignInCandidate candidate in visible)
+            {
+                int index = grid.Rows.Add(
+                    selected.Contains(candidate.Origin),
+                    candidate.DisplayName,
+                    candidate.Origin,
+                    candidate.Source
+                );
+                grid.Rows[index].Tag = candidate;
+            }
+            UpdateStatus();
+        }
+
+        private void SetVisibleSelection(bool value)
+        {
+            foreach (DataGridViewRow row in grid.Rows)
+            {
+                BrowserSignInCandidate candidate = row.Tag as BrowserSignInCandidate;
+                if (candidate == null) continue;
+                if (value)
+                {
+                    if (selected.Contains(candidate.Origin)) continue;
+                    if (selected.Count < maximumSelection) selected.Add(candidate.Origin);
+                }
+                else selected.Remove(candidate.Origin);
+            }
+            RefreshRows();
+        }
+
+        private void UpdateStatus()
+        {
+            if (status == null) return;
+            status.Text = selected.Count.ToString() + " of " + maximumSelection.ToString() +
+                " maximum selected · " + grid.Rows.Count.ToString() + " visible";
+        }
+
+        private void ConfirmSelection()
+        {
+            IList<BrowserSignInCandidate> validated = BrowserSignInMigrationPolicy.ValidateSelection(
+                candidates.Where(candidate => candidate != null && selected.Contains(candidate.Origin))
+            );
+            List<string> safe = validated
+                .Select(candidate => candidate.Origin)
+                .Take(maximumSelection)
+                .ToList();
+            if (safe.Count == 0)
+            {
+                status.Text = "Select at least one HTTPS account site.";
+                return;
+            }
+            string preview = String.Join("\r\n", safe.Select(value => "• " + value));
+            DialogResult confirmed = MessageBox.Show(
+                "Open these " + safe.Count.ToString() + " HTTPS account site(s) in new ZSEC tabs?\r\n\r\n" +
+                preview + "\r\n\r\nOnly these origins will open. Source-browser cookies, login state, " +
+                "tokens, passwords and form data are not transferred. Existing ZSEC cookies may already " +
+                "sign you in; otherwise sign in once and the site can persist in your separate ZSEC profile.",
+                "Confirm sign-in sites",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question
+            );
+            if (confirmed != DialogResult.Yes) return;
+            SelectedOrigins = safe;
+            DialogResult = DialogResult.OK;
+            Close();
         }
     }
 

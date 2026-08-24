@@ -13,6 +13,9 @@ DIALOGS = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserProductDia
 LOGIN_DIALOGS = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserLoginDialogs.cs"
 VAULT_DIALOGS = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserVaultDialogs.cs"
 CREDENTIAL_IMPORT = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserCredentialImport.cs"
+SIGN_IN_MIGRATION = (
+    ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserSignInMigration.cs"
+)
 POLICY = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserProductPolicy.cs"
 THEME = ROOT / "browser" / "zsec-desktop-preview" / "src" / "BrowserTheme.cs"
 NEW_TAB = ROOT / "browser" / "zsec-desktop-preview" / "assets" / "new-tab" / "index.html"
@@ -192,6 +195,71 @@ def test_password_csv_import_is_explicit_bounded_and_never_overwrites() -> None:
     assert "vault.Delete(id)" in credential_import
     assert "SourceMatchesPlan" in credential_import
     assert "SourceSha256" in credential_import
+
+
+def test_sign_in_migration_is_https_only_bounded_and_never_extracts_sessions() -> None:
+    app = APP.read_text(encoding="utf-8")
+    dialogs = DIALOGS.read_text(encoding="utf-8")
+    policy = SIGN_IN_MIGRATION.read_text(encoding="utf-8")
+    build = BUILD.read_text(encoding="utf-8")
+
+    assert "MaximumBatchSize = 20" in policy
+    assert "MaximumCandidateCount = 500" in policy
+    assert "MaximumLocalInputItems = 1000" in policy
+    assert "TryNormalizeHttpsOrigin" in policy
+    assert "ValidateSelection" in policy
+    assert "!String.IsNullOrEmpty(uri.UserInfo)" in policy
+    assert "uri.IsLoopback" in policy
+    assert 'value.EndsWith(".local"' in policy
+    assert 'value.EndsWith(".internal"' in policy
+    assert "UnicodeCategory.Format" in policy
+    for origin in (
+        "https://x.com",
+        "https://www.facebook.com",
+        "https://mail.google.com",
+        "https://outlook.live.com",
+    ):
+        assert origin in policy
+
+    assistant_flow = app.split("private async Task ShowSignInSetupAssistantAsync", 1)[1].split(
+        "private void ImportBookmarks", 1
+    )[0]
+    assistant_dependencies = policy + dialogs + assistant_flow
+    for forbidden_api in (
+        "CoreWebView2CookieManager",
+        "GetCookiesAsync",
+        "AddOrUpdateCookie",
+        "ProtectedData.Unprotect",
+        "File.ReadAll",
+        "Login Data",
+        "key4.db",
+        "logins.json",
+        "localStorage",
+        "IndexedDB",
+        "SQLite",
+    ):
+        assert forbidden_api not in assistant_dependencies
+
+    assert 'MenuItem("Open sign-in sites"' in app
+    assert "ShowSignInSetupAssistantAsync" in app
+    assert "tabs.TabPages.Count >= MaximumTabs" in app
+    assert 'lastTabAction = "sign_in_setup_result_recorded"' in app
+    assert "signInSetupRunning" in app
+    assert '"last_sign_in_setup_opened_count="' in app
+    assert '"last_sign_in_setup_failed_count="' in app
+    assert '"last_sign_in_setup_skipped_count="' in app
+    assert '"last_sign_in_setup_result="' in app
+    assert "Source-browser cookies, login state or tokens were copied" not in app
+    assert "Source-browser cookies, login state or tokens were not copied" not in app
+    assert "No source-browser cookies, login state or tokens were copied" in app
+    assert "Choose account sites to open" in dialogs
+    assert "no source browser is scanned" in dialogs
+    assert "Source-browser cookies, login state" in dialogs
+    assert "Existing ZSEC cookies may already" in dialogs
+    assert "new HashSet<string>(StringComparer.OrdinalIgnoreCase)" in dialogs
+    assert "BrowserSignInMigrationPolicy.ValidateSelection" in dialogs
+    assert "MessageBoxButtons.YesNo" in dialogs
+    assert "$SignInMigrationSource" in build
 
 
 def test_all_source_native_filter_and_youtube_runtime_evidence_are_wired() -> None:

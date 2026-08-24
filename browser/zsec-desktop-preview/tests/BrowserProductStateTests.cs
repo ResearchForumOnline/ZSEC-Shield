@@ -27,6 +27,7 @@ internal static class BrowserProductStateTests
             TestDefaultsAndRoundTrip(Path.Combine(parent, "roundtrip"));
             TestBookmarksAndImportExport(Path.Combine(parent, "bookmarks"));
             TestBrowserMigration(Path.Combine(parent, "migration"));
+            TestSignInMigrationPolicy();
             TestHistoryPolicyAndBounds(Path.Combine(parent, "history"));
             TestAddressSuggestionsAndSearch(Path.Combine(parent, "suggestions"));
             TestNativeRequestPolicy();
@@ -51,6 +52,91 @@ internal static class BrowserProductStateTests
         {
             if (Directory.Exists(parent)) Directory.Delete(parent, true);
         }
+    }
+
+    private static void TestSignInMigrationPolicy()
+    {
+        BrowserProductData data = BrowserProductData.CreateDefault();
+        data.Bookmarks.Add(new BrowserBookmark { Title = "Example account", Url = "https://Example.com/login?token=no#x" });
+        data.Bookmarks.Add(new BrowserBookmark { Title = "Duplicate", Url = "https://example.com/other" });
+        data.Bookmarks.Add(new BrowserBookmark { Title = "HTTP", Url = "http://unsafe.example/login" });
+        data.Bookmarks.Add(new BrowserBookmark { Title = "Credentials", Url = "https://user:pass@example.org/" });
+        data.Bookmarks.Add(new BrowserBookmark { Title = "IP", Url = "https://127.0.0.1/login" });
+        data.Bookmarks.Add(new BrowserBookmark { Title = "Local", Url = "https://host.internal/login" });
+        data.Bookmarks.Add(new BrowserBookmark { Title = "Custom", Url = "zsec://settings" });
+        data.History.Add(new BrowserHistoryEntry { Title = "History duplicate", Url = "https://example.com/a?q=1" });
+        data.History.Add(new BrowserHistoryEntry { Title = "Valid", Url = "https://accounts.example.net:8443/path" });
+
+        IList<BrowserSignInCandidate> items = BrowserSignInMigrationPolicy.DiscoverCandidates(data, false);
+        Assert(items.Count == 2, "Sign-in discovery did not reject or deduplicate unsafe inputs.");
+        BrowserSignInCandidate example = items.Single(item => item.Origin == "https://example.com");
+        Assert(example.DisplayName == "Example account", "Safe sign-in display name was not retained.");
+        Assert(example.Source.Contains("ZSEC bookmark") && example.Source.Contains("ZSEC history"),
+            "Deduplicated sign-in sources were not retained.");
+        Assert(items.Any(item => item.Origin == "https://accounts.example.net:8443"),
+            "HTTPS origin normalization removed a legitimate explicit port.");
+
+        BrowserProductData deceptiveTitle = BrowserProductData.CreateDefault();
+        deceptiveTitle.Bookmarks.Add(new BrowserBookmark
+            { Title = "Trusted\u202Egpj.exe", Url = "https://display.example/login" });
+        BrowserSignInCandidate cleanedTitle = BrowserSignInMigrationPolicy
+            .DiscoverCandidates(deceptiveTitle, false).Single();
+        Assert(cleanedTitle.DisplayName == "Trustedgpj.exe",
+            "Bidirectional formatting was retained in a sign-in display name.");
+
+        string origin;
+        Assert(!BrowserSignInMigrationPolicy.TryNormalizeHttpsOrigin("https://example.com/\u0001", out origin),
+            "Control characters were accepted.");
+        Assert(!BrowserSignInMigrationPolicy.TryNormalizeHttpsOrigin("https://[::1]/", out origin),
+            "IPv6 loopback was accepted.");
+        Assert(!BrowserSignInMigrationPolicy.TryNormalizeHttpsOrigin("https://192.168.1.2/login", out origin),
+            "Private IP was accepted.");
+        Assert(!BrowserSignInMigrationPolicy.TryNormalizeHttpsOrigin("https://printer/", out origin),
+            "Single-label internal host was accepted.");
+        Assert(!BrowserSignInMigrationPolicy.TryNormalizeHttpsOrigin("https://" + new string('a', 2050) + ".com", out origin),
+            "Overlong origin was accepted.");
+        Assert(BrowserSignInMigrationPolicy.TryNormalizeHttpsOrigin("https://example.org:443/path?q=1#fragment", out origin) &&
+            origin == "https://example.org", "Default port or URL components were not normalized.");
+
+        IList<BrowserSignInCandidate> catalog = BrowserSignInMigrationPolicy.DiscoverCandidates(null);
+        Assert(catalog.Count > 0 && catalog.Count <= BrowserSignInMigrationPolicy.MaximumCandidateCount,
+            "Reviewed catalog is absent or unbounded.");
+        Assert(catalog.Any(item => item.Origin == "https://x.com") &&
+            catalog.Any(item => item.Origin == "https://mail.google.com") &&
+            catalog.Any(item => item.Origin == "https://outlook.live.com"),
+            "Reviewed catalog is missing required account destinations.");
+        Assert(BrowserSignInMigrationPolicy.FilterCandidates(catalog, "github reviewed").Count == 1,
+            "Candidate search did not match display/source terms.");
+
+        List<BrowserSignInCandidate> selection = new List<BrowserSignInCandidate>();
+        for (int index = 0; index < 30; index++) selection.Add(new BrowserSignInCandidate
+            { DisplayName = "Site " + index, Origin = "https://site" + index + ".example.com/path", Source = "ZSEC bookmark" });
+        selection.Add(new BrowserSignInCandidate
+            { DisplayName = "Injected", Origin = "http://unsafe.example", Source = "cookie" });
+        IList<BrowserSignInCandidate> validated = BrowserSignInMigrationPolicy.ValidateSelection(selection);
+        Assert(validated.Count == BrowserSignInMigrationPolicy.MaximumBatchSize,
+            "Validated sign-in batch was not capped at 20.");
+        Assert(validated.All(item => item.Origin.StartsWith("https://") && item.Origin.IndexOf('/', 8) < 0),
+            "Validated selection retained a path or unsafe scheme.");
+
+        BrowserProductData many = BrowserProductData.CreateDefault();
+        for (int index = 0; index < 35; index++) many.Bookmarks.Add(new BrowserBookmark
+            { Title = "Account " + index, Url = "https://account" + index + ".example.com/login" });
+        Assert(BrowserSignInMigrationPolicy.DiscoverCandidates(many, false).Count == 35,
+            "Discovery incorrectly applied the 20-item execution batch limit.");
+
+        BrowserProductData saturated = BrowserProductData.CreateDefault();
+        for (int index = 0; index < 1200; index++) saturated.Bookmarks.Add(new BrowserBookmark
+            { Title = "A account " + index, Url = "https://a" + index + ".example.com/login" });
+        IList<BrowserSignInCandidate> bounded = BrowserSignInMigrationPolicy.DiscoverCandidates(saturated, true);
+        Assert(bounded.Count == BrowserSignInMigrationPolicy.MaximumCandidateCount,
+            "Sign-in discovery was not capped at 500 candidates.");
+        Assert(bounded.Any(item => item.Origin == "https://x.com") &&
+            bounded.Any(item => item.Origin == "https://mail.google.com"),
+            "Reviewed catalog entries disappeared from a saturated candidate set.");
+        Assert(bounded.Count(item => item.Source == "ZSEC bookmark") ==
+            BrowserSignInMigrationPolicy.MaximumCandidateCount - catalog.Count,
+            "The bounded local input budget did not reserve catalog capacity.");
     }
 
     private static void TestLocalAutomationPolicy()

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.25 ZSEC Browser Community - 2026-08-24
+
+- Added a searchable Sign-in Setup Assistant that offers a bounded reviewed
+  catalog together with exact HTTPS origins derived only from the user's local
+  ZSEC bookmarks and history. It does not scan the selected profile in Migration
+  Centre. Paths, queries and fragments are removed, duplicate origins are merged,
+  and credential-bearing, obvious local-address and non-HTTPS forms are rejected.
+- Required explicit confirmation before opening any selected destinations. A
+  confirmed batch is capped at 20 and remains subject to the browser's current
+  32-tab capacity.
+- Kept authentication data outside the setup boundary: the assistant does
+  not extract or transfer source-browser cookies, login sessions, tokens,
+  passwords, form data or profiles. An existing ZSEC profile may independently
+  already be signed in to a selected destination.
+
 ## 0.3.24 ZSEC Browser Community - 2026-08-24
 
 - Changed page-requested windows to fail closed: every WebView2 popup is

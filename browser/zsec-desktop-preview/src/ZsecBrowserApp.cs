@@ -23,16 +23,16 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.24.0")]
-[assembly: AssemblyFileVersion("0.3.24.0")]
-[assembly: AssemblyInformationalVersion("0.3.24-community")]
+[assembly: AssemblyVersion("0.3.25.0")]
+[assembly: AssemblyFileVersion("0.3.25.0")]
+[assembly: AssemblyInformationalVersion("0.3.25-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.24";
+        internal const string ProductVersion = "0.3.25";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
         internal const string NewTabUri = "https://newtab.zsec.local/index.html";
 
@@ -598,6 +598,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private bool youtubeStatusRefreshActive;
         private bool runtimeUpdateAvailable;
         private bool isClosing;
+        private bool signInSetupRunning;
         private bool exitRequested;
         private bool trayNoticeShown;
         private string productDataWarning;
@@ -609,6 +610,10 @@ namespace TalkToAI.ZsecBrowserPreview
         private int popupBlockedCount;
         private DateTime lastAllowedPopupUtc = DateTime.MinValue;
         private int tabCreationFailureCount;
+        private int lastSignInSetupOpenedCount;
+        private int lastSignInSetupFailedCount;
+        private int lastSignInSetupSkippedCount;
+        private string lastSignInSetupResult = "not_run";
         private string lastTabAction = "startup";
         private string lastNewTabCommandSource = "none";
         private readonly bool runtimeNewTabTest;
@@ -744,7 +749,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.24";
+            channel.Text = "COMMUNITY 0.3.25";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
@@ -1147,6 +1152,10 @@ namespace TalkToAI.ZsecBrowserPreview
             menu.Items.Add(MenuItem("History", "Ctrl+H", delegate { ShowHistory(); }));
             menu.Items.Add(MenuItem("Clear browsing history", "Ctrl+Shift+Del", delegate { ClearBrowsingHistory(); }));
             menu.Items.Add(MenuItem("Passwords", "Ctrl+Shift+P", delegate { ShowPasswords(); }));
+            menu.Items.Add(MenuItem("Open sign-in sites", "", async delegate
+            {
+                await ShowSignInSetupAssistantAsync(this);
+            }));
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(MenuItem("ZSEC Shields", "", async delegate { await OpenShieldsSettingsAsync(); }));
             menu.Items.Add(MenuItem("Settings", "Ctrl+,", async delegate { await ShowSettingsAsync(); }));
@@ -1378,6 +1387,88 @@ namespace TalkToAI.ZsecBrowserPreview
             RefreshBookmarksBar();
             RefreshAddressSuggestions();
             UpdateBookmarkButton();
+        }
+
+        private async Task ShowSignInSetupAssistantAsync(IWin32Window owner)
+        {
+            if (signInSetupRunning)
+            {
+                runtimeStatus.Text = "The sign-in site chooser is already open.";
+                return;
+            }
+            signInSetupRunning = true;
+            try
+            {
+                int availableSlots = Math.Max(0, MaximumTabs - tabs.TabPages.Count);
+                if (availableSlots == 0)
+                {
+                    runtimeStatus.Text = "Sign-in sites cannot open because the 32-tab safety limit has been reached.";
+                    return;
+                }
+                IList<BrowserSignInCandidate> candidates =
+                    BrowserSignInMigrationPolicy.DiscoverCandidates(productData, true);
+                using (BrowserSignInMigrationDialog dialog = new BrowserSignInMigrationDialog(
+                    candidates,
+                    availableSlots
+                ))
+                {
+                    if (dialog.ShowDialog(owner ?? this) != DialogResult.OK) return;
+                    List<string> requested = dialog.SelectedOrigins
+                        .Take(Math.Min(BrowserSignInMigrationPolicy.MaximumBatchSize, availableSlots))
+                        .ToList();
+                    if (requested.Count == 0) return;
+                    int opened = 0;
+                    int failed = 0;
+                    await tabMutationGate.WaitAsync();
+                    try
+                    {
+                        await environmentReady.Task;
+                        foreach (string origin in requested)
+                        {
+                            if (isClosing || tabs.TabPages.Count >= MaximumTabs) break;
+                            string safeOrigin;
+                            if (!BrowserSignInMigrationPolicy.TryNormalizeHttpsOrigin(origin, out safeOrigin))
+                                continue;
+                            try
+                            {
+                                await CreateTab(safeOrigin, true);
+                                opened++;
+                            }
+                            catch
+                            {
+                                failed++;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        failed = Math.Max(failed, requested.Count - opened);
+                    }
+                    finally
+                    {
+                        tabMutationGate.Release();
+                    }
+                    int skipped = Math.Max(0, requested.Count - opened - failed);
+                    lastSignInSetupOpenedCount = opened;
+                    lastSignInSetupFailedCount = failed;
+                    lastSignInSetupSkippedCount = skipped;
+                    lastSignInSetupResult = failed == 0 && skipped == 0
+                        ? "completed"
+                        : opened == 0 && failed == requested.Count
+                            ? "failed"
+                            : "partial";
+                    lastTabAction = "sign_in_setup_result_recorded";
+                    if (environment != null)
+                        WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
+                    runtimeStatus.Text = opened.ToString() + " sign-in tab(s) opened, " +
+                        failed.ToString() + " failed and " + skipped.ToString() + " skipped. " +
+                        "No source-browser cookies, login state or tokens were copied.";
+                }
+            }
+            finally
+            {
+                signInSetupRunning = false;
+            }
         }
 
         private void ImportBookmarks()
@@ -3524,6 +3615,10 @@ namespace TalkToAI.ZsecBrowserPreview
                     productData.Settings.PopupAllowedOrigins.Count.ToString(),
                 "popup_default=deny_unsolicited",
                 "tab_creation_failure_count=" + tabCreationFailureCount.ToString(),
+                "last_sign_in_setup_opened_count=" + lastSignInSetupOpenedCount.ToString(),
+                "last_sign_in_setup_failed_count=" + lastSignInSetupFailedCount.ToString(),
+                "last_sign_in_setup_skipped_count=" + lastSignInSetupSkippedCount.ToString(),
+                "last_sign_in_setup_result=" + lastSignInSetupResult,
                 "last_tab_action=" + lastTabAction,
                 "last_new_tab_command_source=" + lastNewTabCommandSource,
                 "high_risk_mode=" + highRiskMode.ToString().ToLowerInvariant(),

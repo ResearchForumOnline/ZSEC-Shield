@@ -106,8 +106,21 @@ Store installer.
 - Command-line launches accept up to 32 URL or search arguments and open each
   in a bounded tab. Switches are never interpreted as navigation input;
   unsupported/non-web schemes become a search query under the selected provider.
-- The UI labels the product as `Community 0.3.24` and exposes the exact runtime
+- The UI labels the product as `Community 0.3.25` and exposes the exact runtime
   and policy boundary in its About dialog.
+
+The Sign-in Setup Assistant builds a searchable review list from a bounded
+catalog of common account destinations and HTTPS origins already present in the
+local ZSEC bookmark and history stores. It does not scan or use the source
+profile selected in Migration Centre. It strips paths, queries and fragments,
+rejects credential-bearing, non-HTTPS and obvious local-address forms,
+deduplicates exact origins, and opens only an explicitly confirmed selection.
+A confirmed batch is limited to 20 and also remains subject to the browser's
+current 32-tab capacity. The assistant does not read or transfer cookies, login
+sessions, tokens, passwords, form data, or another browser's profile. The
+existing ZSEC profile may already be signed in to a selected site; that is
+existing local WebView2 state, not migrated authentication. Hostname checks are
+syntactic; the assistant does not promise to classify a hostname's DNS result.
 
 Every page-requested new window is blocked by default, including requests tied
 to an ordinary click. A user can grant a revocable permission only to the exact
