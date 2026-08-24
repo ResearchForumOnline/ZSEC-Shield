@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ZSEC Browser and Browser Shields Privacy Policy</title>
-  <meta name="description" content="Privacy policy for ZSEC Browser Community 0.3.23 and Browser Shields 0.5.2: local browser data and encrypted vault with no ZSEC upload.">
+  <meta name="description" content="Privacy policy for ZSEC Browser Community 0.3.24 and Browser Shields 0.5.2: local browser data and encrypted vault with no ZSEC upload.">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#07101f">
@@ -46,10 +46,10 @@
   <main id="main-content">
     <section class="hero" aria-labelledby="privacy-title">
       <div class="container narrow">
-          <p class="hero-kicker">ZSEC Browser 0.3.23 · Browser Shields 0.5.2</p>
+          <p class="hero-kicker">ZSEC Browser 0.3.24 · Browser Shields 0.5.2</p>
         <h1 id="privacy-title">Privacy should be a testable contract.</h1>
         <p class="lede">ZSEC Browser uses a separate local profile, bounded local bookmarks/history/settings data, a separate user-operated encrypted password vault and local request controls. Browser Shields evaluates 49,505 packaged network rules, optional High-Risk Browsing and site-pause choices inside the browser. The Community packages have no ZSEC analytics, advertising, account, crash-upload, cloud-reputation, spyware-verdict, vault-sync or remote-control endpoint.</p>
-        <p class="microcopy"><strong>Effective and last reviewed:</strong> <time datetime="2026-08-24">24 August 2026</time>. This policy covers the accepted unsigned ZSEC Browser Community 0.3.23 Windows package and the separately distributed Browser Shields Community 0.5.2 Manifest V3 package. The <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.23-browser/zsec-browser-community-0.3.23-windows-x64-unsigned.zip">4,254,721-byte Windows archive</a> has SHA-256 <code>46ee2a47c68425ef8665e16930ba1c22c08dc1e2c0e6386cf182089998418630</code> at source revision <code>5b7628724373ff86e139b028a3de4202ae65195f</code>; its <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.23-browser/zsec-browser-community-0.3.23-windows-x64-unsigned.zip.json">2,123-byte metadata JSON</a> has SHA-256 <code>dd64dbe81e9711c6dd4c2285f083d58879eb5ac2f99f9982f643dba7ddea72fb</code>.</p>
+        <p class="microcopy"><strong>Effective and last reviewed:</strong> <time datetime="2026-08-24">24 August 2026</time>. This policy covers the accepted unsigned ZSEC Browser Community 0.3.24 Windows package and the separately distributed Browser Shields Community 0.5.2 Manifest V3 package. The <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.24-browser/zsec-browser-community-0.3.24-windows-x64-unsigned.zip">4,258,862-byte Windows archive</a> has SHA-256 <code>c08b0cee599c0cae8bc03ed8a13c78bbf9de0eff6a6b081baca3a87b27691684</code> at source revision <code>37798a7a57abb7f4f50bb95beddb9804087fa599</code>; its <a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.24-browser/zsec-browser-community-0.3.24-windows-x64-unsigned.zip.json">2,123-byte metadata JSON</a> has SHA-256 <code>0ffb3a44092b029b7c2d0e97df477e0bcd24167b2e64b57de666e3df61b7a982</code>.</p>
       </div>
     </section>
 
@@ -92,6 +92,7 @@
         <h2 id="permissions-title">Why broad site access exists</h2>
         <p>A network blocker must be able to evaluate requests across websites, and the interface-cleanup script must run on the sites it supports. That access is not permission to build a browsing profile or transmit page contents. The extension uses Manifest V3 packaged code and rules; it does not download or execute remote code.</p>
         <p>The network engine contains 49,464 EasyList rules pinned to the disclosed upstream release, 39 focused ZSEC privacy rules and two tracking-link cleaners. Acceptable Ads is not bundled or enabled. EasyList attribution, retained source, provenance, exact hashes and its GPL-3.0-or-later or CC-BY-SA-3.0-or-later licence are included in the package.</p>
+        <p>Page-requested windows are blocked by default. If the user adds a revocable exact HTTPS origin under <strong>Settings &gt; Permissions</strong>, a request must still be reported by WebView2 as user initiated, target an accepted HTTPS URL, stay within the tab limit and pass the popup-burst guard. Accepted requests open as independent tabs without a usable opener relationship. ZSEC stores only the allowed origin and bounded local reason counters, not the requested popup URLs; this control does not bypass certificate, download, request-filtering or tab-limit protections and cannot guarantee protection from every malicious site.</p>
         <p>High-Risk Browsing uses Chromium Manifest V3's <a href="https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest"><code>declarativeNetRequest</code> mechanism</a> to apply two fixed local request rules. It does not decrypt TLS, inspect response bodies, upload full URLs, classify a request as spyware or produce a forensic request log. A blocked request means only that it matched one of the disclosed local rules.</p>
         <p>The global protection choice, High-Risk Browsing choice and paused domains remain in the browser extension's local storage. Paused domains may remain stored while High-Risk Browsing is active, but the pause control cannot override the stricter rules. Removing the extension removes its local settings through the browser's normal extension lifecycle. Community 0.5.2 creates no ZSEC server-side account record to delete.</p>
       </div>
@@ -102,7 +103,7 @@
         <article class="panel panel-positive">
           <p class="section-label">Windows Community client</p>
           <h2 id="desktop-privacy-title">A separate local profile, with no ZSEC telemetry.</h2>
-          <p>ZSEC Browser Community 0.3.23 stores cookies, cache, permissions and other engine state under the user's dedicated <code>LocalAppData\TalkToAI\ZSEC Browser</code> profile. A separate bounded <code>browser-data.json</code> stores bookmarks, app history and Community settings atomically for this Windows account. Repeat history is consolidated, explicitly typed addresses can influence local suggestions, and the chosen search provider is stored locally. History recording can be disabled, cleared immediately or cleared on a clean exit. ZSEC does not reuse Chrome, Edge or Brave profiles and adds no ZSEC analytics, account, history upload or remote-control endpoint.</p>
+          <p>ZSEC Browser Community 0.3.24 stores cookies, cache, permissions and other engine state under the user's dedicated <code>LocalAppData\TalkToAI\ZSEC Browser</code> profile. A separate bounded <code>browser-data.json</code> stores bookmarks, app history and Community settings atomically for this Windows account. Repeat history is consolidated, explicitly typed addresses can influence local suggestions, and the chosen search provider is stored locally. History recording can be disabled, cleared immediately or cleared on a clean exit. ZSEC does not reuse Chrome, Edge or Brave profiles and adds no ZSEC analytics, account, history upload or remote-control endpoint.</p>
           <p>The optional password manager stores website origins, usernames, passwords and notes under a separate <code>password-vault</code> directory for the current Windows account. Windows DPAPI CurrentUser protects a random device key; an independently random vault master key and per-record keys protect authenticated encrypted records. Passwords stay concealed in the manager list; a deliberate reveal ends after at most 15 seconds or immediately on focus loss. The vault locks after five idle minutes, and a copied username or password is cleared after 30 seconds if the clipboard still contains that exact copied value.</p>
           <p>Password migration operates only on a CSV explicitly exported and selected by the user. It accepts recognised Chrome, Edge, Brave or Firefox password-export columns, strict UTF-8, bounded files and HTTPS origins; previews counts; skips exact-origin username duplicates without overwriting; and rolls back entries created by a failed import. An optional post-import deletion requires a separate confirmation and re-verifies the selected file's length and SHA-256. ZSEC does not inspect another browser's credential database and does not import cookies, authenticated sessions, passkeys, TOTP secrets or history.</p>
           <p>The local Migration centre may read the current Windows account's supported browser bookmark files after the user opens it. Brave, Chrome and Edge bookmark JSON is previewed and deduplicated locally. Firefox is offered only when a bounded plain-JSON backup or recovery file is readable. URL-only tab restoration never transfers cookies, account tokens, form state, storage or other authenticated session material.</p>
@@ -139,7 +140,7 @@
           <span class="brand-mark" aria-hidden="true">Z</span>
           <span>ZSEC Browser</span>
         </a>
-        <p>Local-first browser privacy from TalkToAI. The accepted unsigned ZSEC Browser Community 0.3.23 Windows package and Browser Shields Community 0.5.2 for compatible Chromium-family browsers.</p>
+        <p>Local-first browser privacy from TalkToAI. The accepted unsigned ZSEC Browser Community 0.3.24 Windows package and Browser Shields Community 0.5.2 for compatible Chromium-family browsers.</p>
       </div>
       <div>
         <p class="footer-title">Policy</p>
@@ -155,7 +156,7 @@
           <li><a href="../">ZSEC Browser</a></li>
           <li><a href="../../zero-security/">ZSEC Antivirus</a></li>
           <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/tree/eacd53438695946e5af5a063cacae6ada3dac51d/browser/zeroq-shields">Immutable Shields 0.5.2 source</a></li>
-          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.23-browser">Community 0.3.23 release</a></li>
+          <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.24-browser">Community 0.3.24 release</a></li>
           <li><a href="https://github.com/ResearchForumOnline/ZSEC-Shield">GitHub repository</a></li>
         </ul>
       </div>
