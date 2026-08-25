@@ -26,7 +26,7 @@ FAQ_COUNTS = {
 }
 COPY_REQUIREMENTS = {
     "zero-security": (
-        "ZSEC Antivirus Community 0.3.22",
+        "ZSEC Antivirus Community 0.3.23",
         "Microsoft Defender supplies supported Windows real-time enforcement",
         "ZSEC does not uninstall a provider",
         "is not registered as the primary provider",
@@ -54,12 +54,15 @@ class DownloadPolicy(TypedDict):
 
 
 ANTIVIRUS_RELEASE_BASE = (
-    "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.22-windows/"
+    "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.23-windows/"
 )
 ANTIVIRUS_RELEASE_TAG = (
+    "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.23-windows"
+)
+ANTIVIRUS_RELEASE_REVISION = "4e9d8e3b40b8605355696f20884dcc851851a947"
+GITHUB_PAGES_ANTIVIRUS_RELEASE_TAG = (
     "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.22-windows"
 )
-ANTIVIRUS_RELEASE_REVISION = "63bbbf920585022ac2b767235c8dab482142c88a"
 CORE_RELEASE_BASE = (
     "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.14/"
 )
@@ -76,7 +79,7 @@ BROWSER_RELEASE_TAG = (
 BROWSER_RELEASE_REVISION = "cd0fff58072403dddaf3810aacbdb2288a01139d"
 JSON_LD_DOWNLOADS = {
     "zero-security": ANTIVIRUS_RELEASE_BASE
-    + "zsec-antivirus-desktop-0.3.22-windows-x86_64.zip",
+    + "zsec-antivirus-desktop-0.3.23-windows-x86_64.zip",
     "zero-browser": BROWSER_RELEASE_BASE
     + "zsec-browser-community-0.3.25-windows-x64-unsigned.zip",
 }
@@ -86,8 +89,8 @@ DOWNLOAD_PAGES: dict[str, DownloadPolicy] = {
         "canonical": "https://talktoai.org/zero-security/download/",
         "fingerprints": 7,
         "artifacts": {
-            ANTIVIRUS_RELEASE_BASE + "zsec-antivirus-desktop-0.3.22-windows-x86_64.zip",
-            ANTIVIRUS_RELEASE_BASE + "zsec-antivirus-desktop-0.3.22-windows-x86_64.zip.sha256",
+            ANTIVIRUS_RELEASE_BASE + "zsec-antivirus-desktop-0.3.23-windows-x86_64.zip",
+            ANTIVIRUS_RELEASE_BASE + "zsec-antivirus-desktop-0.3.23-windows-x86_64.zip.sha256",
             CORE_RELEASE_BASE + "zsec-shield-0.3.14-windows-x86_64.zip",
             CORE_RELEASE_BASE + "zsec-shield-0.3.14-windows-x86_64.zip.sha256",
             CORE_RELEASE_BASE + "zsec-shield-0.3.14-macos-arm64.tar.gz",
@@ -101,9 +104,9 @@ DOWNLOAD_PAGES: dict[str, DownloadPolicy] = {
         },
         "required_text": (
             ANTIVIRUS_RELEASE_REVISION,
-            "44,756,203 bytes",
-            "4c6c32c91b5645685a6ea1e2ac3194921edaccd7ee15196779c521a283781dec",
-            "120b118e6db3c9ec629f4135a3d000504f542082606c0026c3b30c3ce10a37f0",
+            "33,879,549 bytes",
+            "b34d6eba9f7a6d0dbb887a7b732568573d0f7b3f046e287a09f0b786ccd5d18e",
+            "69bef812212007196dc44a72a9f8a6ca002c0d1be800871c6c8a4456744dddf3",
             "13,437,103 bytes",
             "e822570ea5472b45643350d02d910688f185a2b4917efb48251b652444ffb591",
             "12,805,932 bytes",
@@ -150,11 +153,11 @@ PRIVACY_PAGE = "https://talktoai.org/zero-browser/privacy/"
 
 RELEASE_SURFACE_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     "zero-security/index.html": (
-        "0.3.22 Community package",
+        "0.3.23 Community package",
         ANTIVIRUS_RELEASE_REVISION,
-        "44,756,203-byte",
-        "4c6c32c91b5645685a6ea1e2ac3194921edaccd7ee15196779c521a283781dec",
-        ANTIVIRUS_RELEASE_BASE + "zsec-antivirus-desktop-0.3.22-windows-x86_64.zip",
+        "33,879,549-byte",
+        "b34d6eba9f7a6d0dbb887a7b732568573d0f7b3f046e287a09f0b786ccd5d18e",
+        ANTIVIRUS_RELEASE_BASE + "zsec-antivirus-desktop-0.3.23-windows-x86_64.zip",
         "Microsoft Defender supplies supported Windows real-time enforcement",
     ),
     "zero-browser/index.html": (
@@ -183,7 +186,7 @@ RELEASE_SURFACE_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         ANTIVIRUS_RELEASE_REVISION,
         BROWSER_RELEASE_REVISION,
         "Accepted Windows desktop identity",
-        "44,756,203 bytes",
+        "33,879,549 bytes",
         "Accepted cross-platform core identities",
         "Accepted Windows browser identity",
         "4,265,007 bytes",
@@ -194,10 +197,10 @@ RELEASE_SURFACE_REQUIREMENTS: dict[str, tuple[str, ...]] = {
 }
 
 RELEASE_SURFACE_TAGS: dict[str, set[str]] = {
-    "zero-security/index.html": {"v0.3.22-windows"},
+    "zero-security/index.html": {"v0.3.23-windows"},
     "zero-browser/index.html": {"v0.3.25-browser"},
     "zero-browser/privacy/index.html": {"v0.3.25-browser"},
-    "llms.txt": {"v0.3.22-windows", "v0.3.25-browser", "v0.3.14"},
+    "llms.txt": {"v0.3.23-windows", "v0.3.25-browser", "v0.3.14"},
 }
 
 RESIDUAL_OLD_IDENTITIES = (
@@ -393,7 +396,7 @@ def validate_github_pages_landing() -> None:
         "not a registered primary antivirus",
         "WebView2 is Microsoft-maintained, not a ZSEC Chromium fork",
         "does not detect Pegasus",
-        ANTIVIRUS_RELEASE_TAG,
+        GITHUB_PAGES_ANTIVIRUS_RELEASE_TAG,
         "https://talktoai.org/zero-security/",
         "https://talktoai.org/zero-browser/",
     ):
