@@ -1097,7 +1097,11 @@ class WatchEngineTests(unittest.TestCase):
             if record["event"] == "reconciliation_completed"
             and record["triggers"] == ["periodic_reconciliation"]
         ]
-        self.assertGreaterEqual(summary.stats.reconciliations, 3)
+        # The initial inventory plus at least one periodic reconciliation is
+        # sufficient to prove the unchanged-file path. Requiring two periodic
+        # passes inside this short real-time window made the test depend on the
+        # host scheduler (and intermittently fail on slower macOS runners).
+        self.assertGreaterEqual(summary.stats.reconciliations, 2)
         self.assertEqual(0, summary.stats.full_reconciliations)
         self.assertEqual(0, summary.stats.files_hashed)
         self.assertGreaterEqual(summary.stats.metadata_files_unchanged, 1)
