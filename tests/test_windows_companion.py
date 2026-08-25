@@ -219,7 +219,9 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn("user_names_included = $false", content)
         self.assertIn("cloud_upload_performed = $false", content)
         self.assertNotIn('Get-OptionalProperty -InputObject $detection -Name "Resources"', content)
-        self.assertNotIn('Get-OptionalProperty -InputObject $detection -Name "ProcessName"', content)
+        self.assertNotIn(
+            'Get-OptionalProperty -InputObject $detection -Name "ProcessName"', content
+        )
         self.assertNotIn('Get-OptionalProperty -InputObject $detection -Name "DomainUser"', content)
         self.assertIn("function Get-SupervisorLifecycleEvidence", content)
         self.assertIn("function ConvertTo-SupervisorLifecycleRecord", content)
