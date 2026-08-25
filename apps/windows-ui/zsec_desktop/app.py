@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
-from typing import Any
+from typing import Any, Literal
 
 from zsec_desktop.brand import render_mark
 from zsec_desktop.bridge import BridgeError, CommandResult, WatchSession, ZsecBridge
@@ -557,7 +557,9 @@ class ScanEvidenceBand(tk.Canvas):
                 outline=self.accent,
                 width=2,
             )
-            anchor = tk.W if index == 0 else tk.E if index == 3 else tk.CENTER
+            anchor: Literal["w", "e", "center"] = (
+                "w" if index == 0 else "e" if index == 3 else "center"
+            )
             self.create_text(
                 x,
                 105,
