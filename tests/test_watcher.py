@@ -799,7 +799,7 @@ class WatchEngineTests(unittest.TestCase):
             record for record in records if record["event"] == "metadata_inventory_completed"
         )
         self.assertFalse(summary.operational_incomplete)
-        self.assertEqual([], summary.health_issues)
+        self.assertEqual((), summary.health_issues)
         self.assertEqual("metadata_inventory_complete", inventory["outcome"])
         self.assertEqual(1, inventory["scan"]["stats"]["skipped_symlinks"])
 
