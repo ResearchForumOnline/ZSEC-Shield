@@ -151,6 +151,19 @@ def advance_scan_motion_phase(phase: int, *, active: bool, reduce_motion: bool) 
     return (phase + 1) % 120
 
 
+def activity_indicator_state(
+    busy_operations: int, *, reduce_motion: bool
+) -> tuple[str, str, bool]:
+    """Return accessible copy, accent and whether decorative motion may advance."""
+
+    working = busy_operations > 0
+    return (
+        "VERIFYING LOCAL EVIDENCE" if working else "LOCAL ENGINE IDLE",
+        CYAN if working else MUTED,
+        working and not reduce_motion,
+    )
+
+
 class ModernStatusCard(tk.Canvas):
     """Rounded evidence card rendered with native Tk primitives."""
 
@@ -807,16 +820,23 @@ class ZsecDesktop:
             side=tk.LEFT, padx=(18, 0), pady=(9, 0)
         )
         self.global_busy = ttk.Progressbar(title_row, mode="indeterminate", length=150)
+        self.activity_status_label = ttk.Label(
+            title_row,
+            text="LOCAL ENGINE IDLE",
+            style="Subtitle.TLabel",
+            font=("Segoe UI Semibold", 8),
+        )
+        self.activity_status_label.pack(side=tk.RIGHT, padx=(0, 18), pady=2)
         self.activity_canvas = tk.Canvas(
             title_row,
-            width=180,
+            width=36,
             height=40,
             bg=BACKGROUND,
             highlightthickness=0,
             borderwidth=0,
             takefocus=0,
         )
-        self.activity_canvas.pack(side=tk.RIGHT, padx=(0, 18), pady=2)
+        self.activity_canvas.pack(side=tk.RIGHT, padx=(0, 6), pady=2)
         ttk.Label(
             header,
             text=(
@@ -1908,9 +1928,10 @@ class ZsecDesktop:
         if self.closing:
             return
         reduced = bool(self.reduce_motion.get())
-        working = self.busy_operations > 0
-        colour = CYAN if working else MUTED
-        status = "VERIFYING LOCAL EVIDENCE" if working else "LOCAL ENGINE IDLE"
+        status, colour, should_animate = activity_indicator_state(
+            self.busy_operations, reduce_motion=reduced
+        )
+        self.activity_status_label.configure(text=status, foreground=colour)
         self.activity_canvas.delete("activity")
         if reduced:
             self.activity_canvas.create_oval(
@@ -1942,19 +1963,11 @@ class ZsecDesktop:
         self.activity_canvas.create_oval(
             15, 17, 21, 23, fill=colour, outline=colour, tags="activity"
         )
-        self.activity_canvas.create_text(
-            39,
-            20,
-            text=status,
-            anchor=tk.W,
-            fill=colour,
-            font=("Segoe UI Semibold", 8),
-            tags="activity",
-        )
-        self.animation_phase = (self.animation_phase + 12) % 360
-        if working and not reduced:
+        if should_animate:
+            self.animation_phase = (self.animation_phase + 12) % 360
             self.animation_job = self.root.after(80, self._animate_activity)
         else:
+            self.animation_phase = 0
             self.animation_job = None
 
     def refresh_all(self) -> None:
@@ -2177,7 +2190,9 @@ class ZsecDesktop:
         self.scan_cancel = threading.Event()
         self.scan_start_button.configure(state=tk.DISABLED)
         self.scan_cancel_button.configure(state=tk.NORMAL)
-        self.scan_result_label.configure(text="Scanning…", foreground=CYAN)
+        self.scan_result_label.configure(
+            text="Scan active — result pending (indeterminate)", foreground=CYAN
+        )
         self.scan_activity.set_running(label)
         display_paths = "\n".join(f"  • {path}" for path in paths)
         self._set_text(
@@ -2267,7 +2282,9 @@ class ZsecDesktop:
     def _cancel_scan(self) -> None:
         if self.scan_cancel is not None:
             self.scan_cancel.set()
-            self.scan_result_label.configure(text="Cancelling…", foreground=AMBER)
+            self.scan_result_label.configure(
+                text="Cancellation requested — result pending", foreground=AMBER
+            )
             self.scan_activity.set_cancelling()
 
     def _choose_watch_folder(self) -> None:

@@ -21,6 +21,7 @@ from zsec_desktop.app import (  # noqa: E402
     GREEN,
     RED,
     ZsecDesktop,
+    activity_indicator_state,
     advance_scan_motion_phase,
     scan_completion_notification,
     scan_run_presentation,
@@ -322,6 +323,17 @@ def test_scan_motion_is_deterministic_and_reduced_motion_freezes_position() -> N
     assert advance_scan_motion_phase(119, active=True, reduce_motion=False) == 0
     assert advance_scan_motion_phase(42, active=False, reduce_motion=False) == 42
     assert advance_scan_motion_phase(42, active=True, reduce_motion=True) == 42
+
+
+def test_global_activity_motion_has_accessible_static_reduced_motion_state() -> None:
+    idle = activity_indicator_state(0, reduce_motion=False)
+    assert idle == ("LOCAL ENGINE IDLE", "#9fb0c4", False)
+
+    active = activity_indicator_state(2, reduce_motion=False)
+    assert active == ("VERIFYING LOCAL EVIDENCE", "#26d9d1", True)
+
+    reduced = activity_indicator_state(2, reduce_motion=True)
+    assert reduced == ("VERIFYING LOCAL EVIDENCE", "#26d9d1", False)
 
 
 @pytest.mark.parametrize(

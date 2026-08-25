@@ -225,6 +225,10 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     app = (ROOT / "apps" / "windows-ui" / "zsec_desktop" / "app.py").read_text(encoding="utf-8")
     assert "self.busy_operations" in app
     assert "LOCAL ENGINE IDLE" in app
+    assert "self.activity_status_label.configure(text=status, foreground=colour)" in app
+    assert "activity_indicator_state" in app
+    assert "Scan active — result pending (indeterminate)" in app
+    assert "Cancellation requested — result pending" in app
     assert "LOCAL CORE READY" not in app
     assert "VERIFYING" in app
     assert "Reduce motion" in app
