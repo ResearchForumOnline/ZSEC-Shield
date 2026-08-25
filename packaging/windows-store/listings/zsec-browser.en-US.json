@@ -32,7 +32,19 @@
     "privacy_policy_url": "https://talktoai.org/zero-browser/privacy/",
     "vulnerability_reporting_url": "https://talktoai.org/.well-known/security.txt",
     "license_terms": "Apache License 2.0 for the ZSEC application, with separately identified third-party notices and licenses included in the package. The project license is available at https://github.com/ResearchForumOnline/ZSEC-Shield/blob/main/LICENSE.",
-    "copyright_trademark": "Copyright 2026 ZSEC contributors. Microsoft, Windows, and WebView2 are trademarks of Microsoft Corporation; no endorsement is implied."
+    "copyright_trademark": "Copyright 2026 ZSEC contributors. Microsoft, Windows, and WebView2 are trademarks of Microsoft Corporation; no endorsement is implied.",
+    "developed_by": "ZSEC contributors",
+    "keywords": [
+      "privacy browser",
+      "WebView2",
+      "tracking protection",
+      "password vault",
+      "bookmarks"
+    ],
+    "additional_system_requirements": [
+      "Windows 10 or Windows 11, x64.",
+      "Microsoft Edge WebView2 Evergreen Runtime."
+    ]
   },
   "restricted_capabilities": {
     "runFullTrust": {
@@ -41,6 +53,7 @@
   },
   "certification": {
     "notes": "No ZSEC account or test credentials are required. This is a packaged Win32 WebView2 desktop browser shell and declares runFullTrust for the bounded functions stated in the restricted-capability justification. Microsoft maintains the Evergreen WebView2 runtime; ZSEC is not a separately maintained Chromium fork. Test with public non-authenticated HTTPS pages only. Password save prompts and exact-origin fill begin off and must not be enabled with real credentials during certification. The app does not import cookies, sessions, tokens, passkeys, or another browser profile. The Store manifest does not claim HTTP or HTTPS protocol ownership and does not silently change Windows defaults. Before submission, clean-VM gates must confirm launch, request filtering, local persistence, update, and uninstall from the exact Store package.",
+    "additional_testing_information": "Prepared 26 August 2026. No ZSEC account or test credentials are required. Windows Desktop x64 only. This is a packaged Win32 browser shell using Microsoft's Evergreen WebView2 runtime; ZSEC is not a separately maintained Chromium fork. runFullTrust use is described separately. Test only public unauthenticated HTTPS pages and synthetic data. Password save prompts and exact-origin fill start off. Do not use real credentials or another browser profile.\n\nTest the exact Store-signed candidate on a clean Windows 10/11 x64 VM with WebView2 available:\n1. Launch from Start; verify the local new-tab page and a public HTTPS page open without ZSEC sign-in.\n2. Open, switch, and close tabs; test back, forward, reload, address search, bookmarks, and fullscreen.\n3. Open ZSEC Shields. Verify exact-identity and runtime status are evidence-led; a failed probe must not appear protected.\n4. In Settings, verify site permissions deny by default, settings persist, and password save and fill remain off.\n5. Add, export, remove, and re-import a synthetic HTTPS bookmark using tester-selected files only.\n6. Verify the password vault begins locked or empty. If needed, use only synthetic credentials, test timed reveal and lock, then remove them.\n7. On a controlled benign page, verify a requested popup is blocked by default and any exact-HTTPS permission is explicit and revocable.\n8. Restart, then uninstall. Verify no other browser profile, credential, default-app choice, or security product changed.",
     "test_account_required": false,
     "tester_steps": [
       "Install the Store-signed candidate on a clean supported Windows 10 or Windows 11 x64 VM with the Microsoft Evergreen WebView2 runtime available, then launch ZSEC Browser from Start.",

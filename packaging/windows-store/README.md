@@ -132,8 +132,9 @@ and
 The copy-and-paste listing source is kept in `listings/` and rendered to
 `PARTNER_CENTER_DRAFT.md`. It includes bounded short and full descriptions,
 feature bullets, reviewed privacy/support URLs, separate `runFullTrust`
-justifications, certification notes and tester steps, IARC facts, Free pricing
-checks, and five-screenshot plans for each product.
+justifications, keywords, additional system requirements, copy-ready Additional
+Testing Information, certification notes and tester steps, IARC facts, Free
+pricing checks, and five-screenshot plans for each product.
 
 Validate that descriptions and captions remain within Microsoft field limits,
 versions still match the build sources, the Browser remains disclosed as a
@@ -150,6 +151,13 @@ the validator:
 ```powershell
 python packaging/windows-store/listing_materials.py --write
 python packaging/windows-store/listing_materials.py
+```
+
+Generate the concise field-by-field copy sheet under the ignored build-output
+directory without contacting Partner Center:
+
+```powershell
+python packaging/windows-store/listing_materials.py --write-fields
 ```
 
 These files are drafts, not evidence of a reservation, completed submission, or

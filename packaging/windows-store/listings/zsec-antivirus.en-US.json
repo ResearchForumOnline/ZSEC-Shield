@@ -32,7 +32,19 @@
     "privacy_policy_url": "https://talktoai.org/zero-security/#privacy",
     "vulnerability_reporting_url": "https://talktoai.org/.well-known/security.txt",
     "license_terms": "Apache License 2.0. The complete license is included with the application and available at https://github.com/ResearchForumOnline/ZSEC-Shield/blob/main/LICENSE.",
-    "copyright_trademark": "Copyright 2026 ZSEC contributors. ZSEC is not affiliated with or endorsed by Microsoft."
+    "copyright_trademark": "Copyright 2026 ZSEC contributors. ZSEC is not affiliated with or endorsed by Microsoft.",
+    "developed_by": "ZSEC contributors",
+    "keywords": [
+      "security companion",
+      "Microsoft Defender",
+      "file scanner",
+      "file monitoring",
+      "encrypted quarantine"
+    ],
+    "additional_system_requirements": [
+      "Windows 10 or Windows 11, x64.",
+      "Microsoft Defender is required for Defender evidence, intelligence updates, and Defender scan actions."
+    ]
   },
   "restricted_capabilities": {
     "runFullTrust": {
@@ -41,6 +53,7 @@
   },
   "certification": {
     "notes": "No account or test credentials are required. This is a packaged Win32 desktop security companion and declares runFullTrust for the bounded functions stated in the restricted-capability justification. Microsoft Defender or another supported primary provider must remain enabled. ZSEC is not registered as the primary antivirus and provides no kernel pre-access enforcement. Use only benign test files. A completed ZSEC scan reports configured-rule evidence and never certifies that the device is clean. Quarantine is off by default. The package must be tested on Windows Desktop only. Before submission, the clean-VM gate must confirm packaged companion startup, scan, recovery self-test, settings persistence, update, and uninstall behavior.",
+    "additional_testing_information": "Prepared 26 August 2026. No account or test credentials are required. Windows Desktop x64 only. This is a packaged Win32 security companion; runFullTrust use is described separately. Keep Microsoft Defender enabled. ZSEC is not the primary antivirus, a Windows Security provider, protected service, or kernel pre-access filter. Use only benign disposable test files. Quarantine starts off. A completed result covers only configured evidence and does not certify a clean device.\n\nTest the exact Store-signed candidate on a clean Windows 10/11 x64 VM:\n1. Launch from Start; refresh Overview and verify evidence-backed Defender and companion state.\n2. In Windows protection, refresh intelligence and run Quick scan. Full scan requires separate confirmation. Verify that no Defender preference, exclusion, provider, or firewall setting changes.\n3. Scan a disposable benign folder with quarantine off. Cancel a second scan and verify it remains incomplete.\n4. Monitor a disposable folder, edit a benign text file, confirm a fresh heartbeat and post-change event, then stop monitoring.\n5. Run Protection assurance's isolated synthetic recovery self-test; verify encrypted copy, restore, no-overwrite, tamper rejection, and device-key recovery.\n6. Restart to verify settings and companion state, then uninstall. Defender must remain enabled and no security product may be removed or reconfigured.",
     "test_account_required": false,
     "tester_steps": [
       "Install the Store-signed candidate on a clean supported Windows 10 or Windows 11 x64 VM with Microsoft Defender enabled, then launch ZSEC Antivirus from Start.",

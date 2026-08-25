@@ -31,6 +31,14 @@ def test_partner_center_materials_are_current_and_rendered() -> None:
     assert materials.OUTPUT_PATH.read_text(encoding="utf-8") == rendered
     assert "# Microsoft Store Partner Center draft — not submitted" in rendered
     assert "Restricted capability: runFullTrust" in rendered
+    assert "Additional Testing Information" in rendered
+
+    field_sheet = materials.render_field_sheet(listings)
+    assert "ZSEC Antivirus" in field_sheet
+    assert "0.3.30.0" in field_sheet
+    assert "ZSEC Browser" in field_sheet
+    assert "0.3.25.0" in field_sheet
+    assert "offline draft, not submitted" in field_sheet
 
 
 def test_listing_limits_and_truth_boundaries_are_enforced() -> None:
@@ -40,7 +48,27 @@ def test_listing_limits_and_truth_boundaries_are_enforced() -> None:
         assert report["short_description_characters"] <= 270
         assert report["description_characters"] <= 10_000
         assert report["feature_count"] <= 20
+        assert report["keyword_count"] <= 7
+        assert report["keyword_unique_word_count"] <= 21
+        assert report["additional_system_requirement_count"] <= 11
+        assert report["additional_testing_information_characters"] <= 2000
         assert report["screenshot_count"] >= 4
+
+
+def test_additional_testing_information_limit_is_enforced() -> None:
+    listings, packaging, _ = _validated()
+    too_long = copy.deepcopy(listings[0])
+    too_long["certification"]["additional_testing_information"] = "x" * 2001
+    with pytest.raises(materials.ListingMaterialError, match="additional testing information"):
+        materials.validate_listing(too_long, packaging)
+
+
+def test_keyword_contract_is_enforced() -> None:
+    listings, packaging, _ = _validated()
+    too_many = copy.deepcopy(listings[1])
+    too_many["listing"]["keywords"] = [f"term {index}" for index in range(8)]
+    with pytest.raises(materials.ListingMaterialError, match="keywords must contain"):
+        materials.validate_listing(too_many, packaging)
 
 
 def test_stale_listing_version_is_rejected() -> None:

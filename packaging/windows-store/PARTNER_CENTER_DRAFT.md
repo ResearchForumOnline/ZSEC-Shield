@@ -9,6 +9,11 @@ Microsoft field limits used by the validator:
 - Description: 10,000 characters maximum.
 - Short description: 1,000 maximum; kept below the recommended 270 characters.
 - Features: up to 20, each no more than 200 characters.
+- Keywords: up to 7 terms, each no more than 40 characters, with no more than
+  21 unique words across all terms.
+- Additional system requirements: up to 11 items, each no more than 200 characters.
+- Copyright/trademark: 200 characters maximum; Developed by: 255 maximum.
+- Additional Testing Information / Notes for certification: 2,000 characters maximum.
 - Desktop screenshots: PNG, at least 1366x768, no more than 50 MB; one required,
   four or more recommended, and ten maximum.
 - IARC questionnaire: required for the first submission.
@@ -56,12 +61,40 @@ The app is free and open core. Its source, threat model, privacy contract, deter
 - Vulnerability reporting: https://talktoai.org/.well-known/security.txt
 - License terms: Apache License 2.0. The complete license is included with the application and available at https://github.com/ResearchForumOnline/ZSEC-Shield/blob/main/LICENSE.
 - Copyright/trademark: Copyright 2026 ZSEC contributors. ZSEC is not affiliated with or endorsed by Microsoft.
+- Developed by: ZSEC contributors
+
+### Discovery and system requirements
+
+Keywords (enter as separate terms):
+
+- security companion
+- Microsoft Defender
+- file scanner
+- file monitoring
+- encrypted quarantine
+
+Additional system requirements (enter as separate items):
+
+- Windows 10 or Windows 11, x64.
+- Microsoft Defender is required for Defender evidence, intelligence updates, and Defender scan actions.
 
 ### Restricted capability: runFullTrust
 
 ZSEC Antivirus is an existing Win32 desktop security companion. runFullTrust is required to launch its packaged GUI and sibling scanner and companion executables at medium integrity; hash and scan user-selected files; read supported Windows Security and Microsoft Defender status; invoke only the fixed Defender Update-MpSignature, QuickScan, and FullScan actions after explicit user interaction; run bounded per-user post-change monitoring; and manage local authenticated encrypted quarantine. The app does not request elevation, register as a Windows Security provider, change Defender preferences, add exclusions or firewall rules, or disable, select, or remove security software.
 
-### Notes for certification
+### Additional Testing Information
+
+Prepared 26 August 2026. No account or test credentials are required. Windows Desktop x64 only. This is a packaged Win32 security companion; runFullTrust use is described separately. Keep Microsoft Defender enabled. ZSEC is not the primary antivirus, a Windows Security provider, protected service, or kernel pre-access filter. Use only benign disposable test files. Quarantine starts off. A completed result covers only configured evidence and does not certify a clean device.
+
+Test the exact Store-signed candidate on a clean Windows 10/11 x64 VM:
+1. Launch from Start; refresh Overview and verify evidence-backed Defender and companion state.
+2. In Windows protection, refresh intelligence and run Quick scan. Full scan requires separate confirmation. Verify that no Defender preference, exclusion, provider, or firewall setting changes.
+3. Scan a disposable benign folder with quarantine off. Cancel a second scan and verify it remains incomplete.
+4. Monitor a disposable folder, edit a benign text file, confirm a fresh heartbeat and post-change event, then stop monitoring.
+5. Run Protection assurance's isolated synthetic recovery self-test; verify encrypted copy, restore, no-overwrite, tamper rejection, and device-key recovery.
+6. Restart to verify settings and companion state, then uninstall. Defender must remain enabled and no security product may be removed or reconfigured.
+
+### Supporting internal certification detail
 
 No account or test credentials are required. This is a packaged Win32 desktop security companion and declares runFullTrust for the bounded functions stated in the restricted-capability justification. Microsoft Defender or another supported primary provider must remain enabled. ZSEC is not registered as the primary antivirus and provides no kernel pre-access enforcement. Use only benign test files. A completed ZSEC scan reports configured-rule evidence and never certifies that the device is clean. Quarantine is off by default. The package must be tested on Windows Desktop only. Before submission, the clean-VM gate must confirm packaged companion startup, scan, recovery self-test, settings persistence, update, and uninstall behavior.
 
@@ -176,12 +209,42 @@ ZSEC adds no account, advertising, analytics, browsing-history upload, vault syn
 - Vulnerability reporting: https://talktoai.org/.well-known/security.txt
 - License terms: Apache License 2.0 for the ZSEC application, with separately identified third-party notices and licenses included in the package. The project license is available at https://github.com/ResearchForumOnline/ZSEC-Shield/blob/main/LICENSE.
 - Copyright/trademark: Copyright 2026 ZSEC contributors. Microsoft, Windows, and WebView2 are trademarks of Microsoft Corporation; no endorsement is implied.
+- Developed by: ZSEC contributors
+
+### Discovery and system requirements
+
+Keywords (enter as separate terms):
+
+- privacy browser
+- WebView2
+- tracking protection
+- password vault
+- bookmarks
+
+Additional system requirements (enter as separate items):
+
+- Windows 10 or Windows 11, x64.
+- Microsoft Edge WebView2 Evergreen Runtime.
 
 ### Restricted capability: runFullTrust
 
 ZSEC Browser is an existing Win32 Windows Forms application using Microsoft WebView2. runFullTrust is required to launch the packaged classic desktop executable at medium integrity; create and use its isolated per-user profile under LocalAppData; load the packaged Browser Shields files; interact with the installed Microsoft WebView2 runtime; provide standard desktop file dialogs and notification-area controls; and read or write user-selected bookmark, history-export, password-export, and download files. The user-opened Migration center may read supported local browser bookmark files for local preview. The app does not run a service, inject into another browser, read another browser's cookies, sessions, tokens, passkeys, or encrypted credential store, request broadFileSystemAccess or device capabilities, or silently change the Windows default browser.
 
-### Notes for certification
+### Additional Testing Information
+
+Prepared 26 August 2026. No ZSEC account or test credentials are required. Windows Desktop x64 only. This is a packaged Win32 browser shell using Microsoft's Evergreen WebView2 runtime; ZSEC is not a separately maintained Chromium fork. runFullTrust use is described separately. Test only public unauthenticated HTTPS pages and synthetic data. Password save prompts and exact-origin fill start off. Do not use real credentials or another browser profile.
+
+Test the exact Store-signed candidate on a clean Windows 10/11 x64 VM with WebView2 available:
+1. Launch from Start; verify the local new-tab page and a public HTTPS page open without ZSEC sign-in.
+2. Open, switch, and close tabs; test back, forward, reload, address search, bookmarks, and fullscreen.
+3. Open ZSEC Shields. Verify exact-identity and runtime status are evidence-led; a failed probe must not appear protected.
+4. In Settings, verify site permissions deny by default, settings persist, and password save and fill remain off.
+5. Add, export, remove, and re-import a synthetic HTTPS bookmark using tester-selected files only.
+6. Verify the password vault begins locked or empty. If needed, use only synthetic credentials, test timed reveal and lock, then remove them.
+7. On a controlled benign page, verify a requested popup is blocked by default and any exact-HTTPS permission is explicit and revocable.
+8. Restart, then uninstall. Verify no other browser profile, credential, default-app choice, or security product changed.
+
+### Supporting internal certification detail
 
 No ZSEC account or test credentials are required. This is a packaged Win32 WebView2 desktop browser shell and declares runFullTrust for the bounded functions stated in the restricted-capability justification. Microsoft maintains the Evergreen WebView2 runtime; ZSEC is not a separately maintained Chromium fork. Test with public non-authenticated HTTPS pages only. Password save prompts and exact-origin fill begin off and must not be enabled with real credentials during certification. The app does not import cookies, sessions, tokens, passkeys, or another browser profile. The Store manifest does not claim HTTP or HTTPS protocol ownership and does not silently change Windows defaults. Before submission, clean-VM gates must confirm launch, request filtering, local persistence, update, and uninstall from the exact Store package.
 

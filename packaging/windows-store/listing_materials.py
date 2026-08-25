@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ from urllib.parse import urlparse
 STORE_ROOT = Path(__file__).resolve().parent
 LISTINGS_ROOT = STORE_ROOT / "listings"
 OUTPUT_PATH = STORE_ROOT / "PARTNER_CENTER_DRAFT.md"
+FIELD_OUTPUT_PATH = STORE_ROOT / "out" / "PARTNER_CENTER_FIELDS.md"
 SCHEMA = "zsec.microsoft-store-listing.v1"
 EXPECTED_URLS = {
     "antivirus": {
@@ -161,6 +163,26 @@ def validate_listing(data: dict[str, Any], packaging: Any) -> dict[str, Any]:
             raise ListingMaterialError(f"{name} differs from the reviewed canonical URL")
     _require_text(listing.get("license_terms"), "license_terms", 10_000)
     _require_text(listing.get("copyright_trademark"), "copyright_trademark", 200)
+    _require_text(listing.get("developed_by"), "developed_by", 255)
+    keywords = _require_string_list(listing.get("keywords"), "keywords", minimum=1, maximum=7)
+    for keyword in keywords:
+        if len(keyword) > 40:
+            raise ListingMaterialError("keyword exceeds 40 characters")
+    keyword_words = {
+        word.casefold()
+        for keyword in keywords
+        for word in re.findall(r"[A-Za-z0-9]+", keyword)
+    }
+    if len(keyword_words) > 21:
+        raise ListingMaterialError("keywords exceed 21 unique words")
+    system_requirements = _require_string_list(
+        listing.get("additional_system_requirements"),
+        "additional_system_requirements",
+        minimum=1,
+        maximum=11,
+    )
+    if any(len(requirement) > 200 for requirement in system_requirements):
+        raise ListingMaterialError("additional system requirement exceeds 200 characters")
 
     capabilities = data["restricted_capabilities"]
     if not isinstance(capabilities, dict) or set(capabilities) != {"runFullTrust"}:
@@ -174,7 +196,20 @@ def validate_listing(data: dict[str, Any], packaging: Any) -> dict[str, Any]:
         raise ListingMaterialError("restricted-capability justification must name runFullTrust")
 
     certification = data["certification"]
+    if not isinstance(certification, dict) or set(certification) != {
+        "notes",
+        "additional_testing_information",
+        "test_account_required",
+        "tester_steps",
+        "pre_submission_gates",
+    }:
+        raise ListingMaterialError("certification fields differ from the fixed contract")
     notes = _require_text(certification.get("notes"), "certification notes", 2000)
+    additional_testing = _require_text(
+        certification.get("additional_testing_information"),
+        "additional testing information",
+        2000,
+    )
     if certification.get("test_account_required") is not False:
         raise ListingMaterialError("test_account_required must remain false")
     tester_steps = _require_string_list(
@@ -276,7 +311,11 @@ def validate_listing(data: dict[str, Any], packaging: Any) -> dict[str, Any]:
         "short_description_characters": len(short),
         "description_characters": len(description),
         "feature_count": len(features),
+        "keyword_count": len(keywords),
+        "keyword_unique_word_count": len(keyword_words),
+        "additional_system_requirement_count": len(system_requirements),
         "certification_notes_characters": len(notes),
+        "additional_testing_information_characters": len(additional_testing),
         "tester_step_count": len(tester_steps),
         "pre_submission_gate_count": len(gates),
         "pricing_check_count": len(checklist),
@@ -320,6 +359,11 @@ def render(listings: list[dict[str, Any]]) -> str:
         "- Description: 10,000 characters maximum.",
         "- Short description: 1,000 maximum; kept below the recommended 270 characters.",
         "- Features: up to 20, each no more than 200 characters.",
+        "- Keywords: up to 7 terms, each no more than 40 characters, with no more than",
+        "  21 unique words across all terms.",
+        "- Additional system requirements: up to 11 items, each no more than 200 characters.",
+        "- Copyright/trademark: 200 characters maximum; Developed by: 255 maximum.",
+        "- Additional Testing Information / Notes for certification: 2,000 characters maximum.",
         "- Desktop screenshots: PNG, at least 1366x768, no more than 50 MB; one required,",
         "  four or more recommended, and ten maximum.",
         "- IARC questionnaire: required for the first submission.",
@@ -361,12 +405,27 @@ def render(listings: list[dict[str, Any]]) -> str:
                 f"- Vulnerability reporting: {listing['vulnerability_reporting_url']}",
                 f"- License terms: {listing['license_terms']}",
                 f"- Copyright/trademark: {listing['copyright_trademark']}",
+                f"- Developed by: {listing['developed_by']}",
+                "",
+                "### Discovery and system requirements",
+                "",
+                "Keywords (enter as separate terms):",
+                "",
+                *_bullets(listing["keywords"]),
+                "",
+                "Additional system requirements (enter as separate items):",
+                "",
+                *_bullets(listing["additional_system_requirements"]),
                 "",
                 "### Restricted capability: runFullTrust",
                 "",
                 data["restricted_capabilities"]["runFullTrust"]["justification"],
                 "",
-                "### Notes for certification",
+                "### Additional Testing Information",
+                "",
+                certification["additional_testing_information"],
+                "",
+                "### Supporting internal certification detail",
                 "",
                 certification["notes"],
                 "",
@@ -443,21 +502,181 @@ def render(listings: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def _copy_block(lines: list[str], heading: str, value: str, maximum: int) -> None:
+    lines.extend(
+        [
+            f"### {heading} — {len(value):,}/{maximum:,} characters",
+            "",
+            value,
+            "",
+        ]
+    )
+
+
+def render_field_sheet(listings: list[dict[str, Any]]) -> str:
+    """Render a concise, copy-ready Partner Center field sheet."""
+
+    packaging = _load_packaging_module()
+    lines = [
+        "# Microsoft Store field sheet — offline draft, not submitted",
+        "",
+        "Generated from the validated repository listing sources. No Partner Center field",
+        "was edited and no submission was made. Counts include spaces and line breaks",
+        "exactly as rendered below.",
+        "",
+        "Microsoft currently documents 10,000 characters for Description, 1,000 for",
+        "Short description (under 270 recommended), 20 Product features at 200 each,",
+        "7 Keywords at 40 each and 21 unique words total, 11 Additional system",
+        "requirements at 200 each, 200 for Copyright/trademark, 255 for Developed by,",
+        "10,000 for license terms, and 2,000 for Notes for certification. Partner Center",
+        "currently presents the last field under Additional Testing Information.",
+        "",
+        "The public Microsoft page requires a justification for each restricted",
+        "capability but does not state a character maximum; this repository enforces a",
+        "conservative 4,000-character safety cap for each runFullTrust justification.",
+        "",
+    ]
+    for data in listings:
+        listing = data["listing"]
+        certification = data["certification"]
+        version = data["source_version"]
+        description = "\n\n".join(listing["description_paragraphs"])
+        lines.extend(
+            [
+                f"## {data['product_name']}",
+                "",
+                f"- Product name: `{data['product_name']}` (select the reserved name)",
+                f"- Language: `{data['language']}`",
+                f"- Source version: `{version}`",
+                f"- Store package version: `{packaging.store_version(version)}`",
+                f"- Category: `{data['category']['primary']}` (confirm the closest current portal option)",
+                "- Price: `Free`; no trial, subscription, add-on, or in-app purchase",
+                "- Device family: `Windows Desktop` only",
+                "- What's new in this version: leave blank for the first submission",
+                "",
+            ]
+        )
+        _copy_block(lines, "Short description", listing["short_description"], 1000)
+        _copy_block(lines, "Description", description, 10_000)
+        lines.extend([f"### Product features — {len(listing['features'])}/20 entries", ""])
+        for number, feature in enumerate(listing["features"], start=1):
+            lines.append(f"{number}. [{len(feature)}/200] {feature}")
+        lines.extend(["", f"### Keywords — {len(listing['keywords'])}/7 terms", ""])
+        for keyword in listing["keywords"]:
+            lines.append(f"- [{len(keyword)}/40] {keyword}")
+        unique_words = {
+            word.casefold()
+            for keyword in listing["keywords"]
+            for word in re.findall(r"[A-Za-z0-9]+", keyword)
+        }
+        lines.extend(["", f"Unique keyword words: `{len(unique_words)}/21`", ""])
+        lines.extend(
+            [
+                (
+                    "### Additional system requirements — "
+                    f"{len(listing['additional_system_requirements'])}/11 entries"
+                ),
+                "",
+            ]
+        )
+        for requirement in listing["additional_system_requirements"]:
+            lines.append(f"- [{len(requirement)}/200] {requirement}")
+        lines.extend(
+            [
+                "",
+                "### URLs",
+                "",
+                f"- Website: {listing['website_url']}",
+                f"- Support: {listing['support_url']}",
+                f"- Privacy policy: {listing['privacy_policy_url']}",
+                f"- Vulnerability reporting: {listing['vulnerability_reporting_url']}",
+                "",
+            ]
+        )
+        _copy_block(lines, "Applicable license terms", listing["license_terms"], 10_000)
+        _copy_block(
+            lines,
+            "Copyright and trademark info",
+            listing["copyright_trademark"],
+            200,
+        )
+        _copy_block(lines, "Developed by", listing["developed_by"], 255)
+        justification = data["restricted_capabilities"]["runFullTrust"]["justification"]
+        _copy_block(lines, "runFullTrust justification (repository cap)", justification, 4000)
+        _copy_block(
+            lines,
+            "Additional Testing Information",
+            certification["additional_testing_information"],
+            2000,
+        )
+        lines.extend(
+            [
+                "### IARC facts — answer from submitted behavior, not a target rating",
+                "",
+                data["age_rating"]["questionnaire_note"],
+                "",
+                *[
+                    f"- `{name}`: `{str(value).lower()}`"
+                    for name, value in data["age_rating"]["facts"].items()
+                ],
+                "",
+                "### Screenshot gate",
+                "",
+                (
+                    f"Provide {data['screenshots']['recommended_count']} truthful Desktop PNGs "
+                    "from the exact Store package candidate. At least one is required; four or "
+                    "more are recommended; ten is the maximum. Do not reuse development-path "
+                    "captures as Store evidence."
+                ),
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "## Authoritative field guidance",
+            "",
+            "- https://learn.microsoft.com/windows/apps/publish/publish-your-app/msix/add-and-edit-store-listing-info",
+            "- https://learn.microsoft.com/windows/apps/publish/publish-your-app/msix/add-additional-information",
+            "- https://learn.microsoft.com/windows/apps/publish/publish-your-app/msix/manage-submission-options",
+            "",
+            "## Stop conditions",
+            "",
+            "Do not submit until the exact Partner Center identities, Store package upload,",
+            "WACK review, clean-VM packaged-path acceptance, current URL review, screenshots,",
+            "IARC answers, market selection, and manual publishing hold have all been reviewed.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--write", action="store_true", help="rewrite the checked-in Markdown draft"
     )
+    parser.add_argument(
+        "--write-fields",
+        action="store_true",
+        help="write the ignored, copy-ready Partner Center field sheet under out/",
+    )
     args = parser.parse_args()
     listings, report = load_and_validate()
     document = render(listings)
+    field_document = render_field_sheet(listings)
     report["rendered_markdown_sha256"] = hashlib.sha256(document.encode("utf-8")).hexdigest()
+    report["field_sheet_markdown_sha256"] = hashlib.sha256(
+        field_document.encode("utf-8")
+    ).hexdigest()
     if args.write:
         OUTPUT_PATH.write_text(document, encoding="utf-8", newline="\n")
     elif not OUTPUT_PATH.is_file() or OUTPUT_PATH.read_text(encoding="utf-8") != document:
         raise ListingMaterialError(
             "PARTNER_CENTER_DRAFT.md is stale; run listing_materials.py --write"
         )
+    if args.write_fields:
+        FIELD_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+        FIELD_OUTPUT_PATH.write_text(field_document, encoding="utf-8", newline="\n")
     print(json.dumps(report, indent=2, sort_keys=True))
     return 0
 
