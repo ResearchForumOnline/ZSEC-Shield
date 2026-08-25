@@ -49,6 +49,20 @@ class ScannerTests(unittest.TestCase):
         self.assertEqual(0, result.stats.files_hashed)
         self.assertEqual("file_filter_failed", result.issues[0].code)
 
+    def test_path_deduplication_can_be_disabled_only_by_validated_callers(self) -> None:
+        target = self.root / "one.bin"
+        target.write_bytes(b"one bounded file")
+        scanner = Scanner(())
+
+        default_result = scanner.scan([target, target])
+        validated_roots_result = scanner.scan(
+            [target, target],
+            deduplicate_paths=False,
+        )
+
+        self.assertEqual(1, default_result.stats.files_hashed)
+        self.assertEqual(2, validated_roots_result.stats.files_hashed)
+
     def test_sha256_rule_matches_exact_digest(self) -> None:
         content = b"deterministic digest test"
         target = self.root / "sample.bin"

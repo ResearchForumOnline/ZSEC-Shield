@@ -7,9 +7,11 @@ register as a platform security provider, or replace an existing antivirus.
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import os
 import queue
 import stat
+import struct
 import threading
 import time
 import uuid
@@ -36,6 +38,9 @@ DEFAULT_RECONCILE_SECONDS = 60.0
 DEFAULT_FULL_RESCAN_SECONDS = 24 * 60 * 60.0
 DEFAULT_EVENT_QUEUE_SIZE = 4096
 DEFAULT_HEARTBEAT_SECONDS = 30.0
+SNAPSHOT_PATH_KEY_BYTES = 32
+_SNAPSHOT_FINGERPRINT = struct.Struct("<QQQqqI")
+SNAPSHOT_FINGERPRINT_BYTES = _SNAPSHOT_FINGERPRINT.size
 
 
 class _Observer(Protocol):
@@ -253,7 +258,20 @@ def _path_key(path: Path) -> str:
     return os.path.normcase(os.path.normpath(os.fspath(_absolute(path))))
 
 
-def _file_fingerprint(metadata: os.stat_result) -> tuple[int, int, int, int, int, int]:
+def _snapshot_path_key(path: Path) -> bytes:
+    """Return a fixed-size collision-resistant key for snapshot-only lookup.
+
+    Normalized full paths remain available at event and scan boundaries. The
+    long-lived reconciliation cache retains only SHA-256 digests, preventing
+    path depth and filename length from multiplying resident memory. A daily
+    cache-independent full rescan remains the backstop for any metadata cache.
+    """
+
+    normalized = _path_key(path)
+    return hashlib.sha256(normalized.encode("utf-8", "surrogatepass")).digest()
+
+
+def _file_fingerprint(metadata: os.stat_result) -> bytes:
     """Return metadata used only to avoid redundant short-interval hashing.
 
     Native events remain authoritative for immediate change notification. A
@@ -261,7 +279,7 @@ def _file_fingerprint(metadata: os.stat_result) -> tuple[int, int, int, int, int
     event or preserved size/timestamp cannot suppress hashing indefinitely.
     """
 
-    return (
+    return _SNAPSHOT_FINGERPRINT.pack(
         int(getattr(metadata, "st_dev", 0)),
         int(getattr(metadata, "st_ino", 0)),
         int(metadata.st_size),
@@ -590,9 +608,7 @@ class ForegroundProtectionWatcher:
         self._health_issue_keys: set[tuple[str, str]] = set()
         self._scan_issue_keys: set[tuple[str, str, str]] = set()
         self._operational_incomplete = False
-        self._reconciliation_snapshot: dict[
-            str, tuple[int, int, int, int, int, int]
-        ] = {}
+        self._reconciliation_snapshot: dict[bytes, bytes] = {}
         self._session_id = str(uuid.uuid4())
         self._record_sequence = 0
         self._event_ingest_failure: str | None = None
@@ -752,7 +768,7 @@ class ForegroundProtectionWatcher:
             # health of the whole session; periodic reconciliation still checks
             # everything that remains in scope.
             self._stats.events_superseded += 1
-            self._reconciliation_snapshot.pop(_path_key(pending.path), None)
+            self._reconciliation_snapshot.pop(_snapshot_path_key(pending.path), None)
             self._emit(
                 "event_superseded",
                 path=str(pending.path),
@@ -791,6 +807,10 @@ class ForegroundProtectionWatcher:
             paths,
             file_filter=file_filter,
             file_observer=file_observer,
+            # normalize_watch_roots has removed equal/nested roots and rejects
+            # reparse-point roots. Avoid a second full-path set whose memory
+            # would otherwise scale with every file in a protected tree.
+            deduplicate_paths=False,
         )
         retained_issues: list[ScanIssue] = []
         for issue in result.issues:
@@ -811,7 +831,7 @@ class ForegroundProtectionWatcher:
             )
             if vanished_error:
                 self._stats.events_superseded += 1
-                self._reconciliation_snapshot.pop(_path_key(Path(issue.path)), None)
+                self._reconciliation_snapshot.pop(_snapshot_path_key(Path(issue.path)), None)
                 self._emit(
                     "event_superseded",
                     path=issue.path,
@@ -906,8 +926,8 @@ class ForegroundProtectionWatcher:
         if full:
             self._stats.full_reconciliations += 1
         previous = self._reconciliation_snapshot
-        current: dict[str, tuple[int, int, int, int, int, int]] = {}
-        unresolved: set[str] = set()
+        current: dict[bytes, bytes] = {}
+        unresolved: set[bytes] = set()
         observed = 0
         unchanged = 0
         hashed_in_progress = 0
@@ -946,7 +966,7 @@ class ForegroundProtectionWatcher:
             )
             next_progress_heartbeat = now + self.config.heartbeat_seconds
 
-        def drain_priority_events(current_key: str) -> None:
+        def drain_priority_events(current_key: bytes) -> None:
             nonlocal next_priority_drain
             now = self._clock()
             if now < next_priority_drain:
@@ -956,14 +976,25 @@ class ForegroundProtectionWatcher:
             # a large first inventory cannot postpone a new download or write.
             next_priority_drain = now + min(0.1, self.config.debounce_seconds)
             for pending in self._events.due(maximum=32):
-                if _path_key(pending.path) != current_key:
+                if _snapshot_path_key(pending.path) != current_key:
                     self._scan_pending(pending)
 
         def changed_since_last_reconciliation(path: Path, metadata: os.stat_result) -> bool:
             nonlocal observed, unchanged
-            key = _path_key(path)
-            fingerprint = _file_fingerprint(metadata)
+            key = _snapshot_path_key(path)
             observed += 1
+            try:
+                fingerprint = _file_fingerprint(metadata)
+            except (OverflowError, struct.error):
+                # Inventory cannot truthfully cache unrepresentable metadata,
+                # so Scanner records an incomplete filter issue. Later
+                # reconciliations fail open to content scanning; the observer
+                # then leaves the entry uncached and records a bounded issue.
+                if metadata_only:
+                    raise
+                emit_progress_heartbeat()
+                drain_priority_events(key)
+                return True
             if metadata_only:
                 # Startup coverage records stable identity/size/timestamps only.
                 # No content is opened or hashed here. New and changed observer
@@ -985,7 +1016,7 @@ class ForegroundProtectionWatcher:
         ) -> None:
             nonlocal bytes_hashed, hashed_in_progress
             nonlocal unresolved_in_progress
-            key = _path_key(path)
+            key = _snapshot_path_key(path)
             if was_hashed:
                 # Keep this phase-local counter distinct from the completed-batch
                 # files_hashed total, which is updated only after Scanner returns.

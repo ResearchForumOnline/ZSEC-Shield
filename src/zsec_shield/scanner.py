@@ -125,6 +125,7 @@ class Scanner:
         *,
         file_filter: Callable[[Path, os.stat_result], bool] | None = None,
         file_observer: Callable[[Path, os.stat_result, bool], None] | None = None,
+        deduplicate_paths: bool = True,
     ) -> ScanResult:
         if not roots:
             raise ScanConfigurationError("at least one scan path is required")
@@ -134,13 +135,18 @@ class Scanner:
         issues: list[ScanIssue] = []
         findings: list[FileFinding] = []
         observations: list[ScanObservation] = []
-        seen_paths: set[str] = set()
+        # General scans accept overlapping roots, so deduplication remains the
+        # safe default. Callers that have already canonicalized and proven their
+        # recursive roots non-overlapping can disable this potentially very
+        # large, full-path set.
+        seen_paths: set[str] | None = set() if deduplicate_paths else None
         for root in sorted(absolute_roots, key=_path_key):
             for path, metadata in self._iter_regular_files(root, stats, issues):
-                key = _path_key(path)
-                if key in seen_paths:
-                    continue
-                seen_paths.add(key)
+                if seen_paths is not None:
+                    key = _path_key(path)
+                    if key in seen_paths:
+                        continue
+                    seen_paths.add(key)
                 if file_filter is not None:
                     try:
                         if not file_filter(path, metadata):

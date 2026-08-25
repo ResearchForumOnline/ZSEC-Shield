@@ -516,7 +516,7 @@ class ZsecDesktop:
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
         ttk.Label(
             title_row,
-            text="COMMUNITY 0.3.23",
+            text="COMMUNITY 0.3.24",
             style="Subtitle.TLabel",
             foreground=AMBER,
         ).pack(
@@ -1310,7 +1310,7 @@ class ZsecDesktop:
         self.yubikey_status = ttk.Label(
             panel,
             text=(
-                "Hardware-key recovery is not enabled in Community 0.3.23. When "
+                "Hardware-key recovery is not enabled in Community 0.3.24. When "
                 "quarantine is explicitly enabled, encryption remains automatic, "
                 "authenticated and device-bound."
             ),
@@ -2162,12 +2162,13 @@ class ZsecDesktop:
             "healthy": "ZSEC monitoring active",
             "baselining": "ZSEC setup finishing",
             "inventorying": "ZSEC setup finishing",
+            "stale": "ZSEC monitoring evidence stale",
+            "recovering": "ZSEC monitoring restarting",
+            "degraded": "ZSEC monitoring degraded",
             "not_installed": "ZSEC monitoring not installed",
         }.get(
             presentation.state,
-            "ZSEC monitoring restarting"
-            if presentation.accent == "amber"
-            else "ZSEC monitoring unavailable",
+            "ZSEC monitoring unavailable",
         )
         colour = {"green": GREEN, "cyan": CYAN, "amber": AMBER, "red": RED}[
             presentation.accent

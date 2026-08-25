@@ -874,7 +874,9 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
             ),
             accent="cyan",
         )
-    reasons = "; ".join(payload["reasons"][:3])
+    reason_values = payload["reasons"][:3]
+    reasons = "; ".join(reason_values)
+    normalized_reasons = tuple(reason.casefold() for reason in reason_values)
     primary_protection = payload["existing_primary_protection"]
     primary_protection_healthy = bool(primary_protection["aggregate_good"])
     defender_confirmed_active = bool(primary_protection["defender"]["confirmed_active"])
@@ -888,17 +890,51 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
         )
     )
     if primary_protection_healthy and not integrity_failed:
+        protection_name = (
+            "Microsoft Defender protection"
+            if defender_confirmed_active
+            else "Windows antivirus protection"
+        )
+        stale_heartbeat = any(
+            "health heartbeat is stale or from the future" in reason
+            for reason in normalized_reasons
+        )
+        supervisor = payload.get("supervisor")
+        supervisor_verified = isinstance(supervisor, dict) and (
+            supervisor.get("registration_verified") is True
+        )
+        process_unavailable = any(
+            "heartbeat process is absent" in reason for reason in normalized_reasons
+        )
+        if stale_heartbeat:
+            return CompanionPresentation(
+                state="stale",
+                headline=f"{protection_name} active · ZSEC monitoring evidence stale",
+                detail=(
+                    "A fresh ZSEC monitoring heartbeat is not currently verified. "
+                    "ZSEC will refresh this evidence automatically. Current evidence: "
+                    + reasons
+                ),
+                accent="amber",
+            )
+        if supervisor_verified and process_unavailable:
+            return CompanionPresentation(
+                state="recovering",
+                headline=f"{protection_name} active · ZSEC monitoring restarting",
+                detail=(
+                    "The verified ZSEC supervisor will restart local monitoring automatically. "
+                    "Current evidence: "
+                    + reasons
+                ),
+                accent="amber",
+            )
         return CompanionPresentation(
             state="degraded",
-            headline=(
-                "Microsoft Defender protection active · ZSEC monitoring restarting"
-                if defender_confirmed_active
-                else "Windows antivirus protection active · ZSEC monitoring restarting"
-            ),
+            headline=f"{protection_name} active · ZSEC monitoring degraded",
             detail=(
-                "The registered ZSEC supervisor will restart local monitoring automatically. "
-                "Current evidence: "
-                + (reasons or "protection evidence is incomplete.")
+                "Windows antivirus protection remains active, but ZSEC monitoring is not "
+                "currently verified. Current evidence: "
+                + (reasons or "monitoring evidence is incomplete.")
             ),
             accent="amber",
         )

@@ -539,7 +539,36 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     assert degraded_view.accent == "amber"
     assert degraded_view.headline.startswith("Windows antivirus protection active")
     assert "Microsoft Defender" not in degraded_view.headline
-    assert "restart local monitoring automatically" in degraded_view.detail
+    assert "ZSEC monitoring degraded" in degraded_view.headline
+    assert "not currently verified" in degraded_view.detail
+
+    stale_inventory = valid_metadata_inventory_companion()
+    stale_inventory["decision"] = "degraded"
+    stale_inventory["reasons"] = ["health heartbeat is stale or from the future"]
+    stale_inventory["health"]["fresh"] = False
+    stale_view = companion_presentation(validate_companion_status(stale_inventory))
+    assert stale_view.state == "stale"
+    assert stale_view.accent == "amber"
+    assert "monitoring evidence stale" in stale_view.headline
+    assert stale_view.headline != inventory_view.headline
+    assert "fresh ZSEC monitoring heartbeat is not currently verified" in stale_view.detail
+
+    restarted_inventory = valid_metadata_inventory_companion()
+    restarted_inventory["decision"] = "degraded"
+    restarted_inventory["reasons"] = [
+        "heartbeat process is absent or does not match the configured CLI runtime"
+    ]
+    restarted_inventory["health"]["process_verified"] = False
+    restarted_view = companion_presentation(validate_companion_status(restarted_inventory))
+    assert restarted_view.state == "recovering"
+    assert restarted_view.accent == "amber"
+    assert "ZSEC monitoring restarting" in restarted_view.headline
+    assert "verified ZSEC supervisor" in restarted_view.detail
+
+    forged_inventory = valid_metadata_inventory_companion()
+    forged_inventory["health"]["fresh"] = False
+    with pytest.raises(ContractError, match="initializing companion lacks fresh"):
+        validate_companion_status(forged_inventory)
 
     degraded_with_active_defender = copy.deepcopy(degraded_with_defender)
     active_defender = degraded_with_active_defender["existing_primary_protection"][  # type: ignore[index]

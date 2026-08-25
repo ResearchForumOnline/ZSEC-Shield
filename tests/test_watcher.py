@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import os
+import struct
+import sys
 import threading
 import unittest
 from collections.abc import Callable
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import patch
 
 from watchdog.events import FileCreatedEvent, FileMovedEvent
@@ -15,11 +18,15 @@ from zsec_shield.errors import WatchError
 from zsec_shield.models import Rule, ScanIssue, ScanResult
 from zsec_shield.scanner import Scanner, ScannerConfig
 from zsec_shield.watcher import (
+    SNAPSHOT_FINGERPRINT_BYTES,
+    SNAPSHOT_PATH_KEY_BYTES,
     DebouncedPathQueue,
     ForegroundProtectionWatcher,
     WatchConfig,
     WatchEventHandler,
     _configure_windows_native_change_mask,
+    _file_fingerprint,
+    _snapshot_path_key,
     normalize_watch_roots,
     watch_policy,
 )
@@ -303,6 +310,114 @@ class WatchEngineTests(unittest.TestCase):
         self.state_dir.mkdir()
         with self.assertRaisesRegex(WatchError, "inside the excluded state"):
             normalize_watch_roots((self.state_dir,), self.state_dir)
+
+    def test_high_cardinality_snapshot_entries_are_fixed_size_and_bounded(self) -> None:
+        entry_count = 25_000
+        snapshot: dict[bytes, bytes] = {}
+        long_parent = "nested-" + ("x" * 240)
+        for index in range(entry_count):
+            path = Path("C:/protected") / long_parent / f"file-{index:08d}.bin"
+            metadata = cast(
+                os.stat_result,
+                SimpleNamespace(
+                    st_dev=3,
+                    st_ino=index + 1,
+                    st_size=index * 17,
+                    st_mtime=1_700_000_000.0,
+                    st_mtime_ns=1_700_000_000_000_000_000 + index,
+                    st_ctime=1_700_000_000.0,
+                    st_ctime_ns=1_700_000_000_000_000_000 + index,
+                    st_file_attributes=32,
+                ),
+            )
+            snapshot[_snapshot_path_key(path)] = _file_fingerprint(metadata)
+
+        self.assertEqual(entry_count, len(snapshot))
+        self.assertEqual({SNAPSHOT_PATH_KEY_BYTES}, {len(key) for key in snapshot})
+        self.assertEqual(
+            {SNAPSHOT_FINGERPRINT_BYTES},
+            {len(value) for value in snapshot.values()},
+        )
+        estimated_bytes = sys.getsizeof(snapshot) + sum(
+            sys.getsizeof(key) + sys.getsizeof(value)
+            for key, value in snapshot.items()
+        )
+        self.assertLess(estimated_bytes / entry_count, 240)
+
+    def test_snapshot_key_is_canonical_fixed_size_and_unicode_safe(self) -> None:
+        direct = Path("C:/protected/δ-data/report.bin")
+        equivalent = Path("C:/protected/δ-data/../δ-data/report.bin")
+        direct_key = _snapshot_path_key(direct)
+
+        self.assertEqual(SNAPSHOT_PATH_KEY_BYTES, len(direct_key))
+        self.assertEqual(direct_key, _snapshot_path_key(equivalent))
+
+    def test_fingerprint_packing_rejects_out_of_range_metadata_without_aliasing(self) -> None:
+        def metadata(**overrides: int | float) -> os.stat_result:
+            values: dict[str, int | float] = {
+                "st_dev": 3,
+                "st_ino": 4,
+                "st_size": 5,
+                "st_mtime": -1.0,
+                "st_mtime_ns": -1,
+                "st_ctime": -2.0,
+                "st_ctime_ns": -2,
+                "st_file_attributes": 32,
+            }
+            values.update(overrides)
+            return cast(os.stat_result, SimpleNamespace(**values))
+
+        negative_time = _file_fingerprint(metadata())
+        positive_time = _file_fingerprint(metadata(st_mtime_ns=1, st_ctime_ns=2))
+        self.assertEqual(SNAPSHOT_FINGERPRINT_BYTES, len(negative_time))
+        self.assertNotEqual(negative_time, positive_time)
+        with self.assertRaises(struct.error):
+            _file_fingerprint(metadata(st_size=1 << 64))
+        with self.assertRaises(struct.error):
+            _file_fingerprint(metadata(st_file_attributes=1 << 32))
+
+    def test_unrepresentable_metadata_is_scanned_and_never_cached(self) -> None:
+        target = self.scan_root / "unrepresentable.bin"
+        target.write_bytes(b"must fail open to content inspection")
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(reconcile_seconds=0.1, full_rescan_seconds=10.0),
+            polling_observer_factory=FakeObserver,
+        )
+
+        with patch(
+            "zsec_shield.watcher._file_fingerprint",
+            side_effect=struct.error("metadata out of packed range"),
+        ):
+            summary = watcher.run(duration_seconds=0.35)
+
+        self.assertGreaterEqual(summary.stats.files_hashed, 1)
+        self.assertEqual({}, watcher._reconciliation_snapshot)
+        self.assertTrue(summary.operational_incomplete)
+        self.assertGreaterEqual(summary.stats.issues, 1)
+
+    def test_watcher_disables_redundant_scanner_path_set_after_root_validation(self) -> None:
+        target = self.scan_root / "bounded.bin"
+        target.write_bytes(b"bounded")
+        scanner = Scanner(())
+        watcher = ForegroundProtectionWatcher(
+            scanner,
+            self._config(),
+            polling_observer_factory=FakeObserver,
+        )
+        with patch.object(scanner, "scan", wraps=scanner.scan) as scan:
+            watcher.run(duration_seconds=0.1)
+
+        self.assertGreaterEqual(scan.call_count, 1)
+        self.assertTrue(
+            all(call.kwargs.get("deduplicate_paths") is False for call in scan.call_args_list)
+        )
+        self.assertTrue(
+            all(
+                isinstance(key, bytes) and isinstance(value, bytes)
+                for key, value in watcher._reconciliation_snapshot.items()
+            )
+        )
 
     def test_auto_backend_discloses_native_failure_and_uses_polling(self) -> None:
         def fail_native(_timeout: float) -> FakeObserver:
@@ -942,10 +1057,43 @@ class WatchEngineTests(unittest.TestCase):
         )
         with patch(
             "zsec_shield.watcher._file_fingerprint",
-            return_value=(1, 1, len(marker), 1, 1, 0),
+            return_value=b"x" * SNAPSHOT_FINGERPRINT_BYTES,
         ):
             summary = watcher.run(duration_seconds=0.55)
         self.assertTrue(changed)
+        self.assertGreaterEqual(summary.stats.findings, 1)
+
+    def test_snapshot_key_collision_cannot_suppress_cache_independent_full_rescan(
+        self,
+    ) -> None:
+        first = self.scan_root / "collision-a.bin"
+        second = self.scan_root / "collision-b.bin"
+        first.write_bytes(b"ordinary first file")
+        second.write_bytes(make_test_rule().literal or b"")
+        records: list[dict[str, Any]] = []
+        watcher = ForegroundProtectionWatcher(
+            Scanner((make_test_rule(),)),
+            self._config(reconcile_seconds=0.1, full_rescan_seconds=0.25),
+            on_record=records.append,
+            polling_observer_factory=FakeObserver,
+        )
+
+        with patch(
+            "zsec_shield.watcher._snapshot_path_key",
+            return_value=b"c" * SNAPSHOT_PATH_KEY_BYTES,
+        ):
+            summary = watcher.run(duration_seconds=0.55)
+
+        full_scans = [
+            record
+            for record in records
+            if record["event"] == "scan_completed"
+            and record["triggers"] == ["periodic_full_rescan"]
+        ]
+        self.assertTrue(full_scans)
+        self.assertTrue(
+            all(record["scan"]["stats"]["files_hashed"] == 2 for record in full_scans)
+        )
         self.assertGreaterEqual(summary.stats.findings, 1)
 
     def test_heartbeat_reports_live_event_queue_counters(self) -> None:
