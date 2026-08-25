@@ -15,7 +15,7 @@ from unittest.mock import patch
 from watchdog.events import FileCreatedEvent, FileMovedEvent
 
 from zsec_shield.errors import WatchError
-from zsec_shield.models import Rule, ScanIssue, ScanResult
+from zsec_shield.models import Rule, ScanIssue, ScanResult, ScanStats
 from zsec_shield.scanner import Scanner, ScannerConfig
 from zsec_shield.watcher import (
     SNAPSHOT_FINGERPRINT_BYTES,
@@ -777,6 +777,60 @@ class WatchEngineTests(unittest.TestCase):
         self.assertEqual(0, summary.stats.metadata_files_unchanged)
         self.assertEqual(1, summary.stats.issues)
 
+    def test_expected_symlink_skip_does_not_degrade_watcher_health(self) -> None:
+        outside = self.root / "outside.bin"
+        outside.write_bytes(b"outside the non-following watcher scope")
+        link = self.scan_root / "expected-link.bin"
+        try:
+            link.symlink_to(outside)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlinks are unavailable in this test environment")
+
+        records: list[dict[str, Any]] = []
+        watcher = ForegroundProtectionWatcher(
+            Scanner(()),
+            self._config(),
+            on_record=records.append,
+            polling_observer_factory=FakeObserver,
+        )
+        summary = watcher.run(duration_seconds=0.1)
+
+        inventory = next(
+            record for record in records if record["event"] == "metadata_inventory_completed"
+        )
+        self.assertFalse(summary.operational_incomplete)
+        self.assertEqual([], summary.health_issues)
+        self.assertEqual("metadata_inventory_complete", inventory["outcome"])
+        self.assertEqual(1, inventory["scan"]["stats"]["skipped_symlinks"])
+
+    def test_mocked_reparse_skip_remains_visible_without_health_degradation(self) -> None:
+        records: list[dict[str, Any]] = []
+        scanner = Scanner(())
+        watcher = ForegroundProtectionWatcher(
+            scanner,
+            self._config(),
+            on_record=records.append,
+            polling_observer_factory=FakeObserver,
+        )
+        result = ScanResult(
+            started_at="2026-08-26T00:00:00Z",
+            completed_at="2026-08-26T00:00:01Z",
+            roots=[str(self.scan_root)],
+            stats=ScanStats(skipped_symlinks=1),
+        )
+        with patch.object(scanner, "scan", return_value=result):
+            reconciled = watcher._scan_paths(
+                [self.scan_root],
+                ["initial_metadata_inventory"],
+                event="metadata_inventory_completed",
+                no_hash_outcome="metadata_inventory_complete",
+            )
+
+        self.assertFalse(watcher._operational_incomplete)
+        self.assertEqual([], watcher._health_issues)
+        self.assertEqual(1, reconciled.stats.skipped_symlinks)
+        self.assertEqual("metadata_inventory_complete", records[-1]["outcome"])
+
     def test_short_lived_event_is_superseded_without_poisoning_session_health(self) -> None:
         records: list[dict[str, Any]] = []
 
@@ -817,7 +871,9 @@ class WatchEngineTests(unittest.TestCase):
             issues=[ScanIssue(str(vanished), "file_open_failed", "[WinError 2] missing")],
         )
         with patch.object(scanner, "scan", return_value=vanished_result):
-            reconciled = watcher._scan_paths([vanished], ["created"])
+            reconciled = watcher._scan_paths(
+                [vanished], ["created"], allow_vanished_root=True
+            )
         self.assertEqual([], reconciled.issues)
         self.assertFalse(watcher._operational_incomplete)
         self.assertEqual(1, watcher._stats.events_superseded)
@@ -833,6 +889,90 @@ class WatchEngineTests(unittest.TestCase):
         )
         with patch.object(scanner, "scan", return_value=permission_result):
             reconciled = watcher._scan_paths([retained], ["modified"])
+        self.assertEqual(1, len(reconciled.issues))
+        self.assertTrue(watcher._operational_incomplete)
+
+    def test_inventory_vanish_is_superseded_but_access_denial_stays_sticky(self) -> None:
+        records: list[dict[str, Any]] = []
+        scanner = Scanner(())
+        watcher = ForegroundProtectionWatcher(
+            scanner,
+            self._config(),
+            on_record=records.append,
+            polling_observer_factory=FakeObserver,
+        )
+        vanished = self.scan_root / "vanished-inventory-entry.bin"
+        vanished_result = ScanResult(
+            started_at="2026-08-26T00:00:00Z",
+            completed_at="2026-08-26T00:00:01Z",
+            roots=[str(self.scan_root)],
+            issues=[
+                ScanIssue(
+                    str(vanished),
+                    "entry_unreadable",
+                    "[Errno 2] The system cannot find the file specified",
+                )
+            ],
+            stats=ScanStats(errors=1),
+        )
+        with patch.object(scanner, "scan", return_value=vanished_result):
+            reconciled = watcher._scan_paths(
+                [self.scan_root],
+                ["initial_metadata_inventory"],
+                event="metadata_inventory_completed",
+                no_hash_outcome="metadata_inventory_complete",
+            )
+
+        self.assertEqual([], reconciled.issues)
+        self.assertEqual(0, reconciled.stats.errors)
+        self.assertFalse(watcher._operational_incomplete)
+        self.assertEqual(1, watcher._stats.events_superseded)
+        self.assertEqual("path_vanished_during_scan", records[-2]["reason"])
+        self.assertEqual("metadata_inventory_complete", records[-1]["outcome"])
+
+        blocked = self.scan_root / "blocked-inventory-entry.bin"
+        blocked.write_bytes(b"still present")
+        denied_result = ScanResult(
+            started_at="2026-08-26T00:00:02Z",
+            completed_at="2026-08-26T00:00:03Z",
+            roots=[str(self.scan_root)],
+            issues=[ScanIssue(str(blocked), "entry_unreadable", "Permission denied")],
+            stats=ScanStats(errors=1),
+        )
+        with patch.object(scanner, "scan", return_value=denied_result):
+            reconciled = watcher._scan_paths(
+                [self.scan_root], ["initial_metadata_inventory"]
+            )
+
+        self.assertEqual(1, len(reconciled.issues))
+        self.assertTrue(watcher._operational_incomplete)
+
+    def test_reconciliation_root_vanish_remains_fail_closed(self) -> None:
+        scanner = Scanner(())
+        watcher = ForegroundProtectionWatcher(
+            scanner,
+            self._config(),
+            polling_observer_factory=FakeObserver,
+        )
+        missing_root = self.root / "removed-protected-root"
+        result = ScanResult(
+            started_at="2026-08-26T00:00:00Z",
+            completed_at="2026-08-26T00:00:01Z",
+            roots=[str(missing_root)],
+            issues=[
+                ScanIssue(
+                    str(missing_root),
+                    "root_unreadable",
+                    "[Errno 2] No such file or directory",
+                )
+            ],
+            stats=ScanStats(errors=1),
+        )
+        with patch.object(scanner, "scan", return_value=result):
+            reconciled = watcher._scan_paths(
+                [missing_root], ["initial_metadata_inventory"]
+            )
+
         self.assertEqual(1, len(reconciled.issues))
         self.assertTrue(watcher._operational_incomplete)
 

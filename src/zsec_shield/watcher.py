@@ -7,6 +7,7 @@ register as a platform security provider, or replace an existing antivirus.
 from __future__ import annotations
 
 import contextlib
+import errno
 import hashlib
 import os
 import queue
@@ -301,6 +302,40 @@ def _is_reparse_point(metadata: os.stat_result) -> bool:
     attributes = getattr(metadata, "st_file_attributes", 0)
     marker = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
     return bool(marker and attributes & marker)
+
+
+def _path_is_confirmed_absent(path: Path) -> bool:
+    """Return true only when a fresh metadata probe proves a path is gone.
+
+    ``Path.exists()`` folds several ``OSError`` cases into ``False``. Watch health
+    must not interpret access denial or another unreadable state as a harmless
+    deletion race, so only explicit missing-path errors are accepted here.
+    """
+
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return True
+    except OSError as exc:
+        return getattr(exc, "winerror", None) in {2, 3} or exc.errno in {
+            errno.ENOENT,
+            errno.ENOTDIR,
+        }
+    return False
+
+
+def _issue_reports_missing_path(issue: ScanIssue) -> bool:
+    message = issue.message.casefold()
+    return any(
+        marker in message
+        for marker in (
+            "no such file or directory",
+            "[errno 2]",
+            "[errno 20]",
+            "winerror 2",
+            "winerror 3",
+        )
+    )
 
 
 def normalize_watch_roots(roots: tuple[Path, ...], state_dir: Path) -> tuple[WatchRoot, ...]:
@@ -792,7 +827,14 @@ class ForegroundProtectionWatcher:
                 f"event crossed the configured filesystem boundary: {pending.path}",
             )
             return
-        self._scan_paths([pending.path], sorted(pending.event_types))
+        self._scan_paths(
+            [pending.path],
+            sorted(pending.event_types),
+            # An event path is the Scanner root for this one bounded batch. It
+            # may legitimately disappear before open. Reconciliation roots are
+            # protected folders and never receive this relaxation.
+            allow_vanished_root=True,
+        )
 
     def _scan_paths(
         self,
@@ -803,6 +845,7 @@ class ForegroundProtectionWatcher:
         file_observer: Callable[[Path, os.stat_result, bool], None] | None = None,
         event: str = "scan_completed",
         no_hash_outcome: str | None = None,
+        allow_vanished_root: bool = False,
     ) -> ScanResult:
         result = self.scanner.scan(
             paths,
@@ -819,18 +862,10 @@ class ForegroundProtectionWatcher:
         for issue in result.issues:
             vanished_error = (
                 issue.code
-                in {
-                    "root_unreadable",
-                    "directory_unreadable",
-                    "entry_unreadable",
-                    "file_open_failed",
-                }
-                and (
-                    "No such file or directory" in issue.message
-                    or "WinError 2" in issue.message
-                    or "WinError 3" in issue.message
-                )
-                and not Path(issue.path).exists()
+                in {"directory_unreadable", "entry_unreadable", "file_open_failed"}
+                or (allow_vanished_root and issue.code == "root_unreadable")
+            ) and _issue_reports_missing_path(issue) and _path_is_confirmed_absent(
+                Path(issue.path)
             )
             if vanished_error:
                 vanished_count += 1
@@ -873,14 +908,19 @@ class ForegroundProtectionWatcher:
         self._stats.issues += new_scan_issues
         if result.issues:
             self._operational_incomplete = True
-        skipped = {
-            "symlinks_or_reparse_points": result.stats.skipped_symlinks,
+        # Symlinks and Windows reparse points are outside the watcher's stated
+        # non-following scope. Their presence remains visible in scan stats but
+        # is not a coverage failure. Special files and oversized regular files
+        # are different: they can contain uninspected data and stay fail-closed.
+        coverage_gaps = {
             "special_files": result.stats.skipped_special,
             "files_above_size_limit": result.stats.skipped_too_large,
         }
-        coverage_gap = any(skipped.values())
+        coverage_gap = any(coverage_gaps.values())
         if coverage_gap:
-            details = ", ".join(f"{name}={count}" for name, count in skipped.items() if count)
+            details = ", ".join(
+                f"{name}={count}" for name, count in coverage_gaps.items() if count
+            )
             self._health_issue(
                 "scan_scope_incomplete",
                 f"one or more observed paths were not inspected: {details}",
