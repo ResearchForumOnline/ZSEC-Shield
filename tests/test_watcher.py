@@ -836,6 +836,52 @@ class WatchEngineTests(unittest.TestCase):
         self.assertEqual(1, len(reconciled.issues))
         self.assertTrue(watcher._operational_incomplete)
 
+    def test_mass_disappearance_inside_scan_is_one_bounded_evidence_record(self) -> None:
+        records: list[dict[str, Any]] = []
+        scanner = Scanner(())
+        watcher = ForegroundProtectionWatcher(
+            scanner,
+            self._config(),
+            on_record=records.append,
+            polling_observer_factory=FakeObserver,
+        )
+        vanished_count = 5_000
+        vanished_paths = [
+            self.scan_root / "deleted-tree" / f"file-{index}.bin"
+            for index in range(vanished_count)
+        ]
+        vanished_result = ScanResult(
+            started_at="2026-08-22T00:00:00Z",
+            completed_at="2026-08-22T00:00:01Z",
+            roots=[str(self.scan_root / "deleted-tree")],
+            issues=[
+                ScanIssue(str(path), "file_open_failed", "[WinError 2] missing")
+                for path in vanished_paths
+            ],
+        )
+
+        with patch.object(scanner, "scan", return_value=vanished_result):
+            reconciled = watcher._scan_paths(
+                [self.scan_root / "deleted-tree"], ["modified"]
+            )
+
+        self.assertEqual([], reconciled.issues)
+        self.assertFalse(watcher._operational_incomplete)
+        self.assertEqual(vanished_count, watcher._stats.events_superseded)
+        superseded_records = [
+            record
+            for record in records
+            if record["event"] in {"event_superseded", "events_superseded"}
+        ]
+        self.assertEqual(1, len(superseded_records))
+        aggregate = superseded_records[0]
+        self.assertEqual("events_superseded", aggregate["event"])
+        self.assertEqual(vanished_count, aggregate["count"])
+        self.assertEqual(8, len(aggregate["sample_paths"]))
+        self.assertEqual(vanished_count - 8, aggregate["sample_paths_omitted"])
+        self.assertEqual("paths_vanished_during_scan", aggregate["reason"])
+        self.assertEqual(["modified"], aggregate["triggers"])
+
     def test_real_polling_backend_detects_file_created_after_inventory(self) -> None:
         target = self.scan_root / "arriving.bin"
         wrote_target = threading.Event()

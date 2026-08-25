@@ -12,6 +12,7 @@ import json
 import os
 import stat
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,8 @@ MIN_EVENT_LOG_BYTES = 64 * 1024
 MAX_EVENT_LOG_BYTES = 64 * 1024 * 1024
 MIN_EVENT_LOG_BACKUPS = 1
 MAX_EVENT_LOG_BACKUPS = 10
+HEALTH_WRITE_RETRY_DELAYS_SECONDS = (0.025, 0.05, 0.1)
+WINDOWS_SHARING_VIOLATION_CODES = frozenset({5, 32})
 
 
 def _absolute(path: Path) -> Path:
@@ -90,6 +93,22 @@ def _validate_evidence_path(path: Path, state_dir: Path) -> Path:
                 f"watch evidence path must be a regular, non-link file: {absolute}"
             )
     return absolute
+
+
+def _write_health_snapshot(path: Path, health: dict[str, Any]) -> None:
+    """Retry only brief Windows replacement conflicts, never persistent I/O faults."""
+    for attempt in range(len(HEALTH_WRITE_RETRY_DELAYS_SECONDS) + 1):
+        try:
+            atomic_write_json(path, health, mode=0o600)
+            return
+        except OSError as exc:
+            winerror = getattr(exc, "winerror", None)
+            if (
+                winerror not in WINDOWS_SHARING_VIOLATION_CODES
+                or attempt == len(HEALTH_WRITE_RETRY_DELAYS_SECONDS)
+            ):
+                raise WatchError(f"cannot update watch health snapshot: {exc}") from exc
+            time.sleep(HEALTH_WRITE_RETRY_DELAYS_SECONDS[attempt])
 
 
 class RotatingNdjsonLog:
@@ -234,10 +253,13 @@ class WatchEvidenceSink:
     def record(self, payload: dict[str, Any]) -> None:
         if self.event_log is not None:
             self.event_log.append(payload)
-        if self.health_file is None:
+        event = payload.get("event")
+        if self.health_file is None or event in {"event_superseded", "events_superseded"}:
+            # Benign disappearance races are retained in the bounded event log,
+            # but they do not change health state. Avoid an atomic health-file
+            # rewrite for every short-lived path during a bulk tree deletion.
             return
 
-        event = payload.get("event")
         if event == "session_started":
             self.backend_active = _optional_string(payload.get("backend_active"))
             roots = payload.get("roots")
@@ -304,7 +326,7 @@ class WatchEvidenceSink:
             "counters": self.counters,
             "policy": self.policy,
         }
-        atomic_write_json(self.health_file, health, mode=0o600)
+        _write_health_snapshot(self.health_file, health)
 
 
 def _optional_string(value: Any) -> str | None:

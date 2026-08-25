@@ -528,6 +528,25 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     assert "metadata inventory completes automatically" in inventory_view.detail
     assert inventory_view.detail.startswith("Windows antivirus protection")
 
+    inventory_after_restart = valid_metadata_inventory_companion()
+    inventory_after_restart["supervisor"]["lifecycle"] = {
+        "available": True,
+        "valid": True,
+        "within_bound": True,
+        "latest_event": {"event": "watcher_started"},
+        "latest_exit": {
+            "event": "watcher_exited",
+            "exit_code": 2,
+            "reason": "watcher_exit_restart_scheduled",
+        },
+    }
+    restart_inventory_view = companion_presentation(
+        validate_companion_status(inventory_after_restart)
+    )
+    assert restart_inventory_view.state == "inventorying"
+    assert restart_inventory_view.accent == "cyan"
+    assert restart_inventory_view.headline == "Automatic protection is live"
+
     degraded_with_defender = valid_companion()
     degraded_with_defender.update(
         {"decision": "degraded", "installed": True, "healthy": False}

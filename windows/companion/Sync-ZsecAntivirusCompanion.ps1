@@ -281,6 +281,16 @@ function Move-PartialCompanionAside {
     foreach ($path in @($PreviousInstallation.generated_files)) {
         $allowed[[IO.Path]::GetFileName([string]$path).ToLowerInvariant()] = $true
     }
+    foreach ($name in @(
+            "supervisor-events.ndjson",
+            "supervisor-events.ndjson.1",
+            "supervisor-events.ndjson.2"
+        )) {
+        # A failed migration may have created only the new bounded lifecycle
+        # evidence before installation.json was committed. These exact names are
+        # safe to move aside with the otherwise owned partial companion root.
+        $allowed[$name] = $true
+    }
     foreach ($item in @(Get-ChildItem -LiteralPath $root -Force)) {
         if ($item.PSIsContainer -or
             (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) -or
@@ -328,6 +338,36 @@ function Get-MigratedProtectedRoots {
     return @($values)
 }
 
+function Test-CurrentSupervisorEvidenceConfig {
+    param(
+        [Parameter(Mandatory = $true)]$Config,
+        [Parameter(Mandatory = $true)][string]$State
+    )
+    foreach ($name in @(
+            "supervisor_event_log",
+            "supervisor_event_log_max_bytes",
+            "supervisor_event_log_backups"
+        )) {
+        if ($null -eq $Config.PSObject.Properties[$name]) {
+            return $false
+        }
+    }
+    try {
+        $configuredPath = Get-NormalizedPath ([string]$Config.supervisor_event_log)
+        $expectedPath = Get-NormalizedPath (
+            Join-Path $State "companion\supervisor-events.ndjson"
+        )
+    }
+    catch {
+        return $false
+    }
+    return (
+        $configuredPath -eq $expectedPath -and
+        $Config.supervisor_event_log_max_bytes -eq 262144 -and
+        $Config.supervisor_event_log_backups -eq 2
+    )
+}
+
 $cli = Get-NormalizedPath $CliPath
 $state = Get-NormalizedPath $StateDirectory
 $tools = Get-NormalizedPath $ToolsRoot
@@ -344,6 +384,7 @@ $configPath = Join-Path $state "companion\config.json"
 $previousInstallation = $null
 $previousConfig = $null
 $migratedRoots = @()
+$configMigrationRequired = $false
 if (Test-Path -LiteralPath $installationPath -PathType Leaf) {
     $previousInstallation = Read-JsonFile $installationPath
     $previousConfig = Read-JsonFile $configPath
@@ -358,12 +399,18 @@ if (Test-Path -LiteralPath $installationPath -PathType Leaf) {
     $migratedRoots = Get-MigratedProtectedRoots `
         -PreviousInstallation $previousInstallation `
         -State $state
+    $configMigrationRequired = -not (
+        Test-CurrentSupervisorEvidenceConfig -Config $previousConfig -State $state
+    )
 }
 
 $mode = if ($null -eq $previousInstallation) {
     "fresh_install"
 }
-elseif ((Get-NormalizedPath ([string]$previousInstallation.cli_path)) -eq $cli) {
+elseif (
+    (Get-NormalizedPath ([string]$previousInstallation.cli_path)) -eq $cli -and
+    -not $configMigrationRequired
+) {
     "verify_existing"
 }
 else {
@@ -378,6 +425,7 @@ $plan = [ordered]@{
     existing_provider_must_remain_active = $true
     automatic_provider_changes = $false
     rollback_available = ($null -ne $previousInstallation)
+    config_migration_required = $configMigrationRequired
     legacy_temp_root_retired = $(if ($null -eq $previousInstallation) { $false } else {
         @($previousInstallation.protected_roots | Where-Object {
             (Get-NormalizedPath ([string]$_)).ToLowerInvariant() -eq

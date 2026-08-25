@@ -67,6 +67,181 @@ function Get-OptionalProperty {
     return $property.Value
 }
 
+function ConvertTo-SupervisorLifecycleRecord {
+    param([Parameter(Mandatory = $true)]$Value)
+    $expected = @(
+        "schema", "event", "generated_at", "supervisor_process_id",
+        "watcher_process_id", "exit_code", "lifetime_milliseconds",
+        "rapid_failure_count", "restart_scheduled", "restart_delay_seconds", "reason"
+    )
+    $actual = @($Value.PSObject.Properties.Name | Sort-Object)
+    if (@(Compare-Object -ReferenceObject ($expected | Sort-Object) -DifferenceObject $actual).Count -ne 0) {
+        return $null
+    }
+    if ($Value.schema -ne "zsec.antivirus.supervisor-event.v1") {
+        return $null
+    }
+    $allowedReasons = @{
+        supervisor_started = "supervisor_lock_acquired"
+        watcher_started = "watcher_process_started"
+        watcher_exited = @(
+            "watcher_exit_restart_scheduled",
+            "watcher_exit_rapid_failure_limit"
+        )
+    }
+    if (-not $allowedReasons.ContainsKey([string]$Value.event)) {
+        return $null
+    }
+    if (@($allowedReasons[[string]$Value.event]) -notcontains [string]$Value.reason) {
+        return $null
+    }
+    try {
+        $generatedAt = ([DateTimeOffset]$Value.generated_at).ToUniversalTime()
+    }
+    catch {
+        return $null
+    }
+    if (
+        $Value.supervisor_process_id -isnot [int] -or
+        $Value.supervisor_process_id -lt 1 -or
+        $Value.rapid_failure_count -isnot [int] -or
+        $Value.rapid_failure_count -lt 0 -or
+        $Value.rapid_failure_count -gt 5 -or
+        $Value.restart_scheduled -isnot [bool]
+    ) {
+        return $null
+    }
+    foreach ($field in @(
+            "watcher_process_id", "exit_code", "lifetime_milliseconds", "restart_delay_seconds"
+        )) {
+        $propertyValue = $Value.$field
+        if (
+            $null -ne $propertyValue -and
+            $propertyValue -isnot [int] -and
+            $propertyValue -isnot [long]
+        ) {
+            return $null
+        }
+    }
+    if (
+        ($null -ne $Value.watcher_process_id -and $Value.watcher_process_id -lt 1) -or
+        ($null -ne $Value.lifetime_milliseconds -and $Value.lifetime_milliseconds -lt 0) -or
+        ($null -ne $Value.restart_delay_seconds -and (
+            $Value.restart_delay_seconds -lt 1 -or $Value.restart_delay_seconds -gt 60
+        ))
+    ) {
+        return $null
+    }
+    if (
+        ($Value.event -eq "supervisor_started" -and (
+            $null -ne $Value.watcher_process_id -or
+            $null -ne $Value.exit_code -or
+            $null -ne $Value.lifetime_milliseconds -or
+            $Value.rapid_failure_count -ne 0 -or
+            $Value.restart_scheduled -ne $false -or
+            $null -ne $Value.restart_delay_seconds
+        )) -or
+        ($Value.event -ne "supervisor_started" -and $null -eq $Value.watcher_process_id) -or
+        ($Value.event -eq "watcher_started" -and (
+            $null -ne $Value.exit_code -or
+            $null -ne $Value.lifetime_milliseconds -or
+            $Value.restart_scheduled -ne $false -or
+            $null -ne $Value.restart_delay_seconds
+        )) -or
+        ($Value.event -eq "watcher_exited" -and (
+            $null -eq $Value.exit_code -or $null -eq $Value.lifetime_milliseconds
+        )) -or
+        ($Value.reason -eq "watcher_exit_restart_scheduled" -and (
+            $Value.restart_scheduled -ne $true -or
+            $null -eq $Value.restart_delay_seconds -or
+            $Value.rapid_failure_count -ge 5
+        )) -or
+        ($Value.reason -eq "watcher_exit_rapid_failure_limit" -and (
+            $Value.restart_scheduled -ne $false -or
+            $null -ne $Value.restart_delay_seconds -or
+            $Value.rapid_failure_count -ne 5
+        ))
+    ) {
+        return $null
+    }
+    return [ordered]@{
+        schema = [string]$Value.schema
+        event = [string]$Value.event
+        generated_at = $generatedAt.ToString("yyyy-MM-ddTHH:mm:ssZ")
+        supervisor_process_id = [int]$Value.supervisor_process_id
+        watcher_process_id = $Value.watcher_process_id
+        exit_code = $Value.exit_code
+        lifetime_milliseconds = $Value.lifetime_milliseconds
+        rapid_failure_count = [int]$Value.rapid_failure_count
+        restart_scheduled = [bool]$Value.restart_scheduled
+        restart_delay_seconds = $Value.restart_delay_seconds
+        reason = [string]$Value.reason
+    }
+}
+
+function Get-SupervisorLifecycleEvidence {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][long]$MaximumBytes,
+        [Parameter(Mandatory = $true)][int]$BackupCount
+    )
+    $paths = @()
+    for ($index = $BackupCount; $index -ge 1; $index--) {
+        $paths += "$Path.$index"
+    }
+    $paths += $Path
+    $availablePaths = @($paths | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+    if ($availablePaths.Count -eq 0) {
+        return [ordered]@{
+            available = $false
+            valid = $true
+            within_bound = $true
+            latest_event = $null
+            latest_exit = $null
+        }
+    }
+    $latestEvent = $null
+    $latestExit = $null
+    $invalidRecords = 0
+    $withinBound = $true
+    foreach ($evidencePath in $availablePaths) {
+        $item = Get-Item -LiteralPath $evidencePath -Force -ErrorAction Stop
+        if (
+            $item.PSIsContainer -or
+            (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) -or
+            $item.Length -gt $MaximumBytes + 4096
+        ) {
+            $withinBound = $false
+            continue
+        }
+        foreach ($line in @(Get-Content -LiteralPath $evidencePath -Encoding UTF8)) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            try {
+                $parsed = $line | ConvertFrom-Json
+                $record = ConvertTo-SupervisorLifecycleRecord -Value $parsed
+            }
+            catch {
+                $record = $null
+            }
+            if ($null -eq $record) {
+                $invalidRecords++
+                continue
+            }
+            $latestEvent = $record
+            if ($record.event -eq "watcher_exited") {
+                $latestExit = $record
+            }
+        }
+    }
+    return [ordered]@{
+        available = $true
+        valid = ($invalidRecords -eq 0 -and $withinBound -and $null -ne $latestEvent)
+        within_bound = $withinBound
+        latest_event = $latestEvent
+        latest_exit = $latestExit
+    }
+}
+
 function ConvertTo-UtcEvidenceTimestamp {
     param($Value)
     if ($null -eq $Value) {
@@ -450,6 +625,45 @@ try {
     ) {
         throw "installation belongs to a different Windows user"
     }
+    $lifecycleConfigNames = @(
+        "supervisor_event_log",
+        "supervisor_event_log_max_bytes",
+        "supervisor_event_log_backups"
+    )
+    $lifecycleConfigPresent = @(
+        $lifecycleConfigNames | Where-Object { $null -ne $config.PSObject.Properties[$_] }
+    )
+    if ($lifecycleConfigPresent.Count -eq 0) {
+        # A previous signed companion can be inspected and restored during an
+        # upgrade rollback. Its launcher/config pair predates lifecycle evidence.
+        $supervisorLifecycleEvidence = [ordered]@{
+            available = $false
+            valid = $true
+            within_bound = $true
+            latest_event = $null
+            latest_exit = $null
+        }
+    }
+    elseif ($lifecycleConfigPresent.Count -ne $lifecycleConfigNames.Count) {
+        throw "supervisor lifecycle evidence configuration is incomplete"
+    }
+    else {
+        $supervisorEventLogPath = Get-NormalizedPath ([string]$config.supervisor_event_log)
+        if (
+            $supervisorEventLogPath -ne
+            (Get-NormalizedPath (Join-Path $installRoot "supervisor-events.ndjson")) -or
+            $config.supervisor_event_log_max_bytes -lt 16384 -or
+            $config.supervisor_event_log_max_bytes -gt 1048576 -or
+            $config.supervisor_event_log_backups -lt 1 -or
+            $config.supervisor_event_log_backups -gt 5
+        ) {
+            throw "supervisor lifecycle evidence configuration is invalid"
+        }
+        $supervisorLifecycleEvidence = Get-SupervisorLifecycleEvidence `
+            -Path $supervisorEventLogPath `
+            -MaximumBytes ([long]$config.supervisor_event_log_max_bytes) `
+            -BackupCount ([int]$config.supervisor_event_log_backups)
+    }
 }
 catch {
     $base.installed = $true
@@ -681,6 +895,7 @@ $base.supervisor = [ordered]@{
     registration_verified = $supervisorRegistrationVerified
     state = $supervisorState
     details = $supervisorDetails
+    lifecycle = $supervisorLifecycleEvidence
 }
 $base.integrity = [ordered]@{
     cli_hash_verified = $cliHashVerified

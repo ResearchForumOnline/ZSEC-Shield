@@ -110,6 +110,7 @@ The generated configuration is deliberately conservative:
 | Cache-independent sweep | Full content rescan every 24 hours and on every start |
 | Process scheduling | Task priority `8` plus child `BelowNormal` priority |
 | Event evidence | 4 MiB current NDJSON plus three rotated backups |
+| Supervisor lifecycle evidence | 256 KiB metadata-only NDJSON plus two rotated backups |
 | Health | Atomic heartbeat every 30 seconds; stale after 105 seconds |
 | Restart | Scheduled Task: at most three retries, one minute apart; HKCU Run: no automatic retry |
 | Multiple instances | Scheduled Task `IgnoreNew`; both supervisors use the engine's state-directory lock |
@@ -122,6 +123,15 @@ concurrency, scheduling priority, log storage, restart churn and unchanged-tree
 disk reads. They are not a Windows Job Object or a hard CPU/RSS quota; sustained
 file churn and the daily full sweep can still use CPU and disk I/O. A future hard
 resource sandbox requires its own measured design and compatibility gates.
+
+Watcher stdout and stderr remain current-run diagnostics and may be truncated by
+the next child launch. Crash/restart provenance is retained independently in
+`supervisor-events.ndjson` before a restart or crash-loop exit. Its fixed schema
+contains only timestamps, supervisor/watcher process IDs, exit code, bounded
+lifetime and retry counters, restart scheduling and an enumerated reason. It does
+not copy command lines, environment data, protected paths, stdout or stderr.
+Status reports only validated lifecycle records, and lifecycle history does not
+turn a fresh, process-verified initial metadata inventory into a warning.
 
 The task settings follow Microsoft's documented `New-ScheduledTaskSettingsSet`
 controls for `IgnoreNew`, background priority, restart count, and restart

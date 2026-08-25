@@ -38,6 +38,7 @@ DEFAULT_RECONCILE_SECONDS = 60.0
 DEFAULT_FULL_RESCAN_SECONDS = 24 * 60 * 60.0
 DEFAULT_EVENT_QUEUE_SIZE = 4096
 DEFAULT_HEARTBEAT_SECONDS = 30.0
+MAX_SUPERSEDED_PATH_SAMPLES = 8
 SNAPSHOT_PATH_KEY_BYTES = 32
 _SNAPSHOT_FINGERPRINT = struct.Struct("<QQQqqI")
 SNAPSHOT_FINGERPRINT_BYTES = _SNAPSHOT_FINGERPRINT.size
@@ -813,6 +814,8 @@ class ForegroundProtectionWatcher:
             deduplicate_paths=False,
         )
         retained_issues: list[ScanIssue] = []
+        vanished_count = 0
+        vanished_samples: list[str] = []
         for issue in result.issues:
             vanished_error = (
                 issue.code
@@ -830,16 +833,29 @@ class ForegroundProtectionWatcher:
                 and not Path(issue.path).exists()
             )
             if vanished_error:
-                self._stats.events_superseded += 1
+                vanished_count += 1
+                if len(vanished_samples) < MAX_SUPERSEDED_PATH_SAMPLES:
+                    vanished_samples.append(issue.path)
                 self._reconciliation_snapshot.pop(_snapshot_path_key(Path(issue.path)), None)
-                self._emit(
-                    "event_superseded",
-                    path=issue.path,
-                    triggers=triggers,
-                    reason="path_vanished_during_scan",
-                )
             else:
                 retained_issues.append(issue)
+        self._stats.events_superseded += vanished_count
+        if vanished_count == 1:
+            self._emit(
+                "event_superseded",
+                path=vanished_samples[0],
+                triggers=triggers,
+                reason="path_vanished_during_scan",
+            )
+        elif vanished_count > 1:
+            self._emit(
+                "events_superseded",
+                count=vanished_count,
+                sample_paths=vanished_samples,
+                sample_paths_omitted=vanished_count - len(vanished_samples),
+                triggers=triggers,
+                reason="paths_vanished_during_scan",
+            )
         if len(retained_issues) != len(result.issues):
             result.issues = retained_issues
             result.stats.errors = len(retained_issues)

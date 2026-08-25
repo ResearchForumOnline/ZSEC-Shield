@@ -207,6 +207,7 @@ $installationPath = Join-Path $installRoot "installation.json"
 $launcherPath = Join-Path $installRoot "Start-ZsecAntivirusCompanion.ps1"
 $healthPath = Join-Path $installRoot "health.json"
 $eventLogPath = Join-Path $installRoot "events.ndjson"
+$supervisorEventLogPath = Join-Path $installRoot "supervisor-events.ndjson"
 $stdoutPath = Join-Path $installRoot "last.stdout.log"
 $stderrPath = Join-Path $installRoot "last.stderr.log"
 $sourceLauncher = Join-Path $PSScriptRoot "Start-ZsecAntivirusCompanion.ps1"
@@ -312,6 +313,8 @@ $plan = [ordered]@{
         cache_independent_full_rescan_seconds = 86400
         event_log_max_bytes = 4194304
         event_log_backups = 3
+        supervisor_event_log_max_bytes = 262144
+        supervisor_event_log_backups = 2
         process_priority = "BelowNormal"
     }
     health = [ordered]@{
@@ -390,6 +393,9 @@ try {
         event_log = $eventLogPath
         event_log_max_bytes = 4194304
         event_log_backups = 3
+        supervisor_event_log = $supervisorEventLogPath
+        supervisor_event_log_max_bytes = 262144
+        supervisor_event_log_backups = 2
         stdout_file = $stdoutPath
         stderr_file = $stderrPath
         quarantine_enabled = [bool]$EnableQuarantine
@@ -527,6 +533,9 @@ try {
             $launcherPath,
             $healthPath,
             $eventLogPath,
+            $supervisorEventLogPath,
+            "$supervisorEventLogPath.1",
+            "$supervisorEventLogPath.2",
             $stdoutPath,
             $stderrPath
         )

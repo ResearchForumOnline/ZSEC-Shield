@@ -5,9 +5,14 @@ import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from zsec_shield.errors import WatchError
-from zsec_shield.watch_evidence import RotatingNdjsonLog, WatchEvidenceSink
+from zsec_shield.watch_evidence import (
+    HEALTH_WRITE_RETRY_DELAYS_SECONDS,
+    RotatingNdjsonLog,
+    WatchEvidenceSink,
+)
 
 
 class WatchEvidenceTests(unittest.TestCase):
@@ -134,6 +139,128 @@ class WatchEvidenceTests(unittest.TestCase):
         self.assertFalse(health["policy"]["primary_antivirus"])
         self.assertFalse(health["policy"]["real_time_protection"])
         self.assertFalse(health["policy"]["pre_access_enforcement"])
+
+    def test_superseded_aggregate_is_logged_without_rewriting_health(self) -> None:
+        with TemporaryDirectory() as temporary:
+            state = Path(temporary) / "state"
+            health_path = state / "companion" / "health.json"
+            event_path = state / "companion" / "events.ndjson"
+            sink = WatchEvidenceSink(
+                state_dir=state,
+                health_file=health_path,
+                event_log=event_path,
+                event_log_max_bytes=64 * 1024,
+                event_log_backups=1,
+                heartbeat_seconds=30,
+            )
+            sink.record(
+                {
+                    "schema": "zsec.shield.watch-event.v1",
+                    "version": "0.2.0",
+                    "session_id": "test-session",
+                    "sequence": 1,
+                    "generated_at": "2026-08-21T12:00:00Z",
+                    "event": "session_started",
+                    "backend_active": "native",
+                    "roots": [str(Path(temporary) / "Downloads")],
+                    "policy": {
+                        "product": "ZSEC Antivirus",
+                        "primary_antivirus": False,
+                        "real_time_protection": False,
+                        "pre_access_enforcement": False,
+                    },
+                }
+            )
+            health_before = health_path.read_bytes()
+            with patch(
+                "zsec_shield.watch_evidence.atomic_write_json",
+                side_effect=AssertionError("benign aggregate must not rewrite health"),
+            ):
+                sink.record(
+                    {
+                        "schema": "zsec.shield.watch-event.v1",
+                        "version": "0.2.0",
+                        "session_id": "test-session",
+                        "sequence": 2,
+                        "generated_at": "2026-08-21T12:00:01Z",
+                        "event": "events_superseded",
+                        "count": 5_000,
+                        "sample_paths": ["one", "two"],
+                        "sample_paths_omitted": 4_998,
+                        "reason": "paths_vanished_during_scan",
+                    }
+                )
+
+            self.assertEqual(health_before, health_path.read_bytes())
+            records = [
+                json.loads(line)
+                for line in event_path.read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual(["session_started", "events_superseded"], [
+                record["event"] for record in records
+            ])
+            self.assertEqual(5_000, records[-1]["count"])
+
+    def test_health_snapshot_retries_a_brief_windows_sharing_violation(self) -> None:
+        with TemporaryDirectory() as temporary:
+            state = Path(temporary) / "state"
+            sink = WatchEvidenceSink(
+                state_dir=state,
+                health_file=state / "companion" / "health.json",
+                event_log=None,
+                event_log_max_bytes=64 * 1024,
+                event_log_backups=1,
+                heartbeat_seconds=30,
+            )
+            sharing_violation = PermissionError("health snapshot is temporarily in use")
+            sharing_violation.winerror = 32  # type: ignore[attr-defined]
+            with (
+                patch(
+                    "zsec_shield.watch_evidence.atomic_write_json",
+                    side_effect=[sharing_violation, sharing_violation, None],
+                ) as write,
+                patch("zsec_shield.watch_evidence.time.sleep") as sleep,
+            ):
+                sink.record({"event": "session_started"})
+
+            self.assertEqual(3, write.call_count)
+            self.assertEqual(
+                [
+                    ((HEALTH_WRITE_RETRY_DELAYS_SECONDS[0],), {}),
+                    ((HEALTH_WRITE_RETRY_DELAYS_SECONDS[1],), {}),
+                ],
+                sleep.call_args_list,
+            )
+
+    def test_health_snapshot_does_not_mask_a_persistent_sharing_violation(self) -> None:
+        with TemporaryDirectory() as temporary:
+            state = Path(temporary) / "state"
+            sink = WatchEvidenceSink(
+                state_dir=state,
+                health_file=state / "companion" / "health.json",
+                event_log=None,
+                event_log_max_bytes=64 * 1024,
+                event_log_backups=1,
+                heartbeat_seconds=30,
+            )
+
+            def persistent_failure(*_args: object, **_kwargs: object) -> None:
+                failure = PermissionError("health snapshot remains in use")
+                failure.winerror = 32  # type: ignore[attr-defined]
+                raise failure
+
+            with (
+                patch(
+                    "zsec_shield.watch_evidence.atomic_write_json",
+                    side_effect=persistent_failure,
+                ) as write,
+                patch("zsec_shield.watch_evidence.time.sleep") as sleep,
+                self.assertRaisesRegex(WatchError, "cannot update watch health snapshot"),
+            ):
+                sink.record({"event": "session_started"})
+
+            self.assertEqual(len(HEALTH_WRITE_RETRY_DELAYS_SECONDS) + 1, write.call_count)
+            self.assertEqual(len(HEALTH_WRITE_RETRY_DELAYS_SECONDS), sleep.call_count)
 
 
 if __name__ == "__main__":

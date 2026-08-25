@@ -95,6 +95,7 @@ Assert-ExactFields -Value $config -Context "Companion config" -Expected @(
     "reconcile_seconds", "full_rescan_seconds", "heartbeat_seconds", "event_queue_size", "max_file_bytes",
     "intelligence_update_url", "intelligence_check_seconds",
     "chunk_bytes", "health_file", "event_log", "event_log_max_bytes", "event_log_backups",
+    "supervisor_event_log", "supervisor_event_log_max_bytes", "supervisor_event_log_backups",
     "stdout_file", "stderr_file", "quarantine_enabled", "installed_at", "policy"
 )
 if (
@@ -114,6 +115,7 @@ $runtimeExecutable = Get-NormalizedPath ([string]$config.runtime_executable)
 $state = Get-NormalizedPath ([string]$config.state_directory)
 $health = Get-NormalizedPath ([string]$config.health_file)
 $eventLog = Get-NormalizedPath ([string]$config.event_log)
+$supervisorEventLog = Get-NormalizedPath ([string]$config.supervisor_event_log)
 $stdout = Get-NormalizedPath ([string]$config.stdout_file)
 $stderr = Get-NormalizedPath ([string]$config.stderr_file)
 Assert-RegularNonReparseFile $cli
@@ -121,7 +123,9 @@ Assert-RegularNonReparseFile $runtimeExecutable
 if (Test-Path -LiteralPath $state) {
     Assert-RegularNonReparseDirectory $state
 }
-foreach ($evidencePath in @($configFile, $health, $eventLog, $stdout, $stderr)) {
+foreach ($evidencePath in @(
+        $configFile, $health, $eventLog, $supervisorEventLog, $stdout, $stderr
+    )) {
     if (-not (Test-IsPathBelow -Candidate $evidencePath -Parent $state)) {
         throw "All companion control/evidence files must stay below the excluded state directory."
     }
@@ -169,6 +173,18 @@ if ($config.event_log_max_bytes -lt 65536 -or $config.event_log_max_bytes -gt 67
 }
 if ($config.event_log_backups -lt 1 -or $config.event_log_backups -gt 10) {
     throw "Companion event-log backup count is invalid."
+}
+if (
+    $config.supervisor_event_log_max_bytes -lt 16384 -or
+    $config.supervisor_event_log_max_bytes -gt 1048576
+) {
+    throw "Companion supervisor event-log bound is invalid."
+}
+if (
+    $config.supervisor_event_log_backups -lt 1 -or
+    $config.supervisor_event_log_backups -gt 5
+) {
+    throw "Companion supervisor event-log backup count is invalid."
 }
 if ($config.heartbeat_seconds -lt 5 -or $config.heartbeat_seconds -gt 300) {
     throw "Companion heartbeat interval is invalid."
@@ -239,6 +255,80 @@ try {
         }
     }
 
+    function Write-SupervisorLifecycleEvent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("supervisor_started", "watcher_started", "watcher_exited")]
+        [string]$Event,
+        [Parameter(Mandatory = $true)]
+        [ValidateSet(
+            "supervisor_lock_acquired",
+            "watcher_process_started",
+            "watcher_exit_restart_scheduled",
+            "watcher_exit_rapid_failure_limit"
+        )]
+        [string]$Reason,
+        [Nullable[int]]$WatcherProcessId = $null,
+        [Nullable[int]]$ExitCode = $null,
+        [Nullable[long]]$LifetimeMilliseconds = $null,
+        [int]$RapidFailureCount = 0,
+        [bool]$RestartScheduled = $false,
+        [Nullable[int]]$RestartDelaySeconds = $null
+    )
+    $record = [ordered]@{
+        schema = "zsec.antivirus.supervisor-event.v1"
+        event = $Event
+        generated_at = [DateTimeOffset]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+        supervisor_process_id = [int]$PID
+        watcher_process_id = $WatcherProcessId
+        exit_code = $ExitCode
+        lifetime_milliseconds = $LifetimeMilliseconds
+        rapid_failure_count = $RapidFailureCount
+        restart_scheduled = $RestartScheduled
+        restart_delay_seconds = $RestartDelaySeconds
+        reason = $Reason
+    }
+    $line = $record | ConvertTo-Json -Compress
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    $lineBytes = $utf8.GetByteCount($line + [Environment]::NewLine)
+    if ($lineBytes -gt 4096) {
+        throw "Supervisor lifecycle evidence exceeded its per-record bound."
+    }
+    if (Test-Path -LiteralPath $supervisorEventLog -PathType Leaf) {
+        Assert-RegularNonReparseFile $supervisorEventLog
+        $length = (Get-Item -LiteralPath $supervisorEventLog -Force).Length
+        if ($length + $lineBytes -gt [long]$config.supervisor_event_log_max_bytes) {
+            for ($index = [int]$config.supervisor_event_log_backups; $index -ge 1; $index--) {
+                $source = if ($index -eq 1) {
+                    $supervisorEventLog
+                }
+                else {
+                    "$supervisorEventLog.$($index - 1)"
+                }
+                $destination = "$supervisorEventLog.$index"
+                foreach ($path in @($source, $destination)) {
+                    if (-not (Test-IsPathBelow -Candidate $path -Parent $state)) {
+                        throw "Supervisor lifecycle rotation escaped the excluded state directory."
+                    }
+                }
+                if (Test-Path -LiteralPath $destination) {
+                    Assert-RegularNonReparseFile $destination
+                    Remove-Item -LiteralPath $destination -Force
+                }
+                if (Test-Path -LiteralPath $source -PathType Leaf) {
+                    Assert-RegularNonReparseFile $source
+                    Move-Item -LiteralPath $source -Destination $destination
+                }
+            }
+        }
+    }
+    [System.IO.File]::AppendAllText(
+        $supervisorEventLog,
+        $line + [Environment]::NewLine,
+        $utf8
+    )
+    }
+
     function Invoke-IntelligenceCheck {
     try {
         $output = & $cli `
@@ -304,6 +394,10 @@ try {
     }
     }
 
+    Write-SupervisorLifecycleEvent `
+        -Event "supervisor_started" `
+        -Reason "supervisor_lock_acquired"
+
     $rapidFailures = 0
     $maximumRapidFailures = 5
     while ($true) {
@@ -323,6 +417,11 @@ try {
             Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
             throw "Could not apply BelowNormal priority to the companion process."
         }
+        Write-SupervisorLifecycleEvent `
+            -Event "watcher_started" `
+            -Reason "watcher_process_started" `
+            -WatcherProcessId $process.Id `
+            -RapidFailureCount $rapidFailures
         # Bring local monitoring online before any network-backed maintenance.
         $null = Invoke-DefenderSecurityIntelligenceMaintenance
         $null = Invoke-IntelligenceCheck
@@ -337,14 +436,31 @@ try {
         }
 
         $lifetimeSeconds = ([DateTimeOffset]::UtcNow - $startedAt).TotalSeconds
+        $lifetimeMilliseconds = [Math]::Max(0, [long][Math]::Round($lifetimeSeconds * 1000.0))
         if ($lifetimeSeconds -ge 300.0) { $rapidFailures = 0 }
         else { $rapidFailures++ }
         if ($rapidFailures -ge $maximumRapidFailures) {
+            Write-SupervisorLifecycleEvent `
+                -Event "watcher_exited" `
+                -Reason "watcher_exit_rapid_failure_limit" `
+                -WatcherProcessId $process.Id `
+                -ExitCode $process.ExitCode `
+                -LifetimeMilliseconds $lifetimeMilliseconds `
+                -RapidFailureCount $rapidFailures
             # Fail visibly after a bounded crash loop. Status retains the stale
             # heartbeat/process evidence instead of claiming monitoring is active.
             exit $process.ExitCode
         }
         $restartDelaySeconds = [Math]::Min(60, [Math]::Pow(2, $rapidFailures))
+        Write-SupervisorLifecycleEvent `
+            -Event "watcher_exited" `
+            -Reason "watcher_exit_restart_scheduled" `
+            -WatcherProcessId $process.Id `
+            -ExitCode $process.ExitCode `
+            -LifetimeMilliseconds $lifetimeMilliseconds `
+            -RapidFailureCount $rapidFailures `
+            -RestartScheduled $true `
+            -RestartDelaySeconds ([int]$restartDelaySeconds)
         Start-Sleep -Seconds ([int]$restartDelaySeconds)
     }
 }

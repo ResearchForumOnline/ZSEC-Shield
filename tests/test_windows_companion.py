@@ -18,6 +18,9 @@ ACTION = COMPANION_ROOT / "Invoke-ZsecWindowsProtectionAction.ps1"
 UNINSTALLER = COMPANION_ROOT / "Uninstall-ZsecAntivirusCompanion.ps1"
 SYNC = COMPANION_ROOT / "Sync-ZsecAntivirusCompanion.ps1"
 DEFENDER_AGE_FIXTURE = PROJECT_ROOT / "tests" / "fixtures" / "defender_scan_age_evidence.ps1"
+SUPERVISOR_LIFECYCLE_FIXTURE = (
+    PROJECT_ROOT / "tests" / "fixtures" / "supervisor_lifecycle_evidence.ps1"
+)
 
 
 class WindowsCompanionStaticTests(unittest.TestCase):
@@ -50,6 +53,11 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn("max_file_bytes = 268435456", content)
         self.assertIn("event_log_max_bytes = 4194304", content)
         self.assertIn("event_log_backups = 3", content)
+        self.assertIn("supervisor_event_log_max_bytes = 262144", content)
+        self.assertIn("supervisor_event_log_backups = 2", content)
+        self.assertIn('supervisor_event_log = $supervisorEventLogPath', content)
+        self.assertIn('"$supervisorEventLogPath.1"', content)
+        self.assertIn('"$supervisorEventLogPath.2"', content)
         self.assertIn("[string[]]$ProtectedRoot", content)
         self.assertIn('(Join-Path $env:USERPROFILE "Downloads")', content)
         self.assertIn('[Environment]::GetFolderPath("Desktop")', content)
@@ -95,6 +103,31 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn("[Math]::Pow(2, $rapidFailures)", content)
         self.assertIn("Start-Sleep -Seconds", content)
         self.assertIn("exit $process.ExitCode", content)
+        self.assertIn('schema = "zsec.antivirus.supervisor-event.v1"', content)
+        self.assertIn('reason = $Reason', content)
+        self.assertIn('"watcher_exit_restart_scheduled"', content)
+        self.assertIn('"watcher_exit_rapid_failure_limit"', content)
+        self.assertIn("supervisor_event_log_max_bytes", content)
+        self.assertIn("supervisor_event_log_backups", content)
+        self.assertIn("[System.IO.File]::AppendAllText", content)
+        self.assertIn("Move-Item -LiteralPath $source -Destination $destination", content)
+        exit_event = content.index('-Event "watcher_exited"')
+        restart = content.index("Start-Sleep -Seconds ([int]$restartDelaySeconds)")
+        self.assertLess(exit_event, restart)
+        lifecycle_writer = content[
+            content.index("function Write-SupervisorLifecycleEvent") :
+            content.index("function Invoke-IntelligenceCheck")
+        ]
+        for sensitive_value in (
+            "$argumentLine",
+            "$normalizedRoots",
+            "$stdout",
+            "$stderr",
+            "protected_roots",
+            "command_line",
+            "environment",
+        ):
+            self.assertNotIn(sensitive_value, lifecycle_writer)
         self.assertIn('"Local\\ZSEC-Antivirus-Companion-"', content)
         self.assertIn("System.Threading.Mutex", content)
         self.assertIn("if (-not $createdNew)", content)
@@ -167,6 +200,16 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn('$defender.network_protection.state = "audit"', content)
         self.assertIn('$defender.network_protection.state = "disabled"', content)
         self.assertIn("companion health decision", content)
+        self.assertIn("function Get-SupervisorLifecycleEvidence", content)
+        self.assertIn("function ConvertTo-SupervisorLifecycleRecord", content)
+        self.assertIn('schema -ne "zsec.antivirus.supervisor-event.v1"', content)
+        self.assertIn("latest_exit = $latestExit", content)
+        self.assertIn("lifecycle = $supervisorLifecycleEvidence", content)
+        self.assertIn("A previous signed companion can be inspected and restored", content)
+        self.assertIn("$lifecycleConfigPresent.Count -eq 0", content)
+        self.assertIn("$lifecycleConfigPresent.Count -ne $lifecycleConfigNames.Count", content)
+        self.assertNotIn("stdout_file =", content)
+        self.assertNotIn("stderr_file =", content)
 
     def test_defender_scan_age_fixture_preserves_active_evidence(self) -> None:
         powershell = shutil.which("powershell.exe") or shutil.which("pwsh")
@@ -201,6 +244,52 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertEqual(3, evidence["normal_age_days"])
         self.assertTrue(evidence["confirmed_active"])
         self.assertTrue(evidence["baseline_features_confirmed"])
+
+    def test_supervisor_lifecycle_fixture_rotates_and_retains_secret_free_exit_evidence(
+        self,
+    ) -> None:
+        powershell = shutil.which("powershell.exe") or shutil.which("pwsh")
+        if powershell is None:
+            self.skipTest("PowerShell is unavailable")
+        with TemporaryDirectory() as temporary:
+            result = subprocess.run(
+                [
+                    powershell,
+                    "-NoLogo",
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "RemoteSigned",
+                    "-File",
+                    str(SUPERVISOR_LIFECYCLE_FIXTURE),
+                    "-LauncherScript",
+                    str(LAUNCHER),
+                    "-StatusScript",
+                    str(STATUS),
+                    "-TemporaryDirectory",
+                    temporary,
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        if result.returncode != 0:
+            self.fail(
+                "Supervisor lifecycle fixture failed: "
+                f"stdout={result.stdout!r} stderr={result.stderr!r}"
+            )
+        evidence = json.loads(result.stdout)
+        self.assertEqual("zsec.tests.supervisor-lifecycle-evidence.v1", evidence["schema"])
+        self.assertEqual(3, evidence["rotated_files"])
+        self.assertTrue(evidence["bounded_files"])
+        self.assertTrue(evidence["records_present"])
+        self.assertTrue(evidence["fields_exact"])
+        self.assertTrue(evidence["evidence_valid"])
+        self.assertEqual("watcher_started", evidence["latest_event"])
+        self.assertEqual(
+            "watcher_exit_restart_scheduled",
+            evidence["latest_exit_reason"],
+        )
 
     def test_rollback_is_owned_and_preserves_scanner_security_state(self) -> None:
         content = UNINSTALLER.read_text(encoding="utf-8")
@@ -246,6 +335,23 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         )
         for value in forbidden:
             self.assertNotIn(value.casefold(), combined)
+
+    def test_sync_migrates_legacy_config_instead_of_verifying_an_incompatible_pair(
+        self,
+    ) -> None:
+        content = SYNC.read_text(encoding="utf-8")
+        self.assertIn("function Test-CurrentSupervisorEvidenceConfig", content)
+        self.assertIn('"supervisor_event_log"', content)
+        self.assertIn("$configMigrationRequired = -not", content)
+        self.assertIn("-not $configMigrationRequired", content)
+        self.assertIn("config_migration_required = $configMigrationRequired", content)
+        self.assertIn('"supervisor-events.ndjson.2"', content)
+        self.assertRegex(
+            content,
+            r"elseif \(\s*"
+            r"\(Get-NormalizedPath \(\[string\]\$previousInstallation\.cli_path\)\) "
+            r"-eq \$cli -and\s*-not \$configMigrationRequired\s*\)",
+        )
 
     def test_source_distribution_includes_companion_scripts(self) -> None:
         manifest = (PROJECT_ROOT / "MANIFEST.in").read_text(encoding="utf-8")
@@ -321,6 +427,11 @@ class WindowsCompanionReadOnlyIntegrationTests(unittest.TestCase):
             plan["runtime_sha256"],
         )
         self.assertEqual("IgnoreNew", plan["settings"]["multiple_instances"])
+        self.assertEqual(
+            262144,
+            plan["resource_bounds"]["supervisor_event_log_max_bytes"],
+        )
+        self.assertEqual(2, plan["resource_bounds"]["supervisor_event_log_backups"])
         self.assertFalse(plan["policy"]["primary_antivirus"])
         self.assertFalse(plan["policy"]["cutover_allowed"])
 
