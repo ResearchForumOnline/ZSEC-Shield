@@ -995,6 +995,7 @@ class ForegroundProtectionWatcher:
                 emit_progress_heartbeat()
                 drain_priority_events(key)
                 return True
+            previous_fingerprint = previous.pop(key, None)
             if metadata_only:
                 # Startup coverage records stable identity/size/timestamps only.
                 # No content is opened or hashed here. New and changed observer
@@ -1004,7 +1005,11 @@ class ForegroundProtectionWatcher:
                 emit_progress_heartbeat()
                 drain_priority_events(key)
                 return False
-            changed = full or previous.get(key) != fingerprint
+            # Pop each prior payload as its replacement is streamed into
+            # current. The old dict table remains bounded, but old and new
+            # per-file keys/fingerprints no longer coexist at full cardinality.
+            # Full scans still content-scan every path regardless of equality.
+            changed = full or previous_fingerprint != fingerprint
             if not changed:
                 unchanged += 1
                 current[key] = fingerprint
@@ -1136,6 +1141,11 @@ class ForegroundProtectionWatcher:
             # stop the session with observer events still queued and report an
             # avoidable coverage gap. Evidence timestamps still include inventory.
             monitoring_started_monotonic = self._clock()
+            # Inventory time is commissioning work, not elapsed periodic-scan
+            # time. Re-arm both deadlines after it completes so a large first
+            # inventory cannot trigger an immediate second tree traversal.
+            next_reconcile = monitoring_started_monotonic + self.config.reconcile_seconds
+            next_full_rescan = monitoring_started_monotonic + self.config.full_rescan_seconds
             while True:
                 if not self._event_pipeline_is_healthy():
                     break

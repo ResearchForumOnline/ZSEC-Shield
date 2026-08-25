@@ -953,6 +953,83 @@ class WatchEngineTests(unittest.TestCase):
         self.assertEqual("metadata_inventory_complete", inventory["outcome"])
         self.assertEqual(0, inventory["scan"]["stats"]["files_hashed"])
 
+    def test_periodic_deadlines_are_rearmed_after_slow_initial_inventory(self) -> None:
+        (self.scan_root / "slow-inventory.bin").write_bytes(b"metadata only")
+        now = [0.0]
+
+        class SlowInventoryScanner(Scanner):
+            calls = 0
+
+            def scan(self, *args: Any, **kwargs: Any):  # type: ignore[no-untyped-def]
+                self.calls += 1
+                if self.calls == 1:
+                    now[0] += 301.0
+                return super().scan(*args, **kwargs)
+
+        def clock() -> float:
+            return now[0]
+
+        def advance(seconds: float) -> None:
+            now[0] += seconds
+
+        records: list[dict[str, Any]] = []
+        watcher = ForegroundProtectionWatcher(
+            SlowInventoryScanner(()),
+            self._config(
+                reconcile_seconds=300.0,
+                full_rescan_seconds=300.0,
+            ),
+            on_record=records.append,
+            polling_observer_factory=FakeObserver,
+            clock=clock,
+        )
+        with patch("zsec_shield.watcher.time.sleep", side_effect=advance):
+            summary = watcher.run(duration_seconds=0.2)
+
+        periodic_triggers = {
+            trigger
+            for record in records
+            if record["event"] in {"reconciliation_completed", "scan_completed"}
+            for trigger in record.get("triggers", [])
+            if trigger.startswith("periodic_")
+        }
+        self.assertEqual(set(), periodic_triggers)
+        self.assertEqual(1, summary.stats.reconciliations)
+        self.assertEqual(0, summary.stats.full_reconciliations)
+
+    def test_reconciliation_consumes_prior_snapshot_payloads_while_streaming(self) -> None:
+        for index in range(4):
+            (self.scan_root / f"stable-{index}.bin").write_bytes(b"stable")
+        scanner = Scanner(())
+        watcher = ForegroundProtectionWatcher(
+            scanner,
+            self._config(),
+            polling_observer_factory=FakeObserver,
+        )
+        watcher._reconcile("initial_metadata_inventory", full=False, metadata_only=True)
+        self.assertEqual(4, len(watcher._reconciliation_snapshot))
+
+        remaining_sizes: list[int] = []
+        original_scan = scanner.scan
+
+        def observe_consumption(*args: Any, **kwargs: Any) -> ScanResult:
+            original_filter = kwargs["file_filter"]
+
+            def observed_filter(path: Path, metadata: os.stat_result) -> bool:
+                include = original_filter(path, metadata)
+                remaining_sizes.append(len(watcher._reconciliation_snapshot))
+                return include
+
+            kwargs["file_filter"] = observed_filter
+            return original_scan(*args, **kwargs)
+
+        with patch.object(scanner, "scan", side_effect=observe_consumption):
+            watcher._reconcile("periodic_reconciliation", full=False)
+
+        self.assertEqual([3, 2, 1, 0], remaining_sizes)
+        self.assertEqual(4, len(watcher._reconciliation_snapshot))
+        self.assertEqual(4, watcher._stats.metadata_files_unchanged)
+
     def test_metadata_reconciliation_does_not_rehash_unchanged_files(self) -> None:
         target = self.scan_root / "stable.bin"
         target.write_bytes(b"stable reconciliation test")
