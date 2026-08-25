@@ -22,10 +22,14 @@ function Test-IsPathBelow {
         [Parameter(Mandatory = $true)][string]$Candidate,
         [Parameter(Mandatory = $true)][string]$Parent
     )
-    $normalizedCandidate = (Get-NormalizedPath $Candidate).TrimEnd('\')
-    $normalizedParent = (Get-NormalizedPath $Parent).TrimEnd('\')
+    $pathSeparators = [char[]]@(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar
+    )
+    $normalizedCandidate = (Get-NormalizedPath $Candidate).TrimEnd($pathSeparators)
+    $normalizedParent = (Get-NormalizedPath $Parent).TrimEnd($pathSeparators)
     return $normalizedCandidate.StartsWith(
-        $normalizedParent + '\',
+        $normalizedParent + [IO.Path]::DirectorySeparatorChar,
         [System.StringComparison]::OrdinalIgnoreCase
     )
 }

@@ -516,7 +516,7 @@ class ZsecDesktop:
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
         ttk.Label(
             title_row,
-            text="COMMUNITY 0.3.26",
+            text="COMMUNITY 0.3.27",
             style="Subtitle.TLabel",
             foreground=AMBER,
         ).pack(
@@ -1310,7 +1310,7 @@ class ZsecDesktop:
         self.yubikey_status = ttk.Label(
             panel,
             text=(
-                "Hardware-key recovery is not enabled in Community 0.3.26. When "
+                "Hardware-key recovery is not enabled in Community 0.3.27. When "
                 "quarantine is explicitly enabled, encryption remains automatic, "
                 "authenticated and device-bound."
             ),
