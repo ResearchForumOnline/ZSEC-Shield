@@ -238,6 +238,7 @@ $LocalAutomationSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\src\B
 $YoutubeProtectionSource = Join-Path $RepoRoot "browser\zsec-desktop-preview\assets\youtube-player-protection.js"
 $ExtensionSource = Join-Path $RepoRoot "browser\zeroq-shields"
 $IconSource = Join-Path $RepoRoot "assets\brand\zeroq-icon.png"
+$Win32Manifest = Join-Path $RepoRoot "packaging\zsec-browser-desktop.manifest"
 $IconPath = Join-Path $OutputDirectory "zsec-browser.ico"
 $LauncherPath = Join-Path $AppRoot "ZSEC Browser.exe"
 $PackageCache = Join-Path $env:LOCALAPPDATA "TalkToAI\ZSEC Browser Build\packages\Microsoft.Web.WebView2\$WebView2Version"
@@ -249,7 +250,7 @@ foreach ($path in @(
     $LauncherSource, $ProductStateSource, $ProductPolicySource, $ProductDialogsSource,
     $VaultContractsSource, $PasswordVaultSource, $CredentialWorkflowSource, $CredentialImportSource, $MigrationSource, $VaultDialogsSource,
     $LoginAssistantSource, $SignInMigrationSource, $LoginDialogsSource, $ThemeSource, $LocalAutomationSource,
-    $YoutubeProtectionSource, $IconSource
+    $YoutubeProtectionSource, $IconSource, $Win32Manifest
 )) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Required build input is absent: $path"
@@ -326,6 +327,7 @@ $compilerArguments = @(
     "/deterministic+",
     "/platform:x64",
     "/pathmap:$RepoRoot=$CompilerSourcePathMap",
+    "/win32manifest:$Win32Manifest",
     "/reference:System.dll",
     "/reference:System.Core.dll",
     "/reference:System.Drawing.dll",

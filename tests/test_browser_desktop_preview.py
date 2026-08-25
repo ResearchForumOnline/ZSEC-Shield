@@ -7,6 +7,7 @@ import subprocess
 import sys
 import zipfile
 from pathlib import Path
+from xml.etree import ElementTree
 
 import pytest
 
@@ -21,6 +22,7 @@ README = ROOT / "browser" / "zsec-desktop-preview" / "README.md"
 COMPILER = ROOT / "packaging" / "compile_browser_policy.py"
 PACKAGER = ROOT / "packaging" / "browser_desktop_preview_release.py"
 MANIFEST = ROOT / "browser" / "zeroq-shields" / "manifest.json"
+WIN32_MANIFEST = ROOT / "packaging" / "zsec-browser-desktop.manifest"
 PACKAGE_STAGING_FIXTURE = ROOT / "tests" / "fixtures" / "browser_package_staging.ps1"
 
 
@@ -173,6 +175,11 @@ def test_browser_build_dependencies_are_pinned_and_reproducible() -> None:
     assert '"/noconfig"' in build
     assert '"/deterministic+"' in build
     assert '"/pathmap:$RepoRoot=$CompilerSourcePathMap"' in build
+    assert (
+        '$Win32Manifest = Join-Path $RepoRoot '
+        '"packaging\\zsec-browser-desktop.manifest"'
+    ) in build
+    assert '"/win32manifest:$Win32Manifest"' in build
     assert "C:\\Windows\\Microsoft.NET\\Framework64" not in build
     assert "Expand-Archive" not in build
     assert 'Join-Path $PackageCache "extracted"' not in build
@@ -213,6 +220,27 @@ def test_browser_build_dependencies_are_pinned_and_reproducible() -> None:
     assert "OutputDirectory must not already exist" in build
     assert "Get-AuthenticodeSignature" in installer
     assert "Microsoft Corporation" in installer
+
+
+def test_browser_win32_manifest_declares_per_monitor_v2_without_elevation() -> None:
+    manifest = ElementTree.parse(WIN32_MANIFEST).getroot()
+    dpi_aware = manifest.find(
+        ".//{http://schemas.microsoft.com/SMI/2005/WindowsSettings}dpiAware"
+    )
+    dpi_awareness = manifest.find(
+        ".//{http://schemas.microsoft.com/SMI/2016/WindowsSettings}dpiAwareness"
+    )
+    long_path = manifest.find(
+        ".//{http://schemas.microsoft.com/SMI/2016/WindowsSettings}longPathAware"
+    )
+    privilege = manifest.find(
+        ".//{urn:schemas-microsoft-com:asm.v3}requestedExecutionLevel"
+    )
+    assert dpi_aware is not None and dpi_aware.text == "true/pm"
+    assert dpi_awareness is not None and dpi_awareness.text == "PerMonitorV2"
+    assert long_path is not None and long_path.text == "true"
+    assert privilege is not None
+    assert privilege.attrib == {"level": "asInvoker", "uiAccess": "false"}
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows PowerShell 5.1 is required")
