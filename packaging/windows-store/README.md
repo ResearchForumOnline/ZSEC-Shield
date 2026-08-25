@@ -126,3 +126,34 @@ Store package requirements and upload formats are documented at
 <https://learn.microsoft.com/windows/apps/publish/publish-your-app/msix/app-package-requirements>
 and
 <https://learn.microsoft.com/windows/apps/publish/publish-your-app/msix/upload-app-packages>.
+
+## Offline Partner Center listing and certification draft
+
+The copy-and-paste listing source is kept in `listings/` and rendered to
+`PARTNER_CENTER_DRAFT.md`. It includes bounded short and full descriptions,
+feature bullets, reviewed privacy/support URLs, separate `runFullTrust`
+justifications, certification notes and tester steps, IARC facts, Free pricing
+checks, and five-screenshot plans for each product.
+
+Validate that descriptions and captions remain within Microsoft field limits,
+versions still match the build sources, the Browser remains disclosed as a
+general web browser for IARC, pricing remains Free, and unsupported protection
+claims have not entered the copy:
+
+```powershell
+python packaging/windows-store/listing_materials.py
+```
+
+After an intentional JSON edit, regenerate the Markdown and immediately rerun
+the validator:
+
+```powershell
+python packaging/windows-store/listing_materials.py --write
+python packaging/windows-store/listing_materials.py
+```
+
+These files are drafts, not evidence of a reservation, completed submission, or
+certification. They deliberately stop before any Partner Center write. The
+identity, WACK, Store-signed clean-VM acceptance, current URL review, final
+market selection, screenshot capture, and human submission review remain hard
+gates.

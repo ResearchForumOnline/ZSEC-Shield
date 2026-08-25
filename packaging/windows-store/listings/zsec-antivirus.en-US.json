@@ -1,0 +1,134 @@
+{
+  "schema": "zsec.microsoft-store-listing.v1",
+  "product_key": "antivirus",
+  "language": "en-US",
+  "product_name": "ZSEC Antivirus",
+  "source_version": "0.3.29",
+  "category": {
+    "primary": "Security",
+    "selection_note": "Select the closest currently available non-game security category in Partner Center; do not classify this companion as a Microsoft Defender replacement."
+  },
+  "listing": {
+    "short_description": "Local Windows security companion for Defender evidence and fixed scans, bounded post-change file monitoring, deterministic checks, and authenticated encrypted quarantine.",
+    "description_paragraphs": [
+      "ZSEC Antivirus Community is a local-first Windows security companion. It shows supported Windows Security and Microsoft Defender evidence, can request fixed Defender intelligence-update, quick-scan, and confirmed full-scan actions, and adds bounded per-user post-change file monitoring, deterministic file hashing and exact-rule checks, reports, authenticated encrypted quarantine, and recovery checks.",
+      "Important protection boundary: Microsoft Defender or another supported primary provider must remain active. ZSEC is not a primary antivirus, registered Windows Security provider, protected service, or kernel pre-access filter, and it has not received independent malware-efficacy certification. Monitoring reacts after file changes, and a limited scan result is not proof that the computer is clean.",
+      "Files, scanner reports, monitoring state, and quarantine data remain local by default. No ZSEC account, advertising, telemetry endpoint, sample upload, or cloud analysis is required. Quarantine is an explicit per-scan choice, and restore refuses to overwrite an existing destination.",
+      "The app is free and open core. Its source, threat model, privacy contract, deterministic release metadata, and security boundaries are available for review."
+    ],
+    "features": [
+      "Supported Windows Security and Microsoft Defender status evidence",
+      "Fixed Defender intelligence update, quick scan, and confirmed full scan actions",
+      "Bounded per-user post-change file monitoring with fail-closed health evidence",
+      "Deterministic file hashing and exact signed-rule checks",
+      "Explicit opt-in authenticated encrypted quarantine",
+      "No-overwrite restore and isolated synthetic recovery self-test",
+      "Local reports with incomplete and review states kept visibly distinct",
+      "No ZSEC account, advertising, telemetry endpoint, or file-sample upload",
+      "Reduced-motion interface and native notification-area controls"
+    ],
+    "website_url": "https://talktoai.org/zero-security/",
+    "support_url": "https://github.com/ResearchForumOnline/ZSEC-Shield/issues",
+    "privacy_policy_url": "https://talktoai.org/zero-security/#privacy",
+    "vulnerability_reporting_url": "https://talktoai.org/.well-known/security.txt",
+    "license_terms": "Apache License 2.0. The complete license is included with the application and available at https://github.com/ResearchForumOnline/ZSEC-Shield/blob/main/LICENSE.",
+    "copyright_trademark": "Copyright 2026 ZSEC contributors. ZSEC is not affiliated with or endorsed by Microsoft."
+  },
+  "restricted_capabilities": {
+    "runFullTrust": {
+      "justification": "ZSEC Antivirus is an existing Win32 desktop security companion. runFullTrust is required to launch its packaged GUI and sibling scanner and companion executables at medium integrity; hash and scan user-selected files; read supported Windows Security and Microsoft Defender status; invoke only the fixed Defender Update-MpSignature, QuickScan, and FullScan actions after explicit user interaction; run bounded per-user post-change monitoring; and manage local authenticated encrypted quarantine. The app does not request elevation, register as a Windows Security provider, change Defender preferences, add exclusions or firewall rules, or disable, select, or remove security software."
+    }
+  },
+  "certification": {
+    "notes": "No account or test credentials are required. This is a packaged Win32 desktop security companion and declares runFullTrust for the bounded functions stated in the restricted-capability justification. Microsoft Defender or another supported primary provider must remain enabled. ZSEC is not registered as the primary antivirus and provides no kernel pre-access enforcement. Use only benign test files. A completed ZSEC scan reports configured-rule evidence and never certifies that the device is clean. Quarantine is off by default. The package must be tested on Windows Desktop only. Before submission, the clean-VM gate must confirm packaged companion startup, scan, recovery self-test, settings persistence, update, and uninstall behavior.",
+    "test_account_required": false,
+    "tester_steps": [
+      "Install the Store-signed candidate on a clean supported Windows 10 or Windows 11 x64 VM with Microsoft Defender enabled, then launch ZSEC Antivirus from Start.",
+      "On Overview, select Refresh. Confirm that the app reports evidence-backed Defender and companion state and does not call ZSEC the primary antivirus.",
+      "Open Windows protection. Run Refresh intelligence and Quick scan. Full scan must require a separate confirmation. Confirm that no Defender preference, exclusion, provider, or firewall setting is changed.",
+      "Open Scan, choose a disposable folder containing benign text files, leave quarantine off, and start a scan. Confirm that scope and elapsed time are shown without a fabricated percentage and that the result states its evidence boundary.",
+      "Start another benign scan and select Cancel. Confirm that the result remains incomplete rather than becoming a clean result.",
+      "Open Monitor, choose a disposable folder, start per-user monitoring, create or modify a benign text file, and refresh. Confirm a fresh heartbeat and bounded post-change evidence, then stop monitoring.",
+      "Open Protection assurance and run the isolated synthetic recovery self-test. It must test encrypted copy, restore, no-overwrite, tamper rejection, and device-key recovery without using a real user document.",
+      "Close and relaunch the app to verify settings and companion state, then uninstall it. Confirm that Microsoft Defender remains enabled and no security product is removed or reconfigured."
+    ],
+    "pre_submission_gates": [
+      "Use the exact Partner Center identity and Store-signed package candidate.",
+      "Pass Windows App Certification Kit with no unexplained failures.",
+      "Pass clean-VM packaged-path companion startup, monitoring, scan, recovery, update, and uninstall acceptance.",
+      "Verify that uninstall preserves the active Windows security provider and does not claim removal of protected user quarantine data unless that behavior is separately disclosed and tested.",
+      "Review every Store claim against the exact release evidence and current privacy page."
+    ]
+  },
+  "age_rating": {
+    "questionnaire_note": "Complete the current IARC questionnaire from the behavior of the submitted binary. The app itself contains no sexual content, graphic violence, gambling, controlled substances, profanity, advertising, purchases, social communication, or unrestricted web browser. Security advisories may contain non-graphic descriptions of vulnerabilities or malware. User-selected file names and local scan evidence may be displayed only to that Windows user.",
+    "facts": {
+      "general_web_browser": false,
+      "app_authored_mature_content": false,
+      "user_generated_content_service": false,
+      "social_or_user_communication": false,
+      "advertising": false,
+      "purchases_or_subscriptions": false,
+      "location_access": false,
+      "parental_controls": false
+    },
+    "must_complete_iarc": true
+  },
+  "pricing_availability": {
+    "base_price": "Free",
+    "free_trial": false,
+    "in_app_purchases": false,
+    "subscription": false,
+    "checklist": [
+      "Set the base price to Free and verify there are no market-specific price overrides.",
+      "Do not configure a trial, subscription, add-on, or in-app purchase.",
+      "Review target markets for legal and support coverage; do not assume worldwide availability without that review.",
+      "Target Windows Desktop only; do not select Xbox, HoloLens, or Surface Hub unless separately tested.",
+      "Use a manual publishing hold for the first submission so certification success cannot publish before final review.",
+      "Verify the support, privacy, license, and vulnerability-reporting URLs immediately before submission."
+    ]
+  },
+  "screenshots": {
+    "device_family": "Desktop",
+    "format": "PNG",
+    "minimum_dimensions": [1366, 768],
+    "max_file_size_mb": 50,
+    "required_minimum": 1,
+    "recommended_count": 5,
+    "maximum_count": 10,
+    "capture_requirements": [
+      "Capture the exact Store package candidate on a clean supported Windows VM at 100 percent display scale.",
+      "Use only synthetic paths and benign files; remove usernames, device names, provider identifiers, quarantine contents, and other personal or security-sensitive data.",
+      "Do not composite marketing text, extra logos, borders, or claims over screenshots.",
+      "Keep important UI in the top two-thirds because Store overlays can cover the lower third.",
+      "Show a healthy state only when current on-screen evidence actually verifies it; otherwise preserve the amber or red state."
+    ],
+    "shots": [
+      {
+        "id": "overview",
+        "caption": "Evidence-led overview of Windows protection, ZSEC monitoring, scan status, and recovery readiness.",
+        "content": "Overview after a fresh evidence refresh on the clean test VM."
+      },
+      {
+        "id": "scan-active",
+        "caption": "A bounded local scan shows its real scope and elapsed time without inventing a completion percentage.",
+        "content": "Scan page using a synthetic disposable folder while the scan is active."
+      },
+      {
+        "id": "scan-result",
+        "caption": "Validated scan results distinguish configured-rule matches, review observations, and incomplete coverage.",
+        "content": "Completed benign scan with the clean-system limitation visible."
+      },
+      {
+        "id": "windows-protection",
+        "caption": "Supported Defender evidence and fixed update or scan actions without changing protection preferences.",
+        "content": "Windows protection page with all machine-specific identifiers sanitized."
+      },
+      {
+        "id": "recovery",
+        "caption": "An isolated synthetic recovery self-test checks encryption, restore, no-overwrite, and tamper rejection.",
+        "content": "Protection assurance page after a passing synthetic self-test."
+      }
+    ]
+  }
+}
