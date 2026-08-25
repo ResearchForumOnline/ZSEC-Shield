@@ -30,6 +30,7 @@ from zsec_desktop.bridge import BridgeError, CommandResult, ZsecBridge, discover
 from zsec_desktop.contracts import (  # noqa: E402
     ContractError,
     companion_presentation,
+    protection_layers_presentation,
     status_presentation,
     update_presentation,
     validate_companion_status,
@@ -601,13 +602,18 @@ def test_replacement_and_companion_contracts_are_hard_interlocks() -> None:
 
 def test_companion_truth_table_rejects_false_green_decisions() -> None:
     healthy = validate_companion_status(valid_healthy_companion())
-    assert companion_presentation(healthy).state == "healthy"
+    healthy_view = companion_presentation(healthy)
+    assert healthy_view.state == "healthy"
+    assert healthy_view.headline == "ZSEC post-change companion running"
+    assert "existing antivirus remains the primary real-time enforcement layer" in (
+        healthy_view.detail
+    )
 
     baselining = validate_companion_status(valid_baselining_companion())
     baseline_view = companion_presentation(baselining)
     assert baseline_view.state == "baselining"
     assert baseline_view.accent == "cyan"
-    assert baseline_view.headline == "Automatic protection is live"
+    assert baseline_view.headline == "ZSEC post-change monitoring running"
     assert "one-time coverage inventory completes automatically" in baseline_view.detail
     assert baseline_view.detail.startswith("Windows antivirus protection")
     assert "Microsoft Defender" not in baseline_view.detail
@@ -616,7 +622,7 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     inventory_view = companion_presentation(inventory)
     assert inventory_view.state == "inventorying"
     assert inventory_view.accent == "cyan"
-    assert inventory_view.headline == "Automatic protection is live"
+    assert inventory_view.headline == "ZSEC post-change monitoring running"
     assert "metadata inventory completes automatically" in inventory_view.detail
     assert inventory_view.detail.startswith("Windows antivirus protection")
 
@@ -637,7 +643,7 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     )
     assert restart_inventory_view.state == "inventorying"
     assert restart_inventory_view.accent == "cyan"
-    assert restart_inventory_view.headline == "Automatic protection is live"
+    assert restart_inventory_view.headline == "ZSEC post-change monitoring running"
 
     degraded_with_defender = valid_companion()
     degraded_with_defender.update(
@@ -648,9 +654,9 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     )
     assert degraded_view.state == "degraded"
     assert degraded_view.accent == "amber"
-    assert degraded_view.headline.startswith("Windows antivirus protection active")
-    assert "Microsoft Defender" not in degraded_view.headline
-    assert "ZSEC monitoring degraded" in degraded_view.headline
+    assert degraded_view.headline == "ZSEC post-change monitoring not verified"
+    assert "Microsoft Defender" not in degraded_view.detail
+    assert degraded_view.detail.startswith("Windows antivirus protection remains active")
     assert "not currently verified" in degraded_view.detail
 
     coverage_review = valid_healthy_companion()
@@ -665,10 +671,11 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     assert coverage_view.state == "coverage_review"
     assert coverage_view.accent == "amber"
     assert coverage_view.headline == (
-        "Windows antivirus protection active · ZSEC coverage needs review"
+        "ZSEC post-change monitoring running · scoped coverage limited"
     )
-    assert "Automatic protection is live" not in coverage_view.headline
-    assert coverage_view.detail.startswith("Windows antivirus protection is active")
+    assert coverage_view.detail.startswith(
+        "Windows antivirus protection remains active as primary enforcement"
+    )
     assert "verified ZSEC change-monitoring process is running" in coverage_view.detail
     assert "Coverage remains incomplete" in coverage_view.detail
     assert "five-minute reconciliation retries automatically" in coverage_view.detail
@@ -693,7 +700,7 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     restarted_view = companion_presentation(validate_companion_status(restarted_inventory))
     assert restarted_view.state == "recovering"
     assert restarted_view.accent == "amber"
-    assert "ZSEC monitoring restarting" in restarted_view.headline
+    assert restarted_view.headline == "ZSEC post-change companion restarting"
     assert "verified ZSEC supervisor" in restarted_view.detail
 
     forged_inventory = valid_metadata_inventory_companion()
@@ -720,7 +727,10 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     defender_view = companion_presentation(
         validate_companion_status(degraded_with_active_defender)
     )
-    assert defender_view.headline.startswith("Microsoft Defender protection active")
+    assert defender_view.headline == "ZSEC post-change monitoring not verified"
+    assert defender_view.detail.startswith(
+        "Microsoft Defender protection remains active as primary enforcement"
+    )
 
     defender_coverage_review = copy.deepcopy(coverage_review)
     defender_coverage_review["existing_primary_protection"]["defender"] = active_defender
@@ -728,10 +738,11 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
         validate_companion_status(defender_coverage_review)
     )
     assert defender_coverage_view.headline == (
-        "Microsoft Defender protection active · ZSEC coverage needs review"
+        "ZSEC post-change monitoring running · scoped coverage limited"
     )
-    assert "Automatic protection is live" not in defender_coverage_view.headline
-    assert defender_coverage_view.detail.startswith("Microsoft Defender protection is active")
+    assert defender_coverage_view.detail.startswith(
+        "Microsoft Defender protection remains active as primary enforcement"
+    )
     assert "Coverage remains incomplete" in defender_coverage_view.detail
 
     degraded_without_verified_primary = copy.deepcopy(degraded_with_defender)
@@ -753,6 +764,95 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     integrity_view = companion_presentation(degraded_integrity_failure)
     assert integrity_view.state == "degraded"
     assert integrity_view.accent == "red"
+
+
+def test_protection_layers_keep_enforcement_monitoring_and_scope_independent() -> None:
+    healthy = validate_companion_status(valid_healthy_companion())
+    layers = {layer.key: layer for layer in protection_layers_presentation(healthy)}
+    assert tuple(layers) == ("windows", "zsec", "scope")
+    assert layers["windows"].status == "ACTIVE PROVIDER"
+    assert layers["windows"].accent == "amber"
+    assert "Defender is not confirmed as active" in layers["windows"].detail
+    assert layers["zsec"].title == "ZSEC post-change companion"
+    assert layers["zsec"].status == "RUNNING"
+    assert layers["zsec"].accent == "green"
+    assert layers["scope"].status == "SCOPED"
+    assert layers["scope"].accent == "cyan"
+    assert "not pre-access coverage" in layers["scope"].detail
+
+    defender_active = copy.deepcopy(valid_healthy_companion())
+    defender = defender_active["existing_primary_protection"]["defender"]
+    for field in (
+        "antivirus_enabled",
+        "real_time_protection_enabled",
+        "service_enabled",
+        "behavior_monitor_enabled",
+        "ioav_protection_enabled",
+        "on_access_protection_enabled",
+        "network_inspection_enabled",
+    ):
+        defender[field] = True
+    defender["confirmed_active"] = True
+    defender["baseline_features_confirmed"] = True
+    active_layers = {
+        layer.key: layer
+        for layer in protection_layers_presentation(
+            validate_companion_status(defender_active)
+        )
+    }
+    assert active_layers["windows"].title == "Microsoft Defender real-time protection"
+    assert active_layers["windows"].status == "ACTIVE"
+    assert active_layers["windows"].accent == "green"
+    assert active_layers["scope"].accent != "green"
+
+    defender_health_review = copy.deepcopy(defender_active)
+    defender_health_review.update(
+        {
+            "healthy": False,
+            "decision": "degraded",
+            "reasons": ["Windows antivirus aggregate health is not GOOD"],
+        }
+    )
+    defender_health_review["existing_primary_protection"]["aggregate_good"] = False
+    health_review_layers = {
+        layer.key: layer
+        for layer in protection_layers_presentation(
+            validate_companion_status(defender_health_review)
+        )
+    }
+    assert health_review_layers["windows"].status == "ACTIVE · HEALTH REVIEW"
+    assert health_review_layers["windows"].accent == "amber"
+    assert "aggregate provider health is not GOOD" in health_review_layers["windows"].detail
+
+    limited = copy.deepcopy(defender_active)
+    limited.update(
+        {
+            "healthy": False,
+            "decision": "degraded",
+            "reasons": ["watch session reports degraded"],
+        }
+    )
+    limited_layers = {
+        layer.key: layer
+        for layer in protection_layers_presentation(validate_companion_status(limited))
+    }
+    assert limited_layers["windows"].status == "ACTIVE"
+    assert limited_layers["zsec"].status == "RUNNING · COVERAGE EXCEPTION"
+    assert limited_layers["zsec"].accent == "amber"
+    assert limited_layers["scope"].status == "LIMITED"
+    assert limited_layers["scope"].accent == "amber"
+    assert "not inspected" in limited_layers["scope"].detail
+
+    unverified = copy.deepcopy(valid_companion())
+    unverified["existing_primary_protection"]["aggregate_good"] = False
+    failed_layers = {
+        layer.key: layer
+        for layer in protection_layers_presentation(validate_companion_status(unverified))
+    }
+    assert failed_layers["windows"].status == "NOT VERIFIED"
+    assert failed_layers["windows"].accent == "red"
+    assert failed_layers["scope"].status == "UNAVAILABLE"
+    assert failed_layers["scope"].accent == "amber"
 
 
 def test_scan_completion_notifications_use_user_copy_and_preserve_severity() -> None:

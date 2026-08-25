@@ -106,6 +106,15 @@ class CompanionPresentation:
 
 
 @dataclass(frozen=True, slots=True)
+class ProtectionLayerPresentation:
+    key: str
+    title: str
+    status: str
+    detail: str
+    accent: str
+
+
+@dataclass(frozen=True, slots=True)
 class UpdatePresentation:
     state: str
     headline: str
@@ -837,18 +846,22 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
     if decision == "healthy_companion":
         return CompanionPresentation(
             state="healthy",
-            headline="Automatic companion active",
+            headline="ZSEC post-change companion running",
             detail=(
-                "Verified process, hashes, heartbeat, logon supervisor and existing "
-                "antivirus health."
+                "Process, hashes, heartbeat and logon supervisor are verified. ZSEC "
+                "inspects changes after they occur; the existing antivirus remains the "
+                "primary real-time enforcement layer."
             ),
             accent="green",
         )
     if decision == "not_installed":
         return CompanionPresentation(
             state="not_installed",
-            headline="Automatic companion not installed",
-            detail="Existing Windows antivirus remains required.",
+            headline="ZSEC post-change companion not installed",
+            detail=(
+                "ZSEC is not a primary antivirus. Microsoft Defender or another existing "
+                "antivirus must remain active."
+            ),
             accent="amber",
         )
     if decision in {"baseline_in_progress", "metadata_inventory_in_progress"}:
@@ -858,14 +871,14 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
         )
         return CompanionPresentation(
             state="inventorying" if metadata_inventory else "baselining",
-            headline="Automatic protection is live",
+            headline="ZSEC post-change monitoring running",
             detail=(
                 (
-                    "Microsoft Defender enforcement"
+                    "Microsoft Defender real-time enforcement"
                     if defender_confirmed_active
                     else "Windows antivirus protection"
                 )
-                + " and ZSEC change monitoring are active while the one-time "
+                + " is active. ZSEC change monitoring is running while the one-time "
                 + (
                     "protected-folder metadata inventory completes automatically."
                     if metadata_inventory
@@ -916,9 +929,10 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
         if stale_heartbeat:
             return CompanionPresentation(
                 state="stale",
-                headline=f"{protection_name} active · ZSEC monitoring evidence stale",
+                headline="ZSEC post-change monitoring evidence stale",
                 detail=(
-                    "A fresh ZSEC monitoring heartbeat is not currently verified. "
+                    f"{protection_name} remains active as primary enforcement. A fresh "
+                    "ZSEC monitoring heartbeat is not currently verified. "
                     "ZSEC will refresh this evidence automatically. Current evidence: "
                     + reasons
                 ),
@@ -927,10 +941,11 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
         if supervisor_verified and process_unavailable:
             return CompanionPresentation(
                 state="recovering",
-                headline=f"{protection_name} active · ZSEC monitoring restarting",
+                headline="ZSEC post-change companion restarting",
                 detail=(
-                    "The verified ZSEC supervisor will restart local monitoring automatically. "
-                    "Current evidence: "
+                    f"{protection_name} remains active as primary enforcement. The verified "
+                    "ZSEC supervisor will restart local monitoring automatically. Current "
+                    "evidence: "
                     + reasons
                 ),
                 accent="amber",
@@ -940,32 +955,183 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
         ):
             return CompanionPresentation(
                 state="coverage_review",
-                headline=f"{protection_name} active · ZSEC coverage needs review",
+                headline="ZSEC post-change monitoring running · scoped coverage limited",
                 detail=(
-                    f"{protection_name} is active and the verified ZSEC change-monitoring "
-                    "process is running, but at least one protected path could not be "
-                    "inspected or was excluded by its fail-closed path policy. Coverage "
-                    "remains incomplete while five-minute reconciliation retries "
-                    "automatically."
+                    f"{protection_name} remains active as primary enforcement. The verified "
+                    "ZSEC change-monitoring process is running, but at least one protected "
+                    "path could not be inspected or was excluded by its fail-closed path "
+                    "policy. Coverage remains incomplete while five-minute reconciliation "
+                    "retries automatically."
                 ),
                 accent="amber",
             )
         return CompanionPresentation(
             state="degraded",
-            headline=f"{protection_name} active · ZSEC monitoring degraded",
+            headline="ZSEC post-change monitoring not verified",
             detail=(
-                "Windows antivirus protection remains active, but ZSEC monitoring is not "
-                "currently verified. Current evidence: "
+                f"{protection_name} remains active as primary enforcement, but ZSEC "
+                "monitoring is not currently verified. Current evidence: "
                 + (reasons or "monitoring evidence is incomplete.")
             ),
             accent="amber",
         )
     return CompanionPresentation(
         state="degraded",
-        headline="Automatic companion degraded",
-        detail=reasons or "Protection evidence is incomplete.",
+        headline="Windows real-time protection unverified · ZSEC monitoring degraded",
+        detail=reasons or "Primary protection and ZSEC monitoring evidence are incomplete.",
         accent="red",
     )
+
+
+def protection_layers_presentation(
+    payload: dict[str, Any],
+) -> tuple[ProtectionLayerPresentation, ...]:
+    """Present independent enforcement, companion and scope states.
+
+    The scope row is intentionally never green: even a healthy companion provides
+    protected-folder, post-change coverage rather than primary pre-access enforcement.
+    """
+
+    primary = payload["existing_primary_protection"]
+    defender = primary["defender"]
+    defender_active = bool(defender["confirmed_active"])
+    aggregate_good = bool(primary["aggregate_good"])
+    if defender_active and aggregate_good:
+        windows = ProtectionLayerPresentation(
+            key="windows",
+            title="Microsoft Defender real-time protection",
+            status="ACTIVE",
+            detail="Verified real-time, pre-access enforcement; ZSEC is not primary",
+            accent="green",
+        )
+    elif defender_active:
+        windows = ProtectionLayerPresentation(
+            key="windows",
+            title="Microsoft Defender real-time protection",
+            status="ACTIVE · HEALTH REVIEW",
+            detail="Real-time controls are confirmed, but aggregate provider health is not GOOD",
+            accent="amber",
+        )
+    elif aggregate_good:
+        windows = ProtectionLayerPresentation(
+            key="windows",
+            title="Windows antivirus protection",
+            status="ACTIVE PROVIDER",
+            detail="Windows Security reports GOOD; Defender is not confirmed as active",
+            accent="amber",
+        )
+    else:
+        windows = ProtectionLayerPresentation(
+            key="windows",
+            title="Windows real-time protection",
+            status="NOT VERIFIED",
+            detail="Keep the existing antivirus active and review provider evidence",
+            accent="red",
+        )
+
+    companion = companion_presentation(payload)
+    companion_states = {
+        "healthy": (
+            "RUNNING",
+            "Process, integrity, heartbeat and sign-in supervisor verified",
+            "green",
+        ),
+        "baselining": (
+            "RUNNING · INVENTORY IN PROGRESS",
+            "Post-change monitoring is active while initial coverage is inventoried",
+            "cyan",
+        ),
+        "inventorying": (
+            "RUNNING · INVENTORY IN PROGRESS",
+            "Post-change monitoring is active while folder metadata is inventoried",
+            "cyan",
+        ),
+        "coverage_review": (
+            "RUNNING · COVERAGE EXCEPTION",
+            "Process verified; at least one protected path remains uninspected",
+            "amber",
+        ),
+        "stale": (
+            "EVIDENCE STALE",
+            "A fresh monitoring heartbeat is not currently verified",
+            "amber",
+        ),
+        "recovering": (
+            "RESTARTING",
+            "Verified supervisor is retrying the post-change companion",
+            "amber",
+        ),
+        "degraded": (
+            "NOT VERIFIED",
+            "Post-change monitoring evidence is incomplete",
+            "red" if companion.accent == "red" else "amber",
+        ),
+        "not_installed": (
+            "NOT INSTALLED",
+            "No automatic ZSEC post-change companion is installed",
+            "amber",
+        ),
+    }
+    zsec_status, zsec_detail, zsec_accent = companion_states[companion.state]
+    zsec = ProtectionLayerPresentation(
+        key="zsec",
+        title="ZSEC post-change companion",
+        status=zsec_status,
+        detail=zsec_detail,
+        accent=zsec_accent,
+    )
+
+    scope_states = {
+        "healthy": (
+            "SCOPED",
+            "Protected folders only; post-change inspection, not pre-access coverage",
+            "cyan",
+        ),
+        "baselining": (
+            "SCOPED · INVENTORY IN PROGRESS",
+            "Protected-folder coverage is still being established",
+            "amber",
+        ),
+        "inventorying": (
+            "SCOPED · INVENTORY IN PROGRESS",
+            "Protected-folder metadata coverage is still being established",
+            "amber",
+        ),
+        "coverage_review": (
+            "LIMITED",
+            "At least one protected path was not inspected; reconciliation will retry",
+            "amber",
+        ),
+        "stale": (
+            "UNVERIFIED",
+            "Current protected-folder coverage cannot be confirmed from stale evidence",
+            "amber",
+        ),
+        "recovering": (
+            "UNVERIFIED DURING RESTART",
+            "Current protected-folder coverage is not confirmed until monitoring recovers",
+            "amber",
+        ),
+        "degraded": (
+            "INCOMPLETE",
+            "Review the monitoring evidence; do not infer whole-device ZSEC coverage",
+            "red" if companion.accent == "red" else "amber",
+        ),
+        "not_installed": (
+            "UNAVAILABLE",
+            "ZSEC protected-folder monitoring is not installed",
+            "amber",
+        ),
+    }
+    scope_status, scope_detail, scope_accent = scope_states[companion.state]
+    scope = ProtectionLayerPresentation(
+        key="scope",
+        title="ZSEC coverage boundary",
+        status=scope_status,
+        detail=scope_detail,
+        accent=scope_accent,
+    )
+    return windows, zsec, scope
 
 
 def windows_cutover_presentation(payload: dict[str, Any]) -> WindowsCutoverPresentation:
@@ -1069,10 +1235,12 @@ def validate_watch_event(payload: Any) -> dict[str, Any]:
 __all__ = [
     "CompanionPresentation",
     "ContractError",
+    "ProtectionLayerPresentation",
     "ScanPresentation",
     "UpdatePresentation",
     "WindowsCutoverPresentation",
     "companion_presentation",
+    "protection_layers_presentation",
     "status_presentation",
     "update_presentation",
     "validate_companion_status",

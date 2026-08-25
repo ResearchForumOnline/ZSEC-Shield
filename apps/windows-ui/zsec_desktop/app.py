@@ -29,6 +29,7 @@ from zsec_desktop.brand import render_mark
 from zsec_desktop.bridge import BridgeError, CommandResult, WatchSession, ZsecBridge
 from zsec_desktop.contracts import (
     companion_presentation,
+    protection_layers_presentation,
     status_presentation,
     update_presentation,
     windows_cutover_presentation,
@@ -842,8 +843,9 @@ class ZsecDesktop:
         ttk.Label(
             header,
             text=(
-                "Microsoft Defender provides real-time enforcement. ZSEC adds automatic "
-                "post-change inspection, protected-folder scans and recovery evidence."
+                "Microsoft Defender is the supported real-time enforcement layer when "
+                "Windows verifies it active. ZSEC adds automatic post-change inspection, "
+                "protected-folder scans and recovery evidence."
             ),
             style="Subtitle.TLabel",
         ).pack(anchor=tk.W, pady=(4, 0))
@@ -973,9 +975,9 @@ class ZsecDesktop:
         ttk.Label(
             banner,
             text=(
-                "Windows Defender remains the real-time, pre-access protection engine. "
-                "ZSEC automatically monitors everyday folders and adds local inspection, "
-                "signed rules, evidence and encrypted recovery."
+                "Microsoft Defender or another existing antivirus remains the primary "
+                "real-time, pre-access protection engine. ZSEC separately monitors "
+                "protected folders after changes and adds local evidence and recovery."
             ),
             style="Muted.TLabel",
             wraplength=900,
@@ -988,10 +990,10 @@ class ZsecDesktop:
             self.overview_cards_frame, "Encrypted quarantine"
         )
         self.companion_card = self._overview_card(
-            self.overview_cards_frame, "Automatic companion"
+            self.overview_cards_frame, "ZSEC post-change monitor"
         )
         self.windows_card = self._overview_card(
-            self.overview_cards_frame, "Windows enforcement"
+            self.overview_cards_frame, "Primary Windows protection"
         )
         self.overview_cards = [
             self.scan_card,
@@ -1004,6 +1006,35 @@ class ZsecDesktop:
         self.overview_cards_frame.bind("<Configure>", self._layout_overview_cards)
         self.overview_tab.bind("<Map>", self._layout_overview_cards)
         self.root.after_idle(self._layout_overview_cards)
+        roles = self._panel(self.overview_tab)
+        roles.pack(fill=tk.X, pady=(6, 0))
+        ttk.Label(roles, text="Protection roles", style="Section.TLabel").pack(anchor=tk.W)
+        ttk.Label(
+            roles,
+            text=(
+                "Independent evidence for primary enforcement, ZSEC monitoring and the "
+                "coverage boundary. A running ZSEC companion does not mean whole-device "
+                "or pre-access coverage."
+            ),
+            style="Muted.TLabel",
+            wraplength=900,
+        ).pack(anchor=tk.W, pady=(4, 8))
+        self.protection_layer_labels: dict[str, ttk.Label] = {}
+        for key, checking_text in (
+            ("windows", "Microsoft Defender real-time protection — CHECKING EVIDENCE"),
+            ("zsec", "ZSEC post-change companion — CHECKING EVIDENCE"),
+            ("scope", "ZSEC coverage boundary — CHECKING EVIDENCE"),
+        ):
+            label = ttk.Label(
+                roles,
+                text=checking_text,
+                style="Status.TLabel",
+                foreground=CYAN,
+                wraplength=900,
+                justify=tk.LEFT,
+            )
+            label.pack(anchor=tk.W, fill=tk.X, pady=3)
+            self.protection_layer_labels[key] = label
         actions = self._panel(self.overview_tab)
         actions.pack(fill=tk.X, pady=(12, 0))
         ttk.Label(actions, text="Quick actions", style="Section.TLabel").pack(anchor=tk.W)
@@ -1182,8 +1213,9 @@ class ZsecDesktop:
             text=(
                 "ZSEC starts automatically at sign-in, inspects changes in your protected "
                 "folders, reconciles metadata every 5 minutes and performs a complete "
-                "cache-independent reconciliation every 24 hours. Defender separately "
-                "provides real-time, pre-access protection."
+                "cache-independent reconciliation every 24 hours. Microsoft Defender or "
+                "another primary antivirus separately provides real-time, pre-access "
+                "protection."
             ),
             style="Warning.TLabel",
             wraplength=920,
@@ -2489,7 +2521,7 @@ class ZsecDesktop:
             "inventorying": "ZSEC setup finishing",
             "stale": "ZSEC monitoring evidence stale",
             "recovering": "ZSEC monitoring restarting",
-            "coverage_review": "ZSEC monitoring running · coverage needs review",
+            "coverage_review": "ZSEC monitoring running · scoped coverage limited",
             "degraded": "ZSEC monitoring degraded",
             "not_installed": "ZSEC monitoring not installed",
         }.get(
@@ -2503,6 +2535,7 @@ class ZsecDesktop:
             text=f"{presentation.headline} — {presentation.detail}", foreground=colour
         )
         self.companion_card.set_value(presentation.headline, colour)
+        self._render_protection_layers(payload)
         record = payload.get("health", {}).get("last_record") or {}
         roots = tuple(
             Path(value)
@@ -2527,6 +2560,14 @@ class ZsecDesktop:
             )
             self.scan_protected_button.configure(state=tk.DISABLED)
         self._render_windows_protection(payload)
+
+    def _render_protection_layers(self, payload: dict[str, Any]) -> None:
+        colours = {"green": GREEN, "cyan": CYAN, "amber": AMBER, "red": RED}
+        for layer in protection_layers_presentation(payload):
+            self.protection_layer_labels[layer.key].configure(
+                text=f"{layer.title} — {layer.status}\n{layer.detail}",
+                foreground=colours[layer.accent],
+            )
 
     def _render_windows_protection(self, payload: dict[str, Any]) -> None:
         evidence = payload["existing_primary_protection"]
@@ -2695,6 +2736,22 @@ class ZsecDesktop:
         )
         self.companion_card.set_value("Evidence unavailable", RED)
         self.windows_card.set_value("Evidence unavailable", RED)
+        failed_layers = {
+            "windows": (
+                "Windows real-time protection — NOT VERIFIED\n"
+                "Primary enforcement evidence is unavailable; keep existing antivirus active"
+            ),
+            "zsec": (
+                "ZSEC post-change companion — NOT VERIFIED\n"
+                "Monitoring evidence is unavailable"
+            ),
+            "scope": (
+                "ZSEC coverage boundary — UNVERIFIED\n"
+                "Do not infer protected-folder or whole-device coverage"
+            ),
+        }
+        for key, text in failed_layers.items():
+            self.protection_layer_labels[key].configure(text=text, foreground=RED)
         self.windows_provider_status.configure(
             text=f"Windows provider evidence unavailable: {exc}", foreground=RED
         )

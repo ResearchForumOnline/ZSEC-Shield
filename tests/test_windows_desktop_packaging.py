@@ -250,7 +250,12 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     assert "_sync_global_busy_motion" in app
     assert 'self.global_busy.configure(mode="determinate", value=0)' in app
     assert 'self.global_busy.configure(mode="determinate", value=100)' not in app
-    assert '"coverage_review": "ZSEC monitoring running · coverage needs review"' in app
+    assert '"coverage_review": "ZSEC monitoring running · scoped coverage limited"' in app
+    assert "Protection roles" in app
+    assert "Microsoft Defender real-time protection — CHECKING EVIDENCE" in app
+    assert "ZSEC post-change companion — CHECKING EVIDENCE" in app
+    assert "ZSEC coverage boundary — CHECKING EVIDENCE" in app
+    assert "protection_layers_presentation" in app
     assert "width >= 1040" in app
     assert "width >= 520" in app
     assert "width=240" in app
