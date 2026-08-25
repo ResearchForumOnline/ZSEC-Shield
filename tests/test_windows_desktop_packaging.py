@@ -42,6 +42,7 @@ def test_desktop_builder_is_syntax_valid_and_records_coexistence_policy() -> Non
     assert '"ZSEC Antivirus Build"' in source
     assert 'os.environ.get("LOCALAPPDATA")' in source
     assert '"SOURCE_DATE_EPOCH": native._source_date_epoch()' in source
+    assert '"PYTHONPATH": str(PROJECT_ROOT / "src")' in source
     assert '"ZSEC_GUI_WINDOWS_MANIFEST": str(GUI_MANIFEST)' in source
     native_source = (ROOT / "packaging" / "native_release.py").read_text(
         encoding="utf-8"
