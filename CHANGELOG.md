@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.30 Windows desktop - 2026-08-25
+
+- Embedded a reviewed PerMonitorV2 Windows application manifest in the graphical
+  executable while preserving the existing unsigned, user-mode, Defender-backed
+  companion boundary.
+- Prepared an exact Windows x86-64 direct-download identity with a clean embedded
+  source revision and a manifest covering every packaged payload file. This does
+  not constitute publisher signing, independent malware-efficacy testing, primary
+  antivirus registration, Microsoft Store publication or installed-runtime acceptance.
+
 ## 0.3.23 Windows desktop - 2026-08-25
 
 - Replaced the multi-hour startup content baseline with a metadata-only coverage
