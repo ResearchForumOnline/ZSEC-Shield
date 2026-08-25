@@ -248,48 +248,57 @@ class WindowsCompanionStaticTests(unittest.TestCase):
     def test_supervisor_lifecycle_fixture_rotates_and_retains_secret_free_exit_evidence(
         self,
     ) -> None:
-        powershell = shutil.which("powershell.exe") or shutil.which("pwsh")
-        if powershell is None:
-            self.skipTest("PowerShell is unavailable")
-        with TemporaryDirectory() as temporary:
-            result = subprocess.run(
-                [
-                    powershell,
-                    "-NoLogo",
-                    "-NoProfile",
-                    "-ExecutionPolicy",
-                    "RemoteSigned",
-                    "-File",
-                    str(SUPERVISOR_LIFECYCLE_FIXTURE),
-                    "-LauncherScript",
-                    str(LAUNCHER),
-                    "-StatusScript",
-                    str(STATUS),
-                    "-TemporaryDirectory",
-                    temporary,
-                ],
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=30,
+        powershells = list(
+            dict.fromkeys(
+                path
+                for path in (shutil.which("powershell.exe"), shutil.which("pwsh"))
+                if path is not None
             )
-        if result.returncode != 0:
-            self.fail(
-                "Supervisor lifecycle fixture failed: "
-                f"stdout={result.stdout!r} stderr={result.stderr!r}"
-            )
-        evidence = json.loads(result.stdout)
-        self.assertEqual("zsec.tests.supervisor-lifecycle-evidence.v1", evidence["schema"])
-        self.assertEqual(3, evidence["rotated_files"])
-        self.assertTrue(evidence["bounded_files"])
-        self.assertTrue(evidence["records_present"])
-        self.assertTrue(evidence["fields_exact"])
-        self.assertTrue(evidence["evidence_valid"])
-        self.assertEqual("watcher_started", evidence["latest_event"])
-        self.assertEqual(
-            "watcher_exit_restart_scheduled",
-            evidence["latest_exit_reason"],
         )
+        if not powershells:
+            self.skipTest("PowerShell is unavailable")
+        for powershell in powershells:
+            with self.subTest(powershell=powershell), TemporaryDirectory() as temporary:
+                result = subprocess.run(
+                    [
+                        powershell,
+                        "-NoLogo",
+                        "-NoProfile",
+                        "-ExecutionPolicy",
+                        "RemoteSigned",
+                        "-File",
+                        str(SUPERVISOR_LIFECYCLE_FIXTURE),
+                        "-LauncherScript",
+                        str(LAUNCHER),
+                        "-StatusScript",
+                        str(STATUS),
+                        "-TemporaryDirectory",
+                        temporary,
+                    ],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                if result.returncode != 0:
+                    self.fail(
+                        "Supervisor lifecycle fixture failed: "
+                        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+                    )
+                evidence = json.loads(result.stdout)
+                self.assertEqual(
+                    "zsec.tests.supervisor-lifecycle-evidence.v1", evidence["schema"]
+                )
+                self.assertEqual(3, evidence["rotated_files"])
+                self.assertTrue(evidence["bounded_files"])
+                self.assertTrue(evidence["records_present"])
+                self.assertTrue(evidence["fields_exact"])
+                self.assertTrue(evidence["evidence_valid"])
+                self.assertEqual("watcher_started", evidence["latest_event"])
+                self.assertEqual(
+                    "watcher_exit_restart_scheduled",
+                    evidence["latest_exit_reason"],
+                )
 
     def test_rollback_is_owned_and_preserves_scanner_security_state(self) -> None:
         content = UNINSTALLER.read_text(encoding="utf-8")

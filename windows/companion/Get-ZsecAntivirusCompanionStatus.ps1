@@ -102,9 +102,12 @@ function ConvertTo-SupervisorLifecycleRecord {
         return $null
     }
     if (
-        $Value.supervisor_process_id -isnot [int] -or
+        ($Value.supervisor_process_id -isnot [int] -and
+            $Value.supervisor_process_id -isnot [long]) -or
         $Value.supervisor_process_id -lt 1 -or
-        $Value.rapid_failure_count -isnot [int] -or
+        $Value.supervisor_process_id -gt [int]::MaxValue -or
+        ($Value.rapid_failure_count -isnot [int] -and
+            $Value.rapid_failure_count -isnot [long]) -or
         $Value.rapid_failure_count -lt 0 -or
         $Value.rapid_failure_count -gt 5 -or
         $Value.restart_scheduled -isnot [bool]
@@ -124,7 +127,10 @@ function ConvertTo-SupervisorLifecycleRecord {
         }
     }
     if (
-        ($null -ne $Value.watcher_process_id -and $Value.watcher_process_id -lt 1) -or
+        ($null -ne $Value.watcher_process_id -and (
+            $Value.watcher_process_id -lt 1 -or
+            $Value.watcher_process_id -gt [int]::MaxValue
+        )) -or
         ($null -ne $Value.lifetime_milliseconds -and $Value.lifetime_milliseconds -lt 0) -or
         ($null -ne $Value.restart_delay_seconds -and (
             $Value.restart_delay_seconds -lt 1 -or $Value.restart_delay_seconds -gt 60
