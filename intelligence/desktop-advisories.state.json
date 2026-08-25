@@ -1,22 +1,22 @@
 {
-  "current_catalog_sha256": "55621633c004f48fae3313173188976ded6e1dca6aedbf23cd3f3e3d19ca38f5",
-  "installed_at": "2026-08-24T20:50:52Z",
+  "current_catalog_sha256": "65c8f4689514ef87e907c448682f9c0eb27e18e50acec45c1466ffca8721718a",
+  "installed_at": "2026-08-25T17:50:22Z",
   "schema": "zsec.desktop-intelligence-state.v1",
   "sources": [
     {
       "semantic_sha256": "695a084c0fe35c5af3b89a9d4c30d83780a3f3cd774b570da1359d7df5461a9b",
       "source_id": "apple-security",
-      "version": "2026-08-18T00:00:00Z"
+      "version": "2026-08-25T02:00:00Z"
     },
     {
       "semantic_sha256": "6c37b084a48cdf4d2afed1cee069092fa44a43fb301a6c9bc149a05a684ac47a",
       "source_id": "cisa-kev",
-      "version": "2026-08-24T18:00:04Z"
+      "version": "2026-08-25T17:00:12Z"
     },
     {
-      "semantic_sha256": "008174c72005d9d5efaadb98c7b33e111140649af7d99b9be3da4a6ee329ba1d",
+      "semantic_sha256": "51200a227960c35010b232b8d8f2df9c877ee6f0e09eb5bb6b99ade411cca7fc",
       "source_id": "microsoft-msrc",
-      "version": "2026-08-24T07:00:00Z"
+      "version": "2026-08-25T07:00:00Z"
     },
     {
       "semantic_sha256": "035e5819ae8a2e2ee9247fa9695954fdfc56a0b64e4cfd9a68c5b066481c07c4",
