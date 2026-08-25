@@ -940,12 +940,12 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
         ):
             return CompanionPresentation(
                 state="coverage_review",
-                headline="Automatic protection is live",
+                headline=f"{protection_name} active · ZSEC coverage needs review",
                 detail=(
-                    f"{protection_name} and the verified ZSEC change-monitoring process "
-                    "are active. ZSEC retained a local coverage review because at least "
-                    "one protected path could not be inspected or was excluded by its "
-                    "fail-closed path policy; the five-minute reconciliation continues "
+                    f"{protection_name} is active and the verified ZSEC change-monitoring "
+                    "process is running, but at least one protected path could not be "
+                    "inspected or was excluded by its fail-closed path policy. Coverage "
+                    "remains incomplete while five-minute reconciliation retries "
                     "automatically."
                 ),
                 accent="amber",

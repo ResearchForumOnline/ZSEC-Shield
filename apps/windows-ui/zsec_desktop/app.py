@@ -2470,7 +2470,7 @@ class ZsecDesktop:
             "inventorying": "ZSEC setup finishing",
             "stale": "ZSEC monitoring evidence stale",
             "recovering": "ZSEC monitoring restarting",
-            "coverage_review": "ZSEC monitoring active · coverage review",
+            "coverage_review": "ZSEC monitoring running · coverage needs review",
             "degraded": "ZSEC monitoring degraded",
             "not_installed": "ZSEC monitoring not installed",
         }.get(

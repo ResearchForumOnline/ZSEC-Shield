@@ -214,6 +214,7 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     assert "_sync_global_busy_motion" in app
     assert 'self.global_busy.configure(mode="determinate", value=0)' in app
     assert 'self.global_busy.configure(mode="determinate", value=100)' not in app
+    assert '"coverage_review": "ZSEC monitoring running · coverage needs review"' in app
     assert "width >= 1040" in app
     assert "width >= 520" in app
     assert "width=240" in app

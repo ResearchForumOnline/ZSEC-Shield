@@ -652,10 +652,14 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     coverage_view = companion_presentation(validate_companion_status(coverage_review))
     assert coverage_view.state == "coverage_review"
     assert coverage_view.accent == "amber"
-    assert coverage_view.headline == "Automatic protection is live"
-    assert coverage_view.detail.startswith("Windows antivirus protection")
-    assert "verified ZSEC change-monitoring process" in coverage_view.detail
-    assert "five-minute reconciliation continues automatically" in coverage_view.detail
+    assert coverage_view.headline == (
+        "Windows antivirus protection active · ZSEC coverage needs review"
+    )
+    assert "Automatic protection is live" not in coverage_view.headline
+    assert coverage_view.detail.startswith("Windows antivirus protection is active")
+    assert "verified ZSEC change-monitoring process is running" in coverage_view.detail
+    assert "Coverage remains incomplete" in coverage_view.detail
+    assert "five-minute reconciliation retries automatically" in coverage_view.detail
 
     stale_inventory = valid_metadata_inventory_companion()
     stale_inventory["decision"] = "degraded"
@@ -711,8 +715,12 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     defender_coverage_view = companion_presentation(
         validate_companion_status(defender_coverage_review)
     )
-    assert defender_coverage_view.headline == "Automatic protection is live"
-    assert defender_coverage_view.detail.startswith("Microsoft Defender protection")
+    assert defender_coverage_view.headline == (
+        "Microsoft Defender protection active · ZSEC coverage needs review"
+    )
+    assert "Automatic protection is live" not in defender_coverage_view.headline
+    assert defender_coverage_view.detail.startswith("Microsoft Defender protection is active")
+    assert "Coverage remains incomplete" in defender_coverage_view.detail
 
     degraded_without_verified_primary = copy.deepcopy(degraded_with_defender)
     degraded_without_verified_primary["existing_primary_protection"][
