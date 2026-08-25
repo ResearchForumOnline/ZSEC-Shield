@@ -14,12 +14,14 @@ import tempfile
 from importlib import import_module
 from pathlib import Path
 from typing import Any
+from xml.etree import ElementTree
 
 import native_release as native
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 GUI_SPEC = PROJECT_ROOT / "packaging" / "zsec-antivirus-desktop.spec"
 CLI_SPEC = PROJECT_ROOT / "packaging" / "zsec-shield.spec"
+GUI_MANIFEST = PROJECT_ROOT / "packaging" / "zsec-antivirus-desktop.manifest"
 ICON_SOURCE = PROJECT_ROOT / "assets" / "brand" / "zsec-antivirus-mark.png"
 PRODUCT = "ZSEC Antivirus"
 
@@ -191,6 +193,47 @@ def _assert_windows_pe_identity(
         )
 
 
+def _assert_windows_gui_manifest(executable: Path) -> None:
+    try:
+        winmanifest = import_module("PyInstaller.utils.win32.winmanifest")
+        reader = getattr(winmanifest, "read_manifest_from_executable", None)
+        if not callable(reader):
+            raise TypeError("PyInstaller manifest reader is unavailable")
+        document = reader(str(executable))
+        root = ElementTree.fromstring(document)
+    except Exception as exc:
+        raise DesktopReleaseError(
+            f"Windows application manifest could not be read: {executable.name}"
+        ) from exc
+
+    expected_text = {
+        "http://schemas.microsoft.com/SMI/2005/WindowsSettings": {
+            "dpiAware": "true/pm",
+        },
+        "http://schemas.microsoft.com/SMI/2016/WindowsSettings": {
+            "dpiAwareness": "PerMonitorV2",
+            "longPathAware": "true",
+        },
+    }
+    for namespace, elements in expected_text.items():
+        for name, expected in elements.items():
+            element = root.find(f".//{{{namespace}}}{name}")
+            actual = "" if element is None or element.text is None else element.text.strip()
+            if actual != expected:
+                raise DesktopReleaseError(
+                    f"unexpected Windows manifest {name} for {executable.name}: "
+                    f"{actual!r}"
+                )
+
+    privilege = root.find(
+        ".//{urn:schemas-microsoft-com:asm.v3}requestedExecutionLevel"
+    )
+    if privilege is None or privilege.attrib != {"level": "asInvoker", "uiAccess": "false"}:
+        raise DesktopReleaseError(
+            f"unexpected Windows execution level for {executable.name}"
+        )
+
+
 def _write_manifest(root: Path, version: str) -> dict[str, Any]:
     files = native._manifest_files(root)
     manifest: dict[str, Any] = {
@@ -246,7 +289,14 @@ def build(output_dir: Path) -> dict[str, Any]:
         raise DesktopReleaseError(
             f"PyInstaller {actual_pyinstaller} is installed; expected {expected_pyinstaller}"
         )
-    for required in (GUI_SPEC, CLI_SPEC, ICON_SOURCE, *(value[0] for value in DOCUMENTS), *TOOLS):
+    for required in (
+        GUI_SPEC,
+        CLI_SPEC,
+        GUI_MANIFEST,
+        ICON_SOURCE,
+        *(value[0] for value in DOCUMENTS),
+        *TOOLS,
+    ):
         if not required.is_file():
             raise DesktopReleaseError(f"required build input is missing: {required}")
 
@@ -294,6 +344,7 @@ def build(output_dir: Path) -> dict[str, Any]:
                 "ZSEC_SHIELD_WINDOWS_VERSION_FILE": str(engine_version_file),
                 "ZSEC_GUI_WINDOWS_VERSION_FILE": str(gui_version_file),
                 "ZSEC_GUI_WINDOWS_ICON": str(icon_file),
+                "ZSEC_GUI_WINDOWS_MANIFEST": str(GUI_MANIFEST),
             }
         )
 
@@ -336,6 +387,7 @@ def build(output_dir: Path) -> dict[str, Any]:
             product_name="ZSEC Shield",
             file_description="ZSEC Shield file scanner",
         )
+        _assert_windows_gui_manifest(gui_executable)
         native._smoke_test(cli_executable, temporary / "smoke-state", version)
         subprocess.run([str(gui_executable), "--help"], check=True, timeout=30)
 

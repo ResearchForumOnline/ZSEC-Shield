@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+from xml.etree import ElementTree
 
 import pytest
 
@@ -18,6 +19,8 @@ def test_gui_spec_is_windowed_versioned_and_keeps_cli_out_of_process() -> None:
     assert "console=False" in spec
     assert "ZSEC_GUI_WINDOWS_VERSION_FILE" in spec
     assert "ZSEC_GUI_WINDOWS_ICON" in spec
+    assert "ZSEC_GUI_WINDOWS_MANIFEST" in spec
+    assert "manifest=WINDOWS_MANIFEST" in spec
     assert "zsec_shield" not in spec
     assert '"pystray._win32"' in spec
     assert '"PIL.Image"' in spec
@@ -39,6 +42,7 @@ def test_desktop_builder_is_syntax_valid_and_records_coexistence_policy() -> Non
     assert '"ZSEC Antivirus Build"' in source
     assert 'os.environ.get("LOCALAPPDATA")' in source
     assert '"SOURCE_DATE_EPOCH": native._source_date_epoch()' in source
+    assert '"ZSEC_GUI_WINDOWS_MANIFEST": str(GUI_MANIFEST)' in source
     native_source = (ROOT / "packaging" / "native_release.py").read_text(
         encoding="utf-8"
     )
@@ -81,6 +85,33 @@ def test_desktop_builder_separates_and_verifies_gui_and_engine_pe_identity() -> 
         '"ProductVersion": f"{version}.0"',
     ):
         assert required in source
+    manifest_gate = source.index("_assert_windows_gui_manifest(gui_executable)")
+    assert executable_gate < manifest_gate < source.index(
+        "native._smoke_test(cli_executable"
+    )
+
+
+def test_gui_manifest_declares_per_monitor_v2_without_elevation() -> None:
+    manifest = ElementTree.parse(
+        ROOT / "packaging" / "zsec-antivirus-desktop.manifest"
+    ).getroot()
+    dpi_aware = manifest.find(
+        ".//{http://schemas.microsoft.com/SMI/2005/WindowsSettings}dpiAware"
+    )
+    dpi_awareness = manifest.find(
+        ".//{http://schemas.microsoft.com/SMI/2016/WindowsSettings}dpiAwareness"
+    )
+    long_path = manifest.find(
+        ".//{http://schemas.microsoft.com/SMI/2016/WindowsSettings}longPathAware"
+    )
+    privilege = manifest.find(
+        ".//{urn:schemas-microsoft-com:asm.v3}requestedExecutionLevel"
+    )
+    assert dpi_aware is not None and dpi_aware.text == "true/pm"
+    assert dpi_awareness is not None and dpi_awareness.text == "PerMonitorV2"
+    assert long_path is not None and long_path.text == "true"
+    assert privilege is not None
+    assert privilege.attrib == {"level": "asInvoker", "uiAccess": "false"}
 
 
 def test_desktop_installer_has_no_security_provider_mutation_surface() -> None:

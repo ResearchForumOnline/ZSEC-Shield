@@ -11,6 +11,7 @@ GUI_ROOT = PROJECT_ROOT / "apps" / "windows-ui"
 SOURCE_ROOT = PROJECT_ROOT / "src"
 WINDOWS_VERSION_FILE = os.environ.get("ZSEC_GUI_WINDOWS_VERSION_FILE")
 WINDOWS_ICON = os.environ.get("ZSEC_GUI_WINDOWS_ICON")
+WINDOWS_MANIFEST = os.environ.get("ZSEC_GUI_WINDOWS_MANIFEST")
 
 analysis = Analysis(
     [str(GUI_ROOT / "zsec_desktop" / "__main__.py")],
@@ -58,6 +59,7 @@ executable = EXE(
     entitlements_file=None,
     version=WINDOWS_VERSION_FILE if sys.platform == "win32" else None,
     icon=WINDOWS_ICON if sys.platform == "win32" else None,
+    manifest=WINDOWS_MANIFEST if sys.platform == "win32" else None,
 )
 
 distribution = COLLECT(
