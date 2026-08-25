@@ -30,7 +30,10 @@ analysis = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["ensurepip", "pydoc", "unittest", "venv"],
+    # Pillow can opportunistically import NumPy when it happens to be installed in
+    # the build environment. ZSEC uses only Image/ImageDraw/ImageTk, so bundling
+    # NumPy changes release bytes and adds a large unused native dependency.
+    excludes=["ensurepip", "numpy", "pydoc", "unittest", "venv"],
     noarchive=False,
     optimize=0,
 )

@@ -22,6 +22,7 @@ def test_gui_spec_is_windowed_versioned_and_keeps_cli_out_of_process() -> None:
     assert '"pystray._win32"' in spec
     assert '"PIL.Image"' in spec
     assert '"PIL.ImageTk"' in spec
+    assert 'excludes=["ensurepip", "numpy", "pydoc", "unittest", "venv"]' in spec
 
 
 def test_desktop_builder_is_syntax_valid_and_records_coexistence_policy() -> None:
@@ -186,7 +187,7 @@ def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
     assert "Desktop Preview" not in app
     assert "DESKTOP PREVIEW" not in app
     assert 'self.root.title("ZSEC Antivirus")' in app
-    assert 'text="COMMUNITY 0.3.28"' in app
+    assert 'text="COMMUNITY 0.3.29"' in app
 
 
 def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None:
