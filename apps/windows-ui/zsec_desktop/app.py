@@ -19,6 +19,7 @@ import time
 import tkinter as tk
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -78,6 +79,76 @@ def scan_completion_notification(report: dict[str, Any]) -> str:
     if outcome == "incomplete":
         return "Scan incomplete — some files could not be checked. Open ZSEC for details."
     return "Scan completed. Open ZSEC Antivirus for the verified result."
+
+
+@dataclass(frozen=True, slots=True)
+class ScanRunPresentation:
+    """Stable, evidence-led copy for a completed on-demand scan."""
+
+    state: str
+    headline: str
+    detail: str
+    accent: str
+
+
+def scan_run_presentation(report: dict[str, Any]) -> ScanRunPresentation:
+    """Map a validated scan report to UI copy without inferring computer health."""
+
+    scan = report.get("scan")
+    scan_value = scan if isinstance(scan, dict) else {}
+    findings = scan_value.get("findings")
+    observations = scan_value.get("observations")
+    issues = scan_value.get("issues")
+    finding_count = len(findings) if isinstance(findings, list) else 0
+    observation_count = len(observations) if isinstance(observations, list) else 0
+    issue_count = len(issues) if isinstance(issues, list) else 0
+    outcome = report.get("outcome")
+    if outcome == "no_configured_rule_matches":
+        return ScanRunPresentation(
+            state="complete",
+            headline="No configured rule matches",
+            detail=(
+                "Completed local checks found no configured rule matches. "
+                "This result is not proof that the computer is clean."
+            ),
+            accent=GREEN,
+        )
+    if outcome == "review_observations":
+        noun = "item" if observation_count == 1 else "items"
+        return ScanRunPresentation(
+            state="review",
+            headline=f"Review required — {observation_count} {noun}",
+            detail=(
+                "Heuristic observations need human review; they were not treated as "
+                "malware or automatically quarantined."
+            ),
+            accent=AMBER,
+        )
+    if outcome == "configured_rule_matches_detected":
+        noun = "match" if finding_count == 1 else "matches"
+        return ScanRunPresentation(
+            state="detected",
+            headline=f"Action required — {finding_count} malware rule {noun}",
+            detail="Verified configured-rule evidence is listed below in red.",
+            accent=RED,
+        )
+    return ScanRunPresentation(
+        state="incomplete",
+        headline="Scan incomplete — no clean state available",
+        detail=(
+            f"{issue_count} issue(s) prevented a complete result. Review the red "
+            "evidence below."
+        ),
+        accent=RED,
+    )
+
+
+def advance_scan_motion_phase(phase: int, *, active: bool, reduce_motion: bool) -> int:
+    """Advance one deterministic indeterminate-motion frame."""
+
+    if not active or reduce_motion:
+        return phase
+    return (phase + 1) % 120
 
 
 class ModernStatusCard(tk.Canvas):
@@ -269,6 +340,219 @@ class ModernStatusCard(tk.Canvas):
             fill=self.accent,
             font=("Segoe UI Semibold", 12),
         )
+
+
+class ScanEvidenceBand(tk.Canvas):
+    """Persistent scan-state evidence with useful, bounded motion."""
+
+    EVIDENCE_FACETS = ("SCOPE", "FILE HASHES", "RULE CHECKS", "REPORT")
+
+    def __init__(
+        self,
+        parent: tk.Misc,
+        motion_enabled: Callable[[], bool],
+        *,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        super().__init__(
+            parent,
+            height=126,
+            bg=SURFACE,
+            highlightthickness=1,
+            highlightbackground="#27405d",
+            borderwidth=0,
+            takefocus=0,
+        )
+        self.motion_enabled = motion_enabled
+        self.clock = clock
+        self.state = "idle"
+        self.headline = "READY FOR ON-DEMAND VERIFICATION"
+        self.detail = "No scan has been started from this desktop session."
+        self.accent = MUTED
+        self.active = False
+        self.phase = 0
+        self.started_at: float | None = None
+        self.animation_job: str | None = None
+        self.bind("<Configure>", self._render)
+        self.bind("<Destroy>", self._cancel_tick)
+
+    def set_running(self, label: str) -> None:
+        self._cancel_tick()
+        self.state = "running"
+        self.headline = "SCAN ACTIVE — VERIFIED RESULT PENDING"
+        self.detail = (
+            f"Scope: {label}. Activity is indeterminate; no completion percentage "
+            "is inferred."
+        )
+        self.accent = CYAN
+        self.active = True
+        self.phase = 0
+        self.started_at = self.clock()
+        self._render()
+        self._schedule_tick()
+
+    def set_cancelling(self) -> None:
+        if not self.active:
+            return
+        self.state = "cancelling"
+        self.headline = "CANCELLATION REQUESTED — RESULT STILL PENDING"
+        self.detail = "Waiting for the bounded scanner to stop and return final evidence."
+        self.accent = AMBER
+        self._render()
+
+    def set_result(self, presentation: ScanRunPresentation) -> None:
+        self._cancel_tick()
+        self.state = presentation.state
+        self.headline = presentation.headline.upper()
+        self.detail = presentation.detail
+        self.accent = presentation.accent
+        self.active = False
+        self.started_at = None
+        self._render()
+
+    def set_failure(self, detail: str) -> None:
+        self.set_result(
+            ScanRunPresentation(
+                state="incomplete",
+                headline="Scan incomplete — no clean state available",
+                detail=detail,
+                accent=RED,
+            )
+        )
+
+    def sync_motion_preference(self) -> None:
+        if not self.active:
+            return
+        self._cancel_tick()
+        self._render()
+        self._schedule_tick()
+
+    def _cancel_tick(self, _event: tk.Event[tk.Misc] | None = None) -> None:
+        if self.animation_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.after_cancel(self.animation_job)
+            self.animation_job = None
+
+    def _schedule_tick(self) -> None:
+        if not self.active:
+            return
+        delay = 80 if self.motion_enabled() else 1_000
+        self.animation_job = self.after(delay, self._tick)
+
+    def _tick(self) -> None:
+        self.animation_job = None
+        if not self.active:
+            return
+        self.phase = advance_scan_motion_phase(
+            self.phase,
+            active=self.active,
+            reduce_motion=not self.motion_enabled(),
+        )
+        self._render()
+        self._schedule_tick()
+
+    def _elapsed_label(self) -> str:
+        if self.started_at is None:
+            return "LOCAL EVIDENCE"
+        elapsed = max(0, int(self.clock() - self.started_at))
+        minutes, seconds = divmod(elapsed, 60)
+        return f"ELAPSED {minutes:02d}:{seconds:02d} · RESULT PENDING"
+
+    def _render(self, _event: tk.Event[tk.Misc] | None = None) -> None:
+        width = max(self.winfo_width(), 420)
+        self.delete("all")
+        self.create_rectangle(0, 0, width, 4, fill=self.accent, outline="")
+        self.create_text(
+            16,
+            22,
+            text=self.headline,
+            anchor=tk.W,
+            fill=self.accent,
+            font=("Segoe UI Semibold", 10),
+        )
+        self.create_text(
+            width - 16,
+            22,
+            text=self._elapsed_label(),
+            anchor=tk.E,
+            fill=self.accent if self.active else MUTED,
+            font=("Cascadia Mono", 8),
+        )
+        self.create_text(
+            16,
+            47,
+            text=self.detail,
+            anchor=tk.W,
+            width=max(width - 32, 200),
+            fill=TEXT if self.accent in {AMBER, RED} else MUTED,
+            font=("Segoe UI", 9),
+        )
+        rail_start = 24
+        rail_end = width - 24
+        rail_y = 84
+        self.create_line(
+            rail_start,
+            rail_y,
+            rail_end,
+            rail_y,
+            fill="#31465f",
+            width=3,
+        )
+        if self.active:
+            if self.motion_enabled():
+                span = max(rail_end - rail_start, 1)
+                head = rail_start + (self.phase / 119.0) * span
+                tail = max(rail_start, head - min(110, span / 4))
+                self.create_line(tail, rail_y, head, rail_y, fill=self.accent, width=4)
+                self.create_oval(
+                    head - 5,
+                    rail_y - 5,
+                    head + 5,
+                    rail_y + 5,
+                    fill=self.accent,
+                    outline=SURFACE,
+                    width=2,
+                )
+            else:
+                self.create_line(
+                    rail_start,
+                    rail_y,
+                    rail_end,
+                    rail_y,
+                    fill=self.accent,
+                    width=3,
+                    dash=(6, 5),
+                )
+        else:
+            self.create_line(
+                rail_start,
+                rail_y,
+                rail_end,
+                rail_y,
+                fill=self.accent,
+                width=3,
+            )
+        span = max(rail_end - rail_start, 1)
+        for index, label in enumerate(self.EVIDENCE_FACETS):
+            x = rail_start + (span * index / (len(self.EVIDENCE_FACETS) - 1))
+            self.create_oval(
+                x - 4,
+                rail_y - 4,
+                x + 4,
+                rail_y + 4,
+                fill=SURFACE,
+                outline=self.accent,
+                width=2,
+            )
+            anchor = tk.W if index == 0 else tk.E if index == 3 else tk.CENTER
+            self.create_text(
+                x,
+                105,
+                text=label,
+                anchor=anchor,
+                fill=MUTED,
+                font=("Segoe UI Semibold", 7),
+            )
 
 
 def _default_state_dir() -> Path:
@@ -844,6 +1128,10 @@ class ZsecDesktop:
         self.scan_cancel_button.pack(side=tk.LEFT, padx=8)
         self.scan_result_label = ttk.Label(controls, text="Ready", style="Muted.TLabel")
         self.scan_result_label.pack(side=tk.LEFT, padx=8)
+        self.scan_activity = ScanEvidenceBand(
+            panel, motion_enabled=lambda: not self.reduce_motion.get()
+        )
+        self.scan_activity.pack(fill=tk.X, pady=(0, 10))
         self.scan_output = tk.Text(
             panel,
             height=16,
@@ -856,6 +1144,9 @@ class ZsecDesktop:
         )
         self.scan_output.pack(fill=tk.BOTH, expand=True)
         self.scan_output.insert(tk.END, "No scan has been started from this desktop session.\n")
+        self.scan_output.tag_configure("finding", foreground=RED)
+        self.scan_output.tag_configure("review", foreground=AMBER)
+        self.scan_output.tag_configure("issue", foreground=RED)
         self.scan_output.configure(state=tk.DISABLED)
 
     def _build_monitor(self) -> None:
@@ -1501,6 +1792,8 @@ class ZsecDesktop:
         if hasattr(self, "overview_cards"):
             for card in self.overview_cards:
                 card.sync_motion_preference()
+        if hasattr(self, "scan_activity"):
+            self.scan_activity.sync_motion_preference()
         if hasattr(self, "global_busy"):
             self._sync_global_busy_motion()
         self._animate_activity()
@@ -1885,6 +2178,7 @@ class ZsecDesktop:
         self.scan_start_button.configure(state=tk.DISABLED)
         self.scan_cancel_button.configure(state=tk.NORMAL)
         self.scan_result_label.configure(text="Scanning…", foreground=CYAN)
+        self.scan_activity.set_running(label)
         display_paths = "\n".join(f"  • {path}" for path in paths)
         self._set_text(
             self.scan_output,
@@ -1910,6 +2204,7 @@ class ZsecDesktop:
         self.scan_cancel = None
         report = result.payload
         scan = report["scan"]
+        presentation = scan_run_presentation(report)
         summary = (
             f"Outcome: {report['outcome']}\n"
             f"Files hashed: {scan['stats'].get('files_hashed', 0)}\n"
@@ -1931,16 +2226,23 @@ class ZsecDesktop:
                 f"INCOMPLETE {issue.get('path')}: {issue.get('code')}: {issue.get('message')}\n"
             )
         self._set_text(self.scan_output, summary)
-        colour = (
-            GREEN
-            if report["outcome"] == "no_configured_rule_matches"
-            else AMBER
-            if report["outcome"] == "review_observations"
-            else RED
-        )
         self.scan_result_label.configure(
-            text=report["outcome"].replace("_", " "), foreground=colour
+            text=presentation.headline, foreground=presentation.accent
         )
+        self.scan_activity.set_result(presentation)
+        for prefix, tag in (
+            ("MATCH ", "finding"),
+            ("REVIEW ", "review"),
+            ("INCOMPLETE ", "issue"),
+        ):
+            cursor = "1.0"
+            while True:
+                start = self.scan_output.search(prefix, cursor, stopindex=tk.END)
+                if not start:
+                    break
+                end = self.scan_output.index(f"{start} lineend")
+                self.scan_output.tag_add(tag, start, end)
+                cursor = end
         self.scan_quarantine.set(False)
         self.refresh_status()
         self.refresh_quarantine()
@@ -1952,6 +2254,9 @@ class ZsecDesktop:
         self.scan_cancel_button.configure(state=tk.DISABLED)
         self.scan_cancel = None
         self.scan_result_label.configure(text="Incomplete", foreground=RED)
+        self.scan_activity.set_failure(
+            "The scanner did not return a validated result. Review the red error evidence below."
+        )
         self._set_text(
             self.scan_output, f"Scan did not complete: {exc}\nNo clean state is available.\n"
         )
@@ -1963,6 +2268,7 @@ class ZsecDesktop:
         if self.scan_cancel is not None:
             self.scan_cancel.set()
             self.scan_result_label.configure(text="Cancelling…", foreground=AMBER)
+            self.scan_activity.set_cancelling()
 
     def _choose_watch_folder(self) -> None:
         chosen = filedialog.askdirectory(parent=self.root, title="Choose folder to monitor")

@@ -16,7 +16,15 @@ GUI_ROOT = Path(__file__).resolve().parents[1] / "apps" / "windows-ui"
 if str(GUI_ROOT) not in sys.path:
     sys.path.insert(0, str(GUI_ROOT))
 
-from zsec_desktop.app import ZsecDesktop, scan_completion_notification  # noqa: E402
+from zsec_desktop.app import (  # noqa: E402
+    AMBER,
+    GREEN,
+    RED,
+    ZsecDesktop,
+    advance_scan_motion_phase,
+    scan_completion_notification,
+    scan_run_presentation,
+)
 from zsec_desktop.bridge import BridgeError, CommandResult, ZsecBridge, discover_cli  # noqa: E402
 from zsec_desktop.contracts import (  # noqa: E402
     ContractError,
@@ -307,6 +315,78 @@ def test_worker_completion_queue_is_drained_without_cross_thread_tk_calls() -> N
     assert desktop.root.after_calls == [(20, desktop._drain_ui_queue)]
     assert len(desktop.root.callback_errors) == 1
     assert desktop.root.callback_errors[0][0] is ValueError
+
+
+def test_scan_motion_is_deterministic_and_reduced_motion_freezes_position() -> None:
+    assert advance_scan_motion_phase(0, active=True, reduce_motion=False) == 1
+    assert advance_scan_motion_phase(119, active=True, reduce_motion=False) == 0
+    assert advance_scan_motion_phase(42, active=False, reduce_motion=False) == 42
+    assert advance_scan_motion_phase(42, active=True, reduce_motion=True) == 42
+
+
+@pytest.mark.parametrize(
+    ("outcome", "findings", "observations", "issues", "state", "accent", "copy"),
+    [
+        (
+            "no_configured_rule_matches",
+            [],
+            [],
+            [],
+            "complete",
+            GREEN,
+            "not proof that the computer is clean",
+        ),
+        (
+            "review_observations",
+            [],
+            [{"path": "review-me"}],
+            [],
+            "review",
+            AMBER,
+            "not treated as malware",
+        ),
+        (
+            "configured_rule_matches_detected",
+            [{"path": "matched"}],
+            [],
+            [],
+            "detected",
+            RED,
+            "listed below in red",
+        ),
+        (
+            "incomplete",
+            [],
+            [],
+            [{"path": "unreadable"}],
+            "incomplete",
+            RED,
+            "prevented a complete result",
+        ),
+    ],
+)
+def test_scan_run_presentation_preserves_evidence_severity(
+    outcome: str,
+    findings: list[dict[str, str]],
+    observations: list[dict[str, str]],
+    issues: list[dict[str, str]],
+    state: str,
+    accent: str,
+    copy: str,
+) -> None:
+    presentation = scan_run_presentation(
+        {
+            "outcome": outcome,
+            "scan": {
+                "findings": findings,
+                "observations": observations,
+                "issues": issues,
+            },
+        }
+    )
+    assert presentation.state == state
+    assert presentation.accent == accent
+    assert copy in presentation.detail
 
 
 def valid_recovery_drill() -> dict[str, object]:
