@@ -906,6 +906,13 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
         process_unavailable = any(
             "heartbeat process is absent" in reason for reason in normalized_reasons
         )
+        health = payload.get("health")
+        live_process_verified = (
+            isinstance(health, dict)
+            and health.get("schema_valid") is True
+            and health.get("fresh") is True
+            and health.get("process_verified") is True
+        )
         if stale_heartbeat:
             return CompanionPresentation(
                 state="stale",
@@ -925,6 +932,21 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
                     "The verified ZSEC supervisor will restart local monitoring automatically. "
                     "Current evidence: "
                     + reasons
+                ),
+                accent="amber",
+            )
+        if live_process_verified and normalized_reasons == (
+            "watch session reports degraded",
+        ):
+            return CompanionPresentation(
+                state="coverage_review",
+                headline="Automatic protection is live",
+                detail=(
+                    f"{protection_name} and the verified ZSEC change-monitoring process "
+                    "are active. ZSEC retained a local coverage review because at least "
+                    "one protected path could not be inspected or was excluded by its "
+                    "fail-closed path policy; the five-minute reconciliation continues "
+                    "automatically."
                 ),
                 accent="amber",
             )

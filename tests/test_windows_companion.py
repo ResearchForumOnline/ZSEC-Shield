@@ -21,6 +21,9 @@ DEFENDER_AGE_FIXTURE = PROJECT_ROOT / "tests" / "fixtures" / "defender_scan_age_
 SUPERVISOR_LIFECYCLE_FIXTURE = (
     PROJECT_ROOT / "tests" / "fixtures" / "supervisor_lifecycle_evidence.ps1"
 )
+HKCU_SUPERVISOR_STOP_FIXTURE = (
+    PROJECT_ROOT / "tests" / "fixtures" / "hkcu_supervisor_stop.ps1"
+)
 
 
 class WindowsCompanionStaticTests(unittest.TestCase):
@@ -308,6 +311,18 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn("Remove-ItemProperty", content)
         self.assertIn("$runAtRemoval.value_data -ne $expectedRunData", content)
         self.assertIn("HKCU Run value data changed", content)
+        self.assertIn("function Get-OwnedHkcuSupervisorProcess", content)
+        self.assertIn("function Stop-OwnedHkcuSupervisorProcess", content)
+        self.assertIn("Invoke-CimMethod -InputObject $candidate -MethodName GetOwnerSid", content)
+        self.assertIn('Get-CimInstance `\n        -ClassName Win32_Process', content)
+        self.assertIn('[string]$owner.Sid -ne $ownerSid', content)
+        self.assertIn('$observedCommandLine -notin', content)
+        self.assertIn('$createdAt -gt $lifecycle.generated_at.AddSeconds(5)', content)
+        self.assertIn('"Local\\ZSEC-Antivirus-Companion-$OwnerSid"', content)
+        self.assertIn("Installed companion launcher hash verification failed", content)
+        scheduled_branch = content.index('if ($supervisorKind -eq "scheduled_task") {')
+        scheduled_import = content.index("Import-Module ScheduledTasks", scheduled_branch)
+        self.assertGreater(scheduled_import, scheduled_branch)
         self.assertIn("Remove-OwnedCompanionDirectory -Path $installRoot", content)
         self.assertIn("Remove-Item -LiteralPath $Path -Recurse", content)
         self.assertIn("function Remove-OwnedCompanionDirectory", content)
@@ -326,6 +341,53 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertNotIn("Win32_Product", content)
         self.assertNotIn("msiexec", content.casefold())
         self.assertNotIn("Remove-Item -LiteralPath $RunKeyPath", content)
+        self.assertNotIn("Get-CimInstance -ClassName Win32_Process -ErrorAction", content)
+        self.assertNotIn("taskkill", content.casefold())
+        action = content[content.index("if ($null -ne $task) {") :]
+        remove_run = action.index("Remove-ItemProperty")
+        stop_supervisor = action.index("$ownedSupervisorStopped = Stop-OwnedHkcuSupervisorProcess")
+        stop_heartbeat = action.index("$ownedProcessStopped = Stop-OwnedHeartbeatProcess")
+        delete_files = action.index("Remove-OwnedCompanionDirectory -Path $installRoot")
+        self.assertLess(remove_run, stop_supervisor)
+        self.assertLess(stop_supervisor, stop_heartbeat)
+        self.assertLess(stop_heartbeat, delete_files)
+
+    @unittest.skipUnless(os.name == "nt", "Live process identity fixture requires Windows")
+    def test_hkcu_supervisor_stop_requires_exact_live_process_identity(self) -> None:
+        powershell = shutil.which("powershell.exe")
+        if powershell is None:
+            self.skipTest("Windows PowerShell is unavailable")
+        with TemporaryDirectory() as temporary:
+            result = subprocess.run(
+                [
+                    powershell,
+                    "-NoLogo",
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "RemoteSigned",
+                    "-File",
+                    str(HKCU_SUPERVISOR_STOP_FIXTURE),
+                    "-UninstallerScript",
+                    str(UNINSTALLER),
+                    "-TemporaryDirectory",
+                    temporary,
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        if result.returncode != 0:
+            self.fail(
+                "HKCU supervisor-stop fixture failed: "
+                f"stdout={result.stdout!r} stderr={result.stderr!r}"
+            )
+        evidence = json.loads(result.stdout)
+        self.assertEqual("zsec.tests.hkcu-supervisor-stop.v1", evidence["schema"])
+        self.assertTrue(evidence["exact_identity_resolved"])
+        self.assertTrue(evidence["command_line_mismatch_rejected"])
+        self.assertTrue(evidence["pid_reuse_rejected"])
+        self.assertTrue(evidence["exact_process_stopped"])
 
     def test_scripts_have_no_provider_disable_or_exclusion_commands(self) -> None:
         combined = "\n".join(

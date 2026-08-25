@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import os
 import stat
+import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -31,6 +32,8 @@ from zsec_shield.windows_authenticode import verify_authenticode
 
 DEFAULT_MAX_FILE_BYTES = 64 * 1024 * 1024
 DEFAULT_CHUNK_BYTES = 1024 * 1024
+TRANSIENT_DIRECTORY_RETRY_DELAYS_SECONDS = (0.025, 0.05, 0.1)
+WINDOWS_TRANSIENT_PATH_CODES = frozenset({2, 3})
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +71,23 @@ def _same_opened_file(before: os.stat_result, opened: os.stat_result) -> bool:
     before_inode = getattr(before, "st_ino", 0)
     opened_inode = getattr(opened, "st_ino", 0)
     return not (before_inode and opened_inode and before_inode != opened_inode)
+
+
+def _sorted_directory_entries(directory: Path) -> list[os.DirEntry[str]]:
+    """Retry only brief Windows path-resolution races during live tree churn."""
+
+    for attempt in range(len(TRANSIENT_DIRECTORY_RETRY_DELAYS_SECONDS) + 1):
+        try:
+            with os.scandir(directory) as iterator:
+                return sorted(iterator, key=lambda entry: (entry.name.casefold(), entry.name))
+        except OSError as exc:
+            if (
+                getattr(exc, "winerror", None) not in WINDOWS_TRANSIENT_PATH_CODES
+                or attempt == len(TRANSIENT_DIRECTORY_RETRY_DELAYS_SECONDS)
+            ):
+                raise
+            time.sleep(TRANSIENT_DIRECTORY_RETRY_DELAYS_SECONDS[attempt])
+    raise AssertionError("unreachable directory retry state")
 
 
 class Scanner:
@@ -246,10 +266,7 @@ class Scanner:
                 continue
             visited.add(identity)
             try:
-                with os.scandir(directory) as iterator:
-                    entries = sorted(
-                        iterator, key=lambda entry: (entry.name.casefold(), entry.name)
-                    )
+                entries = _sorted_directory_entries(directory)
             except OSError as exc:
                 self._issue(issues, directory, "directory_unreadable", exc)
                 continue

@@ -561,6 +561,22 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     assert "ZSEC monitoring degraded" in degraded_view.headline
     assert "not currently verified" in degraded_view.detail
 
+    coverage_review = valid_healthy_companion()
+    coverage_review.update(
+        {
+            "healthy": False,
+            "decision": "degraded",
+            "reasons": ["watch session reports degraded"],
+        }
+    )
+    coverage_view = companion_presentation(validate_companion_status(coverage_review))
+    assert coverage_view.state == "coverage_review"
+    assert coverage_view.accent == "amber"
+    assert coverage_view.headline == "Automatic protection is live"
+    assert coverage_view.detail.startswith("Windows antivirus protection")
+    assert "verified ZSEC change-monitoring process" in coverage_view.detail
+    assert "five-minute reconciliation continues automatically" in coverage_view.detail
+
     stale_inventory = valid_metadata_inventory_companion()
     stale_inventory["decision"] = "degraded"
     stale_inventory["reasons"] = ["health heartbeat is stale or from the future"]
@@ -609,6 +625,14 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
         validate_companion_status(degraded_with_active_defender)
     )
     assert defender_view.headline.startswith("Microsoft Defender protection active")
+
+    defender_coverage_review = copy.deepcopy(coverage_review)
+    defender_coverage_review["existing_primary_protection"]["defender"] = active_defender
+    defender_coverage_view = companion_presentation(
+        validate_companion_status(defender_coverage_review)
+    )
+    assert defender_coverage_view.headline == "Automatic protection is live"
+    assert defender_coverage_view.detail.startswith("Microsoft Defender protection")
 
     degraded_without_verified_primary = copy.deepcopy(degraded_with_defender)
     degraded_without_verified_primary["existing_primary_protection"][

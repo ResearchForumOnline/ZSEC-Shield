@@ -5,6 +5,7 @@ import os
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from zsec_shield.models import Rule
 from zsec_shield.rules import builtin_rules
@@ -138,6 +139,45 @@ class ScannerTests(unittest.TestCase):
         result = Scanner(()).scan([self.root / "missing"])
         self.assertEqual(1, result.stats.errors)
         self.assertEqual("root_unreadable", result.issues[0].code)
+
+    def test_transient_windows_directory_resolution_error_is_retried(self) -> None:
+        target = self.root / "eventually-readable.bin"
+        target.write_bytes(b"retry me")
+        real_scandir = os.scandir
+        attempts = 0
+
+        def transient_scandir(path: os.PathLike[str] | str):
+            nonlocal attempts
+            attempts += 1
+            if attempts <= 2:
+                error = OSError("temporary path resolution failure")
+                error.winerror = 3  # type: ignore[attr-defined]
+                raise error
+            return real_scandir(path)
+
+        with (
+            patch("zsec_shield.scanner.os.scandir", side_effect=transient_scandir),
+            patch("zsec_shield.scanner.time.sleep") as sleep,
+        ):
+            result = Scanner(()).scan([self.root])
+
+        self.assertEqual(3, attempts)
+        self.assertEqual(1, result.stats.files_hashed)
+        self.assertEqual([], result.issues)
+        self.assertEqual(2, sleep.call_count)
+
+    def test_persistent_windows_directory_resolution_error_remains_visible(self) -> None:
+        error = OSError("persistent path resolution failure")
+        error.winerror = 3  # type: ignore[attr-defined]
+        with (
+            patch("zsec_shield.scanner.os.scandir", side_effect=error),
+            patch("zsec_shield.scanner.time.sleep") as sleep,
+        ):
+            result = Scanner(()).scan([self.root])
+
+        self.assertEqual(1, result.stats.errors)
+        self.assertEqual("directory_unreadable", result.issues[0].code)
+        self.assertEqual(3, sleep.call_count)
 
     def test_explicit_exclusion_is_not_scanned(self) -> None:
         excluded = self.root / "state"
