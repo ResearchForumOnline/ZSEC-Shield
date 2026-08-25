@@ -33,7 +33,7 @@ def test_support_snapshot_is_bounded_path_free_and_truthful() -> None:
     snapshot = build_support_snapshot(
         status,
         companion,
-        desktop_version="0.3.27",
+        desktop_version="0.3.28",
         generated_at=datetime(2026, 8, 23, 0, 0, tzinfo=UTC),
     )
     encoded = json.dumps(snapshot, sort_keys=True)
@@ -52,12 +52,12 @@ def test_support_snapshot_rejects_unvalidated_or_contradictory_evidence() -> Non
     status = valid_status()
     status["real_time_protection"] = True
     with pytest.raises(ContractError, match="real-time protection"):
-        build_support_snapshot(status, valid_companion(), desktop_version="0.3.27")
+        build_support_snapshot(status, valid_companion(), desktop_version="0.3.28")
 
     companion = copy.deepcopy(valid_companion())
     companion["healthy"] = True
     with pytest.raises(ContractError, match="not_installed"):
-        build_support_snapshot(valid_status(), companion, desktop_version="0.3.27")
+        build_support_snapshot(valid_status(), companion, desktop_version="0.3.28")
 
 
 def test_support_snapshot_rejects_unbounded_version() -> None:
@@ -69,7 +69,7 @@ def test_support_snapshot_save_is_atomic_json_and_rejects_wrong_extension(
     tmp_path: Path,
 ) -> None:
     snapshot = build_support_snapshot(
-        valid_status(), valid_companion(), desktop_version="0.3.27"
+        valid_status(), valid_companion(), desktop_version="0.3.28"
     )
     destination = tmp_path / "support.json"
     save_support_snapshot(destination, snapshot)

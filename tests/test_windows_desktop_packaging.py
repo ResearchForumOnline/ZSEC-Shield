@@ -186,7 +186,7 @@ def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
     assert "Desktop Preview" not in app
     assert "DESKTOP PREVIEW" not in app
     assert 'self.root.title("ZSEC Antivirus")' in app
-    assert 'text="COMMUNITY 0.3.27"' in app
+    assert 'text="COMMUNITY 0.3.28"' in app
 
 
 def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None:
