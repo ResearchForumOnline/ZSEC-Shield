@@ -24,6 +24,17 @@ def _public_b64(key: Ed25519PrivateKey) -> str:
     return base64.b64encode(raw).decode()
 
 
+def test_release_publication_preserves_last_valid_intelligence_on_refresh_failure() -> None:
+    workflow = (ROOT / ".github/workflows/publish-update-service.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "if python scripts/update_desktop_intelligence.py --dry-run --json; then" in workflow
+    assert "publishing the last validated intelligence catalog" in workflow
+    assert workflow.index("--dry-run --json; then") < workflow.index(
+        "python scripts/update_desktop_intelligence.py --json"
+    )
+
+
 def _build(output: Path, sequence: int = 7) -> dict[str, object]:
     key = _key()
     return build(

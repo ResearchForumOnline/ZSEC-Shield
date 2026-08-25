@@ -52,8 +52,11 @@ jobs:
         run: python -m pytest tests/test_update_service_publication.py tests/test_desktop_intelligence.py
       - name: Refresh and validate authoritative advisory metadata
         run: |
-          python scripts/update_desktop_intelligence.py --dry-run --json
-          python scripts/update_desktop_intelligence.py --json
+          if python scripts/update_desktop_intelligence.py --dry-run --json; then
+            python scripts/update_desktop_intelligence.py --json
+          else
+            echo "::warning::Authoritative advisory refresh failed closed; publishing the last validated intelligence catalog with the application release."
+          fi
           python -m pytest tests/test_desktop_intelligence.py
       - name: Select monotonic sequence and validity window
         id: publication
