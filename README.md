@@ -409,9 +409,9 @@ There is intentionally no purge command in this MVP.
 
 ## Signed feed update
 
-The packaged keyring is intentionally empty: this MVP does not invent a production
-trust anchor. Pin an operator-controlled Ed25519 public key in a keyring and pass it
-explicitly, set `ZSEC_SHIELD_KEYRING`, or place it at
+The packaged keyring pins the reviewed `zsec:update-primary-2026` Ed25519 public key.
+The private key is not shipped. To use a different operator-controlled trust root,
+pass a keyring explicitly, set `ZSEC_SHIELD_KEYRING`, or place it at
 `STATE_DIR/trusted_keys.json`.
 
 ```bash
@@ -419,6 +419,11 @@ zsec-shield --keyring ./trusted_keys.json update --file ./feed.json --json
 zsec-shield --keyring ./trusted_keys.json update --url https://security.example/feed.json --json
 zsec-shield --keyring ./trusted_keys.json check ./incoming
 ```
+
+The production publisher emits a separate EICAR-only wiring-test feed at
+`https://talktoai.org/zsec/rules/v1/feed.json`. Installing it is explicit; advisory
+intelligence is never converted into detection rules. EICAR confirms plumbing, not
+real-world malware efficacy.
 
 Remote URLs must use credential-free HTTPS and remain HTTPS through at most three
 redirects. Feeds are capped at 2 MiB. An update is verified before installation;

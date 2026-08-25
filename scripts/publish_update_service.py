@@ -11,7 +11,7 @@ import os
 import re
 import shutil
 import tempfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -22,9 +22,16 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
+from zsec_shield.errors import FeedError
+from zsec_shield.feed import ENVELOPE_SCHEMA as RULE_ENVELOPE_SCHEMA
+from zsec_shield.feed import PAYLOAD_SCHEMA as RULE_PAYLOAD_SCHEMA
+from zsec_shield.feed import TrustedKey, verify_feed_document
+from zsec_shield.util import canonical_json_bytes
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CATALOG = ROOT / "intelligence" / "desktop-advisories.json"
 DEFAULT_RELEASE = ROOT / "updates" / "application-release.json"
+DEFAULT_RULES = ROOT / "rules" / "scanner-rules.json"
 DEFAULT_OUTPUT = ROOT / "web" / "zsec"
 KEY_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._:-]{2,127}$")
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
@@ -34,6 +41,13 @@ SAFETY_POLICY = {
     "data_only": True,
     "detection_rules_derived": False,
     "malware_samples_allowed": False,
+    "remote_commands_allowed": False,
+}
+RULE_SOURCE_POLICY = {
+    "advisory_conversion_allowed": False,
+    "data_only": True,
+    "malware_samples_allowed": False,
+    "purpose": "eicar-wiring-test-only",
     "remote_commands_allowed": False,
 }
 
@@ -123,7 +137,14 @@ def public_key_b64(key: Ed25519PrivateKey) -> str:
     return base64.b64encode(raw).decode()
 
 
-def _validate_common(sequence: int, generated_at: str, expires_at: str, key_id: str) -> None:
+def _validate_common(
+    sequence: int,
+    generated_at: str,
+    expires_at: str,
+    key_id: str,
+    *,
+    now: datetime,
+) -> None:
     if sequence < 1:
         raise PublishError("sequence must be at least 1")
     if not KEY_ID_PATTERN.fullmatch(key_id):
@@ -134,6 +155,10 @@ def _validate_common(sequence: int, generated_at: str, expires_at: str, key_id: 
         raise PublishError("expires-at must be later than generated-at")
     if (expires - generated).total_seconds() > 14 * 24 * 60 * 60:
         raise PublishError("publication validity cannot exceed 14 days")
+    if generated > now + timedelta(minutes=5):
+        raise PublishError("generated-at cannot be more than five minutes in the future")
+    if expires <= now:
+        raise PublishError("expires-at must be later than the verification time")
 
 
 def _validate_catalog(catalog: Any) -> dict[str, Any]:
@@ -204,11 +229,80 @@ def _validate_release(release: Any) -> dict[str, Any]:
     return release
 
 
+def _eicar_rule_records() -> tuple[dict[str, Any], ...]:
+    eicar = b"".join(
+        (
+            b"X5O!P%@AP[4\\PZX54(P^)7CC)7}$EIC",
+            b"AR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*",
+        )
+    )
+    return (
+        {
+            "description": (
+                "Harmless standardized antivirus wiring test; not malware and not an "
+                "efficacy claim."
+            ),
+            "id": "feed:eicar-test-file",
+            "kind": "literal",
+            "name": "EICAR antivirus wiring test",
+            "severity": "info",
+            "source": "https://www.eicar.org/download-anti-malware-testfile/",
+            "value": base64.b64encode(eicar).decode("ascii"),
+        },
+        {
+            "description": "Exact SHA-256 of the canonical harmless EICAR test file; not malware.",
+            "id": "feed:eicar-test-file-sha256",
+            "kind": "sha256",
+            "name": "EICAR antivirus wiring test SHA-256",
+            "severity": "info",
+            "source": "https://www.eicar.org/download-anti-malware-testfile/",
+            "value": "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+        },
+    )
+
+
+def _validate_rule_source(source: Any) -> tuple[dict[str, Any], ...]:
+    if not isinstance(source, dict):
+        raise PublishError("scanner rule source root must be an object")
+    if set(source) != {"policy", "rules", "schema"}:
+        raise PublishError("scanner rule source has invalid fields")
+    if source.get("schema") != "zsec.scanner-rule-source.v1":
+        raise PublishError("scanner rule source schema is invalid")
+    if source.get("policy") != RULE_SOURCE_POLICY:
+        raise PublishError("scanner rule source must remain EICAR wiring-test-only")
+    rules = source.get("rules")
+    if not isinstance(rules, list) or len(rules) != 2:
+        raise PublishError("scanner rule source must contain the two canonical EICAR checks")
+
+    # The publication source is deliberately locked to the harmless, standardized
+    # EICAR wiring check. Advisory records are not heuristically converted into
+    # signatures, and no unreviewed malware indicator can enter this endpoint.
+    expected = _eicar_rule_records()
+    if tuple(rules) != expected:
+        raise PublishError("scanner rule source differs from the canonical EICAR checks")
+    return expected
+
+
 def sign_payload(payload: dict[str, Any], key: Ed25519PrivateKey, key_id: str) -> dict[str, Any]:
     signature = key.sign(canonical_json(payload))
     return {
         "algorithm": "ed25519", "key_id": key_id, "payload": payload,
         "schema": "zsec.signed-envelope.v1", "signature": base64.b64encode(signature).decode(),
+    }
+
+
+def sign_rule_payload(
+    payload: dict[str, Any], key: Ed25519PrivateKey, key_id: str
+) -> dict[str, Any]:
+    # The scanner-feed contract predates the publication envelopes and signs
+    # canonical JSON without the publisher's trailing transport newline.
+    signature = key.sign(canonical_json_bytes(payload))
+    return {
+        "algorithm": "ed25519",
+        "key_id": key_id,
+        "payload": payload,
+        "schema": RULE_ENVELOPE_SCHEMA,
+        "signature": base64.b64encode(signature).decode(),
     }
 
 
@@ -218,6 +312,8 @@ def verify_envelope(raw: bytes, public_key: Ed25519PublicKey) -> dict[str, Any]:
         raise PublishError("signed envelope fields are invalid")
     if root["schema"] != "zsec.signed-envelope.v1" or root["algorithm"] != "ed25519":
         raise PublishError("signed envelope schema or algorithm is invalid")
+    if not isinstance(root["key_id"], str) or not KEY_ID_PATTERN.fullmatch(root["key_id"]):
+        raise PublishError("signed envelope key-id is invalid")
     try:
         signature = base64.b64decode(root["signature"], validate=True)
         if base64.b64encode(signature).decode() != root["signature"] or len(signature) != 64:
@@ -229,16 +325,19 @@ def verify_envelope(raw: bytes, public_key: Ed25519PublicKey) -> dict[str, Any]:
 
 
 def build(
-    *, catalog_path: Path, release_path: Path, output: Path, key: Ed25519PrivateKey,
+    *, catalog_path: Path, release_path: Path, rules_path: Path = DEFAULT_RULES,
+    output: Path, key: Ed25519PrivateKey,
     key_id: str, sequence: int, generated_at: str, expires_at: str,
-    expected_public_key: str | None,
+    expected_public_key: str | None, verification_time: datetime | None = None,
 ) -> dict[str, Any]:
-    _validate_common(sequence, generated_at, expires_at, key_id)
+    current = (verification_time or datetime.now(UTC)).astimezone(UTC)
+    _validate_common(sequence, generated_at, expires_at, key_id, now=current)
     public = public_key_b64(key)
     if expected_public_key and public != expected_public_key:
         raise PublishError("signing key does not match ZSEC_UPDATE_PUBLIC_KEY_B64")
     catalog = _validate_catalog(_strict_json(catalog_path.read_bytes()))
     release = _validate_release(_strict_json(release_path.read_bytes()))
+    rule_records = _validate_rule_source(_strict_json(rules_path.read_bytes()))
     catalog_bytes = canonical_json(catalog)
     intelligence_payload = {
         "catalog": catalog, "catalog_sha256": _digest(catalog_bytes), "expires_at": expires_at,
@@ -250,8 +349,16 @@ def build(
         "generated_at": generated_at, "notification_only": True, "release": release,
         "schema": "zsec.application-update.payload.v1", "sequence": sequence,
     }
+    rule_payload = {
+        "expires_at": expires_at,
+        "generated_at": generated_at,
+        "rules": list(rule_records),
+        "schema": RULE_PAYLOAD_SCHEMA,
+        "sequence": sequence,
+    }
     intelligence = canonical_json(sign_payload(intelligence_payload, key, key_id))
     update = canonical_json(sign_payload(update_payload, key, key_id))
+    rules = canonical_json(sign_rule_payload(rule_payload, key, key_id))
     sequence_name = f"{sequence:020d}"
     output.parent.mkdir(parents=True, exist_ok=True)
     stage = Path(tempfile.mkdtemp(prefix="zsec-update-stage-", dir=output.parent))
@@ -260,12 +367,14 @@ def build(
             "expires_at": expires_at,
             "generated_at": generated_at,
             "intelligence_sha256": _digest(intelligence),
-            "schema": "zsec.update-publication-audit.v1",
+            "rules_sha256": _digest(rules),
+            "schema": "zsec.update-publication-audit.v2",
             "sequence": sequence,
             "update_sha256": _digest(update),
         }
         paths = {
             "intelligence/v1/feed.json": intelligence,
+            "rules/v1/feed.json": rules,
             "updates/v1/stable.json": update,
             f"updates/v1/audit/{sequence_name}.json": canonical_json(
                 sign_payload(audit_payload, key, key_id)
@@ -279,7 +388,12 @@ def build(
             destination = stage / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_bytes(raw)
-        verify_tree(stage, key.public_key(), expected_sequence=sequence)
+        verify_tree(
+            stage,
+            key.public_key(),
+            expected_sequence=sequence,
+            now=current,
+        )
         if output.exists():
             audit = output / "updates" / "v1" / "audit" / f"{sequence_name}.json"
             audit_key = f"updates/v1/audit/{sequence_name}.json"
@@ -300,7 +414,7 @@ def build(
     return {
         "intelligence_sha256": _digest(intelligence), "key_id": key_id,
         "output": str(output), "public_key": public, "sequence": sequence,
-        "update_sha256": _digest(update),
+        "rules_sha256": _digest(rules), "update_sha256": _digest(update),
     }
 
 
@@ -308,7 +422,9 @@ def verify_tree(
     output: Path,
     public_key: Ed25519PublicKey,
     expected_sequence: int | None = None,
+    now: datetime | None = None,
 ) -> None:
+    current = (now or datetime.now(UTC)).astimezone(UTC)
     feed = verify_envelope((output / "intelligence/v1/feed.json").read_bytes(), public_key)
     update = verify_envelope((output / "updates/v1/stable.json").read_bytes(), public_key)
     payloads = (
@@ -328,6 +444,12 @@ def verify_tree(
         expires = _timestamp(payload.get("expires_at"), "expires_at")
         if expires <= generated:
             raise PublishError("payload validity window is inverted")
+        if expires - generated > timedelta(days=14):
+            raise PublishError("payload validity window exceeds 14 days")
+        if generated > current + timedelta(minutes=5):
+            raise PublishError("payload generation time is too far in the future")
+        if expires <= current:
+            raise PublishError("payload has expired")
     if feed["payload"].get("policy") != SAFETY_POLICY:
         raise PublishError("published intelligence is not data-only")
     if update["payload"].get("notification_only") is not True:
@@ -337,11 +459,54 @@ def verify_tree(
     sequence = feed["payload"]["sequence"]
     if update["payload"]["sequence"] != sequence:
         raise PublishError("intelligence and application sequences differ")
+    public_raw = public_key.public_bytes(
+        serialization.Encoding.Raw,
+        serialization.PublicFormat.Raw,
+    )
+    rule_raw = (output / "rules/v1/feed.json").read_bytes()
+    rule_root = _strict_json(rule_raw)
+    if not isinstance(rule_root, dict) or not isinstance(rule_root.get("key_id"), str):
+        raise PublishError("scanner rule envelope is invalid")
+    trusted = TrustedKey(rule_root["key_id"], public_raw, "active", None, None)
+    try:
+        verified_rules = verify_feed_document(
+            rule_raw,
+            {trusted.key_id: trusted},
+            now=current,
+        )
+    except FeedError as exc:
+        raise PublishError(f"scanner rule feed verification failed: {exc}") from exc
+    if verified_rules.sequence != sequence:
+        raise PublishError("scanner rule and publication sequences differ")
+    rule_payload_records = rule_root.get("payload", {}).get("rules")
+    if not isinstance(rule_payload_records, list) or tuple(rule_payload_records) != (
+        _eicar_rule_records()
+    ):
+        raise PublishError("scanner rule feed is not the bounded EICAR wiring-test set")
     audit_path = output / "updates/v1/audit" / f"{sequence:020d}.json"
     audit = verify_envelope(audit_path.read_bytes(), public_key)
     audit_payload = audit["payload"]
-    if not isinstance(audit_payload, dict) or audit_payload.get("sequence") != sequence:
+    audit_fields = {
+        "expires_at",
+        "generated_at",
+        "intelligence_sha256",
+        "rules_sha256",
+        "schema",
+        "sequence",
+        "update_sha256",
+    }
+    if not isinstance(audit_payload, dict) or set(audit_payload) != audit_fields:
+        raise PublishError("publication audit fields are invalid")
+    if audit_payload.get("sequence") != sequence:
         raise PublishError("publication audit sequence is invalid")
+    if audit_payload.get("schema") != "zsec.update-publication-audit.v2":
+        raise PublishError("publication audit schema is invalid")
+    if audit_payload.get("generated_at") != feed["payload"]["generated_at"]:
+        raise PublishError("publication audit generation time is invalid")
+    if audit_payload.get("expires_at") != feed["payload"]["expires_at"]:
+        raise PublishError("publication audit expiry time is invalid")
+    if len({feed["key_id"], update["key_id"], rule_root["key_id"], audit["key_id"]}) != 1:
+        raise PublishError("publication endpoint key IDs differ")
     if audit_payload.get("intelligence_sha256") != _digest(
         (output / "intelligence/v1/feed.json").read_bytes()
     ):
@@ -350,12 +515,15 @@ def verify_tree(
         (output / "updates/v1/stable.json").read_bytes()
     ):
         raise PublishError("publication audit update digest is invalid")
+    if audit_payload.get("rules_sha256") != _digest(rule_raw):
+        raise PublishError("publication audit scanner-rule digest is invalid")
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", type=Path, default=DEFAULT_CATALOG)
     parser.add_argument("--release", type=Path, default=DEFAULT_RELEASE)
+    parser.add_argument("--rules", type=Path, default=DEFAULT_RULES)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--private-key-file", type=Path)
     parser.add_argument("--key-id", required=True)
@@ -371,6 +539,7 @@ def main() -> int:
         key = load_private_key(args.private_key_file)
         result = build(
             catalog_path=args.catalog, release_path=args.release, output=args.output,
+            rules_path=args.rules,
             key=key, key_id=args.key_id, sequence=args.sequence,
             generated_at=args.generated_at, expires_at=args.expires_at,
             expected_public_key=os.environ.get("ZSEC_UPDATE_PUBLIC_KEY_B64"),

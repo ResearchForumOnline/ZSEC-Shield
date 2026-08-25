@@ -62,7 +62,10 @@ Public keys use raw 32-byte Ed25519 encoding in canonical padded base64:
 ```
 
 `not_before` and `not_after` are optional. `status` is required and is either
-`active` or `revoked`. The packaged keyring contains no keys.
+`active` or `revoked`. The packaged keyring pins the reviewed
+`zsec:update-primary-2026` public key used by the production publisher. The
+downloadable public-key document is diagnostic only and cannot bootstrap or replace
+that local trust anchor.
 
 ## Rule constraints
 
@@ -78,6 +81,13 @@ Public keys use raw 32-byte Ed25519 encoding in canonical padded base64:
 
 Every listed field is required. Any additional field is rejected, even when the
 payload was signed. This deliberate rigidity is what keeps the feed data-only.
+
+The production rules endpoint is distinct from the desktop advisory catalog. The
+catalog cannot be interpreted or converted into `literal` or `sha256` rules. The
+initial published rules are only the canonical EICAR literal and its SHA-256, both
+at `info` severity and explicitly described as harmless wiring tests. Passing that
+test demonstrates that feed verification and scanner matching are connected; it is
+not evidence of broad malware efficacy or parity with a commercial antivirus.
 
 ## Signing guidance
 

@@ -1,17 +1,21 @@
 # ZSEC static update service
 
-ZSEC clients retrieve independently signed metadata from two stable HTTPS endpoints:
+The publisher creates three independently verified artifacts:
 
 - `https://talktoai.org/zsec/intelligence/v1/feed.json`
+- `https://talktoai.org/zsec/rules/v1/feed.json`
 - `https://talktoai.org/zsec/updates/v1/stable.json`
 
 The intelligence endpoint contains only the strictly validated advisory catalog.
 It contains no executable content, malware samples, commands, detection signatures,
-or permission to remediate a device. The application endpoint is notification-only
-while the distributed Windows package is unsigned; it cannot authorize an automatic
-installation.
+or permission to remediate a device. It is never converted into scanner rules. The
+rules endpoint uses the separate, strict `zsec.shield.feed.v1` contract and is
+currently locked to two informational checks for the harmless canonical EICAR test
+file. Those checks validate scanner/feed wiring; they do not establish malware
+detection efficacy. The application endpoint is notification-only while the
+distributed Windows package is unsigned; it cannot authorize an automatic install.
 
-Both documents use an Ed25519 envelope. The signature covers canonical UTF-8 JSON
+All three documents use Ed25519. The signature covers canonical UTF-8 JSON
 of `payload` with sorted keys and no insignificant whitespace. Clients must bundle
 the public root key out of band, verify the signature before reading payload data,
 persist the greatest accepted sequence, reject a lower sequence, reject equal
@@ -19,7 +23,7 @@ sequence with different bytes, and reject expired metadata. The downloadable
 `public-key.json` is diagnostic and **must not** bootstrap trust by itself.
 
 Every publication also writes a small, signed, zero-padded audit record binding the
-sequence to both endpoint digests. The complete catalog is not duplicated daily,
+sequence to all three endpoint digests. The complete catalog is not duplicated daily,
 which prevents unbounded repository growth. GitHub Pages deploys the complete `web`
 artifact atomically.
 
@@ -34,6 +38,8 @@ application restart.
 
 - Verify the pinned Ed25519 key, exact envelope fields, validity window, sequence,
   artifact SHA-256 and artifact size before treating metadata as current.
+- Treat the advisory catalog and scanner rules as different schemas and different
+  data classes. Never derive a literal or digest rule from advisory text.
 - A truncated response, unknown field, wrong key, invalid signature, expired
   envelope, digest mismatch, or audit mismatch is an update failure—not an empty
   feed and never a clean-device result.
@@ -94,8 +100,20 @@ short-lived OIDC authentication.
    supply explicit values for recovery and controlled testing.
 4. Validity is capped at 14 days so a frozen mirror eventually fails closed.
 5. The workflow publishes through the protected environment.
-6. Verify both canonical endpoints, their signatures, content types, cache rules,
+6. Verify all three canonical endpoints, their signatures, content types, cache rules,
    and versioned copies after deployment.
+
+The current client installs scanner rules only through an explicit local CLI action;
+the publisher does not silently change a device. After confirming the HTTPS endpoint
+and certificate, an operator can install it with:
+
+```powershell
+zsec-shield update --url https://talktoai.org/zsec/rules/v1/feed.json --json
+```
+
+An absent, expired, invalid, rolled-back, or tampered rule feed remains an explicit
+feed state. It is never reported as a clean scan and never disables the two built-in
+EICAR wiring checks or the active Windows Security provider.
 
 Local deterministic generation is available for testing:
 
