@@ -321,12 +321,13 @@ def status_presentation(status: Mapping[str, Any]) -> ScanPresentation:
     if outcome == "review_observations":
         return ScanPresentation(
             "review",
-            "Review-only signals found",
+            "No malware rule matches",
             (
-                f"{status['observations']} conservative user-mode observation(s); "
-                "none authorized automatic quarantine."
+                f"{status['observations']} item(s) are available for review. "
+                "These conservative observations are not malware detections, and nothing "
+                "was quarantined."
             ),
-            "#f59e0b",
+            "#26d9d1",
         )
     if outcome == "no_configured_rule_matches":
         return ScanPresentation(
@@ -523,6 +524,7 @@ def validate_companion_status(payload: Any) -> dict[str, Any]:
     if decision not in {
         "not_installed",
         "baseline_in_progress",
+        "metadata_inventory_in_progress",
         "degraded",
         "healthy_companion",
     }:
@@ -631,6 +633,28 @@ def validate_companion_status(payload: Any) -> dict[str, Any]:
             _bool(value, f"defender.{field}")
     if defender.get("tamper_protection") not in {"enabled", "disabled", "unknown"}:
         raise ContractError("Defender tamper-protection state is unknown")
+    network_protection = _object(
+        defender.get("network_protection"),
+        "defender.network_protection",
+    )
+    network_protection_state = network_protection.get("state")
+    if network_protection_state not in {"active", "audit", "disabled", "unavailable"}:
+        raise ContractError("Defender Network Protection state is unknown")
+    raw_network_protection = network_protection.get("raw_value")
+    if raw_network_protection is not None:
+        raw_network_protection = _integer(
+            raw_network_protection,
+            "defender.network_protection.raw_value",
+        )
+        if raw_network_protection not in {0, 1, 2}:
+            raise ContractError("Defender Network Protection raw value is unsupported")
+    if network_protection.get("source") != "Get-MpPreference.EnableNetworkProtection":
+        raise ContractError("Defender Network Protection evidence uses an unsupported source")
+    _string(
+        network_protection.get("note"),
+        "defender.network_protection.note",
+        maximum=500,
+    )
     confirmed_active = _bool(defender.get("confirmed_active"), "defender.confirmed_active")
     baseline_confirmed = _bool(
         defender.get("baseline_features_confirmed"),
@@ -704,27 +728,37 @@ def validate_companion_status(payload: Any) -> dict[str, Any]:
     elif decision == "degraded":
         if healthy:
             raise ContractError("degraded companion decision contradicts healthy state")
-    elif decision == "baseline_in_progress":
+    elif decision in {"baseline_in_progress", "metadata_inventory_in_progress"}:
         if not installed or healthy or not aggregate_good:
-            raise ContractError("baseline companion decision contradicts protection evidence")
-        if root.get("reasons") != ["initial protected-folder baseline is in progress"]:
-            raise ContractError("baseline companion reason is inconsistent")
+            raise ContractError("initializing companion decision contradicts protection evidence")
+        expected_reason = (
+            "initial protected-folder metadata inventory is in progress"
+            if decision == "metadata_inventory_in_progress"
+            else "initial protected-folder baseline is in progress"
+        )
+        if root.get("reasons") != [expected_reason]:
+            raise ContractError("initializing companion reason is inconsistent")
         supervisor = _object(root.get("supervisor"), "supervisor")
         if not _bool(supervisor.get("registration_verified"), "supervisor.registration_verified"):
-            raise ContractError("baseline companion supervisor registration is unverified")
+            raise ContractError("initializing companion supervisor registration is unverified")
         if supervisor.get("state") not in {"registered_for_logon", "registered_and_running"}:
-            raise ContractError("baseline companion supervisor state is unsupported")
+            raise ContractError("initializing companion supervisor state is unsupported")
         integrity = _object(root.get("integrity"), "integrity")
         for field in ("cli_hash_verified", "runtime_hash_verified", "launcher_hash_verified"):
             if not _bool(integrity.get(field), f"integrity.{field}"):
-                raise ContractError(f"baseline companion lacks {field}")
+                raise ContractError(f"initializing companion lacks {field}")
         health = _object(root.get("health"), "health")
         for field in ("schema_valid", "fresh", "process_verified"):
             if not _bool(health.get(field), f"health.{field}"):
-                raise ContractError(f"baseline companion lacks {field}")
+                raise ContractError(f"initializing companion lacks {field}")
         last_record = _object(health.get("last_record"), "health.last_record")
-        if last_record.get("operational_state") != "baselining":
-            raise ContractError("baseline companion health does not report baselining")
+        expected_operational_state = (
+            "inventorying_metadata"
+            if decision == "metadata_inventory_in_progress"
+            else "baselining"
+        )
+        if last_record.get("operational_state") != expected_operational_state:
+            raise ContractError("initializing companion health state is inconsistent")
     else:
         if not installed or not healthy or not aggregate_good:
             raise ContractError("healthy companion decision lacks required protection evidence")
@@ -817,20 +851,33 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
             detail="Existing Windows antivirus remains required.",
             accent="amber",
         )
-    if decision == "baseline_in_progress":
+    if decision in {"baseline_in_progress", "metadata_inventory_in_progress"}:
+        metadata_inventory = decision == "metadata_inventory_in_progress"
+        defender_confirmed_active = bool(
+            payload["existing_primary_protection"]["defender"]["confirmed_active"]
+        )
         return CompanionPresentation(
-            state="baselining",
+            state="inventorying" if metadata_inventory else "baselining",
             headline="Automatic protection is live",
             detail=(
-                "Defender enforcement and ZSEC change monitoring are active while the "
-                "one-time coverage inventory completes automatically."
+                (
+                    "Microsoft Defender enforcement"
+                    if defender_confirmed_active
+                    else "Windows antivirus protection"
+                )
+                + " and ZSEC change monitoring are active while the one-time "
+                + (
+                    "protected-folder metadata inventory completes automatically."
+                    if metadata_inventory
+                    else "coverage inventory completes automatically."
+                )
             ),
             accent="cyan",
         )
     reasons = "; ".join(payload["reasons"][:3])
-    primary_protection_healthy = bool(
-        payload["existing_primary_protection"]["aggregate_good"]
-    )
+    primary_protection = payload["existing_primary_protection"]
+    primary_protection_healthy = bool(primary_protection["aggregate_good"])
+    defender_confirmed_active = bool(primary_protection["defender"]["confirmed_active"])
     integrity = payload.get("integrity")
     integrity_failed = isinstance(integrity, dict) and any(
         integrity.get(field) is False
@@ -843,7 +890,11 @@ def companion_presentation(payload: dict[str, Any]) -> CompanionPresentation:
     if primary_protection_healthy and not integrity_failed:
         return CompanionPresentation(
             state="degraded",
-            headline="Microsoft Defender is protecting this PC · ZSEC is recovering",
+            headline=(
+                "Microsoft Defender protection active · ZSEC monitoring restarting"
+                if defender_confirmed_active
+                else "Windows antivirus protection active · ZSEC monitoring restarting"
+            ),
             detail=(
                 "The registered ZSEC supervisor will restart local monitoring automatically. "
                 "Current evidence: "

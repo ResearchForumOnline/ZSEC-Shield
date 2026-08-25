@@ -220,6 +220,12 @@ public static class ZsecWscHealth {
         ioav_protection_enabled = $null
         on_access_protection_enabled = $null
         network_inspection_enabled = $null
+        network_protection = [ordered]@{
+            state = "unavailable"
+            raw_value = $null
+            source = "Get-MpPreference.EnableNetworkProtection"
+            note = "Defender Network Protection posture could not be read."
+        }
         tamper_protection = "unknown"
         reboot_required = $null
         signatures = [ordered]@{
@@ -294,6 +300,51 @@ public static class ZsecWscHealth {
         Set-DefenderAgeAndFeatureEvidence `
             -Defender $defender `
             -Status $mp
+        try {
+            $preference = Get-MpPreference -ErrorAction Stop
+            $rawNetworkProtection = Get-OptionalProperty `
+                -InputObject $preference `
+                -Name "EnableNetworkProtection"
+            if ($null -ne $rawNetworkProtection) {
+                $rawNetworkProtection = [int]$rawNetworkProtection
+                $defender.network_protection.raw_value = $rawNetworkProtection
+                switch ($rawNetworkProtection) {
+                    1 {
+                        $defender.network_protection.state = "active"
+                        $defender.network_protection.note = (
+                            "Microsoft Defender Network Protection is in block mode."
+                        )
+                    }
+                    2 {
+                        $defender.network_protection.state = "audit"
+                        $defender.network_protection.note = (
+                            "Microsoft Defender Network Protection is in audit mode."
+                        )
+                    }
+                    0 {
+                        $defender.network_protection.state = "disabled"
+                        $defender.network_protection.note = (
+                            "Microsoft Defender Network Protection is disabled."
+                        )
+                    }
+                    default {
+                        $defender.network_protection.state = "unavailable"
+                        $defender.network_protection.note = (
+                            "Microsoft Defender returned an unknown Network Protection value."
+                        )
+                    }
+                }
+            }
+        }
+        catch {
+            # This posture is independent evidence only. It never changes the
+            # companion health decision and ZSEC never mutates the preference.
+            $defender.network_protection.state = "unavailable"
+            $defender.network_protection.raw_value = $null
+            $defender.network_protection.note = (
+                "Defender Network Protection posture could not be read; no setting was changed."
+            )
+        }
         $defender.note = $(if ($defender.confirmed_active) {
                 "Defender active state is confirmed by Get-MpComputerStatus."
             }
@@ -597,10 +648,10 @@ else {
 }
 
 $healthy = $reasons.Count -eq 0
-$baselineInProgress = (
+$metadataInventoryInProgress = (
     -not $healthy -and
     $reasons.Count -eq 1 -and
-    $reasons[0] -eq "watch session reports baselining" -and
+    $reasons[0] -eq "watch session reports inventorying_metadata" -and
     $supervisorRegistrationVerified -and
     $cliHashVerified -and
     $runtimeHashVerified -and
@@ -614,11 +665,13 @@ $base.installed = $true
 $base.healthy = $healthy
 $base.decision = $(
     if ($healthy) { "healthy_companion" }
-    elseif ($baselineInProgress) { "baseline_in_progress" }
+    elseif ($metadataInventoryInProgress) { "metadata_inventory_in_progress" }
     else { "degraded" }
 )
-if ($baselineInProgress) {
-    $base.reasons = [object[]]@("initial protected-folder baseline is in progress")
+if ($metadataInventoryInProgress) {
+    $base.reasons = [object[]]@(
+        "initial protected-folder metadata inventory is in progress"
+    )
 }
 else {
     $base.reasons = $reasons

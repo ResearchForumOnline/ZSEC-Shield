@@ -37,7 +37,9 @@ class TrayController:
         self._scan_protected_folders = scan_protected_folders
         self._open_settings = open_settings
         self._exit_application = exit_application
-        self._status = "Starting local evidence checks…"
+        self._protection_status = "Checking Windows protection…"
+        self._monitoring_status = "Checking ZSEC monitoring…"
+        self._last_scan_status = "Checking scan evidence…"
         self._icon: Any = None
         self._thread: threading.Thread | None = None
 
@@ -55,7 +57,21 @@ class TrayController:
 
             menu = pystray.Menu(
                 pystray.MenuItem("Open ZSEC Antivirus", dispatch(self._open_window), default=True),
-                pystray.MenuItem(lambda _item: f"Status: {self._status}", None, enabled=False),
+                pystray.MenuItem(
+                    lambda _item: f"Protection: {self._protection_status}",
+                    None,
+                    enabled=False,
+                ),
+                pystray.MenuItem(
+                    lambda _item: f"Monitoring: {self._monitoring_status}",
+                    None,
+                    enabled=False,
+                ),
+                pystray.MenuItem(
+                    lambda _item: f"Last scan: {self._last_scan_status}",
+                    None,
+                    enabled=False,
+                ),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem(
                     "Scan protected folders now",
@@ -76,12 +92,22 @@ class TrayController:
             self._thread = None
             return False
 
-    def set_status(self, value: str) -> None:
-        self._status = _single_line(value, maximum=120) or "Status unavailable"
+    def set_status(self, *, protection: str, monitoring: str, last_scan: str) -> None:
+        self._protection_status = (
+            _single_line(protection, maximum=72) or "Protection evidence unavailable"
+        )
+        self._monitoring_status = (
+            _single_line(monitoring, maximum=72) or "Monitoring evidence unavailable"
+        )
+        self._last_scan_status = _single_line(last_scan, maximum=96) or "Scan evidence unavailable"
         icon = self._icon
         if icon is not None:
             with suppress_tray_errors():
-                icon.title = f"ZSEC Antivirus — {self._status}"[:127]
+                # Historical scan observations stay in the menu and never become the
+                # primary protection tooltip.
+                icon.title = (
+                    f"ZSEC Antivirus — {self._protection_status}; {self._monitoring_status}"
+                )[:127]
                 icon.update_menu()
 
     def notify(self, message: str, title: str = "ZSEC Antivirus") -> None:

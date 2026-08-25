@@ -16,7 +16,7 @@ GUI_ROOT = Path(__file__).resolve().parents[1] / "apps" / "windows-ui"
 if str(GUI_ROOT) not in sys.path:
     sys.path.insert(0, str(GUI_ROOT))
 
-from zsec_desktop.app import ZsecDesktop  # noqa: E402
+from zsec_desktop.app import ZsecDesktop, scan_completion_notification  # noqa: E402
 from zsec_desktop.bridge import BridgeError, CommandResult, ZsecBridge, discover_cli  # noqa: E402
 from zsec_desktop.contracts import (  # noqa: E402
     ContractError,
@@ -146,6 +146,12 @@ def valid_companion() -> dict[str, object]:
                 "ioav_protection_enabled": False,
                 "on_access_protection_enabled": False,
                 "network_inspection_enabled": False,
+                "network_protection": {
+                    "state": "disabled",
+                    "raw_value": 0,
+                    "source": "Get-MpPreference.EnableNetworkProtection",
+                    "note": "Defender Network Protection is disabled.",
+                },
                 "tamper_protection": "enabled",
                 "reboot_required": False,
                 "signatures": {
@@ -209,6 +215,19 @@ def valid_baselining_companion() -> dict[str, object]:
         }
     )
     value["health"]["last_record"] = {"operational_state": "baselining"}
+    return value
+
+
+def valid_metadata_inventory_companion() -> dict[str, object]:
+    value = valid_healthy_companion()
+    value.update(
+        {
+            "healthy": False,
+            "decision": "metadata_inventory_in_progress",
+            "reasons": ["initial protected-folder metadata inventory is in progress"],
+        }
+    )
+    value["health"]["last_record"] = {"operational_state": "inventorying_metadata"}
     return value
 
 
@@ -371,6 +390,16 @@ def test_status_contract_never_turns_incomplete_or_inconsistent_evidence_green()
     incomplete["last_scan_errors"] = 1
     assert status_presentation(validate_status(incomplete)).state == "incomplete"
 
+    review = copy.deepcopy(status)
+    review["last_scan_outcome"] = "review_observations"
+    review["observations"] = 3
+    review_view = status_presentation(validate_status(review))
+    assert review_view.state == "review"
+    assert review_view.headline == "No malware rule matches"
+    assert review_view.accent == "#26d9d1"
+    assert "3 item(s)" in review_view.detail
+    assert "not malware detections" in review_view.detail
+
     inconsistent = copy.deepcopy(status)
     inconsistent["findings"] = 1
     with pytest.raises(ContractError, match="inconsistent counters"):
@@ -488,6 +517,16 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     assert baseline_view.accent == "cyan"
     assert baseline_view.headline == "Automatic protection is live"
     assert "one-time coverage inventory completes automatically" in baseline_view.detail
+    assert baseline_view.detail.startswith("Windows antivirus protection")
+    assert "Microsoft Defender" not in baseline_view.detail
+
+    inventory = validate_companion_status(valid_metadata_inventory_companion())
+    inventory_view = companion_presentation(inventory)
+    assert inventory_view.state == "inventorying"
+    assert inventory_view.accent == "cyan"
+    assert inventory_view.headline == "Automatic protection is live"
+    assert "metadata inventory completes automatically" in inventory_view.detail
+    assert inventory_view.detail.startswith("Windows antivirus protection")
 
     degraded_with_defender = valid_companion()
     degraded_with_defender.update(
@@ -498,8 +537,30 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     )
     assert degraded_view.state == "degraded"
     assert degraded_view.accent == "amber"
-    assert "Microsoft Defender is protecting this PC" in degraded_view.headline
+    assert degraded_view.headline.startswith("Windows antivirus protection active")
+    assert "Microsoft Defender" not in degraded_view.headline
     assert "restart local monitoring automatically" in degraded_view.detail
+
+    degraded_with_active_defender = copy.deepcopy(degraded_with_defender)
+    active_defender = degraded_with_active_defender["existing_primary_protection"][  # type: ignore[index]
+        "defender"
+    ]
+    for field in (
+        "antivirus_enabled",
+        "real_time_protection_enabled",
+        "service_enabled",
+        "behavior_monitor_enabled",
+        "ioav_protection_enabled",
+        "on_access_protection_enabled",
+        "network_inspection_enabled",
+    ):
+        active_defender[field] = True  # type: ignore[index]
+    active_defender["confirmed_active"] = True  # type: ignore[index]
+    active_defender["baseline_features_confirmed"] = True  # type: ignore[index]
+    defender_view = companion_presentation(
+        validate_companion_status(degraded_with_active_defender)
+    )
+    assert defender_view.headline.startswith("Microsoft Defender protection active")
 
     degraded_without_verified_primary = copy.deepcopy(degraded_with_defender)
     degraded_without_verified_primary["existing_primary_protection"][
@@ -521,9 +582,51 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     assert integrity_view.state == "degraded"
     assert integrity_view.accent == "red"
 
+
+def test_scan_completion_notifications_use_user_copy_and_preserve_severity() -> None:
+    assert scan_completion_notification(
+        {"outcome": "no_configured_rule_matches", "findings": 0, "observations": 0}
+    ) == "Scan complete — no malware rule matches."
+    review = scan_completion_notification(
+        {"outcome": "review_observations", "findings": 0, "observations": 2}
+    )
+    assert "2 items available for review" in review
+    assert "Nothing was quarantined" in review
+    detected = scan_completion_notification(
+        {"outcome": "configured_rule_matches_detected", "findings": 1, "observations": 0}
+    )
+    assert detected.startswith("Action recommended — 1 malware rule match.")
+    assert scan_completion_notification({"outcome": "incomplete"}).startswith(
+        "Scan incomplete"
+    )
+
+
+def test_network_protection_posture_is_validated_without_changing_health() -> None:
+    payload = valid_companion()
+    validated = validate_companion_status(payload)
+    assert validated["existing_primary_protection"]["defender"]["network_protection"][
+        "state"
+    ] == "disabled"
+
+    for state, raw_value in (("active", 1), ("audit", 2), ("unavailable", None)):
+        candidate = copy.deepcopy(payload)
+        posture = candidate["existing_primary_protection"]["defender"][  # type: ignore[index]
+            "network_protection"
+        ]
+        posture["state"] = state  # type: ignore[index]
+        posture["raw_value"] = raw_value  # type: ignore[index]
+        assert validate_companion_status(candidate)["decision"] == "not_installed"
+
+    invalid = copy.deepcopy(payload)
+    invalid["existing_primary_protection"]["defender"]["network_protection"][  # type: ignore[index]
+        "raw_value"
+    ] = 9
+    with pytest.raises(ContractError, match="raw value"):
+        validate_companion_status(invalid)
+
     contradictory_baseline = valid_baselining_companion()
     contradictory_baseline["integrity"]["runtime_hash_verified"] = False
-    with pytest.raises(ContractError, match="baseline companion"):
+    with pytest.raises(ContractError, match="initializing companion"):
         validate_companion_status(contradictory_baseline)
 
     for field, replacement in (

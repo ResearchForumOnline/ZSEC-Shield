@@ -55,6 +55,31 @@ STARTUP_EVIDENCE_NOTICE_MS = 10_000
 COMPANION_REFRESH_INTERVAL_MS = 90_000
 
 
+def scan_completion_notification(report: dict[str, Any]) -> str:
+    """Return concise user copy without exposing internal outcome identifiers."""
+
+    outcome = report.get("outcome")
+    if outcome == "no_configured_rule_matches":
+        return "Scan complete — no malware rule matches."
+    if outcome == "review_observations":
+        observations = int(report.get("observations", 0))
+        noun = "item" if observations == 1 else "items"
+        return (
+            f"Scan complete — {observations} {noun} available for review. "
+            "Nothing was quarantined."
+        )
+    if outcome == "configured_rule_matches_detected":
+        findings = int(report.get("findings", 0))
+        noun = "match" if findings == 1 else "matches"
+        return (
+            f"Action recommended — {findings} malware rule {noun}. "
+            "Open ZSEC Antivirus for details."
+        )
+    if outcome == "incomplete":
+        return "Scan incomplete — some files could not be checked. Open ZSEC for details."
+    return "Scan completed. Open ZSEC Antivirus for the verified result."
+
+
 class ModernStatusCard(tk.Canvas):
     """Rounded evidence card rendered with native Tk primitives."""
 
@@ -306,8 +331,9 @@ class ZsecDesktop:
         self.watch_last_sequence = 0
         self.watch_last_heartbeat_monotonic: float | None = None
         self.watch_watchdog_job: str | None = None
-        self.tray_scan_status = "Local engine starting"
-        self.tray_companion_status = "Companion evidence pending"
+        self.tray_protection_status = "Checking Windows protection"
+        self.tray_companion_status = "Checking ZSEC monitoring"
+        self.tray_scan_status = "Checking scan evidence"
         self.protected_roots: tuple[Path, ...] = ()
         self.latest_status_payload: dict[str, Any] | None = None
         self.latest_companion_payload: dict[str, Any] | None = None
@@ -490,7 +516,7 @@ class ZsecDesktop:
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
         ttk.Label(
             title_row,
-            text="COMMUNITY 0.3.22",
+            text="COMMUNITY 0.3.23",
             style="Subtitle.TLabel",
             foreground=AMBER,
         ).pack(
@@ -1284,7 +1310,7 @@ class ZsecDesktop:
         self.yubikey_status = ttk.Label(
             panel,
             text=(
-                "Hardware-key recovery is not enabled in Community 0.3.22. When "
+                "Hardware-key recovery is not enabled in Community 0.3.23. When "
                 "quarantine is explicitly enabled, encryption remains automatic, "
                 "authenticated and device-bound."
             ),
@@ -1484,7 +1510,9 @@ class ZsecDesktop:
         if self.busy_operations <= 0:
             return
         if bool(self.reduce_motion.get()):
-            self.global_busy.configure(mode="determinate", value=100)
+            # There is no measurable completion percentage. A full bar would falsely
+            # look complete, so reduced-motion mode leaves it static and empty.
+            self.global_busy.configure(mode="determinate", value=0)
         else:
             self.global_busy.configure(mode="indeterminate", value=0)
             self.global_busy.start(12)
@@ -1556,7 +1584,11 @@ class ZsecDesktop:
 
     def _update_tray_status(self) -> None:
         if hasattr(self, "tray"):
-            self.tray.set_status(f"{self.tray_scan_status}; {self.tray_companion_status}")
+            self.tray.set_status(
+                protection=self.tray_protection_status,
+                monitoring=self.tray_companion_status,
+                last_scan=self.tray_scan_status,
+            )
 
     def _tray_scan_protected_folders(self) -> None:
         self._scan_protected_folders(from_tray=True)
@@ -1913,7 +1945,7 @@ class ZsecDesktop:
         self.refresh_status()
         self.refresh_quarantine()
         self.refresh_reports()
-        self.tray.notify(f"Scan finished: {report['outcome'].replace('_', ' ')}.")
+        self.tray.notify(scan_completion_notification(report))
 
     def _scan_failed(self, exc: BaseException) -> None:
         self.scan_start_button.configure(state=tk.NORMAL)
@@ -2126,8 +2158,17 @@ class ZsecDesktop:
         self.latest_companion_payload = payload
         self._update_support_export_state()
         presentation = companion_presentation(payload)
-        self.tray_companion_status = presentation.headline
-        self._update_tray_status()
+        self.tray_companion_status = {
+            "healthy": "ZSEC monitoring active",
+            "baselining": "ZSEC setup finishing",
+            "inventorying": "ZSEC setup finishing",
+            "not_installed": "ZSEC monitoring not installed",
+        }.get(
+            presentation.state,
+            "ZSEC monitoring restarting"
+            if presentation.accent == "amber"
+            else "ZSEC monitoring unavailable",
+        )
         colour = {"green": GREEN, "cyan": CYAN, "amber": AMBER, "red": RED}[
             presentation.accent
         ]
@@ -2169,18 +2210,22 @@ class ZsecDesktop:
             headline = "Windows Security reports GOOD; Defender real-time controls are confirmed."
             colour = GREEN
             self.windows_card.set_value("Defender enforcement verified", GREEN)
+            self.tray_protection_status = "Microsoft Defender active"
         elif aggregate_good:
             headline = (
                 "Windows Security reports GOOD; Defender is not the confirmed active "
                 "real-time provider."
             )
             colour = AMBER
-            self.windows_card.set_value("Registered antivirus reports healthy", GREEN)
+            self.windows_card.set_value("Windows antivirus health is GOOD", GREEN)
+            self.tray_protection_status = "Windows antivirus active"
         else:
             headline = "Windows antivirus aggregate health is not confirmed GOOD."
             colour = RED
             self.windows_card.set_value("Provider health unconfirmed", RED)
+            self.tray_protection_status = "Protection health unconfirmed"
         self.windows_provider_status.configure(text=headline, foreground=colour)
+        self._update_tray_status()
 
         products = evidence["registered_products"]
         product_names = ", ".join(item["display_name"] for item in products) or "None observed"
@@ -2189,6 +2234,7 @@ class ZsecDesktop:
         )
         signatures = defender["signatures"]
         scans = defender["scans"]
+        network_protection = defender["network_protection"]
         cutover = windows_cutover_presentation(payload)
 
         def enabled(value: Any) -> str:
@@ -2225,6 +2271,10 @@ class ZsecDesktop:
                     f"on-access {enabled(defender['on_access_protection_enabled'])}; "
                     f"network inspection {enabled(defender['network_inspection_enabled'])}"
                 ),
+            ),
+            (
+                "Defender Network Protection",
+                f"{network_protection['state'].capitalize()} — {network_protection['note']}",
             ),
             ("Defender tamper protection", defender["tamper_protection"].capitalize()),
             ("Defender security intelligence", signature_detail),
@@ -2327,7 +2377,8 @@ class ZsecDesktop:
             self.defender_full_scan_button,
         ):
             button.configure(state=tk.DISABLED)
-        self.tray_companion_status = "Companion evidence unavailable"
+        self.tray_protection_status = "Protection evidence unavailable"
+        self.tray_companion_status = "ZSEC monitoring evidence unavailable"
         self._update_tray_status()
 
     def refresh_quarantine(self) -> None:

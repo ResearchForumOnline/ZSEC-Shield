@@ -246,24 +246,26 @@ class WatchEvidenceSink:
             policy = payload.get("policy")
             if isinstance(policy, dict):
                 self.policy = policy
-            self.operational_state = "baselining"
+            self.operational_state = "inventorying_metadata"
         elif event == "health_issue":
             self.operational_state = "degraded"
-        elif event == "scan_completed":
+        elif event in {"scan_completed", "reconciliation_completed"}:
             self.last_outcome = _optional_string(payload.get("outcome"))
             scan = payload.get("scan")
             if isinstance(scan, dict) and isinstance(scan.get("stats"), dict):
                 self.counters = _integer_values(scan["stats"])
             if self.last_outcome == "incomplete":
                 self.operational_state = "degraded"
-            elif payload.get("triggers") == ["initial_baseline"]:
-                self.operational_state = "healthy"
-        elif event == "reconciliation_completed":
+        elif event == "metadata_inventory_completed":
             self.last_outcome = _optional_string(payload.get("outcome"))
             scan = payload.get("scan")
             if isinstance(scan, dict) and isinstance(scan.get("stats"), dict):
                 self.counters = _integer_values(scan["stats"])
-            if self.last_outcome == "incomplete":
+            if self.last_outcome == "metadata_inventory_complete":
+                self.operational_state = "healthy"
+            else:
+                # Startup monitoring is not claimed healthy until the metadata
+                # inventory completes without a coverage or inspection error.
                 self.operational_state = "degraded"
         elif event == "health_heartbeat":
             self.backend_active = _optional_string(payload.get("backend_active"))

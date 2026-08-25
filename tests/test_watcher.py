@@ -388,32 +388,32 @@ class WatchEngineTests(unittest.TestCase):
         self.assertEqual(1, summary.stats.events_dropped)
         self.assertEqual("watch_event_queue_overflow", summary.health_issues[0]["code"])
 
-    def test_baseline_concurrently_ingests_and_coalesces_repeated_events(self) -> None:
-        target_hashed = threading.Event()
-        release_baseline = threading.Event()
+    def test_inventory_concurrently_ingests_and_coalesces_repeated_events(self) -> None:
+        target_observed = threading.Event()
+        release_inventory = threading.Event()
         producer_done = threading.Event()
         producer_threads: list[threading.Thread] = []
         target = self.scan_root / "00-target.bin"
-        target.write_bytes(b"benign before the baseline event")
-        (self.scan_root / "99-tail.bin").write_bytes(b"keeps the baseline active")
+        target.write_bytes(b"benign before the inventory event")
+        (self.scan_root / "99-tail.bin").write_bytes(b"keeps the inventory active")
 
         class BlockingScanner(Scanner):
             def scan(self, *args: Any, **kwargs: Any):  # type: ignore[no-untyped-def]
-                original_observer = kwargs.get("file_observer")
+                original_filter = kwargs.get("file_filter")
+                if original_filter is None:
+                    return super().scan(*args, **kwargs)
 
-                def block_after_target(
-                    path: Path, metadata: os.stat_result, was_hashed: bool
-                ) -> None:
-                    if original_observer is not None:
-                        original_observer(path, metadata, was_hashed)
+                def block_after_target(path: Path, metadata: os.stat_result) -> bool:
+                    include = original_filter(path, metadata)
                     if path == target:
-                        target_hashed.set()
-                        if not release_baseline.wait(timeout=5):
+                        target_observed.set()
+                        if not release_inventory.wait(timeout=5):
                             raise AssertionError(
-                                "event producer did not release baseline scanner"
+                                "event producer did not release metadata inventory"
                             )
+                    return include
 
-                kwargs["file_observer"] = block_after_target
+                kwargs["file_filter"] = block_after_target
                 return super().scan(*args, **kwargs)
 
         def start_producer(observer: FakeObserver) -> None:
@@ -421,15 +421,15 @@ class WatchEngineTests(unittest.TestCase):
                 raise AssertionError("observer was started without a handler")
 
             def produce() -> None:
-                if not target_hashed.wait(timeout=5):
-                    release_baseline.set()
+                if not target_observed.wait(timeout=5):
+                    release_inventory.set()
                     return
                 target.write_bytes(make_test_rule().literal or b"")
                 for _ in range(32):
                     observer.handler.on_created(FileCreatedEvent(str(target)))
                     threading.Event().wait(0.01)
                 producer_done.set()
-                release_baseline.set()
+                release_inventory.set()
 
             thread = threading.Thread(target=produce, daemon=True)
             producer_threads.append(thread)
@@ -456,7 +456,6 @@ class WatchEngineTests(unittest.TestCase):
             record
             for record in records
             if record["event"] == "scan_completed"
-            and record["triggers"] != ["initial_baseline"]
         ]
         self.assertTrue(event_scans)
         self.assertEqual(1, event_scans[-1]["scan"]["stats"]["findings"])
@@ -465,8 +464,8 @@ class WatchEngineTests(unittest.TestCase):
             summary.stats.event_queue_capacity,
         )
 
-    def test_baseline_interleaves_a_new_file_scan_before_inventory_finishes(self) -> None:
-        first_hashed = threading.Event()
+    def test_inventory_interleaves_a_new_file_scan_before_inventory_finishes(self) -> None:
+        first_observed = threading.Event()
         producer_done = threading.Event()
         producer_threads: list[threading.Thread] = []
         first = self.scan_root / "00-first.bin"
@@ -475,21 +474,21 @@ class WatchEngineTests(unittest.TestCase):
         (self.scan_root / "99-tail.bin").write_bytes(b"tail")
         live = self.scan_root / "25-live.bin"
 
-        class SlowBaselineScanner(Scanner):
+        class SlowInventoryScanner(Scanner):
             def scan(self, *args: Any, **kwargs: Any):  # type: ignore[no-untyped-def]
-                original_observer = kwargs.get("file_observer")
+                original_filter = kwargs.get("file_filter")
+                if original_filter is None:
+                    return super().scan(*args, **kwargs)
 
-                def pause_after_first(
-                    path: Path, metadata: os.stat_result, was_hashed: bool
-                ) -> None:
-                    if original_observer is not None:
-                        original_observer(path, metadata, was_hashed)
+                def pause_after_first(path: Path, metadata: os.stat_result) -> bool:
+                    include = original_filter(path, metadata)
                     if path == first:
-                        first_hashed.set()
+                        first_observed.set()
                         if not producer_done.wait(timeout=5):
                             raise AssertionError("live event producer did not finish")
+                    return include
 
-                kwargs["file_observer"] = pause_after_first
+                kwargs["file_filter"] = pause_after_first
                 return super().scan(*args, **kwargs)
 
         def start_producer(observer: FakeObserver) -> None:
@@ -497,7 +496,7 @@ class WatchEngineTests(unittest.TestCase):
                 raise AssertionError("observer was started without a handler")
 
             def produce() -> None:
-                if not first_hashed.wait(timeout=5):
+                if not first_observed.wait(timeout=5):
                     producer_done.set()
                     return
                 live.write_bytes(make_test_rule().literal or b"")
@@ -511,7 +510,7 @@ class WatchEngineTests(unittest.TestCase):
 
         records: list[dict[str, Any]] = []
         watcher = ForegroundProtectionWatcher(
-            SlowBaselineScanner((make_test_rule(),)),
+            SlowInventoryScanner((make_test_rule(),)),
             self._config(event_queue_size=32),
             on_record=records.append,
             polling_observer_factory=lambda timeout: FakeObserver(timeout, start_producer),
@@ -523,28 +522,27 @@ class WatchEngineTests(unittest.TestCase):
             index
             for index, record in enumerate(records)
             if record["event"] == "scan_completed"
-            and record["triggers"] != ["initial_baseline"]
         )
-        baseline_index = next(
+        inventory_index = next(
             index
             for index, record in enumerate(records)
-            if record["event"] == "scan_completed"
-            and record["triggers"] == ["initial_baseline"]
+            if record["event"] == "metadata_inventory_completed"
+            and record["triggers"] == ["initial_metadata_inventory"]
         )
-        self.assertLess(event_index, baseline_index)
+        self.assertLess(event_index, inventory_index)
         self.assertGreaterEqual(summary.stats.findings, 1)
         self.assertEqual(0, summary.stats.event_queue_total_depth)
 
-    def test_unique_events_during_baseline_overflow_fail_closed(self) -> None:
-        baseline_started = threading.Event()
-        release_baseline = threading.Event()
+    def test_unique_events_during_inventory_overflow_fail_closed(self) -> None:
+        inventory_started = threading.Event()
+        release_inventory = threading.Event()
         producer_threads: list[threading.Thread] = []
 
         class BlockingScanner(Scanner):
             def scan(self, *args: Any, **kwargs: Any):  # type: ignore[no-untyped-def]
-                baseline_started.set()
-                if not release_baseline.wait(timeout=5):
-                    raise AssertionError("event producer did not release baseline scanner")
+                inventory_started.set()
+                if not release_inventory.wait(timeout=5):
+                    raise AssertionError("event producer did not release metadata inventory")
                 return super().scan(*args, **kwargs)
 
         def start_producer(observer: FakeObserver) -> None:
@@ -552,15 +550,15 @@ class WatchEngineTests(unittest.TestCase):
                 raise AssertionError("observer was started without a handler")
 
             def produce() -> None:
-                if not baseline_started.wait(timeout=5):
-                    release_baseline.set()
+                if not inventory_started.wait(timeout=5):
+                    release_inventory.set()
                     return
                 for index in range(17):
                     observer.handler.on_created(
                         FileCreatedEvent(str(self.scan_root / f"unique-{index}.bin"))
                     )
                     threading.Event().wait(0.01)
-                release_baseline.set()
+                release_inventory.set()
 
             thread = threading.Thread(target=produce, daemon=True)
             producer_threads.append(thread)
@@ -635,7 +633,7 @@ class WatchEngineTests(unittest.TestCase):
             [issue["code"] for issue in summary.health_issues],
         )
 
-    def test_state_and_quarantine_are_excluded_from_baseline_scan(self) -> None:
+    def test_state_and_quarantine_are_excluded_from_startup_inventory(self) -> None:
         nested_state = self.scan_root / ".zero-state"
         (nested_state / "quarantine").mkdir(parents=True)
         (nested_state / "quarantine" / "marker.bin").write_bytes(
@@ -654,7 +652,7 @@ class WatchEngineTests(unittest.TestCase):
         (self.scan_root / "large.bin").write_bytes(b"12345")
         watcher = ForegroundProtectionWatcher(
             Scanner((), ScannerConfig(max_file_bytes=4)),
-            self._config(reconcile_seconds=0.1, full_rescan_seconds=10.0),
+            self._config(reconcile_seconds=0.1, full_rescan_seconds=0.1),
             polling_observer_factory=FakeObserver,
         )
         summary = watcher.run(duration_seconds=0.3)
@@ -723,15 +721,15 @@ class WatchEngineTests(unittest.TestCase):
         self.assertEqual(1, len(reconciled.issues))
         self.assertTrue(watcher._operational_incomplete)
 
-    def test_real_polling_backend_detects_file_created_after_baseline(self) -> None:
+    def test_real_polling_backend_detects_file_created_after_inventory(self) -> None:
         target = self.scan_root / "arriving.bin"
         wrote_target = threading.Event()
         records: list[dict[str, Any]] = []
 
         def record(value: dict[str, Any]) -> None:
             records.append(value)
-            if value["event"] == "scan_completed" and value["triggers"] == [
-                "initial_baseline"
+            if value["event"] == "metadata_inventory_completed" and value["triggers"] == [
+                "initial_metadata_inventory"
             ]:
                 target.write_bytes(
                     b"prefix-" + (make_test_rule().literal or b"") + b"-suffix"
@@ -749,7 +747,7 @@ class WatchEngineTests(unittest.TestCase):
         event_scans = [
             value
             for value in records
-            if value["event"] == "scan_completed" and "initial_baseline" not in value["triggers"]
+            if value["event"] == "scan_completed"
         ]
         self.assertTrue(event_scans)
         self.assertTrue(target.exists(), "quarantine must remain off by default")
@@ -777,9 +775,9 @@ class WatchEngineTests(unittest.TestCase):
         self.assertFalse(heartbeats[0]["policy"]["real_time_protection"])
         self.assertFalse(heartbeats[0]["policy"]["pre_access_enforcement"])
 
-    def test_initial_baseline_emits_progress_heartbeat_before_completion(self) -> None:
+    def test_initial_metadata_inventory_emits_progress_without_hashing(self) -> None:
         for index in range(5):
-            (self.scan_root / f"baseline-{index}.bin").write_bytes(b"bounded baseline")
+            (self.scan_root / f"inventory-{index}.bin").write_bytes(b"bounded inventory")
         records: list[dict[str, Any]] = []
         now = [0.0]
 
@@ -799,7 +797,7 @@ class WatchEngineTests(unittest.TestCase):
             record
             for record in records
             if record["event"] == "health_heartbeat"
-            and record.get("reconciliation_phase") == "initial_baseline"
+            and record.get("reconciliation_phase") == "initial_metadata_inventory"
         ]
         self.assertTrue(progress)
         self.assertGreaterEqual(
@@ -814,15 +812,13 @@ class WatchEngineTests(unittest.TestCase):
         self.assertTrue(
             all(record["stats"]["scan_batches"] == 0 for record in progress)
         )
-        hashed_progress = [
-            record["stats"]
-            for record in progress
-            if record["stats"]["reconciliation_files_hashed"] >= 1
-        ]
-        self.assertTrue(hashed_progress)
-        self.assertTrue(all(item["files_hashed"] == 0 for item in hashed_progress))
-        self.assertGreater(hashed_progress[-1]["reconciliation_bytes_hashed"], 0)
-        self.assertEqual(4096, hashed_progress[-1]["event_queue_capacity"])
+        self.assertTrue(
+            all(record["stats"]["reconciliation_files_hashed"] == 0 for record in progress)
+        )
+        self.assertTrue(
+            all(record["stats"]["reconciliation_bytes_hashed"] == 0 for record in progress)
+        )
+        self.assertEqual(4096, progress[-1]["stats"]["event_queue_capacity"])
         phase_counts = [
             record["stats"]["reconciliation_files_hashed"] for record in progress
         ]
@@ -834,8 +830,13 @@ class WatchEngineTests(unittest.TestCase):
                 for record in progress
             )
         )
-        self.assertEqual(5, summary.stats.files_hashed)
-        self.assertEqual(5 * len(b"bounded baseline"), summary.stats.bytes_hashed)
+        self.assertEqual(0, summary.stats.files_hashed)
+        self.assertEqual(0, summary.stats.bytes_hashed)
+        inventory = next(
+            record for record in records if record["event"] == "metadata_inventory_completed"
+        )
+        self.assertEqual("metadata_inventory_complete", inventory["outcome"])
+        self.assertEqual(0, inventory["scan"]["stats"]["files_hashed"])
 
     def test_metadata_reconciliation_does_not_rehash_unchanged_files(self) -> None:
         target = self.scan_root / "stable.bin"
@@ -859,8 +860,8 @@ class WatchEngineTests(unittest.TestCase):
             and record["triggers"] == ["periodic_reconciliation"]
         ]
         self.assertGreaterEqual(summary.stats.reconciliations, 3)
-        self.assertEqual(1, summary.stats.full_reconciliations)
-        self.assertEqual(1, summary.stats.files_hashed)
+        self.assertEqual(0, summary.stats.full_reconciliations)
+        self.assertEqual(0, summary.stats.files_hashed)
         self.assertGreaterEqual(summary.stats.metadata_files_unchanged, 1)
         self.assertTrue(periodic)
         self.assertTrue(
@@ -877,8 +878,8 @@ class WatchEngineTests(unittest.TestCase):
             nonlocal changed
             if (
                 not changed
-                and value["event"] == "scan_completed"
-                and value["triggers"] == ["initial_baseline"]
+                and value["event"] == "metadata_inventory_completed"
+                and value["triggers"] == ["initial_metadata_inventory"]
             ):
                 target.write_bytes(b"second version with a different size")
                 changed = True
@@ -891,7 +892,7 @@ class WatchEngineTests(unittest.TestCase):
         )
         summary = watcher.run(duration_seconds=0.35)
         self.assertTrue(changed)
-        self.assertEqual(2, summary.stats.files_hashed)
+        self.assertEqual(1, summary.stats.files_hashed)
 
     def test_full_rescan_ignores_metadata_cache_on_its_bounded_interval(self) -> None:
         target = self.scan_root / "daily-full-sweep.bin"
@@ -910,8 +911,8 @@ class WatchEngineTests(unittest.TestCase):
             if record["event"] == "scan_completed"
             and record["triggers"] == ["periodic_full_rescan"]
         ]
-        self.assertGreaterEqual(summary.stats.full_reconciliations, 2)
-        self.assertGreaterEqual(summary.stats.files_hashed, 2)
+        self.assertGreaterEqual(summary.stats.full_reconciliations, 1)
+        self.assertGreaterEqual(summary.stats.files_hashed, 1)
         self.assertTrue(full_scans)
         self.assertTrue(
             all(record["scan"]["stats"]["files_hashed"] == 1 for record in full_scans)
@@ -927,8 +928,8 @@ class WatchEngineTests(unittest.TestCase):
             nonlocal changed
             if (
                 not changed
-                and value["event"] == "scan_completed"
-                and value["triggers"] == ["initial_baseline"]
+                and value["event"] == "metadata_inventory_completed"
+                and value["triggers"] == ["initial_metadata_inventory"]
             ):
                 target.write_bytes(marker)
                 changed = True

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.23 Windows desktop - 2026-08-25
+
+- Replaced the multi-hour startup content baseline with a metadata-only coverage
+  inventory while the native observer and bounded ingestion worker are already
+  active. New and changed paths still receive content inspection immediately,
+  and the independent periodic full-content reconciliation remains in place.
+- Added transactional migration and read-back verification for the exact owned
+  per-user startup registration, plus a safe process-enumeration fallback and a
+  hard failure if an obsolete verified ZSEC desktop process survives handoff.
+- Added automatic recovery for an installed but stopped integrity-verified
+  companion and a per-user named mutex so duplicate launch paths cannot create
+  competing supervisors.
+- Separated Windows provider health, ZSEC monitoring and the last scan in the
+  tray. Conservative review observations now state that they are not malware
+  detections and cannot become the primary protection warning.
+- Added truthful startup presentation, read-only Microsoft Defender Network
+  Protection posture, shortcut read-back verification, outcome-specific scan
+  notifications and a non-misleading reduced-motion progress state.
+
 ## 0.3.25 ZSEC Browser Community - 2026-08-24
 
 - Added a searchable Sign-in Setup Assistant that offers a bounded reviewed

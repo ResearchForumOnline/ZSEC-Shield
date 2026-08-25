@@ -149,11 +149,11 @@ function Wait-CompanionActivation {
             if (
                 $lastStatus.schema -eq "zsec.antivirus.windows-companion-status.v1" -and
                 $lastStatus.installed -eq $true -and
-                $lastStatus.decision -eq "baseline_in_progress" -and
+                $lastStatus.decision -eq "metadata_inventory_in_progress" -and
                 $lastStatus.healthy -eq $false -and
                 $reasons.Count -eq 1 -and
-                $reasons[0] -eq "initial protected-folder baseline is in progress" -and
-                $lastStatus.health.last_record.operational_state -eq "baselining" -and
+                $reasons[0] -eq "initial protected-folder metadata inventory is in progress" -and
+                $lastStatus.health.last_record.operational_state -eq "inventorying_metadata" -and
                 $integrityReady -and
                 $runtimeReady
             ) {
@@ -161,7 +161,7 @@ function Wait-CompanionActivation {
                     activation_verified = $true
                     healthy = $false
                     decision = "initializing"
-                    operational_state = "baselining"
+                    operational_state = "inventorying_metadata"
                     status = $lastStatus
                 }
             }
@@ -178,6 +178,73 @@ function Wait-CompanionActivation {
         "decision=$($lastStatus.decision); reasons=$(@($lastStatus.reasons) -join '; ')"
     }
     throw "The automatic companion did not produce verified activation within 30 seconds: $reason"
+}
+
+function Start-VerifiedStoppedCompanion {
+    param(
+        [Parameter(Mandatory = $true)][string]$StatusScript,
+        [Parameter(Mandatory = $true)][string]$State,
+        [Parameter(Mandatory = $true)]$Installation,
+        [Parameter(Mandatory = $true)]$Config
+    )
+    $status = Invoke-JsonScript -Script $StatusScript -Arguments @(
+        "-StateDirectory", $State
+    ) -AllowNonzeroJson
+    if ($status.schema -ne "zsec.antivirus.windows-companion-status.v1") {
+        throw "The installed companion returned an unsupported status contract."
+    }
+    if (
+        $status.healthy -eq $true -or
+        $status.decision -eq "metadata_inventory_in_progress"
+    ) {
+        return $false
+    }
+    $integrityReady = (
+        $status.installed -eq $true -and
+        $status.supervisor.registration_verified -eq $true -and
+        $status.integrity.cli_hash_verified -eq $true -and
+        $status.integrity.runtime_hash_verified -eq $true -and
+        $status.integrity.launcher_hash_verified -eq $true -and
+        $status.existing_primary_protection.aggregate_good -eq $true
+    )
+    if (-not $integrityReady) {
+        throw "A stopped companion cannot be restarted because its ownership, integrity, registration, or primary-protection evidence is incomplete."
+    }
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    if (
+        [string]$Installation.owner_sid -ne $identity.User.Value -or
+        [string]$Config.owner_sid -ne $identity.User.Value
+    ) {
+        throw "The stopped companion belongs to a different Windows user."
+    }
+    $launcher = Get-NormalizedPath ([string]$Installation.launcher_path)
+    $configPath = Get-NormalizedPath ([string]$Installation.config_path)
+    $expectedRoot = Get-NormalizedPath (Join-Path $State "companion")
+    if (
+        (Split-Path -Parent $launcher) -ne $expectedRoot -or
+        (Split-Path -Parent $configPath) -ne $expectedRoot -or
+        $launcher -ne (Get-NormalizedPath (Join-Path $expectedRoot "Start-ZsecAntivirusCompanion.ps1")) -or
+        $configPath -ne (Get-NormalizedPath (Join-Path $expectedRoot "config.json"))
+    ) {
+        throw "The stopped companion launcher or config path escaped the owned state directory."
+    }
+    Assert-RegularFile $launcher
+    Assert-RegularFile $configPath
+    $launcherHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $launcher).Hash.ToLowerInvariant()
+    if ($launcherHash -ne ([string]$Installation.launcher_sha256).ToLowerInvariant()) {
+        throw "The stopped companion launcher hash changed before recovery."
+    }
+    $argumentLine = (
+        '-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy RemoteSigned ' +
+        '-File "' + $launcher + '" -ConfigPath "' + $configPath + '"'
+    )
+    Start-Process `
+        -FilePath $script:WindowsPowerShell `
+        -ArgumentList $argumentLine `
+        -WorkingDirectory $expectedRoot `
+        -WindowStyle Hidden `
+        -ErrorAction Stop | Out-Null
+    return $true
 }
 
 function Get-RollbackInstaller {
@@ -325,12 +392,18 @@ if ($PlanOnly) {
 }
 
 if ($mode -eq "verify_existing") {
+    $recoveryStarted = Start-VerifiedStoppedCompanion `
+        -StatusScript $statusScript `
+        -State $state `
+        -Installation $previousInstallation `
+        -Config $previousConfig
     $activation = Wait-CompanionActivation -StatusScript $statusScript -State $state
     [ordered]@{
         schema = "zsec.antivirus.windows-companion-sync-result.v1"
         product = "ZSEC Antivirus"
         mode = $mode
-        changed = $false
+        changed = [bool]$recoveryStarted
+        recovery_started = [bool]$recoveryStarted
         activation_verified = $true
         healthy = $activation.healthy
         decision = $activation.decision

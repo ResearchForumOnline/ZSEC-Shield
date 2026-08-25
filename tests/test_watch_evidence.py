@@ -81,7 +81,7 @@ class WatchEvidenceTests(unittest.TestCase):
                     },
                 }
             )
-            baselining = json.loads(health_path.read_text(encoding="utf-8"))
+            inventorying = json.loads(health_path.read_text(encoding="utf-8"))
             sink.record(
                 {
                     "schema": "zsec.shield.watch-event.v1",
@@ -92,11 +92,11 @@ class WatchEvidenceTests(unittest.TestCase):
                     "event": "health_heartbeat",
                     "backend_active": "native",
                     "operational_incomplete": False,
-                    "reconciliation_phase": "initial_baseline",
+                    "reconciliation_phase": "initial_metadata_inventory",
                     "stats": {
                         "files_hashed": 0,
-                        "reconciliation_files_hashed": 7,
-                        "reconciliation_bytes_hashed": 70,
+                        "reconciliation_files_hashed": 0,
+                        "reconciliation_bytes_hashed": 0,
                         "event_queue_capacity": 4096,
                         "event_queue_raw_depth": 3,
                         "event_queue_pending_paths": 2,
@@ -112,19 +112,19 @@ class WatchEvidenceTests(unittest.TestCase):
                     "session_id": "test-session",
                     "sequence": 3,
                     "generated_at": "2026-08-21T12:00:01Z",
-                    "event": "scan_completed",
-                    "triggers": ["initial_baseline"],
-                    "outcome": "no_configured_rule_matches",
-                    "scan": {"stats": {"files_hashed": 1, "bytes_hashed": 8}},
+                    "event": "metadata_inventory_completed",
+                    "triggers": ["initial_metadata_inventory"],
+                    "outcome": "metadata_inventory_complete",
+                    "scan": {"stats": {"files_hashed": 0, "bytes_hashed": 0}},
                 }
             )
             health = json.loads(health_path.read_text(encoding="utf-8"))
         self.assertEqual("zsec.antivirus.companion-health.v1", health["schema"])
         self.assertEqual("ZSEC Antivirus", health["product"])
-        self.assertEqual("baselining", baselining["operational_state"])
-        self.assertEqual("baselining", progress["operational_state"])
+        self.assertEqual("inventorying_metadata", inventorying["operational_state"])
+        self.assertEqual("inventorying_metadata", progress["operational_state"])
         self.assertEqual(0, progress["counters"]["files_hashed"])
-        self.assertEqual(7, progress["counters"]["reconciliation_files_hashed"])
+        self.assertEqual(0, progress["counters"]["reconciliation_files_hashed"])
         self.assertEqual(4096, progress["counters"]["event_queue_capacity"])
         self.assertEqual(5, progress["counters"]["event_queue_total_depth"])
         self.assertEqual("healthy", health["operational_state"])

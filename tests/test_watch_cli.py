@@ -47,6 +47,10 @@ class WatchCliTests(unittest.TestCase):
                         "--backend",
                         "polling",
                         "--duration-seconds",
+                        "0.25",
+                        "--reconcile-seconds",
+                        "0.1",
+                        "--full-rescan-seconds",
                         "0.1",
                         "--json-lines",
                     ]
@@ -86,6 +90,10 @@ class WatchCliTests(unittest.TestCase):
                         "--backend",
                         "polling",
                         "--duration-seconds",
+                        "0.25",
+                        "--reconcile-seconds",
+                        "0.1",
+                        "--full-rescan-seconds",
                         "0.1",
                         "--quarantine",
                         "--json-lines",
@@ -179,7 +187,7 @@ class WatchCliTests(unittest.TestCase):
         self.assertEqual("stopped", health_record["operational_state"])
         events_recorded = [record["event"] for record in event_records]
         self.assertEqual("session_started", events_recorded[0])
-        self.assertIn("scan_completed", events_recorded)
+        self.assertIn("metadata_inventory_completed", events_recorded)
         self.assertEqual("session_completed", events_recorded[-1])
         self.assertFalse(health_record["policy"]["real_time_protection"])
 

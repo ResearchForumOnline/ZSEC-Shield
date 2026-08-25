@@ -25,7 +25,7 @@ closed on protocol or digest disagreement. The child currently retains the
 invoking user's authority, so it is process separation—not a reduced-privilege
 sandbox or evidence that the hostile-parser replacement gate is complete.
 
-Windows desktop Community 0.3.22 is unsigned and is not itself a replacement
+Windows desktop Community 0.3.23 is unsigned and is not itself a replacement
 primary antivirus. The separately distributed cross-platform CLI remains 0.3.14.
 A version tag or passing workflow is not artifact acceptance: use the published
 source revision, SHA-256, manifest, and installed-runtime evidence for the exact

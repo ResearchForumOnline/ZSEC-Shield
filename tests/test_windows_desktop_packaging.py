@@ -107,6 +107,9 @@ def test_desktop_installer_hands_off_only_verified_owned_obsolete_windows() -> N
         encoding="utf-8"
     )
     assert "function Invoke-ObsoleteDesktopHandoff" in installer
+    assert "function Get-ZsecDesktopProcessRecords" in installer
+    assert 'Get-Process -Name "ZSEC Antivirus"' in installer
+    assert "Cannot enumerate ZSEC Antivirus processes through CIM or Get-Process" in installer
     assert 'Get-CimInstance Win32_Process -Filter "Name = \'ZSEC Antivirus.exe\'"' in installer
     assert '(Test-IsBelow -Candidate $candidatePath -Parent $ownedRoot)' in installer
     assert "-not [String]::Equals($candidatePath, $currentExecutable" in installer
@@ -118,6 +121,7 @@ def test_desktop_installer_hands_off_only_verified_owned_obsolete_windows() -> N
     assert "forced_process_ids = @($forced)" in installer
     assert "profiles_preserved = $true" in installer
     assert "obsolete_windows = $obsoleteWindows" in installer
+    assert "verified obsolete ZSEC Antivirus process(es) remain running after handoff" in installer
 
 
 def test_windows_protection_orchestration_has_only_update_and_scan_actions() -> None:
@@ -167,6 +171,14 @@ def test_desktop_installer_activation_is_transactional_and_restores_prior_state(
     assert "$previousEngineForRollback" in installer
     assert "$companionSynchronized" in installer
     assert "prior automatic companion failed rollback verification" in installer
+    assert "function Get-OwnedDesktopStartupRegistration" in installer
+    assert "function Set-OwnedDesktopStartupToCurrent" in installer
+    assert "function Restore-OwnedDesktopStartupRegistration" in installer
+    assert "unowned_preserved" in installer
+    assert "failed read-back verification" in installer
+    assert "registry rollback also failed" in installer
+    assert "function Assert-DesktopShortcut" in installer
+    assert "shortcut target or working directory failed read-back verification" in installer
 
 
 def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
@@ -174,7 +186,7 @@ def test_user_facing_gui_brand_does_not_call_itself_preview() -> None:
     assert "Desktop Preview" not in app
     assert "DESKTOP PREVIEW" not in app
     assert 'self.root.title("ZSEC Antivirus")' in app
-    assert 'text="COMMUNITY 0.3.22"' in app
+    assert 'text="COMMUNITY 0.3.23"' in app
 
 
 def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None:
@@ -199,7 +211,8 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     assert "if changed and self.motion_enabled()" in app
     assert "card.sync_motion_preference()" in app
     assert "_sync_global_busy_motion" in app
-    assert 'self.global_busy.configure(mode="determinate", value=100)' in app
+    assert 'self.global_busy.configure(mode="determinate", value=0)' in app
+    assert 'self.global_busy.configure(mode="determinate", value=100)' not in app
     assert "width >= 1040" in app
     assert "width >= 520" in app
     assert "width=240" in app
@@ -208,6 +221,8 @@ def test_gui_has_bounded_activity_animation_and_reduced_motion_control() -> None
     assert 'minsize=180, uniform="overview-actions"' in app
     assert 'self.overview_tab.bind("<Map>", self._layout_overview_cards)' in app
     assert "TrayController" in app
+    assert "protection=self.tray_protection_status" in app
+    assert "last_scan=self.tray_scan_status" in app
     assert "_tray_scan_protected_folders" in app
     assert "Scan protected folders now" in app
     assert '"Advisory updates"' in app
@@ -262,8 +277,8 @@ def test_companion_sync_is_bounded_verified_and_rolls_back() -> None:
     assert "windows-companion-sync-result.v1" in sync
     assert "Wait-CompanionActivation" in sync
     assert 'decision = "initializing"' in sync
-    assert '$lastStatus.decision -eq "baseline_in_progress"' in sync
-    assert 'initial protected-folder baseline is in progress' in sync
+    assert '$lastStatus.decision -eq "metadata_inventory_in_progress"' in sync
+    assert 'initial protected-folder metadata inventory is in progress' in sync
     assert "activation_verified = $true" in sync
     assert "AddSeconds(30)" in sync
     assert "Get-RollbackInstaller" in sync
@@ -275,6 +290,8 @@ def test_companion_sync_is_bounded_verified_and_rolls_back() -> None:
     assert "Get-MigratedProtectedRoots" in sync
     assert "legacy_temp_root_retired" in sync
     assert "Move-PartialCompanionAside" in sync
+    assert "function Start-VerifiedStoppedCompanion" in sync
+    assert "recovery_started = [bool]$recoveryStarted" in sync
 
 
 def test_powershell_script_roots_are_resolved_after_parameter_binding() -> None:

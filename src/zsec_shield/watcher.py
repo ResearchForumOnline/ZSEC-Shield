@@ -415,7 +415,7 @@ class DebouncedPathQueue:
                         continue
                     # Debounce begins at observation, not whenever the consumer
                     # thread happens to drain the raw queue. Otherwise a busy
-                    # baseline can postpone a file that has already been quiet
+                    # startup inventory can postpone a file that has already been quiet
                     # for the full debounce interval.
                     now = event.observed_at
                     pending = PendingPath(event.path, first_seen_at=now)
@@ -899,7 +899,9 @@ class ForegroundProtectionWatcher:
         )
         return result
 
-    def _reconcile(self, trigger: str, *, full: bool) -> None:
+    def _reconcile(self, trigger: str, *, full: bool, metadata_only: bool = False) -> None:
+        if metadata_only and full:
+            raise WatchError("a metadata-only inventory cannot be a full-content rescan")
         self._stats.reconciliations += 1
         if full:
             self._stats.full_reconciliations += 1
@@ -944,11 +946,33 @@ class ForegroundProtectionWatcher:
             )
             next_progress_heartbeat = now + self.config.heartbeat_seconds
 
+        def drain_priority_events(current_key: str) -> None:
+            nonlocal next_priority_drain
+            now = self._clock()
+            if now < next_priority_drain:
+                return
+            # The observer and ingestion worker are active before inventory.
+            # Drain a bounded slice of changed paths while walking metadata so
+            # a large first inventory cannot postpone a new download or write.
+            next_priority_drain = now + min(0.1, self.config.debounce_seconds)
+            for pending in self._events.due(maximum=32):
+                if _path_key(pending.path) != current_key:
+                    self._scan_pending(pending)
+
         def changed_since_last_reconciliation(path: Path, metadata: os.stat_result) -> bool:
             nonlocal observed, unchanged
             key = _path_key(path)
             fingerprint = _file_fingerprint(metadata)
             observed += 1
+            if metadata_only:
+                # Startup coverage records stable identity/size/timestamps only.
+                # No content is opened or hashed here. New and changed observer
+                # events are content-scanned, and the independent periodic full
+                # rescan remains cache-independent.
+                current[key] = fingerprint
+                emit_progress_heartbeat()
+                drain_priority_events(key)
+                return False
             changed = full or previous.get(key) != fingerprint
             if not changed:
                 unchanged += 1
@@ -960,7 +984,7 @@ class ForegroundProtectionWatcher:
             path: Path, metadata: os.stat_result, was_hashed: bool
         ) -> None:
             nonlocal bytes_hashed, hashed_in_progress
-            nonlocal next_priority_drain, unresolved_in_progress
+            nonlocal unresolved_in_progress
             key = _path_key(path)
             if was_hashed:
                 # Keep this phase-local counter distinct from the completed-batch
@@ -972,26 +996,23 @@ class ForegroundProtectionWatcher:
                 unresolved_in_progress += 1
                 unresolved.add(key)
             emit_progress_heartbeat()
-            now = self._clock()
-            if now < next_priority_drain:
-                return
-            # The observer starts before the full baseline. Drain a small,
-            # bounded slice of changed paths between baseline files so a large
-            # first inventory cannot postpone a new download or write for many
-            # minutes. The event scan is synchronous and uses the same bounded
-            # scanner only after the current file request has completed.
-            next_priority_drain = now + min(0.1, self.config.debounce_seconds)
-            for pending in self._events.due(maximum=32):
-                if _path_key(pending.path) != key:
-                    self._scan_pending(pending)
+            drain_priority_events(key)
 
         self._scan_paths(
             [root.path for root in self.roots],
             [trigger],
             file_filter=changed_since_last_reconciliation,
-            file_observer=record_successful_hash,
-            event="scan_completed" if full else "reconciliation_completed",
-            no_hash_outcome=None if full else "no_metadata_changes",
+            file_observer=None if metadata_only else record_successful_hash,
+            event=(
+                "metadata_inventory_completed"
+                if metadata_only
+                else ("scan_completed" if full else "reconciliation_completed")
+            ),
+            no_hash_outcome=(
+                "metadata_inventory_complete"
+                if metadata_only
+                else (None if full else "no_metadata_changes")
+            ),
         )
         self._reconciliation_snapshot = current
         self._stats.metadata_files_observed += observed
@@ -1071,16 +1092,18 @@ class ForegroundProtectionWatcher:
             except RuntimeError as exc:
                 raise WatchError("event ingestion worker failed to start") from exc
             ingest_started = True
-            # Start the observer first so changes during the mandatory baseline scan
-            # enter the bounded queue instead of falling into a startup gap. A
-            # dedicated ingestion worker coalesces that raw work while the baseline
-            # scanner owns this thread; it never scans or discards event paths.
-            self._reconcile("initial_baseline", full=True)
+            # Start the observer first so changes during the initial metadata
+            # inventory enter the bounded queue instead of falling into a startup
+            # gap. Inventory records coverage without opening or hashing every
+            # existing file; observer events and periodic full rescans still use
+            # content inspection.
+            self._reconcile(
+                "initial_metadata_inventory", full=False, metadata_only=True
+            )
             # A finite watch duration describes monitored time after the mandatory
-            # baseline. Starting its clock before a slow baseline could otherwise
+            # inventory. Starting its clock before a large inventory could otherwise
             # stop the session with observer events still queued and report an
-            # avoidable coverage gap. The overall evidence timestamps continue to
-            # include baseline time.
+            # avoidable coverage gap. Evidence timestamps still include inventory.
             monitoring_started_monotonic = self._clock()
             while True:
                 if not self._event_pipeline_is_healthy():

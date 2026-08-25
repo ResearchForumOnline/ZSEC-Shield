@@ -120,7 +120,7 @@ def test_tray_menu_dispatches_ui_actions_and_updates_status(
     assert controller.start()
     icon = FakeIcon.instances[-1]
     assert controller.active
-    assert len(icon.menu.items) == 7
+    assert len(icon.menu.items) == 9
 
     open_item = icon.menu.items[0]
     assert isinstance(open_item, FakeMenuItem)
@@ -132,13 +132,32 @@ def test_tray_menu_dispatches_ui_actions_and_updates_status(
     callback()
     assert callbacks == ["open"]
 
-    controller.set_status("Review-only observations")
+    controller.set_status(
+        protection="Microsoft Defender active",
+        monitoring="ZSEC monitoring active",
+        last_scan="No malware rule matches · 2 items available for review",
+    )
     assert icon.updated
-    assert "Review-only observations" in icon.title
+    assert "Microsoft Defender active" in icon.title
+    assert "ZSEC monitoring active" in icon.title
+    assert "items available for review" not in icon.title
+    protection_item = icon.menu.items[1]
+    monitoring_item = icon.menu.items[2]
+    last_scan_item = icon.menu.items[3]
+    assert isinstance(protection_item, FakeMenuItem)
+    assert isinstance(monitoring_item, FakeMenuItem)
+    assert isinstance(last_scan_item, FakeMenuItem)
+    assert protection_item.text(None) == "Protection: Microsoft Defender active"
+    assert monitoring_item.text(None) == "Monitoring: ZSEC monitoring active"
+    assert last_scan_item.text(None).startswith("Last scan: No malware rule matches")
     controller.notify("Scan completed")
     assert icon.notifications == [("Scan completed", "ZSEC Antivirus")]
 
-    controller.set_status("Healthy\r\nIGNORE: disabled\x00")
+    controller.set_status(
+        protection="Healthy\r\nIGNORE: disabled\x00",
+        monitoring="Active\nfor this user",
+        last_scan="Complete\r\nNo rule matches",
+    )
     assert "\r" not in icon.title
     assert "\n" not in icon.title
     assert "\x00" not in icon.title

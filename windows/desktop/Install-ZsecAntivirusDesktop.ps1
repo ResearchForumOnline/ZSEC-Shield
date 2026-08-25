@@ -33,6 +33,191 @@ function Test-IsBelow {
     return $child.StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)
 }
 
+$DesktopRunKeyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+$DesktopRunValueName = "ZSEC Antivirus Desktop"
+
+function Get-ProcessIdentityRecord {
+    param([Parameter(Mandatory = $true)][int]$ProcessId)
+    try {
+        $candidate = Get-CimInstance Win32_Process -Filter "ProcessId = $ProcessId" -ErrorAction Stop
+        if ($null -eq $candidate) { return $null }
+        return [pscustomobject]@{
+            ProcessId = [int]$candidate.ProcessId
+            ExecutablePath = Get-NormalizedPath ([string]$candidate.ExecutablePath)
+            Source = "cim"
+        }
+    }
+    catch {
+        try {
+            $candidate = Get-Process -Id $ProcessId -ErrorAction Stop
+            return [pscustomobject]@{
+                ProcessId = [int]$candidate.Id
+                ExecutablePath = Get-NormalizedPath ([string]$candidate.Path)
+                Source = "process"
+            }
+        }
+        catch [Microsoft.PowerShell.Commands.ProcessCommandException] {
+            return $null
+        }
+        catch {
+            throw "Cannot verify ZSEC Antivirus process $ProcessId through CIM or Get-Process: $($_.Exception.Message)"
+        }
+    }
+}
+
+function Get-ZsecDesktopProcessRecords {
+    try {
+        return @(Get-CimInstance Win32_Process -Filter "Name = 'ZSEC Antivirus.exe'" -ErrorAction Stop |
+            ForEach-Object {
+                [pscustomobject]@{
+                    ProcessId = [int]$_.ProcessId
+                    ExecutablePath = Get-NormalizedPath ([string]$_.ExecutablePath)
+                    Source = "cim"
+                }
+            })
+    }
+    catch {
+        try {
+            return @(Get-Process -Name "ZSEC Antivirus" -ErrorAction SilentlyContinue |
+                ForEach-Object {
+                    [pscustomobject]@{
+                        ProcessId = [int]$_.Id
+                        ExecutablePath = Get-NormalizedPath ([string]$_.Path)
+                        Source = "process"
+                    }
+                })
+        }
+        catch {
+            throw "Cannot enumerate ZSEC Antivirus processes through CIM or Get-Process: $($_.Exception.Message)"
+        }
+    }
+}
+
+function Get-OwnedDesktopStartupRegistration {
+    param(
+        [Parameter(Mandatory = $true)][string]$ApplicationRoot,
+        [Parameter(Mandatory = $true)][string]$CurrentDesktopExecutable
+    )
+    $ownedRoot = Get-NormalizedPath $ApplicationRoot
+    $currentExecutable = Get-NormalizedPath $CurrentDesktopExecutable
+    $key = Get-Item -LiteralPath $DesktopRunKeyPath -ErrorAction SilentlyContinue
+    if ($null -eq $key) {
+        return [ordered]@{ present = $false; owned = $false; current = $false; value = $null }
+    }
+    try {
+        $kind = $key.GetValueKind($DesktopRunValueName)
+        $value = $key.GetValue(
+            $DesktopRunValueName,
+            $null,
+            [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames
+        )
+    }
+    catch [System.ArgumentException] {
+        return [ordered]@{ present = $false; owned = $false; current = $false; value = $null }
+    }
+    if ($kind -ne [Microsoft.Win32.RegistryValueKind]::String -or $value -isnot [string]) {
+        return [ordered]@{ present = $true; owned = $false; current = $false; value = $null }
+    }
+    $match = [regex]::Match([string]$value, '^"([^"\r\n]+)" --startup$')
+    if (-not $match.Success) {
+        return [ordered]@{ present = $true; owned = $false; current = $false; value = [string]$value }
+    }
+    try {
+        $candidate = Get-NormalizedPath $match.Groups[1].Value
+        Assert-RegularFile $candidate
+        if (-not (Test-IsBelow -Candidate $candidate -Parent $ownedRoot)) {
+            throw "outside owned root"
+        }
+        $relative = $candidate.Substring($ownedRoot.Length + 1).Split('\')
+        $layoutOwned = (
+            $relative.Count -eq 3 -and
+            -not [string]::IsNullOrWhiteSpace($relative[0]) -and
+            $relative[1] -eq "App" -and
+            $relative[2] -eq "ZSEC Antivirus.exe"
+        )
+        if (-not $layoutOwned) { throw "unexpected layout" }
+        return [ordered]@{
+            present = $true
+            owned = $true
+            current = [String]::Equals(
+                $candidate,
+                $currentExecutable,
+                [StringComparison]::OrdinalIgnoreCase
+            )
+            value = [string]$value
+        }
+    }
+    catch {
+        return [ordered]@{ present = $true; owned = $false; current = $false; value = [string]$value }
+    }
+}
+
+function Set-OwnedDesktopStartupToCurrent {
+    param(
+        [Parameter(Mandatory = $true)][string]$ApplicationRoot,
+        [Parameter(Mandatory = $true)][string]$CurrentDesktopExecutable
+    )
+    $before = Get-OwnedDesktopStartupRegistration `
+        -ApplicationRoot $ApplicationRoot `
+        -CurrentDesktopExecutable $CurrentDesktopExecutable
+    $currentCommand = '"' + (Get-NormalizedPath $CurrentDesktopExecutable) + '" --startup'
+    if (-not $before.present) {
+        return [ordered]@{ state = "absent"; changed = $false; previous_value = $null }
+    }
+    if (-not $before.owned) {
+        return [ordered]@{ state = "unowned_preserved"; changed = $false; previous_value = $null }
+    }
+    if ($before.current) {
+        return [ordered]@{ state = "current"; changed = $false; previous_value = [string]$before.value }
+    }
+    try {
+        Set-ItemProperty -LiteralPath $DesktopRunKeyPath -Name $DesktopRunValueName `
+            -Value $currentCommand -ErrorAction Stop
+        $after = Get-OwnedDesktopStartupRegistration `
+            -ApplicationRoot $ApplicationRoot `
+            -CurrentDesktopExecutable $CurrentDesktopExecutable
+        if (-not $after.present -or -not $after.owned -or -not $after.current -or
+            [string]$after.value -ne $currentCommand) {
+            throw "The owned ZSEC Antivirus desktop startup migration failed read-back verification."
+        }
+    }
+    catch {
+        $migrationError = $_
+        try {
+            Restore-OwnedDesktopStartupRegistration -PreviousValue ([string]$before.value)
+        }
+        catch {
+            throw (
+                "The owned desktop startup migration failed and its registry rollback also failed: " +
+                $migrationError.Exception.Message + " / " + $_.Exception.Message
+            )
+        }
+        throw $migrationError
+    }
+    return [ordered]@{
+        state = "migrated"
+        changed = $true
+        previous_value = [string]$before.value
+    }
+}
+
+function Restore-OwnedDesktopStartupRegistration {
+    param([Parameter(Mandatory = $true)][string]$PreviousValue)
+    Set-ItemProperty -LiteralPath $DesktopRunKeyPath -Name $DesktopRunValueName `
+        -Value $PreviousValue -ErrorAction Stop
+    $key = Get-Item -LiteralPath $DesktopRunKeyPath -ErrorAction Stop
+    $actual = $key.GetValue(
+        $DesktopRunValueName,
+        $null,
+        [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames
+    )
+    if ($key.GetValueKind($DesktopRunValueName) -ne
+            [Microsoft.Win32.RegistryValueKind]::String -or
+        [string]$actual -ne $PreviousValue) {
+        throw "The prior ZSEC Antivirus desktop startup value failed rollback verification."
+    }
+}
+
 function Invoke-ObsoleteDesktopHandoff {
     param(
         [Parameter(Mandatory = $true)][string]$ApplicationRoot,
@@ -43,31 +228,28 @@ function Invoke-ObsoleteDesktopHandoff {
     $currentExecutable = Get-NormalizedPath $CurrentDesktopExecutable
     $verified = @()
     $inspectionErrors = 0
-    try {
-        foreach ($candidate in @(Get-CimInstance Win32_Process -Filter "Name = 'ZSEC Antivirus.exe'" -ErrorAction Stop)) {
-            try {
-                $candidatePath = Get-NormalizedPath ([string]$candidate.ExecutablePath)
-                if (
-                    (Test-IsBelow -Candidate $candidatePath -Parent $ownedRoot) -and
-                    -not [String]::Equals($candidatePath, $currentExecutable, [StringComparison]::OrdinalIgnoreCase)
-                ) {
-                    $verified += [pscustomobject]@{
-                        ProcessId = [int]$candidate.ProcessId
-                        ExecutablePath = $candidatePath
-                    }
+    foreach ($candidate in @(Get-ZsecDesktopProcessRecords)) {
+        try {
+            $candidatePath = Get-NormalizedPath ([string]$candidate.ExecutablePath)
+            if (
+                (Test-IsBelow -Candidate $candidatePath -Parent $ownedRoot) -and
+                -not [String]::Equals($candidatePath, $currentExecutable, [StringComparison]::OrdinalIgnoreCase)
+            ) {
+                $verified += [pscustomobject]@{
+                    ProcessId = [int]$candidate.ProcessId
+                    ExecutablePath = $candidatePath
                 }
             }
-            catch { $inspectionErrors++ }
         }
+        catch { $inspectionErrors++ }
     }
-    catch { $inspectionErrors++ }
 
     $closeRequested = 0
     foreach ($candidate in $verified) {
         try {
-            $live = Get-CimInstance Win32_Process -Filter "ProcessId = $($candidate.ProcessId)" -ErrorAction Stop
+            $live = Get-ProcessIdentityRecord -ProcessId $candidate.ProcessId
             if ($null -eq $live) { continue }
-            $livePath = Get-NormalizedPath ([string]$live.ExecutablePath)
+            $livePath = [string]$live.ExecutablePath
             if (-not [String]::Equals($livePath, $candidate.ExecutablePath, [StringComparison]::OrdinalIgnoreCase)) {
                 continue
             }
@@ -83,12 +265,12 @@ function Invoke-ObsoleteDesktopHandoff {
         $remaining = @($verified | Where-Object {
             $candidate = $_
             try {
-                $live = Get-CimInstance Win32_Process -Filter "ProcessId = $($candidate.ProcessId)" -ErrorAction Stop
+                $live = Get-ProcessIdentityRecord -ProcessId $candidate.ProcessId
                 if ($null -eq $live) { return $false }
-                $livePath = Get-NormalizedPath ([string]$live.ExecutablePath)
+                $livePath = [string]$live.ExecutablePath
                 return [String]::Equals($livePath, $candidate.ExecutablePath, [StringComparison]::OrdinalIgnoreCase)
             }
-            catch { return $false }
+            catch { throw }
         })
         if ($remaining.Count -eq 0 -or [DateTime]::UtcNow -ge $deadline) { break }
         Start-Sleep -Milliseconds 200
@@ -100,9 +282,9 @@ function Invoke-ObsoleteDesktopHandoff {
         try {
             # Re-resolve both PID and executable immediately before force. This
             # prevents a recycled PID or an outside process from being stopped.
-            $live = Get-CimInstance Win32_Process -Filter "ProcessId = $($candidate.ProcessId)" -ErrorAction Stop
+            $live = Get-ProcessIdentityRecord -ProcessId $candidate.ProcessId
             if ($null -eq $live) { continue }
-            $livePath = Get-NormalizedPath ([string]$live.ExecutablePath)
+            $livePath = [string]$live.ExecutablePath
             if (
                 [String]::Equals($livePath, $candidate.ExecutablePath, [StringComparison]::OrdinalIgnoreCase) -and
                 (Test-IsBelow -Candidate $livePath -Parent $ownedRoot) -and
@@ -119,15 +301,18 @@ function Invoke-ObsoleteDesktopHandoff {
     $stillRunning = 0
     foreach ($candidate in $verified) {
         try {
-            $live = Get-CimInstance Win32_Process -Filter "ProcessId = $($candidate.ProcessId)" -ErrorAction Stop
+            $live = Get-ProcessIdentityRecord -ProcessId $candidate.ProcessId
             if ($null -ne $live) {
-                $livePath = Get-NormalizedPath ([string]$live.ExecutablePath)
+                $livePath = [string]$live.ExecutablePath
                 if ([String]::Equals($livePath, $candidate.ExecutablePath, [StringComparison]::OrdinalIgnoreCase)) {
                     $stillRunning++
                 }
             }
         }
-        catch { }
+        catch { throw }
+    }
+    if ($stillRunning -gt 0) {
+        throw "$stillRunning verified obsolete ZSEC Antivirus process(es) remain running after handoff."
     }
     return [ordered]@{
         owned_candidates = [int]$verified.Count
@@ -164,6 +349,31 @@ function Remove-RegularFileIfPresent {
     if (Test-Path -LiteralPath $Path) {
         Assert-RegularFile $Path
         Remove-Item -LiteralPath $Path -Force -ErrorAction Stop
+    }
+}
+
+function Assert-DesktopShortcut {
+    param(
+        [Parameter(Mandatory = $true)]$Shell,
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$ExpectedTarget,
+        [Parameter(Mandatory = $true)][string]$ExpectedWorkingDirectory
+    )
+    Assert-RegularFile $Path
+    $shortcut = $Shell.CreateShortcut($Path)
+    $actualTarget = Get-NormalizedPath ([string]$shortcut.TargetPath)
+    $actualWorkingDirectory = Get-NormalizedPath ([string]$shortcut.WorkingDirectory)
+    if (-not [String]::Equals(
+            $actualTarget,
+            (Get-NormalizedPath $ExpectedTarget),
+            [StringComparison]::OrdinalIgnoreCase
+        ) -or
+        -not [String]::Equals(
+            $actualWorkingDirectory,
+            (Get-NormalizedPath $ExpectedWorkingDirectory),
+            [StringComparison]::OrdinalIgnoreCase
+        )) {
+        throw "ZSEC Antivirus shortcut target or working directory failed read-back verification: $Path"
     }
 }
 
@@ -280,6 +490,7 @@ $desktopShortcutBackup = $null
 $startMenuShortcutBackup = $null
 $previousEngineForRollback = $null
 $companionSynchronized = $false
+$desktopStartupMigration = $null
 try {
     if (Test-Path -LiteralPath $productRoot) {
         Assert-RegularDirectory $productRoot
@@ -365,8 +576,16 @@ try {
         $destination = [string]$record.Destination
         Remove-RegularFileIfPresent $destination
         Move-Item -LiteralPath ([string]$record.Temporary) -Destination $destination -ErrorAction Stop
-        Assert-RegularFile $destination
+        Assert-DesktopShortcut `
+            -Shell $shell `
+            -Path $destination `
+            -ExpectedTarget $desktopExe `
+            -ExpectedWorkingDirectory (Split-Path -Parent $desktopExe)
     }
+
+    $desktopStartupMigration = Set-OwnedDesktopStartupToCurrent `
+        -ApplicationRoot (Join-Path $productRoot "App") `
+        -CurrentDesktopExecutable $desktopExe
 
     $companionOutput = & $companionSync -CliPath $engineExe
     try {
@@ -408,6 +627,11 @@ try {
         companion_healthy = [bool]$companionResult.healthy
         companion_decision = [string]$companionResult.decision
         obsolete_windows = $obsoleteWindows
+        desktop_startup = [ordered]@{
+            state = [string]$desktopStartupMigration.state
+            changed = [bool]$desktopStartupMigration.changed
+            read_back_verified = $true
+        }
         profiles_preserved = $true
     }
     $result | ConvertTo-Json -Depth 8
@@ -422,6 +646,10 @@ try {
 catch {
     $installationError = $_
     try {
+        if ($null -ne $desktopStartupMigration -and $desktopStartupMigration.changed -eq $true) {
+            Restore-OwnedDesktopStartupRegistration `
+                -PreviousValue ([string]$desktopStartupMigration.previous_value)
+        }
         if ($companionSynchronized) {
             if (-not [string]::IsNullOrWhiteSpace($previousEngineForRollback)) {
                 $companionRollbackOutput = & $companionSync -CliPath $previousEngineForRollback

@@ -220,14 +220,26 @@ if ([bool]$config.quarantine_enabled) {
 }
 $argumentLine = $arguments -join " "
 
-foreach ($outputPath in @($stdout, $stderr)) {
-    if (Test-Path -LiteralPath $outputPath -PathType Leaf) {
-        Assert-RegularNonReparseFile $outputPath
-        Remove-Item -LiteralPath $outputPath -Force
-    }
+$mutexName = "Local\ZSEC-Antivirus-Companion-" + ([string]$config.owner_sid)
+$createdNew = $false
+$supervisorMutex = New-Object System.Threading.Mutex($true, $mutexName, ([ref]$createdNew))
+if (-not $createdNew) {
+    $supervisorMutex.Dispose()
+    # A verified per-user supervisor already owns this companion identity.
+    # A duplicate HKCU Run, Scheduled Task, or recovery launch exits without
+    # starting a second watcher or touching its evidence files.
+    exit 0
 }
 
-function Invoke-IntelligenceCheck {
+try {
+    foreach ($outputPath in @($stdout, $stderr)) {
+        if (Test-Path -LiteralPath $outputPath -PathType Leaf) {
+            Assert-RegularNonReparseFile $outputPath
+            Remove-Item -LiteralPath $outputPath -Force
+        }
+    }
+
+    function Invoke-IntelligenceCheck {
     try {
         $output = & $cli `
             "--state-dir" $state `
@@ -248,9 +260,9 @@ function Invoke-IntelligenceCheck {
         # removes the last-known-good catalog. Monitoring continues.
         return "error"
     }
-}
+    }
 
-function Get-OptionalProperty {
+    function Get-OptionalProperty {
     param(
         [Parameter(Mandatory = $true)]$InputObject,
         [Parameter(Mandatory = $true)][string]$Name
@@ -258,9 +270,9 @@ function Get-OptionalProperty {
     $property = $InputObject.PSObject.Properties[$Name]
     if ($null -eq $property) { return $null }
     return $property.Value
-}
+    }
 
-function Invoke-DefenderSecurityIntelligenceMaintenance {
+    function Invoke-DefenderSecurityIntelligenceMaintenance {
     try {
         # Defender remains the Windows real-time provider. This bounded maintenance
         # path reads its own health signal and requests a signature refresh only
@@ -290,48 +302,54 @@ function Invoke-DefenderSecurityIntelligenceMaintenance {
         # failed maintenance request never stops ZSEC post-change monitoring.
         return "unavailable"
     }
-}
+    }
 
-$rapidFailures = 0
-$maximumRapidFailures = 5
-while ($true) {
-    $startedAt = [DateTimeOffset]::UtcNow
-    $process = Start-Process `
-        -FilePath $cli `
-        -ArgumentList $argumentLine `
-        -WorkingDirectory (Split-Path -Parent $cli) `
-        -WindowStyle Hidden `
-        -RedirectStandardOutput $stdout `
-        -RedirectStandardError $stderr `
-        -PassThru
-    try {
-        $process.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::BelowNormal
-    }
-    catch {
-        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-        throw "Could not apply BelowNormal priority to the companion process."
-    }
-    # Bring local monitoring online before any network-backed maintenance.
-    $null = Invoke-DefenderSecurityIntelligenceMaintenance
-    $null = Invoke-IntelligenceCheck
-    while (-not $process.HasExited) {
-        $null = $process.WaitForExit([int]([double]$config.intelligence_check_seconds * 1000.0))
-        if (-not $process.HasExited) {
-            # The CLI persists a randomized next-check time, so hourly supervision
-            # results in one fleet-spread check per day rather than synchronized load.
-            $null = Invoke-DefenderSecurityIntelligenceMaintenance
-            $null = Invoke-IntelligenceCheck
+    $rapidFailures = 0
+    $maximumRapidFailures = 5
+    while ($true) {
+        $startedAt = [DateTimeOffset]::UtcNow
+        $process = Start-Process `
+            -FilePath $cli `
+            -ArgumentList $argumentLine `
+            -WorkingDirectory (Split-Path -Parent $cli) `
+            -WindowStyle Hidden `
+            -RedirectStandardOutput $stdout `
+            -RedirectStandardError $stderr `
+            -PassThru
+        try {
+            $process.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::BelowNormal
         }
-    }
+        catch {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            throw "Could not apply BelowNormal priority to the companion process."
+        }
+        # Bring local monitoring online before any network-backed maintenance.
+        $null = Invoke-DefenderSecurityIntelligenceMaintenance
+        $null = Invoke-IntelligenceCheck
+        while (-not $process.HasExited) {
+            $null = $process.WaitForExit([int]([double]$config.intelligence_check_seconds * 1000.0))
+            if (-not $process.HasExited) {
+                # The CLI persists a randomized next-check time, so hourly supervision
+                # results in one fleet-spread check per day rather than synchronized load.
+                $null = Invoke-DefenderSecurityIntelligenceMaintenance
+                $null = Invoke-IntelligenceCheck
+            }
+        }
 
-    $lifetimeSeconds = ([DateTimeOffset]::UtcNow - $startedAt).TotalSeconds
-    if ($lifetimeSeconds -ge 300.0) { $rapidFailures = 0 }
-    else { $rapidFailures++ }
-    if ($rapidFailures -ge $maximumRapidFailures) {
-        # Fail visibly after a bounded crash loop. Status retains the stale
-        # heartbeat/process evidence instead of claiming monitoring is active.
-        exit $process.ExitCode
+        $lifetimeSeconds = ([DateTimeOffset]::UtcNow - $startedAt).TotalSeconds
+        if ($lifetimeSeconds -ge 300.0) { $rapidFailures = 0 }
+        else { $rapidFailures++ }
+        if ($rapidFailures -ge $maximumRapidFailures) {
+            # Fail visibly after a bounded crash loop. Status retains the stale
+            # heartbeat/process evidence instead of claiming monitoring is active.
+            exit $process.ExitCode
+        }
+        $restartDelaySeconds = [Math]::Min(60, [Math]::Pow(2, $rapidFailures))
+        Start-Sleep -Seconds ([int]$restartDelaySeconds)
     }
-    $restartDelaySeconds = [Math]::Min(60, [Math]::Pow(2, $rapidFailures))
-    Start-Sleep -Seconds ([int]$restartDelaySeconds)
+}
+finally {
+    try { $supervisorMutex.ReleaseMutex() }
+    catch [System.ApplicationException] { }
+    $supervisorMutex.Dispose()
 }
