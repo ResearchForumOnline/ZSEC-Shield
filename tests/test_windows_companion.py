@@ -18,6 +18,9 @@ ACTION = COMPANION_ROOT / "Invoke-ZsecWindowsProtectionAction.ps1"
 UNINSTALLER = COMPANION_ROOT / "Uninstall-ZsecAntivirusCompanion.ps1"
 SYNC = COMPANION_ROOT / "Sync-ZsecAntivirusCompanion.ps1"
 DEFENDER_AGE_FIXTURE = PROJECT_ROOT / "tests" / "fixtures" / "defender_scan_age_evidence.ps1"
+DEFENDER_HISTORY_FIXTURE = (
+    PROJECT_ROOT / "tests" / "fixtures" / "defender_protection_history_evidence.ps1"
+)
 SUPERVISOR_LIFECYCLE_FIXTURE = (
     PROJECT_ROOT / "tests" / "fixtures" / "supervisor_lifecycle_evidence.ps1"
 )
@@ -203,6 +206,21 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertIn('$defender.network_protection.state = "audit"', content)
         self.assertIn('$defender.network_protection.state = "disabled"', content)
         self.assertIn("companion health decision", content)
+        self.assertIn("function Get-DefenderProtectionHistoryEvidence", content)
+        self.assertIn("Get-MpThreatDetection -ErrorAction Stop", content)
+        self.assertIn("Get-MpThreat -ErrorAction Stop", content)
+        self.assertIn("protection_history = $null", content)
+        self.assertIn(
+            "$defender.protection_history = Get-DefenderProtectionHistoryEvidence",
+            content,
+        )
+        self.assertIn("resource_paths_included = $false", content)
+        self.assertIn("process_names_included = $false", content)
+        self.assertIn("user_names_included = $false", content)
+        self.assertIn("cloud_upload_performed = $false", content)
+        self.assertNotIn('Get-OptionalProperty -InputObject $detection -Name "Resources"', content)
+        self.assertNotIn('Get-OptionalProperty -InputObject $detection -Name "ProcessName"', content)
+        self.assertNotIn('Get-OptionalProperty -InputObject $detection -Name "DomainUser"', content)
         self.assertIn("function Get-SupervisorLifecycleEvidence", content)
         self.assertIn("function ConvertTo-SupervisorLifecycleRecord", content)
         self.assertIn('schema -ne "zsec.antivirus.supervisor-event.v1"', content)
@@ -247,6 +265,52 @@ class WindowsCompanionStaticTests(unittest.TestCase):
         self.assertEqual(3, evidence["normal_age_days"])
         self.assertTrue(evidence["confirmed_active"])
         self.assertTrue(evidence["baseline_features_confirmed"])
+
+    def test_defender_protection_history_is_bounded_and_excludes_private_fields(
+        self,
+    ) -> None:
+        powershell = shutil.which("powershell.exe") or shutil.which("pwsh")
+        if powershell is None:
+            self.skipTest("PowerShell is unavailable")
+        result = subprocess.run(
+            [
+                powershell,
+                "-NoLogo",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "RemoteSigned",
+                "-File",
+                str(DEFENDER_HISTORY_FIXTURE),
+                "-StatusScript",
+                str(STATUS),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            self.fail(
+                "Defender protection-history fixture failed: "
+                f"stdout={result.stdout!r} stderr={result.stderr!r}"
+            )
+        evidence = json.loads(result.stdout)
+        self.assertEqual(
+            "zsec.tests.defender-protection-history-evidence.v1",
+            evidence["schema"],
+        )
+        self.assertEqual(24, evidence["total_detection_records"])
+        self.assertEqual(20, evidence["returned_records"])
+        self.assertEqual(2, evidence["recent_30_days_count"])
+        self.assertEqual(2, evidence["attention_required_count"])
+        self.assertEqual(1, evidence["remediation_failed_count"])
+        self.assertEqual("detected", evidence["first_status"])
+        self.assertEqual("real_time", evidence["first_source"])
+        self.assertEqual("severe", evidence["first_severity"])
+        self.assertEqual(200, evidence["first_name_length"])
+        self.assertTrue(evidence["local_only"])
+        self.assertFalse(evidence["resource_paths_included"])
+        self.assertFalse(evidence["cloud_upload_performed"])
 
     def test_supervisor_lifecycle_fixture_rotates_and_retains_secret_free_exit_evidence(
         self,

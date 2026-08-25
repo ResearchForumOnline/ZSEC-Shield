@@ -177,6 +177,18 @@ states of `WinDefend`, `WdNisSvc`, `MDCoreSvc`, `wscsvc`, and
 `SecurityHealthService`. Missing version/timestamp evidence can never become a
 "current intelligence" result.
 
+When Windows permits the current account to read it, the Defender evidence also
+includes a bounded summary of active and past detections from the supported
+`Get-MpThreatDetection` cmdlet, with optional threat names/severity from
+`Get-MpThreat`. The summary returns at most 20 newest records plus 30-day,
+attention, and remediation-failure counts. It is local-only and deliberately
+omits affected resource paths, process names, and user names. Permission denial
+or unavailable Defender history remains explicit absent evidence; it does not
+become a clean-history claim.
+
+- <https://learn.microsoft.com/powershell/module/defender/get-mpthreatdetection>
+- <https://learn.microsoft.com/powershell/module/defender/get-mpthreat>
+
 The desktop packages a separate fixed-action helper for three user-requested
 Defender operations:
 

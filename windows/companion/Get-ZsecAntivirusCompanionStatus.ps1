@@ -294,6 +294,288 @@ function ConvertTo-DefenderAgeEvidence {
     return [int]$parsed
 }
 
+function ConvertTo-OptionalEvidenceInt64 {
+    param($Value)
+    if ($null -eq $Value -or $Value -is [bool]) {
+        return $null
+    }
+    [long]$parsed = 0
+    if (-not [long]::TryParse(
+            [string]$Value,
+            [Globalization.NumberStyles]::Integer,
+            [Globalization.CultureInfo]::InvariantCulture,
+            [ref]$parsed
+        )) {
+        return $null
+    }
+    return [long]$parsed
+}
+
+function ConvertTo-BoundedEvidenceString {
+    param(
+        $Value,
+        [Parameter(Mandatory = $true)][ValidateRange(1, 512)][int]$MaximumLength
+    )
+    if ($null -eq $Value) {
+        return $null
+    }
+    $text = ([string]$Value) -replace '[\x00-\x1f\x7f]', ''
+    $text = $text.Trim()
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $null
+    }
+    if ($text.Length -gt $MaximumLength) {
+        $text = $text.Substring(0, $MaximumLength)
+    }
+    return $text
+}
+
+function Get-DefenderThreatStatusName {
+    param($Value)
+    $statusId = ConvertTo-OptionalEvidenceInt64 $Value
+    switch ($statusId) {
+        1 { return "detected" }
+        2 { return "cleaned" }
+        3 { return "quarantined" }
+        4 { return "removed" }
+        5 { return "allowed" }
+        6 { return "blocked" }
+        101 { return "clean_failed" }
+        102 { return "quarantine_failed" }
+        103 { return "remove_failed" }
+        104 { return "allow_failed" }
+        105 { return "abandoned" }
+        107 { return "block_failed" }
+        default { return "unknown" }
+    }
+}
+
+function Get-DefenderExecutionStatusName {
+    param($Value)
+    $statusId = ConvertTo-OptionalEvidenceInt64 $Value
+    switch ($statusId) {
+        1 { return "blocked" }
+        2 { return "allowed" }
+        3 { return "executing" }
+        4 { return "not_executing" }
+        default { return "unknown" }
+    }
+}
+
+function Get-DefenderDetectionSourceName {
+    param($Value)
+    $sourceId = ConvertTo-OptionalEvidenceInt64 $Value
+    switch ($sourceId) {
+        1 { return "user" }
+        2 { return "system" }
+        3 { return "real_time" }
+        4 { return "ioav" }
+        5 { return "network_inspection" }
+        7 { return "early_launch_antimalware" }
+        8 { return "local_attestation" }
+        9 { return "remote_attestation" }
+        default { return "unknown" }
+    }
+}
+
+function Get-DefenderSeverityName {
+    param($Value)
+    $severityId = ConvertTo-OptionalEvidenceInt64 $Value
+    switch ($severityId) {
+        1 { return "low" }
+        2 { return "moderate" }
+        3 { return "high" }
+        4 { return "severe" }
+        default { return "unknown" }
+    }
+}
+
+function ConvertTo-DefenderProtectionHistoryEvidence {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][object[]]$Detections,
+        [Parameter(Mandatory = $true)][hashtable]$ThreatDescriptors,
+        [Parameter(Mandatory = $true)][DateTimeOffset]$ReferenceTime,
+        [Parameter(Mandatory = $true)][bool]$ThreatDescriptorsAvailable
+    )
+    $records = @()
+    foreach ($detection in $Detections) {
+        $threatId = ConvertTo-OptionalEvidenceInt64 (
+            Get-OptionalProperty -InputObject $detection -Name "ThreatID"
+        )
+        $descriptor = $null
+        if ($null -ne $threatId -and $ThreatDescriptors.ContainsKey([string]$threatId)) {
+            $descriptor = $ThreatDescriptors[[string]$threatId]
+        }
+        $statusName = Get-DefenderThreatStatusName (
+            Get-OptionalProperty -InputObject $detection -Name "ThreatStatusID"
+        )
+        $executionName = Get-DefenderExecutionStatusName (
+            Get-OptionalProperty -InputObject $detection -Name "CurrentThreatExecutionStatusID"
+        )
+        $actionSuccessValue = Get-OptionalProperty -InputObject $detection -Name "ActionSuccess"
+        $actionSucceeded = if ($actionSuccessValue -is [bool]) {
+            [bool]$actionSuccessValue
+        }
+        else {
+            $null
+        }
+        $attentionRequired = (
+            $statusName -in @(
+                "detected", "clean_failed", "quarantine_failed", "remove_failed",
+                "abandoned", "block_failed"
+            ) -or
+            $executionName -eq "executing"
+        )
+        $records += [pscustomobject][ordered]@{
+            threat_id = $threatId
+            threat_name = $(if ($null -eq $descriptor) { $null } else {
+                    ConvertTo-BoundedEvidenceString $descriptor.threat_name 200
+                })
+            severity = $(if ($null -eq $descriptor) { "unknown" } else {
+                    Get-DefenderSeverityName $descriptor.severity_id
+                })
+            category_id = $(if ($null -eq $descriptor) { $null } else {
+                    ConvertTo-OptionalEvidenceInt64 $descriptor.category_id
+                })
+            source = Get-DefenderDetectionSourceName (
+                Get-OptionalProperty -InputObject $detection -Name "DetectionSourceTypeID"
+            )
+            first_detected = ConvertTo-UtcEvidenceTimestamp (
+                Get-OptionalProperty -InputObject $detection -Name "InitialDetectionTime"
+            )
+            last_status_change = ConvertTo-UtcEvidenceTimestamp (
+                Get-OptionalProperty -InputObject $detection -Name "LastThreatStatusChangeTime"
+            )
+            remediated_at = ConvertTo-UtcEvidenceTimestamp (
+                Get-OptionalProperty -InputObject $detection -Name "RemediationTime"
+            )
+            status = $statusName
+            execution_status = $executionName
+            action_succeeded = $actionSucceeded
+            attention_required = [bool]$attentionRequired
+        }
+    }
+    $sorted = @($records | Sort-Object -Property @(
+            @{ Expression = {
+                    if ($null -ne $_.last_status_change) { $_.last_status_change }
+                    elseif ($null -ne $_.first_detected) { $_.first_detected }
+                    else { "0001-01-01T00:00:00Z" }
+                }; Descending = $true }
+        ))
+    $recentCutoff = $ReferenceTime.ToUniversalTime().AddDays(-30)
+    $recentCount = @($records | Where-Object {
+            $timestamp = if ($null -ne $_.last_status_change) {
+                $_.last_status_change
+            }
+            else {
+                $_.first_detected
+            }
+            if ($null -eq $timestamp) { return $false }
+            try { return ([DateTimeOffset]$timestamp) -ge $recentCutoff }
+            catch { return $false }
+        }).Count
+    return [ordered]@{
+        available = $true
+        availability = "available"
+        source = "Get-MpThreatDetection"
+        checked_at = $ReferenceTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+        total_detection_records = $records.Count
+        recent_30_days_count = $recentCount
+        attention_required_count = @($records | Where-Object attention_required).Count
+        remediation_failed_count = @($records | Where-Object {
+                $_.status -in @(
+                    "clean_failed", "quarantine_failed", "remove_failed",
+                    "abandoned", "block_failed"
+                )
+            }).Count
+        threat_descriptors_available = [bool]$ThreatDescriptorsAvailable
+        returned_records = [Math]::Min($records.Count, 20)
+        records = @($sorted | Select-Object -First 20)
+        privacy = [ordered]@{
+            local_only = $true
+            resource_paths_included = $false
+            process_names_included = $false
+            user_names_included = $false
+            cloud_upload_performed = $false
+        }
+        note = (
+            "Bounded local Defender detection/remediation evidence; resource paths, " +
+            "process names, and user names are intentionally omitted."
+        )
+    }
+}
+
+function Get-DefenderProtectionHistoryEvidence {
+    $checkedAt = [DateTimeOffset]::UtcNow
+    try {
+        $detections = @(Get-MpThreatDetection -ErrorAction Stop)
+    }
+    catch {
+        $permissionDenied = (
+            $_.Exception -is [UnauthorizedAccessException] -or
+            [int64]$_.Exception.HResult -eq -2147024891
+        )
+        return [ordered]@{
+            available = $false
+            availability = $(if ($permissionDenied) { "permission_denied" } else { "unavailable" })
+            source = "Get-MpThreatDetection"
+            checked_at = $checkedAt.ToString("yyyy-MM-ddTHH:mm:ssZ")
+            total_detection_records = $null
+            recent_30_days_count = $null
+            attention_required_count = $null
+            remediation_failed_count = $null
+            threat_descriptors_available = $false
+            returned_records = 0
+            records = @()
+            privacy = [ordered]@{
+                local_only = $true
+                resource_paths_included = $false
+                process_names_included = $false
+                user_names_included = $false
+                cloud_upload_performed = $false
+            }
+            note = $(if ($permissionDenied) {
+                    "Defender protection history requires a Windows account allowed to read it."
+                }
+                else {
+                    "Defender protection history is unavailable; no status was inferred."
+                })
+        }
+    }
+    $descriptors = @{}
+    $descriptorsAvailable = $true
+    try {
+        foreach ($threat in @(Get-MpThreat -ErrorAction Stop)) {
+            $threatId = ConvertTo-OptionalEvidenceInt64 (
+                Get-OptionalProperty -InputObject $threat -Name "ThreatID"
+            )
+            if ($null -eq $threatId) { continue }
+            $descriptors[[string]$threatId] = [ordered]@{
+                threat_name = ConvertTo-BoundedEvidenceString (
+                    Get-OptionalProperty -InputObject $threat -Name "ThreatName"
+                ) 200
+                severity_id = ConvertTo-OptionalEvidenceInt64 (
+                    Get-OptionalProperty -InputObject $threat -Name "SeverityID"
+                )
+                category_id = ConvertTo-OptionalEvidenceInt64 (
+                    Get-OptionalProperty -InputObject $threat -Name "CategoryID"
+                )
+            }
+        }
+    }
+    catch {
+        # Detection/remediation evidence remains usable when optional names and
+        # classification metadata cannot be read.
+        $descriptors = @{}
+        $descriptorsAvailable = $false
+    }
+    return ConvertTo-DefenderProtectionHistoryEvidence `
+        -Detections $detections `
+        -ThreatDescriptors $descriptors `
+        -ReferenceTime $checkedAt `
+        -ThreatDescriptorsAvailable $descriptorsAvailable
+}
+
 function Set-DefenderAgeAndFeatureEvidence {
     param(
         [Parameter(Mandatory = $true)]$Defender,
@@ -423,6 +705,7 @@ public static class ZsecWscHealth {
             full_scan_age_days = $null
             full_scan_end = $null
         }
+        protection_history = $null
         confirmed_active = $false
         baseline_features_confirmed = $false
         signatures_current = $false
@@ -539,6 +822,7 @@ public static class ZsecWscHealth {
             "no Defender-active inference made."
         )
     }
+    $defender.protection_history = Get-DefenderProtectionHistoryEvidence
     return [ordered]@{
         method = "WscGetSecurityProviderHealth(WSC_SECURITY_PROVIDER_ANTIVIRUS)"
         hresult = $hresult
