@@ -54,7 +54,15 @@ def _payload(tmp_path: Path, product_key: str) -> Path:
     }
     if product_key == "antivirus":
         files["Engine/zsec-shield.exe"] = b"MZ\x00store-test-engine"
-        files["Tools/Start-ZsecAntivirusCompanion.ps1"] = b"# test\n"
+        for tool in (
+            "Get-ZsecAntivirusCompanionStatus.ps1",
+            "Install-ZsecAntivirusCompanion.ps1",
+            "Invoke-ZsecWindowsProtectionAction.ps1",
+            "Start-ZsecAntivirusCompanion.ps1",
+            "Sync-ZsecAntivirusCompanion.ps1",
+            "Uninstall-ZsecAntivirusCompanion.ps1",
+        ):
+            files[f"Tools/{tool}"] = f"# {tool}\n".encode()
         manifest = {
             "schema": product.manifest_schema,
             "version": version,
@@ -134,6 +142,44 @@ def test_stale_browser_payload_is_rejected(tmp_path: Path) -> None:
             _identity(tmp_path / "identity.json"),
             tmp_path / "layout",
         )
+
+
+def test_antivirus_payload_requires_complete_companion_runtime(tmp_path: Path) -> None:
+    payload = _payload(tmp_path, "antivirus")
+    missing = "Tools/Sync-ZsecAntivirusCompanion.ps1"
+    payload.joinpath(*missing.split("/")).unlink()
+    manifest_path = payload / "DESKTOP-MANIFEST.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["files"] = [entry for entry in manifest["files"] if entry["path"] != missing]
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(store.StorePackageError, match="required Store runtime files"):
+        store.stage_layout(
+            store.PRODUCTS["antivirus"],
+            payload,
+            _identity(tmp_path / "identity.json"),
+            tmp_path / "layout",
+        )
+
+
+def test_coherent_staged_antivirus_layout_cannot_omit_companion_runtime(
+    tmp_path: Path,
+) -> None:
+    product = store.PRODUCTS["antivirus"]
+    layout = tmp_path / "layout"
+    store.stage_layout(
+        product,
+        _payload(tmp_path, "antivirus"),
+        _identity(tmp_path / "identity.json"),
+        layout,
+    )
+    missing = "Tools/Sync-ZsecAntivirusCompanion.ps1"
+    layout.joinpath(*missing.split("/")).unlink()
+    provenance_path = layout / "store-package-files.json"
+    provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+    provenance["files"] = [entry for entry in provenance["files"] if entry["path"] != missing]
+    provenance_path.write_text(json.dumps(provenance), encoding="utf-8")
+    with pytest.raises(store.StorePackageError, match="required runtime files"):
+        store.validate_staged_layout(layout, product)
 
 
 @pytest.mark.parametrize("product_key", ["antivirus", "browser"])

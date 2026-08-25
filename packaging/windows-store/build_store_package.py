@@ -33,6 +33,19 @@ IDENTITY_NAME_PATTERN = re.compile(r"[A-Za-z0-9.-]{3,50}")
 VERSION_PATTERN = re.compile(r"0|[1-9][0-9]{0,4}")
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 FORBIDDEN_PATH_PARTS = {"", ".", ".."}
+ANTIVIRUS_REQUIRED_RUNTIME_PATHS = frozenset(
+    PurePosixPath(path)
+    for path in (
+        "App/ZSEC Antivirus.exe",
+        "Engine/zsec-shield.exe",
+        "Tools/Get-ZsecAntivirusCompanionStatus.ps1",
+        "Tools/Install-ZsecAntivirusCompanion.ps1",
+        "Tools/Invoke-ZsecWindowsProtectionAction.ps1",
+        "Tools/Start-ZsecAntivirusCompanion.ps1",
+        "Tools/Sync-ZsecAntivirusCompanion.ps1",
+        "Tools/Uninstall-ZsecAntivirusCompanion.ps1",
+    )
+)
 
 
 class StorePackageError(RuntimeError):
@@ -296,6 +309,15 @@ def _payload_contract(
     executable = PurePosixPath(product.executable)
     if executable not in files:
         raise StorePackageError("payload manifest does not include the Store executable")
+    if product.key == "antivirus":
+        missing_runtime = sorted(
+            str(path) for path in ANTIVIRUS_REQUIRED_RUNTIME_PATHS - files.keys()
+        )
+        if missing_runtime:
+            raise StorePackageError(
+                "antivirus payload omits required Store runtime files: "
+                f"{missing_runtime}"
+            )
     actual = {
         PurePosixPath(path.relative_to(content_root).as_posix()): sha256(path)
         for path in content_root.rglob("*")
@@ -389,6 +411,16 @@ def validate_staged_layout(layout: Path, product: Product) -> dict[str, Any]:
     }
     if actual != expected:
         raise StorePackageError("staged Store layout differs from store-package-files.json")
+    if product.key == "antivirus":
+        staged_paths = {PurePosixPath(path) for path in actual}
+        missing_runtime = sorted(
+            str(path) for path in ANTIVIRUS_REQUIRED_RUNTIME_PATHS - staged_paths
+        )
+        if missing_runtime:
+            raise StorePackageError(
+                "staged antivirus layout omits required runtime files: "
+                f"{missing_runtime}"
+            )
     version = str(provenance.get("source_version"))
     validate_manifest((layout / "AppxManifest.xml").read_bytes(), product, version)
     executable = layout.joinpath(*PurePosixPath(product.executable).parts)
