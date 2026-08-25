@@ -27,6 +27,7 @@ FAQ_COUNTS = {
 COPY_REQUIREMENTS = {
     "zero-security": (
         "ZSEC Antivirus Community 0.3.29",
+        "Microsoft Store candidate 0.3.30 is not published",
         "Microsoft Defender supplies supported Windows real-time enforcement",
         "ZSEC does not uninstall a provider",
         "is not registered as the primary provider",
@@ -186,6 +187,7 @@ RELEASE_SURFACE_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         ANTIVIRUS_RELEASE_REVISION,
         BROWSER_RELEASE_REVISION,
         "Accepted Windows desktop identity",
+        "Microsoft Store candidate boundary: source 0.3.30",
         "33,846,149 bytes",
         "Accepted cross-platform core identities",
         "Accepted Windows browser identity",
