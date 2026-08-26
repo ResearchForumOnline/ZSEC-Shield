@@ -21,7 +21,7 @@ Microsoft field limits used by the validator:
 
 ## ZSEC Antivirus
 
-Source version: `0.3.30`
+Source version: `0.3.31`
 Listing language: `en-US`
 Suggested category: `Security`
 

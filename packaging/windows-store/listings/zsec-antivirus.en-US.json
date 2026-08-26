@@ -3,7 +3,7 @@
   "product_key": "antivirus",
   "language": "en-US",
   "product_name": "ZSEC Antivirus",
-  "source_version": "0.3.30",
+  "source_version": "0.3.31",
   "category": {
     "primary": "Security",
     "selection_note": "Select the closest currently available non-game security category in Partner Center; do not classify this companion as a Microsoft Defender replacement."
