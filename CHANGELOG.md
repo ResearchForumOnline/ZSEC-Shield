@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.31 Windows desktop - 2026-08-26
+
+- Separated the Overview into independently evidenced Windows real-time
+  enforcement, ZSEC post-change monitoring and scoped coverage states. A healthy
+  ZSEC companion no longer implies primary, pre-access or whole-device coverage,
+  and incomplete, stale or limited evidence remains visibly amber or red.
+- Kept expected symlink and Windows reparse-point exclusions visible without
+  permanently degrading companion health. Special files, oversized files,
+  inaccessible paths and missing protected roots remain fail-closed coverage gaps.
+- Hardened disappearing-path reconciliation so a prior issue is superseded only
+  after a missing-path-compatible scanner result and an independent `lstat`
+  confirmation that the path is absent. Permission and other operating-system
+  errors remain degraded.
+
 ## 0.3.30 Windows desktop - 2026-08-25
 
 - Embedded a reviewed PerMonitorV2 Windows application manifest in the graphical
