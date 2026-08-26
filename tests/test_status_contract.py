@@ -33,6 +33,10 @@ class StatusContractTests(unittest.TestCase):
             self.assertIsNone(payload["last_scan_bytes_hashed"])
             self.assertIsInstance(payload["quarantine_count"], int)
             self.assertEqual(payload["quarantine"]["entries"], payload["quarantine_count"])
+            application_update = payload["application_update_status"]
+            self.assertEqual("never_checked", application_update["state"])
+            self.assertFalse(application_update["automatic_install"])
+            self.assertEqual(payload["version"], application_update["installed_version"])
 
 
 if __name__ == "__main__":

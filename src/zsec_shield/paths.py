@@ -68,6 +68,18 @@ def automatic_update_status_path(state_dir: Path) -> Path:
     return state_dir / "feed" / "automatic-update-status.json"
 
 
+def application_update_status_path(state_dir: Path) -> Path:
+    return state_dir / "application-update" / "status.json"
+
+
+def application_update_notice_path(state_dir: Path) -> Path:
+    return state_dir / "application-update" / "current.json"
+
+
+def application_update_state_path(state_dir: Path) -> Path:
+    return state_dir / "application-update" / "state.json"
+
+
 def intelligence_document_path(state_dir: Path) -> Path:
     return state_dir / "intelligence" / "current.json"
 

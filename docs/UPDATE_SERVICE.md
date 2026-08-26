@@ -34,6 +34,12 @@ automatic-install field. Microsoft Defender or another active Windows Security
 provider must remain active across an update check, a failed download, and an
 application restart.
 
+The Windows companion schedules this signed metadata check once per fleet-jittered
+day. It persists the greatest accepted sequence and a bounded notification status,
+rejects rollback and changed-content sequence reuse, and retains the last verified
+notice after a failure. This path never downloads or executes any listed artifact;
+installation remains an explicit user action.
+
 ## Failure and rollback invariants
 
 - Verify the pinned Ed25519 key, exact envelope fields, validity window, sequence,

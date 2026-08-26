@@ -25,6 +25,12 @@ The v2 payload retains every v1 field and adds:
 `last_scan_diagnostic.available` says whether a validated local summary was loaded.
 Its `error` field reports malformed or unreadable summary state.
 
+`application_update_status` is separate notification evidence. Its state is
+`never_checked`, `current`, `available`, or `error`; `automatic_install` is always
+false. It does not change scan outcome, protection health, or replacement readiness.
+Corrupt schedule state triggers a new signed check instead of suppressing checks, and
+a failed check retains the last verified notice while reporting the error.
+
 ## Fail-closed consumer states
 
 A consumer may show a clean/ready state only when all of these are true:

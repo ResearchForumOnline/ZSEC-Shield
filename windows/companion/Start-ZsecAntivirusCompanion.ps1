@@ -356,6 +356,34 @@ try {
     }
     }
 
+    function Invoke-ApplicationUpdateNoticeCheck {
+    try {
+        # This command persists only a signed release notice and schedule. The
+        # engine contract rejects installer commands and never downloads or
+        # executes an application artifact.
+        $output = & $cli `
+            "--state-dir" $state `
+            "update-application-notice" `
+            "--json" 2>$null
+        if ([string]::IsNullOrWhiteSpace(($output -join ""))) {
+            return "error"
+        }
+        $result = ($output -join [Environment]::NewLine) | ConvertFrom-Json
+        if (
+            $result.schema -ne "zsec.shield.application-update-status.v1" -or
+            [bool]$result.automatic_install
+        ) {
+            return "error"
+        }
+        return [string]$result.state
+    }
+    catch {
+        # Monitoring and the last verified notice remain available if the
+        # network, signature, expiry, or rollback check fails.
+        return "error"
+    }
+    }
+
     function Get-OptionalProperty {
     param(
         [Parameter(Mandatory = $true)]$InputObject,
@@ -429,6 +457,7 @@ try {
         # Bring local monitoring online before any network-backed maintenance.
         $null = Invoke-DefenderSecurityIntelligenceMaintenance
         $null = Invoke-IntelligenceCheck
+        $null = Invoke-ApplicationUpdateNoticeCheck
         while (-not $process.HasExited) {
             $null = $process.WaitForExit([int]([double]$config.intelligence_check_seconds * 1000.0))
             if (-not $process.HasExited) {
@@ -436,6 +465,7 @@ try {
                 # results in one fleet-spread check per day rather than synchronized load.
                 $null = Invoke-DefenderSecurityIntelligenceMaintenance
                 $null = Invoke-IntelligenceCheck
+                $null = Invoke-ApplicationUpdateNoticeCheck
             }
         }
 

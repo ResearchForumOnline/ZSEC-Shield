@@ -307,6 +307,8 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned `
 
 The generated task runs at limited user privilege, permits one instance, uses
 bounded event/log/restart settings, and writes a 30-second health heartbeat. Its
+supervisor schedules signed advisory and notification-only application-release
+checks; application artifacts are never downloaded or executed automatically. Its
 status combines task/action/hash/process proof with supported aggregate Windows
 Security Center health and separate Defender feature, tamper, intelligence,
 scan and service evidence while keeping raw provider `productState`

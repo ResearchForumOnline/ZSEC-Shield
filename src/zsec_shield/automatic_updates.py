@@ -11,6 +11,7 @@ import base64
 import binascii
 import hashlib
 import json
+import re
 import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -24,6 +25,9 @@ from zsec_shield.errors import FeedError
 from zsec_shield.feed import download_feed, load_keyring
 from zsec_shield.intelligence import IntelligenceError, validate_catalog
 from zsec_shield.paths import (
+    application_update_notice_path,
+    application_update_state_path,
+    application_update_status_path,
     automatic_update_status_path,
     intelligence_document_path,
     intelligence_envelope_path,
@@ -43,6 +47,8 @@ from zsec_shield.util import (
 DEFAULT_INTELLIGENCE_URL = "https://talktoai.org/zsec/intelligence/v1/feed.json"
 DEFAULT_APPLICATION_UPDATE_URL = "https://talktoai.org/zsec/updates/v1/stable.json"
 UPDATE_STATUS_SCHEMA = "zsec.shield.automatic-update-status.v1"
+APPLICATION_UPDATE_STATUS_SCHEMA = "zsec.shield.application-update-status.v1"
+APPLICATION_UPDATE_STATE_SCHEMA = "zsec.shield.application-update-client-state.v1"
 CHECK_INTERVAL = timedelta(hours=24)
 MAX_JITTER = timedelta(hours=2)
 STATUS_LIMIT = 64 * 1024
@@ -82,6 +88,35 @@ class AutomaticUpdateStatus:
             "feed_sequence": self.feed_sequence,
             "feed_expires_at": self.feed_expires_at,
             "source": self.source,
+            "error": self.error,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ApplicationUpdateStatus:
+    state: str
+    installed_version: str
+    available_version: str | None
+    sequence: int | None
+    last_checked_at: str | None
+    last_success_at: str | None
+    next_check_at: str
+    source: str
+    automatic_install: bool
+    error: str | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": APPLICATION_UPDATE_STATUS_SCHEMA,
+            "state": self.state,
+            "installed_version": self.installed_version,
+            "available_version": self.available_version,
+            "sequence": self.sequence,
+            "last_checked_at": self.last_checked_at,
+            "last_success_at": self.last_success_at,
+            "next_check_at": self.next_check_at,
+            "source": self.source,
+            "automatic_install": self.automatic_install,
             "error": self.error,
         }
 
@@ -412,6 +447,10 @@ def verify_application_update_envelope(
     trusted = keyring.get(envelope["key_id"])
     if trusted is None or trusted.status != "active":
         raise FeedError("application update signing key is not active and trusted")
+    if trusted.not_before and current < trusted.not_before:
+        raise FeedError("application update signing key is not valid yet")
+    if trusted.not_after and current >= trusted.not_after:
+        raise FeedError("application update signing key has expired")
     payload = envelope["payload"]
     if not isinstance(payload, dict):
         raise FeedError("application update payload is invalid")
@@ -470,6 +509,7 @@ def verify_application_update_envelope(
         raise FeedError("application release is not notification-only")
     if not isinstance(release["version"], str) or not 1 <= len(release["version"]) <= 32:
         raise FeedError("application release version is invalid")
+    _parse_release_version(release["version"])
     if not isinstance(release["artifacts"], list) or not release["artifacts"]:
         raise FeedError("application release artifacts are invalid")
     for artifact in release["artifacts"]:
@@ -505,3 +545,181 @@ def verify_application_update_envelope(
         "policy": "notification only; no content is downloaded or executed",
         "manifest_sha256": hashlib.sha256(raw).hexdigest(),
     }
+
+
+def _parse_release_version(value: Any) -> tuple[int, ...]:
+    """Return a bounded numeric release tuple suitable for update ordering."""
+    if not isinstance(value, str) or re.fullmatch(r"[0-9]+(?:\.[0-9]+){1,3}", value) is None:
+        raise FeedError("application release version is invalid")
+    components = tuple(int(component) for component in value.split("."))
+    if any(component > 65535 for component in components):
+        raise FeedError("application release version is invalid")
+    return components + (0,) * (4 - len(components))
+
+
+def _validate_application_update_status(value: Any) -> ApplicationUpdateStatus:
+    expected = {
+        "schema", "state", "installed_version", "available_version", "sequence",
+        "last_checked_at", "last_success_at", "next_check_at", "source",
+        "automatic_install", "error",
+    }
+    if not isinstance(value, dict) or set(value) != expected:
+        raise FeedError("application update status fields are invalid")
+    if value["schema"] != APPLICATION_UPDATE_STATUS_SCHEMA:
+        raise FeedError("application update status schema is invalid")
+    if value["state"] not in {"never_checked", "current", "available", "error"}:
+        raise FeedError("application update status state is invalid")
+    _parse_release_version(value["installed_version"])
+    if value["available_version"] is not None:
+        _parse_release_version(value["available_version"])
+    sequence = value["sequence"]
+    if sequence is not None and (
+        isinstance(sequence, bool) or not isinstance(sequence, int) or sequence < 1
+    ):
+        raise FeedError("application update status sequence is invalid")
+    for field in ("last_checked_at", "last_success_at"):
+        if value[field] is not None:
+            _parse_time(value[field], field)
+    _parse_time(value["next_check_at"], "next_check_at")
+    source = value["source"]
+    if not isinstance(source, str) or not source.startswith("https://") or len(source) > 2048:
+        raise FeedError("application update status source is invalid")
+    if value["automatic_install"] is not False:
+        raise FeedError("application update status automatic-install policy is invalid")
+    error = value["error"]
+    if error is not None and (not isinstance(error, str) or not 1 <= len(error) <= 500):
+        raise FeedError("application update status error is invalid")
+    return ApplicationUpdateStatus(
+        value["state"], value["installed_version"], value["available_version"],
+        sequence, value["last_checked_at"], value["last_success_at"],
+        value["next_check_at"], source, False, error,
+    )
+
+
+def load_application_update_status(
+    state_dir: Path,
+    installed_version: str,
+    *,
+    source: str = DEFAULT_APPLICATION_UPDATE_URL,
+    now: datetime | None = None,
+) -> ApplicationUpdateStatus:
+    current = (now or utc_now()).astimezone(UTC)
+    _parse_release_version(installed_version)
+    path = application_update_status_path(state_dir)
+    fallback = ApplicationUpdateStatus(
+        "never_checked", installed_version, None, None, None, None,
+        format_utc(current), source, False, None,
+    )
+    if not path.exists():
+        return fallback
+    try:
+        if not path.is_file() or path.stat().st_size > STATUS_LIMIT:
+            raise FeedError("application update status is not a bounded regular file")
+        status = _validate_application_update_status(strict_json_loads(path.read_bytes()))
+    except (OSError, FeedError) as exc:
+        return ApplicationUpdateStatus(
+            "error", installed_version, None, None, None, None,
+            format_utc(current), source, False, str(exc)[:500],
+        )
+    if status.source != source or status.installed_version != installed_version:
+        return ApplicationUpdateStatus(
+            "never_checked", installed_version, status.available_version, status.sequence,
+            status.last_checked_at, status.last_success_at, format_utc(current),
+            source, False, None,
+        )
+    return status
+
+
+def _load_application_update_state(state_dir: Path) -> dict[str, Any] | None:
+    path = application_update_state_path(state_dir)
+    if not path.exists():
+        return None
+    if not path.is_file() or path.stat().st_size > STATUS_LIMIT:
+        raise FeedError("application update rollback state is not a bounded regular file")
+    value = strict_json_loads(path.read_bytes())
+    expected = {"schema", "max_sequence", "manifest_sha256", "release_version", "checked_at"}
+    if not isinstance(value, dict) or set(value) != expected:
+        raise FeedError("application update rollback state fields are invalid")
+    if value["schema"] != APPLICATION_UPDATE_STATE_SCHEMA:
+        raise FeedError("application update rollback state schema is invalid")
+    if (
+        isinstance(value["max_sequence"], bool)
+        or not isinstance(value["max_sequence"], int)
+        or value["max_sequence"] < 1
+    ):
+        raise FeedError("application update rollback sequence is invalid")
+    digest = value["manifest_sha256"]
+    if not isinstance(digest, str) or len(digest) != 64:
+        raise FeedError("application update rollback digest is invalid")
+    try:
+        bytes.fromhex(digest)
+    except ValueError as exc:
+        raise FeedError("application update rollback digest is invalid") from exc
+    _parse_release_version(value["release_version"])
+    _parse_time(value["checked_at"], "checked_at")
+    return value
+
+
+def run_automatic_application_update_check(
+    state_dir: Path,
+    keyring_path: Path,
+    installed_version: str,
+    *,
+    source: str = DEFAULT_APPLICATION_UPDATE_URL,
+    timeout: float = 15.0,
+    force: bool = False,
+    now: datetime | None = None,
+) -> ApplicationUpdateStatus:
+    """Persist a signed update notice; never download or execute an artifact."""
+    current = (now or utc_now()).astimezone(UTC)
+    previous = load_application_update_status(
+        state_dir, installed_version, source=source, now=current
+    )
+    if not force and current < _parse_time(previous.next_check_at, "next_check_at"):
+        return previous
+    checked_at = format_utc(current)
+    next_check_at = format_utc(_next_check(current))
+    try:
+        raw = download_feed(source, timeout=timeout)
+        notice = verify_application_update_envelope(raw, keyring_path, now=current)
+        lock_path = state_dir / "application-update" / ".update.lock"
+        with update_lock(lock_path):
+            state = _load_application_update_state(state_dir)
+            if state is not None:
+                if notice["sequence"] < state["max_sequence"]:
+                    raise FeedError("application update rollback sequence was rejected")
+                if (
+                    notice["sequence"] == state["max_sequence"]
+                    and notice["manifest_sha256"] != state["manifest_sha256"]
+                ):
+                    raise FeedError(
+                        "application update sequence reuse with changed content was rejected"
+                    )
+            atomic_write_json(application_update_notice_path(state_dir), notice, mode=0o600)
+            atomic_write_json(
+                application_update_state_path(state_dir),
+                {
+                    "schema": APPLICATION_UPDATE_STATE_SCHEMA,
+                    "max_sequence": notice["sequence"],
+                    "manifest_sha256": notice["manifest_sha256"],
+                    "release_version": notice["version"],
+                    "checked_at": checked_at,
+                },
+                mode=0o600,
+            )
+        available = _parse_release_version(notice["version"]) > _parse_release_version(
+            installed_version
+        )
+        status = ApplicationUpdateStatus(
+            "available" if available else "current", installed_version,
+            notice["version"] if available else None, notice["sequence"], checked_at,
+            checked_at, next_check_at, source, False, None,
+        )
+    except (FeedError, OSError) as exc:
+        status = ApplicationUpdateStatus(
+            "error", installed_version, previous.available_version, previous.sequence,
+            checked_at, previous.last_success_at, next_check_at, source, False,
+            f"{type(exc).__name__}: {exc}".replace("\r", " ").replace("\n", " ")[:500],
+        )
+    atomic_write_json(application_update_status_path(state_dir), status.to_dict(), mode=0o600)
+    return status

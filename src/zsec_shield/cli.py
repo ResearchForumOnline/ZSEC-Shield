@@ -13,7 +13,9 @@ from zsec_shield import __version__
 from zsec_shield.automatic_updates import (
     DEFAULT_APPLICATION_UPDATE_URL,
     DEFAULT_INTELLIGENCE_URL,
+    load_application_update_status,
     load_automatic_update_status,
+    run_automatic_application_update_check,
     run_automatic_update,
     verify_application_update_envelope,
 )
@@ -248,6 +250,20 @@ def build_parser() -> argparse.ArgumentParser:
     application_update.add_argument("--timeout", type=float, default=15.0)
     application_update.add_argument("--json", action="store_true")
     application_update.set_defaults(handler=_command_check_application_update)
+
+    automatic_application_update = subparsers.add_parser(
+        "update-application-notice",
+        help="schedule a signed, notification-only application update check",
+    )
+    automatic_application_update.add_argument(
+        "--url", default=DEFAULT_APPLICATION_UPDATE_URL, help=argparse.SUPPRESS
+    )
+    automatic_application_update.add_argument("--timeout", type=float, default=15.0)
+    automatic_application_update.add_argument(
+        "--force", action="store_true", help="check now even if not due"
+    )
+    automatic_application_update.add_argument("--json", action="store_true")
+    automatic_application_update.set_defaults(handler=_command_update_application_notice)
 
     status = subparsers.add_parser("status", help="show scanner, feed, and quarantine status")
     status.add_argument("--json", action="store_true")
@@ -682,11 +698,36 @@ def _command_check_application_update(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _command_update_application_notice(args: argparse.Namespace) -> int:
+    if not 1 <= args.timeout <= 120:
+        raise ZsecShieldError("timeout must be between 1 and 120 seconds")
+    state_dir = _state_dir(args)
+    status = run_automatic_application_update_check(
+        state_dir,
+        _keyring_path(args, state_dir),
+        __version__,
+        source=args.url,
+        timeout=args.timeout,
+        force=bool(args.force),
+    )
+    if args.json:
+        _emit_json(status.to_dict())
+    else:
+        print(
+            f"Application update notice: {status.state}; installed {status.installed_version}; "
+            f"available {status.available_version or 'none'}; next check {status.next_check_at}."
+        )
+        if status.error:
+            print(f"Update notice error: {status.error}", file=sys.stderr)
+    return EXIT_INCOMPLETE if status.state == "error" else EXIT_OK
+
+
 def _command_status(args: argparse.Namespace) -> int:
     state_dir = _state_dir(args)
     keyring_path = _keyring_path(args, state_dir)
     feed_status, _ = inspect_feed(state_dir, keyring_path)
     update_status = load_automatic_update_status(state_dir)
+    application_update_status = load_application_update_status(state_dir, __version__)
     entries, quarantine_errors = list_entries(state_dir)
     last_scan, last_scan_error = load_last_scan(state_dir)
     counts: dict[str, int] = {}
@@ -733,6 +774,11 @@ def _command_status(args: argparse.Namespace) -> int:
         "update_status": {
             key: value
             for key, value in update_status.to_dict().items()
+            if key != "schema"
+        },
+        "application_update_status": {
+            key: value
+            for key, value in application_update_status.to_dict().items()
             if key != "schema"
         },
         "quarantine": {

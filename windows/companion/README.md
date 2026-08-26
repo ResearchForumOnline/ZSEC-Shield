@@ -258,7 +258,10 @@ preserved. The scripts contain no cutover or primary-provider uninstall path.
 ## Honest boundary
 
 The companion automatically scans post-change file events while the user is
-logged on. It cannot hold a file open/execute decision, inspect process memory,
+logged on. Its supervisor also schedules fleet-jittered, signed advisory and
+notification-only application-update checks. An application check persists only
+verified metadata and can never download or execute an installer. It cannot hold a
+file open/execute decision, inspect process memory,
 replace an approved provider, or prove that no transient file executed before a
 scan. Queue/backend/root/feed failures are visible and non-successful. The
 proper replacement-antivirus programme and its separate FltMgr, AMSI, ELAM,
