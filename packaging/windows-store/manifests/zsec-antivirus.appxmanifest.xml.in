@@ -2,8 +2,10 @@
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap11="http://schemas.microsoft.com/appx/manifest/uap/windows10/11"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap rescap">
+  IgnorableNamespaces="uap uap11 desktop rescap">
   <Identity Name="@IDENTITY_NAME@" Publisher="@PUBLISHER@" Version="@VERSION@" ProcessorArchitecture="x64" />
   <Properties>
     <DisplayName>ZSEC Antivirus</DisplayName>
@@ -15,7 +17,7 @@
     <Resource Language="en-us" />
   </Resources>
   <Dependencies>
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26200.0" />
   </Dependencies>
   <Applications>
     <Application Id="ZSECAntivirus" Executable="App\ZSEC Antivirus.exe" EntryPoint="Windows.FullTrustApplication">
@@ -26,6 +28,18 @@
         BackgroundColor="transparent"
         Square44x44Logo="Assets\Square44x44Logo.png"
         Square150x150Logo="Assets\Square150x150Logo.png" />
+      <Extensions>
+        <desktop:Extension
+          Category="windows.startupTask"
+          Executable="App\ZSEC Antivirus.exe"
+          EntryPoint="Windows.FullTrustApplication"
+          uap11:Parameters="--startup">
+          <desktop:StartupTask
+            TaskId="ZSECAntivirusStartup"
+            Enabled="true"
+            DisplayName="ZSEC Antivirus" />
+        </desktop:Extension>
+      </Extensions>
     </Application>
   </Applications>
   <Capabilities>

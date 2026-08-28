@@ -11,6 +11,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from zsec_desktop.distribution import is_windows_store_package
+
 SETTINGS_SCHEMA = "zsec.antivirus.desktop-settings.v1"
 STARTUP_VALUE_NAME = "ZSEC Antivirus Desktop"
 
@@ -97,9 +99,14 @@ def startup_command(executable: Path | None = None) -> str:
 class StartupRegistration:
     """Own only the exact current-user startup value created by this app."""
 
-    def __init__(self, executable: Path | None = None) -> None:
+    def __init__(
+        self, executable: Path | None = None, *, store_managed: bool | None = None
+    ) -> None:
         self.executable = (executable or Path(sys.executable)).absolute()
         self.command = startup_command(self.executable)
+        self.store_managed = (
+            is_windows_store_package() if store_managed is None else store_managed
+        )
 
     def _installed_command_is_owned(self, value: str) -> bool:
         """Recognize a prior versioned installer path without trusting arbitrary values."""
@@ -148,12 +155,18 @@ class StartupRegistration:
     def current(self) -> tuple[bool, str | None]:
         if os.name != "nt":
             return False, "Windows startup registration is available only on Windows"
+        if self.store_managed:
+            return False, None
         value, error = self._read_value()
         return value is not None, error
 
     def set_enabled(self, enabled: bool) -> None:
         if os.name != "nt":
             raise OSError("Windows startup registration is available only on Windows")
+        if self.store_managed:
+            if enabled:
+                raise OSError("Windows manages startup for this Store installation")
+            return
         import winreg
 
         path = r"Software\Microsoft\Windows\CurrentVersion\Run"

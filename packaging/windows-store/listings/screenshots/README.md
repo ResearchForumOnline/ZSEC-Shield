@@ -23,7 +23,7 @@ and validation gate, not a place for mockups or composited marketing artwork.
    crop is acceptable only to isolate the unchanged app window without hiding
    evidence or changing the meaning of its state.
 
-## ZSEC Antivirus 0.3.31
+## ZSEC Antivirus 0.3.32
 
 Restore the clean snapshot, install the exact Antivirus candidate, keep Microsoft
 Defender or another supported primary provider active, and use a disposable path
@@ -69,8 +69,8 @@ python packaging/windows-store/validate_screenshots.py create `
   --product antivirus `
   --screenshots packaging/windows-store/listings/screenshots/antivirus `
   --listing packaging/windows-store/listings/zsec-antivirus.en-US.json `
-  --package packaging/windows-store/out/ZSEC-Antivirus-0.3.31.0-x64.msix `
-  --executable "packaging/windows-store/out/antivirus-0.3.31.0-layout/App/ZSEC Antivirus.exe" `
+  --package packaging/windows-store/out/ZSEC-Antivirus-0.3.32.0-x64.msix `
+  --executable "packaging/windows-store/out/antivirus-0.3.32.0-layout/App/ZSEC Antivirus.exe" `
   --captured-at 2026-08-25T12:00:00Z `
   --synthetic-state-only `
   --reviewed-no-personal-data `

@@ -40,6 +40,7 @@ from zsec_desktop.settings import (
     load_settings,
     save_settings,
 )
+from zsec_desktop.distribution import is_windows_store_package
 from zsec_desktop.support import build_support_snapshot, save_support_snapshot
 from zsec_desktop.tray import TrayController
 from zsec_shield import __version__ as ZSEC_VERSION
@@ -582,6 +583,7 @@ class ZsecDesktop:
     def __init__(self, root: tk.Tk, bridge: ZsecBridge, *, startup: bool = False) -> None:
         self.root = root
         self.bridge = bridge
+        self.store_managed = is_windows_store_package()
         # Initial evidence comes from independent, read-only commands. Four workers
         # let the slow Windows provider query start immediately instead of sitting
         # behind status, readiness and list operations. Every bridge command keeps
@@ -597,7 +599,7 @@ class ZsecDesktop:
         self.quarantine_rows: dict[str, dict[str, Any]] = {}
         self.report_rows: dict[str, Path] = {}
         loaded_settings, self.settings_load_error = load_settings(bridge.state_dir)
-        self.startup_registration = StartupRegistration()
+        self.startup_registration = StartupRegistration(store_managed=self.store_managed)
         registered_startup, registration_error = self.startup_registration.current()
         if registration_error is not None:
             self.settings_load_error = "; ".join(
@@ -662,6 +664,9 @@ class ZsecDesktop:
         self._update_tray_status()
         self._animate_activity()
         self.root.after(120, self.refresh_all)
+        if self.store_managed:
+            self.root.after(600, self._start_store_monitoring)
+            self.root.after(1_200, self._refresh_store_intelligence)
         self.startup_evidence_deadline_job = self.root.after(
             STARTUP_EVIDENCE_NOTICE_MS, self._startup_evidence_deadline
         )
@@ -816,7 +821,7 @@ class ZsecDesktop:
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
         ttk.Label(
             title_row,
-            text="COMMUNITY 0.3.31",
+            text="COMMUNITY 0.3.32",
             style="Subtitle.TLabel",
             foreground=AMBER,
         ).pack(
@@ -1211,11 +1216,15 @@ class ZsecDesktop:
         ttk.Label(
             panel,
             text=(
-                "ZSEC starts automatically at sign-in, inspects changes in your protected "
-                "folders, reconciles metadata every 5 minutes and performs a complete "
-                "cache-independent reconciliation every 24 hours. Microsoft Defender or "
-                "another primary antivirus separately provides real-time, pre-access "
-                "protection."
+                (
+                    "While this Store app is running, ZSEC automatically inspects changes "
+                    "in standard user folders. "
+                    if self.store_managed
+                    else "ZSEC starts automatically at sign-in and inspects changes in "
+                    "your protected folders. "
+                )
+                + "Microsoft Defender or another primary antivirus separately provides "
+                "real-time, pre-access protection."
             ),
             style="Warning.TLabel",
             wraplength=920,
@@ -1249,9 +1258,12 @@ class ZsecDesktop:
             panel,
             text=(
                 "Optional diagnostic control; it is not required for normal automatic "
-                "protection. The installed companion selects and monitors its protected "
-                "folders automatically, starts at Windows sign-in, retries after failure, "
-                "and refreshes signed intelligence on its configured schedule."
+                "protection. In the Store edition the observer is owned "
+                "by this running app; Microsoft manages application updates."
+                if self.store_managed
+                else "Optional diagnostic control. The installed companion selects and "
+                "monitors its protected folders automatically, starts at Windows sign-in, retries after failure, "
+                "and refreshes signed intelligence on schedule."
             ),
             style="Muted.TLabel",
             wraplength=920,
@@ -1751,11 +1763,19 @@ class ZsecDesktop:
         ttk.Label(grid, text="Windows sign-in", style="Surface.TLabel").grid(
             row=5, column=0, sticky=tk.W, pady=6
         )
-        ttk.Checkbutton(
+        startup_checkbox = ttk.Checkbutton(
             grid,
-            text="Start ZSEC Antivirus in the notification area",
+            text=(
+                "Startup is managed through Microsoft Store and Windows settings"
+                if self.store_managed
+                else "Start ZSEC Antivirus in the notification area"
+            ),
             variable=self.start_with_windows,
-        ).grid(row=5, column=1, sticky=tk.W, padx=(14, 0), pady=6)
+        )
+        startup_checkbox.grid(row=5, column=1, sticky=tk.W, padx=(14, 0), pady=6)
+        if self.store_managed:
+            self.start_with_windows.set(False)
+            startup_checkbox.configure(state=tk.DISABLED)
         actions = ttk.Frame(panel, style="Surface.TFrame")
         actions.pack(fill=tk.X, pady=(18, 0))
         ttk.Button(
@@ -1871,7 +1891,7 @@ class ZsecDesktop:
                 raise ValueError("Maximum file size must be between 1 and 16384 MiB.")
             requested = DesktopSettings(
                 close_to_tray=bool(self.close_to_tray.get()),
-                start_with_windows=bool(self.start_with_windows.get()),
+                start_with_windows=False if self.store_managed else bool(self.start_with_windows.get()),
                 reduce_motion=bool(self.reduce_motion.get()),
                 max_file_mebibytes=maximum,
             )
@@ -1887,7 +1907,11 @@ class ZsecDesktop:
                 raise
             self.desktop_settings = requested
             self.settings_status.configure(
-                text="Settings saved and Windows startup ownership verified.",
+                text=(
+                    "Settings saved. Microsoft Store and Windows own startup for this edition."
+                    if self.store_managed
+                    else "Settings saved and Windows startup ownership verified."
+                ),
                 foreground=GREEN,
             )
             self._motion_preference_changed()
@@ -2326,6 +2350,71 @@ class ZsecDesktop:
         if chosen:
             self.watch_path.set(chosen)
 
+    def _store_monitoring_roots(self) -> tuple[Path, ...]:
+        roots: list[Path] = []
+        for name in ("Downloads", "Documents", "Desktop"):
+            candidate = Path.home() / name
+            try:
+                if candidate.is_dir() and not candidate.is_symlink():
+                    roots.append(candidate)
+            except OSError:
+                continue
+        return tuple(roots)
+
+    def _start_store_monitoring(self) -> None:
+        if self.closing or not self.store_managed or self.watch_session is not None:
+            return
+        roots = self._store_monitoring_roots()
+        if not roots:
+            self.companion_card.set_value("Package monitoring has no eligible folders", AMBER)
+            self.tray_companion_status = "ZSEC monitoring needs folder access"
+            self._update_tray_status()
+            return
+        self.protected_roots = roots
+        self.protected_roots_label.configure(
+            text="Monitored while ZSEC is running: " + ", ".join(path.name for path in roots),
+            foreground=CYAN,
+        )
+        self.watch_events.delete(0, tk.END)
+        self.watch_session_id = None
+        self.watch_last_sequence = 0
+        self.watch_last_heartbeat_monotonic = None
+        try:
+            self.watch_session = self.bridge.start_watch(
+                roots,
+                on_event=lambda event: self._post(self._watch_event, event),
+                on_complete=lambda code, error: self._post(self._watch_complete, code, error),
+                quarantine=False,
+            )
+        except BridgeError as exc:
+            self.companion_card.set_value("Package monitoring could not start", RED)
+            self.companion_status_label.configure(text=str(exc), foreground=RED)
+            return
+        self.watch_start_button.configure(state=tk.DISABLED)
+        self.watch_stop_button.configure(state=tk.NORMAL)
+        self.watch_state_label.configure(text="Starting package-owned observer…", foreground=CYAN)
+        self.companion_card.set_value("Package-owned monitoring starting", CYAN)
+        self.tray_companion_status = "ZSEC monitoring starting"
+        self._update_tray_status()
+        self.watch_watchdog_job = self.root.after(5_000, self._watch_heartbeat_watchdog)
+
+    def _refresh_store_intelligence(self) -> None:
+        if self.closing or not self.store_managed:
+            return
+        self._run_async(
+            self.bridge.update_intelligence_if_due,
+            lambda _result: self._finish_store_intelligence_refresh(),
+            failure=lambda _exc: self._finish_store_intelligence_refresh(),
+        )
+
+    def _finish_store_intelligence_refresh(self) -> None:
+        if self.closing:
+            return
+        self.refresh_status()
+        # The CLI owns the randomized daily due time. This bounded wake-up only
+        # gives it another opportunity while the Store process remains alive.
+        self.root.after(6 * 60 * 60 * 1000, self._refresh_store_intelligence)
+
     def _start_watch(self) -> None:
         path = Path(self.watch_path.get().strip())
         if not path.is_dir():
@@ -2431,6 +2520,14 @@ class ZsecDesktop:
                     text="Observer active — fresh complete heartbeat received",
                     foreground=GREEN,
                 )
+                if self.store_managed:
+                    self.companion_card.set_value("Package-owned monitoring active", GREEN)
+                    self.companion_status_label.configure(
+                        text="ZSEC post-change monitoring is active while this Store app is running.",
+                        foreground=GREEN,
+                    )
+                    self.tray_companion_status = "ZSEC package monitoring active"
+                    self._update_tray_status()
         self.watch_events.insert(tk.END, f"{event['sequence']:>5}  {name}{detail}")
         if self.watch_events.size() > 500:
             self.watch_events.delete(0, self.watch_events.size() - 500)
@@ -2514,6 +2611,9 @@ class ZsecDesktop:
         payload = result.payload
         self.latest_companion_payload = payload
         self._update_support_export_state()
+        if self.store_managed:
+            self._render_store_process_monitor(payload)
+            return
         presentation = companion_presentation(payload)
         self.tray_companion_status = {
             "healthy": "ZSEC monitoring active",
@@ -2560,6 +2660,52 @@ class ZsecDesktop:
             )
             self.scan_protected_button.configure(state=tk.DISABLED)
         self._render_windows_protection(payload)
+
+    def _render_store_process_monitor(self, payload: dict[str, Any]) -> None:
+        """Keep external-companion absence separate from this package-owned observer."""
+
+        self._render_windows_protection(payload)
+        roots = tuple(path for path in self.protected_roots if path.is_dir())
+        fresh = (
+            self.watch_session is not None
+            and self.watch_last_heartbeat_monotonic is not None
+            and time.monotonic() - self.watch_last_heartbeat_monotonic <= 75
+        )
+        if fresh:
+            headline, detail, colour = (
+                "Package-owned monitoring active",
+                "Fresh complete heartbeat verified; monitoring remains active while ZSEC runs.",
+                GREEN,
+            )
+        elif self.watch_session is not None:
+            headline, detail, colour = (
+                "Package-owned monitoring starting",
+                "Observer process started; complete heartbeat evidence is pending.",
+                CYAN,
+            )
+        else:
+            headline, detail, colour = (
+                "Package-owned monitoring not active",
+                "No process-owned observer is currently verified; Windows protection remains separate.",
+                AMBER,
+            )
+        self.companion_card.set_value(headline, colour)
+        self.companion_status_label.configure(text=f"{headline} — {detail}", foreground=colour)
+        self.protection_layer_labels["zsec"].configure(
+            text=f"ZSEC process-owned monitor — {headline.upper()}\n{detail}",
+            foreground=colour,
+        )
+        scope_detail = (
+            "Monitored while ZSEC runs: " + ", ".join(path.name or str(path) for path in roots)
+            if roots
+            else "No eligible standard user folders are currently verified"
+        )
+        self.protection_layer_labels["scope"].configure(
+            text=f"ZSEC coverage boundary — PROCESS LIFETIME\n{scope_detail}",
+            foreground=CYAN if roots else AMBER,
+        )
+        self.protected_roots_label.configure(text=scope_detail, foreground=CYAN if roots else AMBER)
+        self.scan_protected_button.configure(state=tk.NORMAL if roots else tk.DISABLED)
 
     def _render_protection_layers(self, payload: dict[str, Any]) -> None:
         colours = {"green": GREEN, "cyan": CYAN, "amber": AMBER, "red": RED}

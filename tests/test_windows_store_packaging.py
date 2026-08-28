@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -102,6 +103,34 @@ def test_repository_store_contract_is_minimal_and_current() -> None:
     for product in result["products"].values():
         assert product["store_version"].endswith(".0")
         assert product["capabilities"] == ["runFullTrust"]
+
+
+def test_antivirus_manifest_declares_package_owned_startup_activation() -> None:
+    product = store.PRODUCTS["antivirus"]
+    identity = {
+        "identity_name": "ResearchForumOnline.ZSECAntivirus",
+        "publisher": "CN=11111111-1111-1111-1111-111111111111",
+        "publisher_display_name": "Research Forum Online",
+    }
+    document = store.render_manifest(product, identity, store.source_version(product))
+    root = ET.fromstring(document)
+    namespaces = {"f": store.FOUNDATION_NS, "d": store.DESKTOP_NS}
+    family = root.find("f:Dependencies/f:TargetDeviceFamily", namespaces)
+    assert family is not None
+    assert family.get("MaxVersionTested") == "10.0.26200.0"
+    extension = root.find("f:Applications/f:Application/f:Extensions/d:Extension", namespaces)
+    assert extension is not None
+    assert extension.get("Category") == "windows.startupTask"
+    assert extension.get("Executable") == r"App\ZSEC Antivirus.exe"
+    assert extension.get("EntryPoint") == "Windows.FullTrustApplication"
+    assert extension.get(f"{{{store.UAP11_NS}}}Parameters") == "--startup"
+    task = extension.find("d:StartupTask", namespaces)
+    assert task is not None
+    assert task.attrib == {
+        "TaskId": "ZSECAntivirusStartup",
+        "Enabled": "true",
+        "DisplayName": "ZSEC Antivirus",
+    }
 
 
 def test_partner_center_placeholders_are_rejected() -> None:

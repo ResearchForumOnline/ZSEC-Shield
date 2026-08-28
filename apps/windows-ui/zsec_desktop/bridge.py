@@ -443,6 +443,16 @@ class ZsecBridge:
             validator=validate_feed_update,
         )
 
+    def update_intelligence_if_due(self) -> CommandResult:
+        """Run the fixed signed-data update lane; the CLI enforces its due time."""
+
+        return self._run_json(
+            self._argv("update-intelligence", "--json"),
+            expected_codes=frozenset({0, 2}),
+            timeout=120,
+            validator=lambda value: _json_object(json.dumps(value)),
+        )
+
     def companion_status(self) -> CommandResult:
         if os.name != "nt":
             raise BridgeError("Windows companion status is available only on Windows")

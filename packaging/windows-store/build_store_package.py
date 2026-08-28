@@ -28,6 +28,8 @@ FOUNDATION_NS = "http://schemas.microsoft.com/appx/manifest/foundation/windows10
 RESTRICTED_NS = (
     "http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
 )
+DESKTOP_NS = "http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+UAP11_NS = "http://schemas.microsoft.com/appx/manifest/uap/windows10/11"
 PLACEHOLDER_TOKEN = "PARTNER_CENTER_"
 IDENTITY_NAME_PATTERN = re.compile(r"[A-Za-z0-9.-]{3,50}")
 VERSION_PATTERN = re.compile(r"0|[1-9][0-9]{0,4}")
@@ -194,7 +196,7 @@ def validate_manifest(document: bytes, product: Product, version: str) -> None:
         root = ET.fromstring(document)
     except ET.ParseError as exc:
         raise StorePackageError("rendered AppxManifest.xml is not well-formed XML") from exc
-    namespace = {"f": FOUNDATION_NS, "r": RESTRICTED_NS}
+    namespace = {"f": FOUNDATION_NS, "r": RESTRICTED_NS, "d": DESKTOP_NS}
     identity = root.find("f:Identity", namespace)
     if identity is None:
         raise StorePackageError("manifest Identity element is missing")
@@ -212,6 +214,31 @@ def validate_manifest(document: bytes, product: Product, version: str) -> None:
         raise StorePackageError("manifest executable does not match the product contract")
     if application.get("EntryPoint") != "Windows.FullTrustApplication":
         raise StorePackageError("manifest application must use Windows.FullTrustApplication")
+    startup_extensions = application.findall("f:Extensions/d:Extension", namespace)
+    if product.key == "antivirus":
+        if len(startup_extensions) != 1:
+            raise StorePackageError("antivirus manifest must declare exactly one startup task")
+        extension = startup_extensions[0]
+        if extension.get("Category") != "windows.startupTask":
+            raise StorePackageError("antivirus manifest extension must be windows.startupTask")
+        if extension.get("Executable", "").replace("\\", "/") != product.executable:
+            raise StorePackageError("antivirus startup task executable must match the GUI")
+        if extension.get("EntryPoint") != "Windows.FullTrustApplication":
+            raise StorePackageError("antivirus startup task must use full-trust activation")
+        if extension.get(f"{{{UAP11_NS}}}Parameters") != "--startup":
+            raise StorePackageError("antivirus startup task must use the --startup mode")
+        task = extension.find("d:StartupTask", namespace)
+        if task is None:
+            raise StorePackageError("antivirus startup task declaration is missing")
+        expected_task = {
+            "TaskId": "ZSECAntivirusStartup",
+            "Enabled": "true",
+            "DisplayName": "ZSEC Antivirus",
+        }
+        if task.attrib != expected_task:
+            raise StorePackageError("antivirus startup task contract is invalid")
+    elif startup_extensions:
+        raise StorePackageError("browser manifest must not declare an antivirus startup task")
     capabilities = root.findall("f:Capabilities/*", namespace)
     declared = {(item.tag, item.get("Name")) for item in capabilities}
     expected_capability = {(f"{{{RESTRICTED_NS}}}Capability", "runFullTrust")}
