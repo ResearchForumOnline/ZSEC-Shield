@@ -43,6 +43,17 @@
   Protection posture, shortcut read-back verification, outcome-specific scan
   notifications and a non-misleading reduced-motion progress state.
 
+## 0.3.26 ZSEC Browser Community - 2026-08-28
+
+- Repairs the Microsoft Store launch failure observed for 0.3.25 on Windows
+  build 26200.8875 by treating the WebView2 browser-extension API as optional.
+- Keeps native request protection active and the browser usable when the
+  optional Shields extension API is unavailable, while reporting that state
+  honestly in the interface.
+- Preserves normal user-entered and user-clicked HTTPS navigation. Unsolicited
+  page-requested popups and sensitive site permissions remain blocked by
+  default.
+
 ## 0.3.25 ZSEC Browser Community - 2026-08-24
 
 - Added a searchable Sign-in Setup Assistant that offers a bounded reviewed

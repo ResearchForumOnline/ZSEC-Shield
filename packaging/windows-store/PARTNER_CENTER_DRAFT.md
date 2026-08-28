@@ -169,7 +169,7 @@ Desktop `PNG`, minimum `1366x768`, maximum `50 MB`; plan: `5` screenshots.
 
 ## ZSEC Browser
 
-Source version: `0.3.25`
+Source version: `0.3.26`
 Listing language: `en-US`
 Suggested category: `Productivity`
 
@@ -232,21 +232,21 @@ ZSEC Browser is an existing Win32 Windows Forms application using Microsoft WebV
 
 ### Additional Testing Information
 
-Prepared 26 August 2026. No ZSEC account or test credentials are required. Windows Desktop x64 only. This is a packaged Win32 browser shell using Microsoft's Evergreen WebView2 runtime; ZSEC is not a separately maintained Chromium fork. runFullTrust use is described separately. Test only public unauthenticated HTTPS pages and synthetic data. Password save prompts and exact-origin fill start off. Do not use real credentials or another browser profile.
+Prepared 28 August 2026. No account or credentials are required. Windows Desktop x64 only. Version 0.3.26 repairs the 0.3.25 Store-launch failure reported on Windows build 26200.8875. Browser Shields extension support is optional: if its WebView2 API is unavailable, the browser remains open, native request protection remains active, and the UI reports the extension unavailable. User-entered and user-clicked HTTPS navigation works normally. Unsolicited page-requested popups and sensitive site permissions are blocked by default. The product page at https://talktoai.org/zero-browser/ and privacy page at https://talktoai.org/zero-browser/privacy/ were rechecked on 28 August 2026 as public HTTPS HTML pages; this is dated evidence, not an uptime guarantee. Use only public unauthenticated HTTPS pages and synthetic data. Password save and fill start off.
 
-Test the exact Store-signed candidate on a clean Windows 10/11 x64 VM with WebView2 available:
-1. Launch from Start; verify the local new-tab page and a public HTTPS page open without ZSEC sign-in.
-2. Open, switch, and close tabs; test back, forward, reload, address search, bookmarks, and fullscreen.
-3. Open ZSEC Shields. Verify exact-identity and runtime status are evidence-led; a failed probe must not appear protected.
-4. In Settings, verify site permissions deny by default, settings persist, and password save and fill remain off.
-5. Add, export, remove, and re-import a synthetic HTTPS bookmark using tester-selected files only.
-6. Verify the password vault begins locked or empty. If needed, use only synthetic credentials, test timed reveal and lock, then remove them.
-7. On a controlled benign page, verify a requested popup is blocked by default and any exact-HTTPS permission is explicit and revocable.
-8. Restart, then uninstall. Verify no other browser profile, credential, default-app choice, or security product changed.
+Test the exact Store-signed candidate on a clean Windows 10/11 x64 VM with WebView2:
+1. Launch from Start; verify the local new-tab page and a public HTTPS page open.
+2. Test typed and clicked HTTPS navigation, tabs, back, forward, reload, search, bookmarks and fullscreen.
+3. Open Shields. If extension support exists, verify its identity/status. If unavailable, verify native request protection remains active and the browser stays open.
+4. Verify permissions deny by default and settings persist.
+5. Export and re-import a synthetic HTTPS bookmark.
+6. Verify the password vault starts locked or empty; use synthetic credentials only.
+7. On a controlled page, verify an unsolicited popup is blocked and any exact-HTTPS permission is explicit and revocable.
+8. Restart and uninstall; verify no other browser profile, credential, default-app choice or security product changed.
 
 ### Supporting internal certification detail
 
-No ZSEC account or test credentials are required. This is a packaged Win32 WebView2 desktop browser shell and declares runFullTrust for the bounded functions stated in the restricted-capability justification. Microsoft maintains the Evergreen WebView2 runtime; ZSEC is not a separately maintained Chromium fork. Test with public non-authenticated HTTPS pages only. Password save prompts and exact-origin fill begin off and must not be enabled with real credentials during certification. The app does not import cookies, sessions, tokens, passkeys, or another browser profile. The Store manifest does not claim HTTP or HTTPS protocol ownership and does not silently change Windows defaults. Before submission, clean-VM gates must confirm launch, request filtering, local persistence, update, and uninstall from the exact Store package.
+No ZSEC account or test credentials are required. Version 0.3.26 repairs the Store-launch failure reported for 0.3.25 on Windows build 26200.8875. Startup no longer depends on the optional WebView2 browser-extension API: if that API is unavailable, ZSEC continues with its native request protection and reports the optional Shields extension as unavailable. User-entered and user-clicked HTTPS navigation remains enabled. Unsolicited page-requested popups and sensitive site permissions are blocked by default. This is a packaged Win32 WebView2 desktop browser shell and declares runFullTrust for the bounded functions stated in the restricted-capability justification. Microsoft maintains the Evergreen WebView2 runtime; ZSEC is not a separately maintained Chromium fork. Password save prompts and exact-origin fill begin off. The app does not import cookies, sessions, tokens, passkeys, or another browser profile. The Store manifest does not claim HTTP or HTTPS protocol ownership and does not silently change Windows defaults. On 28 August 2026 the product and privacy URLs were rechecked as public HTTPS pages returning functional HTML; this dated check is not a guarantee of future availability.
 
 Test account required: **No**
 
@@ -255,11 +255,11 @@ Test account required: **No**
 1. Install the Store-signed candidate on a clean supported Windows 10 or Windows 11 x64 VM with the Microsoft Evergreen WebView2 runtime available, then launch ZSEC Browser from Start.
 2. Confirm the local new-tab page loads, the protection status becomes evidence-led, and a normal public HTTPS address can be opened without any ZSEC sign-in.
 3. Open two additional tabs, switch among them, close one, and verify back, forward, reload, address search, and fullscreen controls.
-4. Open ZSEC Shields from the toolbar. Confirm the exact extension is loaded and the runtime status reports honestly; do not treat a failed probe as protected.
+4. Open ZSEC Shields from the toolbar. If the optional extension API is available, confirm the exact extension is loaded. If it is unavailable, confirm native request protection remains active and the optional extension is reported unavailable without closing the browser.
 5. Open Settings. Verify site permissions are deny by default, history and appearance controls persist after restart, and password save prompts and autofill begin off.
 6. Use a synthetic HTTPS bookmark, open the bookmark manager, export it to a tester-selected file, remove it, and import it again. Do not use a real browser profile or account.
 7. Open Passwords and verify the vault begins locked or empty. If vault UI testing is required, use only synthetic example credentials, verify timed reveal and lock, then remove them before capture.
-8. On a controlled benign page that requests a popup, confirm the request is blocked by default. Any site permission must require an explicit exact-HTTPS choice and be revocable in Settings.
+8. On a controlled benign page that requests an unsolicited popup, confirm the request is blocked by default while ordinary user-entered and user-clicked HTTPS navigation remains available. Any site permission must require an explicit exact-HTTPS choice and be revocable in Settings.
 9. Close and relaunch the app to verify local settings, then uninstall it. Confirm no other browser profile, credentials, default-app choice, or security product was changed.
 
 ### Age and content notes

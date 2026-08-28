@@ -23,16 +23,16 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.25.0")]
-[assembly: AssemblyFileVersion("0.3.25.0")]
-[assembly: AssemblyInformationalVersion("0.3.25-community")]
+[assembly: AssemblyVersion("0.3.26.0")]
+[assembly: AssemblyFileVersion("0.3.26.0")]
+[assembly: AssemblyInformationalVersion("0.3.26-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.25";
+        internal const string ProductVersion = "0.3.26";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
         internal const string NewTabUri = "https://newtab.zsec.local/index.html";
 
@@ -529,12 +529,6 @@ namespace TalkToAI.ZsecBrowserPreview
         private const int MaximumTabs = 32;
         private const string ExpectedShieldsExtensionId = "ddjbjhnlhapggenanpmcidieimaomiif";
         private const string ShieldsSettingsBaseUri = "chrome-extension://ddjbjhnlhapggenanpmcidieimaomiif/popup/index.html";
-        private static readonly IDictionary<string, string> ExpectedMicrosoftSystemExtensions =
-            new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                { "dgiklkfkllikcanfonkcabmbdfmgleag", "Microsoft Clipboard Extension" },
-                { "mhjfbmdgcfjbbpaeojofohoefgiehjai", "Microsoft Edge PDF Viewer" }
-            };
         private static readonly string[] ActiveHighRiskContexts =
         {
             "Script", "Document", "Stylesheet", "XmlHttpRequest", "Fetch", "WebSocket"
@@ -603,6 +597,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private bool trayNoticeShown;
         private string productDataWarning;
         private string installedShieldsExtensionId = "unavailable";
+        private string shieldsExtensionStatus = "verifying";
         private string effectiveTrackingPrevention = "unavailable";
         private Task extensionInstallTask;
         private int popupRequestCount;
@@ -749,7 +744,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.25";
+            channel.Text = "COMMUNITY 0.3.26";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
@@ -1923,8 +1918,18 @@ namespace TalkToAI.ZsecBrowserPreview
                     await CreateTab(additionalDestination, false);
                 }
                 WriteStartupStage("protected_tab_ready");
-                shieldStatus.Text = "  SHIELDS: INSTALLED  ";
-                shieldStatus.BackColor = Accent;
+                if (shieldsExtensionEnabled)
+                {
+                    shieldStatus.Text = "  SHIELDS: INSTALLED  ";
+                    shieldStatus.BackColor = Accent;
+                }
+                else
+                {
+                    shieldStatus.Text = "  NATIVE PROTECTION ACTIVE  ";
+                    shieldStatus.BackColor = AccentBlue;
+                    runtimeStatus.Text =
+                        "Native protection active · Browser Shields extension unavailable";
+                }
                 environmentReady.TrySetResult(true);
                 if (runtimeNewTabTest)
                 {
@@ -2717,49 +2722,42 @@ namespace TalkToAI.ZsecBrowserPreview
 
         private async Task InstallShieldsExtensionAsync(CoreWebView2Profile profile)
         {
-            CoreWebView2BrowserExtension shields =
-                await profile.AddBrowserExtensionAsync(extensionRoot);
-            if (!String.Equals(shields.Id, ExpectedShieldsExtensionId, StringComparison.Ordinal) ||
-                !String.Equals(shields.Name, "ZSEC Browser Shields", StringComparison.Ordinal))
+            try
             {
-                throw new InvalidOperationException("The Browser Shields extension identity is invalid.");
+                CoreWebView2BrowserExtension shields =
+                    await profile.AddBrowserExtensionAsync(extensionRoot);
+                if (!String.Equals(shields.Id, ExpectedShieldsExtensionId, StringComparison.Ordinal) ||
+                    !String.Equals(shields.Name, "ZSEC Browser Shields", StringComparison.Ordinal))
+                {
+                    throw new InvalidShieldsExtensionIdentityException();
+                }
+                if (!shields.IsEnabled)
+                {
+                    await shields.EnableAsync(true);
+                }
+                shieldsExtensionEnabled = true;
+                installedShieldsExtensionId = shields.Id;
+                shieldsExtensionStatus = "enabled";
             }
-            if (!shields.IsEnabled)
-            {
-                await shields.EnableAsync(true);
-            }
-            IReadOnlyList<CoreWebView2BrowserExtension> installed =
-                await profile.GetBrowserExtensionsAsync();
-            string installedIdentitySummary = String.Join(
-                ", ",
-                installed.Select(extension =>
-                    extension.Id + ":" + extension.Name + ":" +
-                    (extension.IsEnabled ? "enabled" : "disabled")
-                )
-            );
-            if (installed.Count(extension =>
-                    String.Equals(extension.Id, ExpectedShieldsExtensionId, StringComparison.Ordinal) &&
-                    extension.IsEnabled) != 1 ||
-                installed.Any(extension => !IsExpectedBrowserExtension(extension)))
+            catch (InvalidShieldsExtensionIdentityException)
             {
                 throw new InvalidOperationException(
-                    "The browser profile contains an unexpected extension identity: " +
-                    installedIdentitySummary
+                    "The Browser Shields extension identity is invalid."
                 );
             }
-            shieldsExtensionEnabled = true;
-            installedShieldsExtensionId = shields.Id;
+            catch (Exception exception)
+            {
+                // WebView2 extension support can vary across serviced Windows/runtime
+                // builds. Native request filtering remains active, so an unavailable
+                // optional extension layer must not make the whole browser unusable.
+                shieldsExtensionEnabled = false;
+                installedShieldsExtensionId = "unavailable";
+                shieldsExtensionStatus = "unavailable:" + exception.GetType().Name;
+            }
         }
 
-        private static bool IsExpectedBrowserExtension(CoreWebView2BrowserExtension extension)
+        private sealed class InvalidShieldsExtensionIdentityException : Exception
         {
-            if (String.Equals(extension.Id, ExpectedShieldsExtensionId, StringComparison.Ordinal))
-            {
-                return String.Equals(extension.Name, "ZSEC Browser Shields", StringComparison.Ordinal);
-            }
-            string expectedName;
-            return ExpectedMicrosoftSystemExtensions.TryGetValue(extension.Id, out expectedName) &&
-                String.Equals(extension.Name, expectedName, StringComparison.Ordinal);
         }
 
         private void HandleNavigationStarting(
@@ -3582,6 +3580,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 "tracker_domain_count=" + trackerDomains.Count.ToString(),
                 "tracking_parameter_count=" + trackingParameters.Count.ToString(),
                 "browser_shields_extension=" + (shieldsExtensionEnabled ? "enabled" : "unavailable"),
+                "browser_shields_extension_status=" + shieldsExtensionStatus,
                 "browser_shields_expected_id=" + ExpectedShieldsExtensionId,
                 "browser_shields_installed_id=" + installedShieldsExtensionId,
                 "browser_shields_manifest_sha256=" + extensionManifestSha256,

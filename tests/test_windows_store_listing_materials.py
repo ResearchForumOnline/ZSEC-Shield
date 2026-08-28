@@ -37,7 +37,7 @@ def test_partner_center_materials_are_current_and_rendered() -> None:
     assert "ZSEC Antivirus" in field_sheet
     assert "0.3.31.0" in field_sheet
     assert "ZSEC Browser" in field_sheet
-    assert "0.3.25.0" in field_sheet
+    assert "0.3.26.0" in field_sheet
     assert "offline draft, not submitted" in field_sheet
 
 

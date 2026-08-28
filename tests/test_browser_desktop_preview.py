@@ -39,9 +39,9 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
     assert "unsigned" in readme.lower() and "Community" in readme
-    assert 'internal const string ProductVersion = "0.3.25"' in app
-    assert '$ProductVersion = "0.3.25"' in build
-    assert '$ProductVersion = "0.3.25"' in installer
+    assert 'internal const string ProductVersion = "0.3.26"' in app
+    assert '$ProductVersion = "0.3.26"' in build
+    assert '$ProductVersion = "0.3.26"' in installer
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:
@@ -438,9 +438,14 @@ def test_desktop_tabs_popups_and_modern_controls_are_wired() -> None:
     assert "ControlStyles.SupportsTransparentBackColor" in app
     assert 'WriteStartupStage("runtime_evidence_ready")' in app
     assert "Profile: isolated" not in app
-    assert "ExpectedMicrosoftSystemExtensions" in app
-    assert '"Microsoft Clipboard Extension"' in app
-    assert '"Microsoft Edge PDF Viewer"' in app
+    assert "ExpectedMicrosoftSystemExtensions" not in app
+    assert "installed.Any(extension => !IsExpectedBrowserExtension(extension))" not in app
+    assert "catch (InvalidShieldsExtensionIdentityException)" in app
+    assert '"The Browser Shields extension identity is invalid."' in app
+    assert 'shieldsExtensionStatus = "unavailable:" + exception.GetType().Name' in app
+    assert '"browser_shields_extension_status=" + shieldsExtensionStatus' in app
+    assert '"  NATIVE PROTECTION ACTIVE  "' in app
+    assert '"Native protection active · Browser Shields extension unavailable"' in app
     assert 'lastTabAction = "closed"' in app
     assert 'schema=zsec.browser.startup-failure.v1' in app
     assert "protected override bool ProcessCmdKey" in app

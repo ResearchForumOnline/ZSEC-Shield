@@ -106,7 +106,7 @@ Store installer.
 - Command-line launches accept up to 32 URL or search arguments and open each
   in a bounded tab. Switches are never interpreted as navigation input;
   unsupported/non-web schemes become a search query under the selected provider.
-- The UI labels the product as `Community 0.3.25` and exposes the exact runtime
+- The UI labels the product as `Community 0.3.26` and exposes the exact runtime
   and policy boundary in its About dialog.
 
 The Sign-in Setup Assistant builds a searchable review list from a bounded

@@ -41,7 +41,7 @@ Save under `antivirus/` with these exact names:
 4. `04-windows-protection.png`
 5. `05-recovery.png`
 
-## ZSEC Browser 0.3.25
+## ZSEC Browser 0.3.26
 
 Restore the clean snapshot again, install the exact Browser candidate, and allow it
 to create a new package-local profile. Do not import any existing browser profile or
