@@ -48,7 +48,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "fd49063bc4124bb59e8c6c8d2b0535c4d06d0a46f93dcab32bf8eac3635b2667",
+        "source_body_sha256": "237334066ee9aa60e9da4efea7edce83300a6b8e2fc776962b188a67c93ecd0d",
         "source_record_id": "USN-8666-3"
       },
       "published_at": "2026-08-27T21:41:58Z",
@@ -60,7 +60,7 @@
       "summary": "Siebe Devroe, Héloïse Gollier, and Mathy Vanhoef discovered that the WiFi implementation in the Linux kernel did not properly handle aggregated frames in mesh networks, due to an incorrect fix for CVE-2020-24588. A physically proximate attacker could use this issue to inject packets. (CVE-2025-27558) Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - x86 architecture; - Cryptographic API; - InfiniBand drivers; - Media drivers; - NVIDIA Tegra memory controller driver; - Network drivers; - NVME drivers; - File systems infrastructure; - Ext4 file system; - IPv4 net…",
       "title": "USN-8666-3: Linux kernel (GCP FIPS) vulnerabilities",
       "zba": {
-        "commitment": "f8d08c691ef82cbe1d0afa280197c4e507e7968d4773dd3ee611ac08dcfaa164",
+        "commitment": "b932f74a6bd07e40c20b8f501cb40a90e4c4417258c77dcccfcdb54c4ae7ee75",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -88,7 +88,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "fd49063bc4124bb59e8c6c8d2b0535c4d06d0a46f93dcab32bf8eac3635b2667",
+        "source_body_sha256": "237334066ee9aa60e9da4efea7edce83300a6b8e2fc776962b188a67c93ecd0d",
         "source_record_id": "USN-8644-3"
       },
       "published_at": "2026-08-27T21:39:06Z",
@@ -100,7 +100,7 @@
       "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - File systems infrastructure; - OCFS2 file system; - B.A.T.M.A.N. meshing protocol; - SCTP protocol; - TIPC protocol; (CVE-2026-43071, CVE-2026-52914, CVE-2026-52993, CVE-2026-53043, CVE-2026-53224, CVE-2026-53246, CVE-2026-53309)",
       "title": "USN-8644-3: Linux kernel (Azure) vulnerabilities",
       "zba": {
-        "commitment": "0a6e39c7a54de20374d867489ae5f642cc61b9f2856726a74d7401f5c60a23c5",
+        "commitment": "293993ec5b77938ee910d6b4dbf731ddf21739121f9f5269b75ba99d59639b6a",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -143,7 +143,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "fd49063bc4124bb59e8c6c8d2b0535c4d06d0a46f93dcab32bf8eac3635b2667",
+        "source_body_sha256": "237334066ee9aa60e9da4efea7edce83300a6b8e2fc776962b188a67c93ecd0d",
         "source_record_id": "USN-8661-3"
       },
       "published_at": "2026-08-27T21:36:04Z",
@@ -155,7 +155,7 @@
       "summary": "Siebe Devroe, Héloïse Gollier, and Mathy Vanhoef discovered that the WiFi implementation in the Linux kernel did not properly handle aggregated frames in mesh networks, due to an incorrect fix for CVE-2020-24588. A physically proximate attacker could use this issue to inject packets. (CVE-2025-27558) Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - x86 architecture; - InfiniBand drivers; - Network drivers; - NVME drivers; - Ext4 file system; - SMB network file system; - IPv4 networking; - Network traffic control; - TCP network protocol; - Locking primitives; -…",
       "title": "USN-8661-3: Linux kernel vulnerabilities",
       "zba": {
-        "commitment": "578cda70345e44a78db1369c1e27ca64a50606db2f231fbcf81074212919ec16",
+        "commitment": "7e00ba3887b66e1352fcdc69d5aa6915a199dd0af3319da13088982dc872a913",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -179,7 +179,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "fd49063bc4124bb59e8c6c8d2b0535c4d06d0a46f93dcab32bf8eac3635b2667",
+        "source_body_sha256": "237334066ee9aa60e9da4efea7edce83300a6b8e2fc776962b188a67c93ecd0d",
         "source_record_id": "USN-8658-4"
       },
       "published_at": "2026-08-27T21:32:51Z",
@@ -191,7 +191,7 @@
       "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - Open vSwitch; - SCTP protocol; (CVE-2026-53224, CVE-2026-53246, CVE-2026-64531)",
       "title": "USN-8658-4: Linux kernel (Azure CVM) vulnerabilities",
       "zba": {
-        "commitment": "dbdfb8c488ea872245a1b87973da6242b46235cae84a80388b509aa31286e437",
+        "commitment": "f1445725646e09042dbff6d2f14663634d42a209530201212a105a725eb3edd7",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -216,7 +216,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "fd49063bc4124bb59e8c6c8d2b0535c4d06d0a46f93dcab32bf8eac3635b2667",
+        "source_body_sha256": "237334066ee9aa60e9da4efea7edce83300a6b8e2fc776962b188a67c93ecd0d",
         "source_record_id": "USN-8643-5"
       },
       "published_at": "2026-08-27T21:29:15Z",
@@ -228,7 +228,7 @@
       "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - Network drivers; - Open vSwitch; - SCTP protocol; (CVE-2026-53224, CVE-2026-53246, CVE-2026-53247, CVE-2026-64531)",
       "title": "USN-8643-5: Linux kernel vulnerabilities",
       "zba": {
-        "commitment": "c2dfd8827f33d4451145689b4eaab47c38bacec3948c381839f1939cc63116ca",
+        "commitment": "c1310aca3edd4ad4d3d9239c89349850bab239a028a46997f44abcd704b2b20b",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -46933,8 +46933,8 @@
     {
       "advisory_count": 5,
       "authority": "Canonical Ubuntu Security Team",
-      "body_sha256": "fd49063bc4124bb59e8c6c8d2b0535c4d06d0a46f93dcab32bf8eac3635b2667",
-      "contribution_sha256": "c3174c0ace04fc14fa34d8d0aa048ba4b970b587d5435132b015cbe026a6b64c",
+      "body_sha256": "237334066ee9aa60e9da4efea7edce83300a6b8e2fc776962b188a67c93ecd0d",
+      "contribution_sha256": "85153243d9293f953df67ac6402fbb586b64b2dee938d844ca2a0eaec10c4ef7",
       "parser": "ubuntu-usn-rss-v1",
       "semantic_sha256": "b1ab6025230ea47eb821102c7b039538719239726b49076345720e5fa010e04f",
       "source_id": "ubuntu-usn",
