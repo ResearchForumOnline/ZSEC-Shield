@@ -51,6 +51,7 @@ SEVERITIES = frozenset({"critical", "high", "medium", "low", "info", "unknown"})
 CVE_PATTERN = re.compile(r"^CVE-[0-9]{4}-[0-9]{4,}$", re.ASCII)
 MSRC_DOCUMENT_PATTERN = re.compile(r"^[0-9]{4}-[A-Z][a-z]{2}$", re.ASCII)
 USN_PATTERN = re.compile(r"^USN-[0-9]+-[0-9]+", re.ASCII)
+LSN_PATTERN = re.compile(r"^LSN-[0-9]+-[0-9]+", re.ASCII)
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$", re.ASCII)
 
 CISA_KEV_URL = (
@@ -688,8 +689,26 @@ def parse_ubuntu_usn(artifact: SourceArtifact) -> SourceResult:
         assert link is not None
         assert published_text is not None
         assert description is not None
-        match = USN_PATTERN.match(title.strip())
-        if match is None or match.group(0) in seen:
+        normalized_title = title.strip()
+        match = USN_PATTERN.match(normalized_title)
+        if match is None:
+            lsn_match = LSN_PATTERN.match(normalized_title)
+            if lsn_match is None or lsn_match.group(0) in seen:
+                raise IntelligenceError(
+                    f"Ubuntu USN item {index} has invalid/duplicate identity"
+                )
+            lsn_id = lsn_match.group(0)
+            lsn_url = _https_url(
+                link, f"Ubuntu LSN item {index} link", {"ubuntu.com"}
+            )
+            if lsn_url != f"https://ubuntu.com/security/notices/{lsn_id}":
+                raise IntelligenceError(
+                    f"Ubuntu LSN item {index} link does not match its ID"
+                )
+            _time(published_text, f"Ubuntu LSN item {index} pubDate")
+            seen.add(lsn_id)
+            continue
+        if match.group(0) in seen:
             raise IntelligenceError(f"Ubuntu USN item {index} has invalid/duplicate identity")
         usn_id = match.group(0)
         seen.add(usn_id)

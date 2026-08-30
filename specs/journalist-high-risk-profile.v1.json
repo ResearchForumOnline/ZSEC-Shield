@@ -85,15 +85,16 @@
       "id": "browser-extension-identity",
       "area": "browser",
       "action_class": "already_enforced",
-      "current_state": "implemented",
-      "decision": "Require exactly one enabled ZSEC Shields identity and fail on an unexpected extension identity.",
+      "current_state": "partial",
+      "decision": "Verify the bundled ZSEC Shields identity when WebView2 extension support is available, while retaining native request protection when the optional extension layer is unavailable.",
       "evidence": [
         {
           "path": "browser/zsec-desktop-preview/src/ZsecBrowserApp.cs",
           "contains": [
             "ExpectedShieldsExtensionId",
-            "GetBrowserExtensionsAsync",
-            "The browser profile contains an unexpected extension identity"
+            "AddBrowserExtensionAsync",
+            "The Browser Shields extension identity is invalid.",
+            "Native protection active · Browser Shields extension unavailable"
           ]
         }
       ],

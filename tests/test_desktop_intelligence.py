@@ -170,6 +170,10 @@ UBUNTU_RSS = b"""<?xml version="1.0" encoding="UTF-8"?>
 <link>https://ubuntu.com/security/notices/USN-8999-1</link>
 <pubDate>Wed, 19 Aug 2026 10:00:00 +0000</pubDate>
 <description>A server package issue was fixed.</description></item>
+<item><title>LSN-0121-1: Kernel Live Patch Security Notice</title>
+<link>https://ubuntu.com/security/notices/LSN-0121-1</link>
+<pubDate>Tue, 18 Aug 2026 10:00:00 +0000</pubDate>
+<description>A livepatch notice outside the USN adapter scope.</description></item>
 </channel></rss>"""
 
 
@@ -222,6 +226,14 @@ class DesktopIntelligenceParserTests(unittest.TestCase):
         malicious = b'<?xml version="1.0"?><!DOCTYPE x [<!ENTITY e SYSTEM "file:///x">]><rss />'
         with self.assertRaisesRegex(IntelligenceError, "entities"):
             parse_ubuntu_usn(_artifact("ubuntu-usn", UBUNTU_USN_URL, malicious))
+
+    def test_ubuntu_rss_rejects_lsn_identity_link_mismatch(self) -> None:
+        mismatched = UBUNTU_RSS.replace(
+            b"https://ubuntu.com/security/notices/LSN-0121-1",
+            b"https://ubuntu.com/security/notices/LSN-0120-1",
+        )
+        with self.assertRaisesRegex(IntelligenceError, "link does not match its ID"):
+            parse_ubuntu_usn(_artifact("ubuntu-usn", UBUNTU_USN_URL, mismatched))
 
     def test_apple_ingests_only_reviewable_desktop_rows(self) -> None:
         result = parse_apple_security(
