@@ -2,233 +2,31 @@
   "advisories": [
     {
       "action": "Apply the Ubuntu security update for each applicable installed package.",
-      "cve_ids": [
-        "CVE-2020-24588",
-        "CVE-2021-47378",
-        "CVE-2025-27558",
-        "CVE-2026-23392",
-        "CVE-2026-31405",
-        "CVE-2026-31414",
-        "CVE-2026-31448",
-        "CVE-2026-31657",
-        "CVE-2026-31668",
-        "CVE-2026-43071",
-        "CVE-2026-43198",
-        "CVE-2026-43493",
-        "CVE-2026-43499",
-        "CVE-2026-46266",
-        "CVE-2026-46331",
-        "CVE-2026-52914",
-        "CVE-2026-52924",
-        "CVE-2026-52931",
-        "CVE-2026-52955",
-        "CVE-2026-52958",
-        "CVE-2026-52982",
-        "CVE-2026-52986",
-        "CVE-2026-52989",
-        "CVE-2026-52993",
-        "CVE-2026-52999",
-        "CVE-2026-53002",
-        "CVE-2026-53006",
-        "CVE-2026-53045",
-        "CVE-2026-53088",
-        "CVE-2026-53176",
-        "CVE-2026-53212",
-        "CVE-2026-53228",
-        "CVE-2026-53359"
-      ],
+      "cve_ids": [],
       "exploited": null,
-      "id": "ubuntu-usn:usn-8666-3",
-      "modified_at": "2026-08-27T21:41:58Z",
+      "id": "ubuntu-usn:usn-8701-1",
+      "modified_at": "2026-08-31T12:24:24Z",
       "platforms": [
         "linux"
       ],
       "products": [
-        "Linux kernel (GCP FIPS) vulnerabilities"
+        "UDisks vulnerability"
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "237334066ee9aa60e9da4efea7edce83300a6b8e2fc776962b188a67c93ecd0d",
-        "source_record_id": "USN-8666-3"
+        "source_body_sha256": "a2045064a12ba1286c26b7bbc9ee40d39a996dcb94fa13fe4dab3a3586230472",
+        "source_record_id": "USN-8701-1"
       },
-      "published_at": "2026-08-27T21:41:58Z",
+      "published_at": "2026-08-31T12:24:24Z",
       "ransomware": null,
-      "record_url": "https://ubuntu.com/security/notices/USN-8666-3",
+      "record_url": "https://ubuntu.com/security/notices/USN-8701-1",
       "severity": "unknown",
       "source_id": "ubuntu-usn",
       "source_url": "https://ubuntu.com/security/notices/rss.xml",
-      "summary": "Siebe Devroe, Héloïse Gollier, and Mathy Vanhoef discovered that the WiFi implementation in the Linux kernel did not properly handle aggregated frames in mesh networks, due to an incorrect fix for CVE-2020-24588. A physically proximate attacker could use this issue to inject packets. (CVE-2025-27558) Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - x86 architecture; - Cryptographic API; - InfiniBand drivers; - Media drivers; - NVIDIA Tegra memory controller driver; - Network drivers; - NVME drivers; - File systems infrastructure; - Ext4 file system; - IPv4 net…",
-      "title": "USN-8666-3: Linux kernel (GCP FIPS) vulnerabilities",
+      "summary": "It was discovered that UDisks did not correctly validate the caller identity when handling the as-user option in the org.freedesktop.UDisks2.Filesystem.Mount() D-Bus method. A local attacker with an active console session could possibly use this issue to mount filesystems on behalf of arbitrary users, including privileged accounts, leading to local privilege escalation.",
+      "title": "USN-8701-1: UDisks vulnerability",
       "zba": {
-        "commitment": "b932f74a6bd07e40c20b8f501cb40a90e4c4417258c77dcccfcdb54c4ae7ee75",
-        "evidence": "authoritative-advisory",
-        "phase": "observed",
-        "spec": "zsec.zba.intelligence.v1"
-      }
-    },
-    {
-      "action": "Apply the Ubuntu security update for each applicable installed package.",
-      "cve_ids": [
-        "CVE-2026-43071",
-        "CVE-2026-52914",
-        "CVE-2026-52993",
-        "CVE-2026-53043",
-        "CVE-2026-53224",
-        "CVE-2026-53246",
-        "CVE-2026-53309"
-      ],
-      "exploited": null,
-      "id": "ubuntu-usn:usn-8644-3",
-      "modified_at": "2026-08-27T21:39:06Z",
-      "platforms": [
-        "linux"
-      ],
-      "products": [
-        "Linux kernel (Azure) vulnerabilities"
-      ],
-      "provenance": {
-        "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "237334066ee9aa60e9da4efea7edce83300a6b8e2fc776962b188a67c93ecd0d",
-        "source_record_id": "USN-8644-3"
-      },
-      "published_at": "2026-08-27T21:39:06Z",
-      "ransomware": null,
-      "record_url": "https://ubuntu.com/security/notices/USN-8644-3",
-      "severity": "unknown",
-      "source_id": "ubuntu-usn",
-      "source_url": "https://ubuntu.com/security/notices/rss.xml",
-      "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - File systems infrastructure; - OCFS2 file system; - B.A.T.M.A.N. meshing protocol; - SCTP protocol; - TIPC protocol; (CVE-2026-43071, CVE-2026-52914, CVE-2026-52993, CVE-2026-53043, CVE-2026-53224, CVE-2026-53246, CVE-2026-53309)",
-      "title": "USN-8644-3: Linux kernel (Azure) vulnerabilities",
-      "zba": {
-        "commitment": "293993ec5b77938ee910d6b4dbf731ddf21739121f9f5269b75ba99d59639b6a",
-        "evidence": "authoritative-advisory",
-        "phase": "observed",
-        "spec": "zsec.zba.intelligence.v1"
-      }
-    },
-    {
-      "action": "Apply the Ubuntu security update for each applicable installed package.",
-      "cve_ids": [
-        "CVE-2020-24588",
-        "CVE-2025-27558",
-        "CVE-2026-31414",
-        "CVE-2026-31448",
-        "CVE-2026-31705",
-        "CVE-2026-43198",
-        "CVE-2026-43378",
-        "CVE-2026-43499",
-        "CVE-2026-46266",
-        "CVE-2026-46331",
-        "CVE-2026-52924",
-        "CVE-2026-52989",
-        "CVE-2026-53086",
-        "CVE-2026-53176",
-        "CVE-2026-53212",
-        "CVE-2026-53215",
-        "CVE-2026-53224",
-        "CVE-2026-53225",
-        "CVE-2026-53228",
-        "CVE-2026-53246",
-        "CVE-2026-53359",
-        "CVE-2026-64531"
-      ],
-      "exploited": null,
-      "id": "ubuntu-usn:usn-8661-3",
-      "modified_at": "2026-08-27T21:36:04Z",
-      "platforms": [
-        "linux"
-      ],
-      "products": [
-        "Linux kernel vulnerabilities"
-      ],
-      "provenance": {
-        "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "237334066ee9aa60e9da4efea7edce83300a6b8e2fc776962b188a67c93ecd0d",
-        "source_record_id": "USN-8661-3"
-      },
-      "published_at": "2026-08-27T21:36:04Z",
-      "ransomware": null,
-      "record_url": "https://ubuntu.com/security/notices/USN-8661-3",
-      "severity": "unknown",
-      "source_id": "ubuntu-usn",
-      "source_url": "https://ubuntu.com/security/notices/rss.xml",
-      "summary": "Siebe Devroe, Héloïse Gollier, and Mathy Vanhoef discovered that the WiFi implementation in the Linux kernel did not properly handle aggregated frames in mesh networks, due to an incorrect fix for CVE-2020-24588. A physically proximate attacker could use this issue to inject packets. (CVE-2025-27558) Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - x86 architecture; - InfiniBand drivers; - Network drivers; - NVME drivers; - Ext4 file system; - SMB network file system; - IPv4 networking; - Network traffic control; - TCP network protocol; - Locking primitives; -…",
-      "title": "USN-8661-3: Linux kernel vulnerabilities",
-      "zba": {
-        "commitment": "7e00ba3887b66e1352fcdc69d5aa6915a199dd0af3319da13088982dc872a913",
-        "evidence": "authoritative-advisory",
-        "phase": "observed",
-        "spec": "zsec.zba.intelligence.v1"
-      }
-    },
-    {
-      "action": "Apply the Ubuntu security update for each applicable installed package.",
-      "cve_ids": [
-        "CVE-2026-53224",
-        "CVE-2026-53246",
-        "CVE-2026-64531"
-      ],
-      "exploited": null,
-      "id": "ubuntu-usn:usn-8658-4",
-      "modified_at": "2026-08-27T21:32:51Z",
-      "platforms": [
-        "linux"
-      ],
-      "products": [
-        "Linux kernel (Azure CVM) vulnerabilities"
-      ],
-      "provenance": {
-        "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "237334066ee9aa60e9da4efea7edce83300a6b8e2fc776962b188a67c93ecd0d",
-        "source_record_id": "USN-8658-4"
-      },
-      "published_at": "2026-08-27T21:32:51Z",
-      "ransomware": null,
-      "record_url": "https://ubuntu.com/security/notices/USN-8658-4",
-      "severity": "unknown",
-      "source_id": "ubuntu-usn",
-      "source_url": "https://ubuntu.com/security/notices/rss.xml",
-      "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - Open vSwitch; - SCTP protocol; (CVE-2026-53224, CVE-2026-53246, CVE-2026-64531)",
-      "title": "USN-8658-4: Linux kernel (Azure CVM) vulnerabilities",
-      "zba": {
-        "commitment": "f1445725646e09042dbff6d2f14663634d42a209530201212a105a725eb3edd7",
-        "evidence": "authoritative-advisory",
-        "phase": "observed",
-        "spec": "zsec.zba.intelligence.v1"
-      }
-    },
-    {
-      "action": "Apply the Ubuntu security update for each applicable installed package.",
-      "cve_ids": [
-        "CVE-2026-53224",
-        "CVE-2026-53246",
-        "CVE-2026-53247",
-        "CVE-2026-64531"
-      ],
-      "exploited": null,
-      "id": "ubuntu-usn:usn-8643-5",
-      "modified_at": "2026-08-27T21:29:15Z",
-      "platforms": [
-        "linux"
-      ],
-      "products": [
-        "Linux kernel vulnerabilities"
-      ],
-      "provenance": {
-        "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "237334066ee9aa60e9da4efea7edce83300a6b8e2fc776962b188a67c93ecd0d",
-        "source_record_id": "USN-8643-5"
-      },
-      "published_at": "2026-08-27T21:29:15Z",
-      "ransomware": null,
-      "record_url": "https://ubuntu.com/security/notices/USN-8643-5",
-      "severity": "unknown",
-      "source_id": "ubuntu-usn",
-      "source_url": "https://ubuntu.com/security/notices/rss.xml",
-      "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - Network drivers; - Open vSwitch; - SCTP protocol; (CVE-2026-53224, CVE-2026-53246, CVE-2026-53247, CVE-2026-64531)",
-      "title": "USN-8643-5: Linux kernel vulnerabilities",
-      "zba": {
-        "commitment": "c1310aca3edd4ad4d3d9239c89349850bab239a028a46997f44abcd704b2b20b",
+        "commitment": "4eb1864c72dcc892ea3c6875050544bc0ce23c614da810f4e7034a84eabd2bbd",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -46887,7 +46685,7 @@
       }
     }
   ],
-  "generated_at": "2026-08-29T07:00:00Z",
+  "generated_at": "2026-08-31T12:46:51Z",
   "policy": {
     "auto_remediation_allowed": false,
     "data_only": true,
@@ -46931,15 +46729,15 @@
       "version": "2026-08-29T07:00:00Z"
     },
     {
-      "advisory_count": 5,
+      "advisory_count": 1,
       "authority": "Canonical Ubuntu Security Team",
-      "body_sha256": "237334066ee9aa60e9da4efea7edce83300a6b8e2fc776962b188a67c93ecd0d",
-      "contribution_sha256": "85153243d9293f953df67ac6402fbb586b64b2dee938d844ca2a0eaec10c4ef7",
+      "body_sha256": "a2045064a12ba1286c26b7bbc9ee40d39a996dcb94fa13fe4dab3a3586230472",
+      "contribution_sha256": "c142fb2cda656cab7afd7c43f03b54a1eba41a094133f24871cfb51f45884fcb",
       "parser": "ubuntu-usn-rss-v1",
-      "semantic_sha256": "b1ab6025230ea47eb821102c7b039538719239726b49076345720e5fa010e04f",
+      "semantic_sha256": "f4942a146f114ad45c68cec36b0f0bb5cea0826365897f0a4773325089296116",
       "source_id": "ubuntu-usn",
       "url": "https://ubuntu.com/security/notices/rss.xml",
-      "version": "2026-08-27T21:41:58Z"
+      "version": "2026-08-31T12:46:51Z"
     }
   ]
 }
