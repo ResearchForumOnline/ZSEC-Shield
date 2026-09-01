@@ -14,7 +14,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "0f4b2d226a1ae0c4117bbc9bcfb0b66d99d20c388c4e88b2b0ca98b271140a79",
+        "source_body_sha256": "ec398b7d6a9d996eb21848cf9b82fd4c6d559a5d269810ccc530d8aaaba53a88",
         "source_record_id": "USN-8701-1"
       },
       "published_at": "2026-08-31T12:24:24Z",
@@ -26,7 +26,7 @@
       "summary": "It was discovered that UDisks did not correctly validate the caller identity when handling the as-user option in the org.freedesktop.UDisks2.Filesystem.Mount() D-Bus method. A local attacker with an active console session could possibly use this issue to mount filesystems on behalf of arbitrary users, including privileged accounts, leading to local privilege escalation.",
       "title": "USN-8701-1: UDisks vulnerability",
       "zba": {
-        "commitment": "b4db034a6e73cc91ad4c1596f49b143e9f7c1a312470052121ccef0ee631f525",
+        "commitment": "6f77f82216a35c74d94a1e24c9c0132f85a5537c6685d0076b3fd19129496d7e",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -46685,7 +46685,7 @@
       }
     }
   ],
-  "generated_at": "2026-08-31T14:55:13Z",
+  "generated_at": "2026-09-01T06:27:48Z",
   "policy": {
     "auto_remediation_allowed": false,
     "data_only": true,
@@ -46731,13 +46731,13 @@
     {
       "advisory_count": 1,
       "authority": "Canonical Ubuntu Security Team",
-      "body_sha256": "0f4b2d226a1ae0c4117bbc9bcfb0b66d99d20c388c4e88b2b0ca98b271140a79",
-      "contribution_sha256": "9f21aea88ba0d2b704952df0caee2a0f00f7b7d2a058e799c2ef5f9f61455dbd",
+      "body_sha256": "ec398b7d6a9d996eb21848cf9b82fd4c6d559a5d269810ccc530d8aaaba53a88",
+      "contribution_sha256": "2084569262769634a3dca7e4b9044495b2a1d6a48f37a8b04cf98139c02bb2c3",
       "parser": "ubuntu-usn-rss-v1",
       "semantic_sha256": "f4942a146f114ad45c68cec36b0f0bb5cea0826365897f0a4773325089296116",
       "source_id": "ubuntu-usn",
       "url": "https://ubuntu.com/security/notices/rss.xml",
-      "version": "2026-08-31T13:12:09Z"
+      "version": "2026-09-01T06:27:48Z"
     }
   ]
 }
