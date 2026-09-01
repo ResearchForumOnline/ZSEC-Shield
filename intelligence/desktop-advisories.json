@@ -14,7 +14,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "ec398b7d6a9d996eb21848cf9b82fd4c6d559a5d269810ccc530d8aaaba53a88",
+        "source_body_sha256": "ff915b0c49878342b8dcd964e7ff56506a9cc70ed6eb0eee0efbe110eb336bf1",
         "source_record_id": "USN-8701-1"
       },
       "published_at": "2026-08-31T12:24:24Z",
@@ -26,7 +26,7 @@
       "summary": "It was discovered that UDisks did not correctly validate the caller identity when handling the as-user option in the org.freedesktop.UDisks2.Filesystem.Mount() D-Bus method. A local attacker with an active console session could possibly use this issue to mount filesystems on behalf of arbitrary users, including privileged accounts, leading to local privilege escalation.",
       "title": "USN-8701-1: UDisks vulnerability",
       "zba": {
-        "commitment": "6f77f82216a35c74d94a1e24c9c0132f85a5537c6685d0076b3fd19129496d7e",
+        "commitment": "e36339a1b7dd110a67fb5a206ff54be0d130ac49849fcef0c2f742f8fd905236",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -46731,8 +46731,8 @@
     {
       "advisory_count": 1,
       "authority": "Canonical Ubuntu Security Team",
-      "body_sha256": "ec398b7d6a9d996eb21848cf9b82fd4c6d559a5d269810ccc530d8aaaba53a88",
-      "contribution_sha256": "2084569262769634a3dca7e4b9044495b2a1d6a48f37a8b04cf98139c02bb2c3",
+      "body_sha256": "ff915b0c49878342b8dcd964e7ff56506a9cc70ed6eb0eee0efbe110eb336bf1",
+      "contribution_sha256": "53c62991933ecbb210ef440407f1868052baf877cfa726c027d3b1fa9736a2cf",
       "parser": "ubuntu-usn-rss-v1",
       "semantic_sha256": "f4942a146f114ad45c68cec36b0f0bb5cea0826365897f0a4773325089296116",
       "source_id": "ubuntu-usn",
