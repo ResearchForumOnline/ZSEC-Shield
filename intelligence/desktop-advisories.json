@@ -20,7 +20,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "dc7cea9573ae64d9d0c33f6b90a07fbba7368169e0f8868563a912dcfd53dd21",
+        "source_body_sha256": "017e92db0734f67afcdb1d92ffef0bae86f0ba41eabe2cd11fd6ffe3b71cf66e",
         "source_record_id": "USN-8714-2"
       },
       "published_at": "2026-09-04T17:55:21Z",
@@ -32,7 +32,7 @@
       "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - OCFS2 file system; - SCTP protocol; (CVE-2026-53043, CVE-2026-53224, CVE-2026-53225, CVE-2026-53246, CVE-2026-53309)",
       "title": "USN-8714-2: Linux kernel vulnerabilities",
       "zba": {
-        "commitment": "957b448e959188bf6a3c8eeca530090e9365282e706f95e1a8ac94762259ca38",
+        "commitment": "0be84dc311a181dd46f733e6820562439ec3a275d5da18f715dcd47f4dda507f",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -61,7 +61,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "dc7cea9573ae64d9d0c33f6b90a07fbba7368169e0f8868563a912dcfd53dd21",
+        "source_body_sha256": "017e92db0734f67afcdb1d92ffef0bae86f0ba41eabe2cd11fd6ffe3b71cf66e",
         "source_record_id": "USN-8725-1"
       },
       "published_at": "2026-09-04T17:51:55Z",
@@ -73,7 +73,7 @@
       "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - NVIDIA Tegra memory controller driver; - File systems infrastructure; - Network file system (NFS) server daemon; - OCFS2 file system; - B.A.T.M.A.N. meshing protocol; - Netfilter; - SCTP protocol; (CVE-2022-50401, CVE-2026-43071, CVE-2026-52914, CVE-2026-53002, CVE-2026-53043, CVE-2026-53045, CVE-2026-53224, CVE-2026-53309)",
       "title": "USN-8725-1: Linux kernel vulnerabilities",
       "zba": {
-        "commitment": "47bdb4bb36bffc6685d38696a961411f4dd538c2766be24f09561ec3897d3923",
+        "commitment": "07fb1e6599b23283df8979b4b7352c08e1d8f963a4cf91174e472b07c0f5d90d",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -131,7 +131,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "dc7cea9573ae64d9d0c33f6b90a07fbba7368169e0f8868563a912dcfd53dd21",
+        "source_body_sha256": "017e92db0734f67afcdb1d92ffef0bae86f0ba41eabe2cd11fd6ffe3b71cf66e",
         "source_record_id": "USN-8721-1"
       },
       "published_at": "2026-09-03T12:30:15Z",
@@ -143,7 +143,7 @@
       "summary": "It was discovered that OpenSSH's ssh-agent incorrectly handled interactions between agent locking and the session-bind@openssh.com extension. A remote attacker with access to a forwarded agent connection could possibly use this issue to perform operations that should only be available locally, such as adding tokens or using keys. (CVE-2026-73281) It was discovered that OpenSSH's ssh client incorrectly handled concurrent remote-forwarding operations. A remote attacker could possibly use this issue to cause a use-after-free condition, resulting in a denial of service or the execution of arbitrary code. (CVE-2026-73282) It was discovered that OpenSSH's sshd server incorrectly applied the restr…",
       "title": "USN-8721-1: OpenSSH vulnerabilities",
       "zba": {
-        "commitment": "3afab6bd88fd95d9f84293134081837fd19abd7816de3e0915ab974eef1b8811",
+        "commitment": "9cd50ba3678c502b5e7a0ab26126776884c9d6e9369d87231b56683e118acbeb",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -46057,8 +46057,8 @@
     {
       "advisory_count": 3,
       "authority": "Canonical Ubuntu Security Team",
-      "body_sha256": "dc7cea9573ae64d9d0c33f6b90a07fbba7368169e0f8868563a912dcfd53dd21",
-      "contribution_sha256": "4d186e8e7ac7585afa566921cfaad086da2ad5a73b5e5f7bcf31c34bf5daf4cc",
+      "body_sha256": "017e92db0734f67afcdb1d92ffef0bae86f0ba41eabe2cd11fd6ffe3b71cf66e",
+      "contribution_sha256": "4e5853f76fb37a8863b32b943d44fa44f403247dd160333e2145dee88391f55c",
       "parser": "ubuntu-usn-rss-v1",
       "semantic_sha256": "869e105881b9077c27d6f48e9cee85535b77ef784225a600a5de3ce531470947",
       "source_id": "ubuntu-usn",
