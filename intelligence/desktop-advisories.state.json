@@ -1,6 +1,6 @@
 {
-  "current_catalog_sha256": "141e992be3c9e5409b3dd7cc3665750497e2d9ff93806f12cfca2174be56ab0e",
-  "installed_at": "2026-09-05T22:04:37Z",
+  "current_catalog_sha256": "b0fb596e90f7ccf69af56c6f08b5b83fb4d8ac96b863f9e4ec8759f4e9dfe633",
+  "installed_at": "2026-09-06T22:08:45Z",
   "schema": "zsec.desktop-intelligence-state.v1",
   "sources": [
     {
@@ -14,9 +14,9 @@
       "version": "2026-09-04T16:47:03Z"
     },
     {
-      "semantic_sha256": "bb0655a8ed0349030ba4f57d6c6e11b02a98570fb9d525857aef06315f2b6833",
+      "semantic_sha256": "97089995b4ce732d56dbe12c3d0bd61c79901d3ee7f477c0c79fb3b0cf133f74",
       "source_id": "microsoft-msrc",
-      "version": "2026-09-04T01:03:40Z"
+      "version": "2026-09-06T04:36:00Z"
     },
     {
       "semantic_sha256": "869e105881b9077c27d6f48e9cee85535b77ef784225a600a5de3ce531470947",
