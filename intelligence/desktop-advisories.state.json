@@ -1,6 +1,6 @@
 {
-  "current_catalog_sha256": "2f4709686d5b3f83ca324432343a3e519e864d590c4999d98ad22d4cb5689ea5",
-  "installed_at": "2026-09-09T22:35:35Z",
+  "current_catalog_sha256": "beef80ace3e4117921b28bb8cb0c6b6aed403570160255370e869ef7275e3897",
+  "installed_at": "2026-09-10T22:37:42Z",
   "schema": "zsec.desktop-intelligence-state.v1",
   "sources": [
     {
@@ -11,17 +11,17 @@
     {
       "semantic_sha256": "a347484dfd0a89119111c7f1199c0315ed95fbbb4e5358cc2ed3db0eb69ff103",
       "source_id": "cisa-kev",
-      "version": "2026-09-09T19:00:50Z"
+      "version": "2026-09-10T19:00:05Z"
     },
     {
       "semantic_sha256": "000691e9336fd44d269013f259b82c1dce9e2bea9bcc453a1e1aabb623c1db11",
       "source_id": "microsoft-msrc",
-      "version": "2026-09-09T15:09:50Z"
+      "version": "2026-09-10T03:32:05Z"
     },
     {
-      "semantic_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "semantic_sha256": "1f1751de1e0a89b48186b33f873ebe9f996fb099e18a88c68a8604ec778e0077",
       "source_id": "ubuntu-usn",
-      "version": "2026-09-09T17:27:15Z"
+      "version": "2026-09-10T15:56:46Z"
     }
   ]
 }
