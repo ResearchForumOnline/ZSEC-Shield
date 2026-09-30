@@ -21,7 +21,7 @@ EXPECTED_URLS = {
     "antivirus": {
         "website_url": "https://talktoai.org/zero-security/",
         "support_url": "https://github.com/ResearchForumOnline/ZSEC-Shield/issues",
-        "privacy_policy_url": "https://talktoai.org/zero-security/#privacy",
+        "privacy_policy_url": "https://talktoai.org/zsec/privacy/",
         "vulnerability_reporting_url": "https://talktoai.org/.well-known/security.txt",
     },
     "browser": {
@@ -549,7 +549,8 @@ def render_field_sheet(listings: list[dict[str, Any]]) -> str:
                 f"- Language: `{data['language']}`",
                 f"- Source version: `{version}`",
                 f"- Store package version: `{packaging.store_version(version)}`",
-                f"- Category: `{data['category']['primary']}` (confirm the closest current portal option)",
+                f"- Category: `{data['category']['primary']}` "
+                "(confirm the closest current portal option)",
                 "- Price: `Free`; no trial, subscription, add-on, or in-app purchase",
                 "- Device family: `Windows Desktop` only",
                 "- What's new in this version: leave blank for the first submission",

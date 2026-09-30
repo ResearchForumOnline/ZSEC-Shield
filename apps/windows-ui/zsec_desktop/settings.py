@@ -156,7 +156,7 @@ class StartupRegistration:
         if os.name != "nt":
             return False, "Windows startup registration is available only on Windows"
         if self.store_managed:
-            return False, None
+            return False, "Store startup state must be read through the Windows StartupTask API"
         value, error = self._read_value()
         return value is not None, error
 
@@ -164,9 +164,9 @@ class StartupRegistration:
         if os.name != "nt":
             raise OSError("Windows startup registration is available only on Windows")
         if self.store_managed:
-            if enabled:
-                raise OSError("Windows manages startup for this Store installation")
-            return
+            raise OSError(
+                "Windows manages startup for this Store installation; use its StartupTask API"
+            )
         import winreg
 
         path = r"Software\Microsoft\Windows\CurrentVersion\Run"

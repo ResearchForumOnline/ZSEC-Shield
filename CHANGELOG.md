@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.34 Windows desktop - 2026-09-30
+
+- Replaced the permanently disabled Store startup preference with the package's
+  native Windows StartupTask API, asynchronous state read-back, and direct
+  Windows Startup apps guidance for user-disabled or policy-controlled tasks.
+- Persisted the user's automatic-monitoring choice and added supervised recovery
+  of the Store edition's local watcher after failure with bounded retry delays.
+- Delivered small watch events promptly instead of waiting for a large pipe
+  buffer, and kept incomplete or stale coverage visibly distinct from a healthy
+  monitoring heartbeat.
+- Added notification-area alerts for detections and interrupted coverage and
+  distinguished background monitoring from foreground scan activity.
+- Microsoft Defender or another active primary provider continues to perform
+  real-time pre-access enforcement. ZSEC performs post-change inspection within
+  its configured folders; this update does not introduce a kernel antivirus.
+
 ## 0.3.31 Windows desktop - 2026-08-26
 
 - Separated the Overview into independently evidenced Windows real-time

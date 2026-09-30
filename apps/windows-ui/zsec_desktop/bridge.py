@@ -645,6 +645,10 @@ class WatchSession:
                 creationflags=_creation_flags(),
             )
             self._process = process
+            # Stop can arrive before Popen completes. Do not leave a child alive
+            # after the owner has already cancelled or exited.
+            if self._stopped_by_user and process.poll() is None:
+                process.terminate()
             stdout = process.stdout
             stderr = process.stderr
             assert stdout is not None
@@ -652,7 +656,7 @@ class WatchSession:
 
             def read_stderr() -> None:
                 while True:
-                    chunk = stderr.read(65536)
+                    chunk = stderr.read1(65536)
                     if not chunk:
                         return
                     with stderr_lock:
@@ -665,7 +669,9 @@ class WatchSession:
             stderr_thread.start()
             pending = bytearray()
             while True:
-                chunk = stdout.read(65536)
+                # read() on a buffered pipe can wait for 64 KiB before delivering
+                # tiny heartbeat records. read1() delivers each available chunk.
+                chunk = stdout.read1(65536)
                 if not chunk:
                     break
                 pending.extend(chunk)

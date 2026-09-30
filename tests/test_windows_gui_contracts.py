@@ -8,7 +8,7 @@ import sys
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -275,6 +275,65 @@ def test_companion_refresh_never_supersedes_a_still_running_evidence_check() -> 
     assert desktop._finish_companion_refresh(1) is True
     assert desktop.companion_refresh_inflight is False
     assert all(button.states == ["disabled", "normal"] for button in buttons)
+
+
+@pytest.mark.parametrize("event_name", ["scan_completed", "reconciliation_completed"])
+def test_monitor_rule_matches_remain_visible_after_healthy_heartbeat(event_name: str) -> None:
+    desktop = object.__new__(ZsecDesktop)
+    desktop.store_managed = False
+    desktop.watch_session_id = None
+    desktop.watch_last_sequence = 0
+    desktop.watch_findings_pending = False
+    desktop.watch_inventory_complete = True
+    desktop.watch_coverage_complete = False
+    desktop.watch_state_label = MagicMock()
+    desktop.watch_events = MagicMock()
+    desktop.watch_events.size.return_value = 2
+    desktop._monitoring_notice = MagicMock()
+    desktop._animate_activity = MagicMock()
+    desktop._watch_event(
+        {
+            "event": event_name,
+            "session_id": "local-session",
+            "sequence": 1,
+            "outcome": "configured_rule_matches_detected",
+            "scan": {"findings": [{"path": "benign-fixture.bin", "severity": "high"}]},
+        }
+    )
+    assert desktop.watch_findings_pending is True
+    desktop._monitoring_notice.assert_called_once()
+    desktop._watch_event(
+        {
+            "event": "health_heartbeat",
+            "session_id": "local-session",
+            "sequence": 2,
+            "operational_incomplete": False,
+        }
+    )
+    assert desktop.watch_findings_pending is True
+    assert desktop.watch_state_label.configure.call_args.kwargs["foreground"] == RED
+
+
+def test_store_save_does_not_claim_unavailable_startup_is_verified(tmp_path: Path) -> None:
+    from zsec_desktop.settings import DesktopSettings
+
+    desktop = object.__new__(ZsecDesktop)
+    desktop.store_managed = True
+    desktop.store_startup_state = None
+    desktop.desktop_settings = DesktopSettings()
+    desktop.bridge = MagicMock(state_dir=tmp_path)
+    desktop.close_to_tray = MagicMock()
+    desktop.close_to_tray.get.return_value = True
+    desktop.reduce_motion = MagicMock()
+    desktop.reduce_motion.get.return_value = False
+    desktop.max_file_mebibytes = MagicMock()
+    desktop.max_file_mebibytes.get.return_value = 64
+    desktop.settings_status = MagicMock()
+    desktop._motion_preference_changed = MagicMock()
+    desktop._save_desktop_settings()
+    text = desktop.settings_status.configure.call_args.kwargs["text"]
+    assert "Startup status is unavailable or pending" in text
+    assert "are verified with Windows" not in text
 
 
 def test_worker_completion_queue_is_drained_without_cross_thread_tk_calls() -> None:
@@ -646,12 +705,8 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     assert restart_inventory_view.headline == "ZSEC post-change monitoring running"
 
     degraded_with_defender = valid_companion()
-    degraded_with_defender.update(
-        {"decision": "degraded", "installed": True, "healthy": False}
-    )
-    degraded_view = companion_presentation(
-        validate_companion_status(degraded_with_defender)
-    )
+    degraded_with_defender.update({"decision": "degraded", "installed": True, "healthy": False})
+    degraded_view = companion_presentation(validate_companion_status(degraded_with_defender))
     assert degraded_view.state == "degraded"
     assert degraded_view.accent == "amber"
     assert degraded_view.headline == "ZSEC post-change monitoring not verified"
@@ -724,9 +779,7 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
         active_defender[field] = True  # type: ignore[index]
     active_defender["confirmed_active"] = True  # type: ignore[index]
     active_defender["baseline_features_confirmed"] = True  # type: ignore[index]
-    defender_view = companion_presentation(
-        validate_companion_status(degraded_with_active_defender)
-    )
+    defender_view = companion_presentation(validate_companion_status(degraded_with_active_defender))
     assert defender_view.headline == "ZSEC post-change monitoring not verified"
     assert defender_view.detail.startswith(
         "Microsoft Defender protection remains active as primary enforcement"
@@ -746,12 +799,8 @@ def test_companion_truth_table_rejects_false_green_decisions() -> None:
     assert "Coverage remains incomplete" in defender_coverage_view.detail
 
     degraded_without_verified_primary = copy.deepcopy(degraded_with_defender)
-    degraded_without_verified_primary["existing_primary_protection"][
-        "aggregate_good"
-    ] = False
-    red_view = companion_presentation(
-        validate_companion_status(degraded_without_verified_primary)
-    )
+    degraded_without_verified_primary["existing_primary_protection"]["aggregate_good"] = False
+    red_view = companion_presentation(validate_companion_status(degraded_without_verified_primary))
     assert red_view.state == "degraded"
     assert red_view.accent == "red"
 
@@ -796,9 +845,7 @@ def test_protection_layers_keep_enforcement_monitoring_and_scope_independent() -
     defender["baseline_features_confirmed"] = True
     active_layers = {
         layer.key: layer
-        for layer in protection_layers_presentation(
-            validate_companion_status(defender_active)
-        )
+        for layer in protection_layers_presentation(validate_companion_status(defender_active))
     }
     assert active_layers["windows"].title == "Microsoft Defender real-time protection"
     assert active_layers["windows"].status == "ACTIVE"
@@ -856,9 +903,12 @@ def test_protection_layers_keep_enforcement_monitoring_and_scope_independent() -
 
 
 def test_scan_completion_notifications_use_user_copy_and_preserve_severity() -> None:
-    assert scan_completion_notification(
-        {"outcome": "no_configured_rule_matches", "findings": 0, "observations": 0}
-    ) == "Scan complete — no malware rule matches."
+    assert (
+        scan_completion_notification(
+            {"outcome": "no_configured_rule_matches", "findings": 0, "observations": 0}
+        )
+        == "Scan complete — no malware rule matches."
+    )
     review = scan_completion_notification(
         {"outcome": "review_observations", "findings": 0, "observations": 2}
     )
@@ -868,17 +918,16 @@ def test_scan_completion_notifications_use_user_copy_and_preserve_severity() -> 
         {"outcome": "configured_rule_matches_detected", "findings": 1, "observations": 0}
     )
     assert detected.startswith("Action recommended — 1 malware rule match.")
-    assert scan_completion_notification({"outcome": "incomplete"}).startswith(
-        "Scan incomplete"
-    )
+    assert scan_completion_notification({"outcome": "incomplete"}).startswith("Scan incomplete")
 
 
 def test_network_protection_posture_is_validated_without_changing_health() -> None:
     payload = valid_companion()
     validated = validate_companion_status(payload)
-    assert validated["existing_primary_protection"]["defender"]["network_protection"][
-        "state"
-    ] == "disabled"
+    assert (
+        validated["existing_primary_protection"]["defender"]["network_protection"]["state"]
+        == "disabled"
+    )
 
     for state, raw_value in (("active", 1), ("audit", 2), ("unavailable", None)):
         candidate = copy.deepcopy(payload)

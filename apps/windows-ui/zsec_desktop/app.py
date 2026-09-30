@@ -34,13 +34,19 @@ from zsec_desktop.contracts import (
     update_presentation,
     windows_cutover_presentation,
 )
+from zsec_desktop.distribution import is_windows_store_package
+from zsec_desktop.monitoring import (
+    load_monitoring_enabled,
+    save_monitoring_enabled,
+    standard_monitoring_roots,
+)
 from zsec_desktop.settings import (
     DesktopSettings,
     StartupRegistration,
     load_settings,
     save_settings,
 )
-from zsec_desktop.distribution import is_windows_store_package
+from zsec_desktop.store_startup import StoreStartupOperation, StoreStartupState
 from zsec_desktop.support import build_support_snapshot, save_support_snapshot
 from zsec_desktop.tray import TrayController
 from zsec_shield import __version__ as ZSEC_VERSION
@@ -68,15 +74,13 @@ def scan_completion_notification(report: dict[str, Any]) -> str:
         observations = int(report.get("observations", 0))
         noun = "item" if observations == 1 else "items"
         return (
-            f"Scan complete — {observations} {noun} available for review. "
-            "Nothing was quarantined."
+            f"Scan complete — {observations} {noun} available for review. Nothing was quarantined."
         )
     if outcome == "configured_rule_matches_detected":
         findings = int(report.get("findings", 0))
         noun = "match" if findings == 1 else "matches"
         return (
-            f"Action recommended — {findings} malware rule {noun}. "
-            "Open ZSEC Antivirus for details."
+            f"Action recommended — {findings} malware rule {noun}. Open ZSEC Antivirus for details."
         )
     if outcome == "incomplete":
         return "Scan incomplete — some files could not be checked. Open ZSEC for details."
@@ -138,8 +142,7 @@ def scan_run_presentation(report: dict[str, Any]) -> ScanRunPresentation:
         state="incomplete",
         headline="Scan incomplete — no clean state available",
         detail=(
-            f"{issue_count} issue(s) prevented a complete result. Review the red "
-            "evidence below."
+            f"{issue_count} issue(s) prevented a complete result. Review the red evidence below."
         ),
         accent=RED,
     )
@@ -153,9 +156,7 @@ def advance_scan_motion_phase(phase: int, *, active: bool, reduce_motion: bool) 
     return (phase + 1) % 120
 
 
-def activity_indicator_state(
-    busy_operations: int, *, reduce_motion: bool
-) -> tuple[str, str, bool]:
+def activity_indicator_state(busy_operations: int, *, reduce_motion: bool) -> tuple[str, str, bool]:
     """Return accessible copy, accent and whether decorative motion may advance."""
 
     working = busy_operations > 0
@@ -396,8 +397,7 @@ class ScanEvidenceBand(tk.Canvas):
         self.state = "running"
         self.headline = "SCAN ACTIVE — VERIFIED RESULT PENDING"
         self.detail = (
-            f"Scope: {label}. Activity is indeterminate; no completion percentage "
-            "is inferred."
+            f"Scope: {label}. Activity is indeterminate; no completion percentage is inferred."
         )
         self.accent = CYAN
         self.active = True
@@ -589,9 +589,9 @@ class ZsecDesktop:
         # behind status, readiness and list operations. Every bridge command keeps
         # its own existing timeout and fail-closed contract.
         self.executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="zsec-ui")
-        self.ui_queue: queue.SimpleQueue[
-            tuple[Callable[..., Any], tuple[Any, ...]]
-        ] = queue.SimpleQueue()
+        self.ui_queue: queue.SimpleQueue[tuple[Callable[..., Any], tuple[Any, ...]]] = (
+            queue.SimpleQueue()
+        )
         self.ui_queue_job: str | None = None
         self.closing = False
         self.scan_cancel: threading.Event | None = None
@@ -600,7 +600,17 @@ class ZsecDesktop:
         self.report_rows: dict[str, Path] = {}
         loaded_settings, self.settings_load_error = load_settings(bridge.state_dir)
         self.startup_registration = StartupRegistration(store_managed=self.store_managed)
-        registered_startup, registration_error = self.startup_registration.current()
+        # Store startup has its own asynchronous Windows API. A Run-key lookup
+        # cannot establish its state and used to display a permanently untickable box.
+        self.store_startup_state: StoreStartupState | None = None
+        self.store_startup_operation: StoreStartupOperation | None = None
+        self.store_startup_poll_job: str | None = None
+        self.store_startup_deadline = 0.0
+        registered_startup, registration_error = (
+            (loaded_settings.start_with_windows, None)
+            if self.store_managed
+            else self.startup_registration.current()
+        )
         if registration_error is not None:
             self.settings_load_error = "; ".join(
                 value
@@ -632,6 +642,17 @@ class ZsecDesktop:
         self.watch_session_id: str | None = None
         self.watch_last_sequence = 0
         self.watch_last_heartbeat_monotonic: float | None = None
+        self.watch_coverage_complete = False
+        self.watch_inventory_complete = False
+        self.watch_findings_pending = False
+        self.watch_started_monotonic: float | None = None
+        self.watch_mode: str | None = None
+        self.monitoring_retry_job: str | None = None
+        self.monitoring_retry_attempt = 0
+        self.monitoring_notice_times: dict[str, float] = {}
+        self.windows_health_good: bool | None = None
+        enabled, self.monitoring_preference_error = load_monitoring_enabled(bridge.state_dir)
+        self.automatic_monitoring = tk.BooleanVar(value=enabled)
         self.watch_watchdog_job: str | None = None
         self.tray_protection_status = "Checking Windows protection"
         self.tray_companion_status = "Checking ZSEC monitoring"
@@ -665,6 +686,7 @@ class ZsecDesktop:
         self._animate_activity()
         self.root.after(120, self.refresh_all)
         if self.store_managed:
+            self.root.after(200, self._refresh_store_startup)
             self.root.after(600, self._start_store_monitoring)
             self.root.after(1_200, self._refresh_store_intelligence)
         self.startup_evidence_deadline_job = self.root.after(
@@ -808,14 +830,53 @@ class ZsecDesktop:
         )
         brand_canvas.pack(side=tk.LEFT, padx=(0, 10))
         brand_canvas.create_polygon(
-            21, 3, 37, 9, 37, 21, 34, 29, 28, 36, 21, 40,
-            14, 36, 8, 29, 5, 21, 5, 9,
-            fill="#102538", outline="#2e6470", width=2,
+            21,
+            3,
+            37,
+            9,
+            37,
+            21,
+            34,
+            29,
+            28,
+            36,
+            21,
+            40,
+            14,
+            36,
+            8,
+            29,
+            5,
+            21,
+            5,
+            9,
+            fill="#102538",
+            outline="#2e6470",
+            width=2,
         )
         brand_canvas.create_polygon(
-            11, 12, 31, 12, 31, 17, 20, 27, 31, 27, 31, 33,
-            10, 33, 10, 27, 21, 17, 11, 17,
-            fill=CYAN, outline="",
+            11,
+            12,
+            31,
+            12,
+            31,
+            17,
+            20,
+            27,
+            31,
+            27,
+            31,
+            33,
+            10,
+            33,
+            10,
+            27,
+            21,
+            17,
+            11,
+            17,
+            fill=CYAN,
+            outline="",
         )
         ttk.Label(title_row, text="ZSEC", style="Title.TLabel", foreground=CYAN).pack(side=tk.LEFT)
         ttk.Label(title_row, text="  Antivirus", style="Title.TLabel").pack(side=tk.LEFT)
@@ -824,9 +885,7 @@ class ZsecDesktop:
             text=f"COMMUNITY {ZSEC_VERSION}",
             style="Subtitle.TLabel",
             foreground=AMBER,
-        ).pack(
-            side=tk.LEFT, padx=(18, 0), pady=(9, 0)
-        )
+        ).pack(side=tk.LEFT, padx=(18, 0), pady=(9, 0))
         self.global_busy = ttk.Progressbar(title_row, mode="indeterminate", length=150)
         self.activity_status_label = ttk.Label(
             title_row,
@@ -1091,9 +1150,7 @@ class ZsecDesktop:
             return
         self.overview_card_columns = columns
         for column in range(4):
-            self.overview_cards_frame.columnconfigure(
-                column, weight=0, minsize=0, uniform=""
-            )
+            self.overview_cards_frame.columnconfigure(column, weight=0, minsize=0, uniform="")
         for column in range(columns):
             self.overview_cards_frame.columnconfigure(
                 column, weight=1, minsize=240, uniform="overview"
@@ -1120,9 +1177,7 @@ class ZsecDesktop:
             return
         self.overview_action_columns = columns
         for column in range(4):
-            self.overview_actions_row.columnconfigure(
-                column, weight=0, minsize=0, uniform=""
-            )
+            self.overview_actions_row.columnconfigure(column, weight=0, minsize=0, uniform="")
         for column in range(columns):
             self.overview_actions_row.columnconfigure(
                 column, weight=1, minsize=180, uniform="overview-actions"
@@ -1247,6 +1302,24 @@ class ZsecDesktop:
             wraplength=920,
         )
         self.protected_roots_label.pack(anchor=tk.W, pady=(8, 0))
+        if self.store_managed:
+            ttk.Checkbutton(
+                panel,
+                text=(
+                    "Automatically monitor standard folders whenever ZSEC runs "
+                    "(remember this choice)"
+                ),
+                variable=self.automatic_monitoring,
+                command=self._change_automatic_monitoring,
+            ).pack(anchor=tk.W, pady=(8, 0))
+            if self.monitoring_preference_error:
+                ttk.Label(
+                    panel,
+                    text=(
+                        "Saved monitoring choice could not be read; monitoring defaults to enabled."
+                    ),
+                    style="Warning.TLabel",
+                ).pack(anchor=tk.W)
         ttk.Separator(panel).pack(fill=tk.X, pady=14)
         ttk.Label(
             panel,
@@ -1262,7 +1335,8 @@ class ZsecDesktop:
                 "by this running app; Microsoft manages application updates."
                 if self.store_managed
                 else "Optional diagnostic control. The installed companion selects and "
-                "monitors its protected folders automatically, starts at Windows sign-in, retries after failure, "
+                "monitors its protected folders automatically, "
+                "starts at Windows sign-in, retries after failure, "
                 "and refreshes signed intelligence on schedule."
             ),
             style="Muted.TLabel",
@@ -1680,9 +1754,7 @@ class ZsecDesktop:
         panel.pack(fill=tk.BOTH, expand=True)
         header = ttk.Frame(panel, style="Surface.TFrame")
         header.pack(fill=tk.X)
-        ttk.Label(
-            header, text="Protection assurance", style="Section.TLabel"
-        ).pack(side=tk.LEFT)
+        ttk.Label(header, text="Protection assurance", style="Section.TLabel").pack(side=tk.LEFT)
         ttk.Button(header, text="Refresh", command=self.refresh_readiness).pack(side=tk.RIGHT)
         ttk.Button(
             header,
@@ -1763,19 +1835,35 @@ class ZsecDesktop:
         ttk.Label(grid, text="Windows sign-in", style="Surface.TLabel").grid(
             row=5, column=0, sticky=tk.W, pady=6
         )
-        startup_checkbox = ttk.Checkbutton(
+        self.startup_checkbox = ttk.Checkbutton(
             grid,
-            text=(
-                "Startup is managed through Microsoft Store and Windows settings"
-                if self.store_managed
-                else "Start ZSEC Antivirus in the notification area"
-            ),
+            text="Start ZSEC Antivirus in the notification area",
             variable=self.start_with_windows,
+            command=self._startup_preference_changed,
         )
-        startup_checkbox.grid(row=5, column=1, sticky=tk.W, padx=(14, 0), pady=6)
+        self.startup_checkbox.grid(row=5, column=1, sticky=tk.W, padx=(14, 0), pady=6)
         if self.store_managed:
-            self.start_with_windows.set(False)
-            startup_checkbox.configure(state=tk.DISABLED)
+            self.startup_checkbox.configure(state=tk.DISABLED)
+            self.startup_status = ttk.Label(
+                grid,
+                text="Checking the actual Windows startup state…",
+                style="Muted.TLabel",
+                wraplength=690,
+            )
+            self.startup_status.grid(row=6, column=1, sticky=tk.W, padx=(14, 0))
+            startup_actions = ttk.Frame(grid, style="Surface.TFrame")
+            startup_actions.grid(row=7, column=1, sticky=tk.W, padx=(14, 0), pady=(6, 0))
+            ttk.Button(
+                startup_actions,
+                text="Open Windows Startup apps",
+                command=self._open_windows_startup,
+            ).pack(side=tk.LEFT)
+            self.startup_refresh_button = ttk.Button(
+                startup_actions,
+                text="Refresh startup status",
+                command=self._refresh_store_startup,
+            )
+            self.startup_refresh_button.pack(side=tk.LEFT, padx=(8, 0))
         actions = ttk.Frame(panel, style="Surface.TFrame")
         actions.pack(fill=tk.X, pady=(18, 0))
         ttk.Button(
@@ -1891,24 +1979,39 @@ class ZsecDesktop:
                 raise ValueError("Maximum file size must be between 1 and 16384 MiB.")
             requested = DesktopSettings(
                 close_to_tray=bool(self.close_to_tray.get()),
-                start_with_windows=False if self.store_managed else bool(self.start_with_windows.get()),
+                start_with_windows=(
+                    self.store_startup_state.enabled
+                    if self.store_managed and self.store_startup_state is not None
+                    else self.desktop_settings.start_with_windows
+                    if self.store_managed
+                    else bool(self.start_with_windows.get())
+                ),
                 reduce_motion=bool(self.reduce_motion.get()),
                 max_file_mebibytes=maximum,
             )
-            previous_startup, startup_error = self.startup_registration.current()
-            if startup_error is not None and requested.start_with_windows:
-                raise OSError(startup_error)
-            self.startup_registration.set_enabled(requested.start_with_windows)
+            previous_startup = False
+            if not self.store_managed:
+                previous_startup, startup_error = self.startup_registration.current()
+                if startup_error is not None and requested.start_with_windows:
+                    raise OSError(startup_error)
+                self.startup_registration.set_enabled(requested.start_with_windows)
             try:
                 save_settings(self.bridge.state_dir, requested)
             except BaseException:
-                with contextlib.suppress(OSError):
-                    self.startup_registration.set_enabled(previous_startup)
+                if not self.store_managed:
+                    with contextlib.suppress(OSError):
+                        self.startup_registration.set_enabled(previous_startup)
                 raise
             self.desktop_settings = requested
             self.settings_status.configure(
                 text=(
-                    "Settings saved. Microsoft Store and Windows own startup for this edition."
+                    "Settings saved. Startup changes apply immediately "
+                    "and are verified with Windows."
+                    if self.store_managed and self.store_startup_state is not None
+                    else (
+                        "Settings saved. Startup status is unavailable or pending; "
+                        "refresh to verify."
+                    )
                     if self.store_managed
                     else "Settings saved and Windows startup ownership verified."
                 ),
@@ -1925,6 +2028,107 @@ class ZsecDesktop:
         self.reduce_motion.set(defaults.reduce_motion)
         self.max_file_mebibytes.set(defaults.max_file_mebibytes)
         self._save_desktop_settings()
+        if self.store_managed:
+            self._startup_preference_changed()
+
+    def _startup_preference_changed(self) -> None:
+        if self.store_managed:
+            self._begin_store_startup("enable" if self.start_with_windows.get() else "disable")
+
+    def _refresh_store_startup(self) -> None:
+        self._begin_store_startup("query")
+
+    def _open_windows_startup(self) -> None:
+        try:
+            os.startfile("ms-settings:startupapps")
+        except OSError as exc:
+            self.startup_status.configure(
+                text=f"Could not open Startup apps: {exc}. Open Windows Settings → Apps → Startup.",
+                foreground=RED,
+            )
+
+    def _begin_store_startup(self, action: Literal["query", "enable", "disable"]) -> None:
+        if self.closing or not self.store_managed or self.store_startup_operation is not None:
+            return
+        self.startup_checkbox.configure(state=tk.DISABLED)
+        self.startup_refresh_button.configure(state=tk.DISABLED)
+        self.startup_status.configure(text="Checking Windows startup…", foreground=MUTED)
+        try:
+            self.store_startup_operation = StoreStartupOperation(action)
+            self.store_startup_deadline = time.monotonic() + 30.0
+        except (OSError, ValueError, RuntimeError) as exc:
+            self._store_startup_failed(exc)
+            return
+        self.store_startup_poll_job = self.root.after(50, self._poll_store_startup)
+
+    def _poll_store_startup(self) -> None:
+        self.store_startup_poll_job = None
+        operation = self.store_startup_operation
+        if operation is None:
+            return
+        if self.closing:
+            operation.close()
+            self.store_startup_operation = None
+            return
+        try:
+            state = operation.poll()
+            if state is None:
+                if time.monotonic() >= self.store_startup_deadline:
+                    raise OSError(
+                        "Windows did not finish the startup request. Refresh to check its state."
+                    )
+                self.store_startup_poll_job = self.root.after(100, self._poll_store_startup)
+                return
+            operation.close()
+            self.store_startup_operation = None
+            self.store_startup_state = state
+            self.start_with_windows.set(state.enabled)
+            self.startup_checkbox.configure(
+                state=(
+                    tk.DISABLED
+                    if state
+                    in (
+                        StoreStartupState.DISABLED_BY_POLICY,
+                        StoreStartupState.ENABLED_BY_POLICY,
+                    )
+                    else tk.NORMAL
+                )
+            )
+            self.startup_refresh_button.configure(state=tk.NORMAL)
+            self.startup_status.configure(
+                text=state.description, foreground=GREEN if state.enabled else AMBER
+            )
+            # This is a cache of verified Windows state, never the authority.
+            requested = DesktopSettings(
+                close_to_tray=self.desktop_settings.close_to_tray,
+                start_with_windows=state.enabled,
+                reduce_motion=self.desktop_settings.reduce_motion,
+                max_file_mebibytes=self.desktop_settings.max_file_mebibytes,
+            )
+            try:
+                save_settings(self.bridge.state_dir, requested)
+                self.desktop_settings = requested
+            except (OSError, ValueError) as exc:
+                # A failed local cache write does not undo the verified Windows state.
+                self.startup_status.configure(
+                    text=f"{state.description} Local settings cache was not saved: {exc}",
+                    foreground=AMBER,
+                )
+        except (OSError, ValueError, RuntimeError) as exc:
+            self._store_startup_failed(exc)
+
+    def _store_startup_failed(self, exc: BaseException) -> None:
+        if self.store_startup_operation is not None:
+            self.store_startup_operation.close()
+            self.store_startup_operation = None
+        # Unknown cannot be presented as a successfully disabled or enabled task.
+        self.store_startup_state = None
+        self.startup_checkbox.configure(state=tk.NORMAL)
+        self.startup_refresh_button.configure(state=tk.NORMAL)
+        self.startup_status.configure(
+            text=f"Startup state unavailable: {exc}. Use Windows Startup apps, then refresh.",
+            foreground=RED,
+        )
 
     def _open_window(self) -> None:
         self.root.deiconify()
@@ -1985,10 +2189,33 @@ class ZsecDesktop:
     def _animate_activity(self) -> None:
         if self.closing:
             return
+        if self.animation_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.root.after_cancel(self.animation_job)
+            self.animation_job = None
         reduced = bool(self.reduce_motion.get())
         status, colour, should_animate = activity_indicator_state(
             self.busy_operations, reduce_motion=reduced
         )
+        if self.busy_operations == 0 and self.store_managed:
+            fresh = (
+                self.watch_last_heartbeat_monotonic is not None
+                and time.monotonic() - self.watch_last_heartbeat_monotonic <= 75
+            )
+            if self.watch_session is not None and fresh and self.watch_coverage_complete:
+                status, colour = (
+                    ("ZSEC MATCHES REQUIRE REVIEW", RED)
+                    if self.watch_findings_pending
+                    else ("ZSEC MONITOR ACTIVE", GREEN)
+                )
+            elif self.watch_session is not None and fresh:
+                status, colour = "ZSEC MONITOR COVERAGE LIMITED", AMBER
+            elif self.watch_session is not None:
+                status, colour = "ZSEC MONITOR CHECKING", AMBER
+            elif not self.automatic_monitoring.get():
+                status, colour = "ZSEC MONITOR PAUSED", AMBER
+            else:
+                status, colour = "ZSEC MONITOR RECONNECTING", RED
         self.activity_status_label.configure(text=status, foreground=colour)
         self.activity_canvas.delete("activity")
         if reduced:
@@ -2116,9 +2343,9 @@ class ZsecDesktop:
             GREEN if feed["state"] == "valid" else AMBER if feed["state"] == "absent" else RED
         )
         update_view = update_presentation(status.get("update_status"))
-        update_colour = {
-            "green": GREEN, "cyan": CYAN, "amber": AMBER, "red": RED
-        }[update_view.accent]
+        update_colour = {"green": GREEN, "cyan": CYAN, "amber": AMBER, "red": RED}[
+            update_view.accent
+        ]
         self.feed_card.set_value(update_view.headline, update_colour)
         self.quarantine_card.set_value(
             (
@@ -2156,12 +2383,8 @@ class ZsecDesktop:
             return
 
         update_view = update_presentation(update)
-        colour = {"green": GREEN, "cyan": CYAN, "amber": AMBER, "red": RED}[
-            update_view.accent
-        ]
-        self.feed_update_state_label.configure(
-            text=update_view.headline.upper(), foreground=colour
-        )
+        colour = {"green": GREEN, "cyan": CYAN, "amber": AMBER, "red": RED}[update_view.accent]
+        self.feed_update_state_label.configure(text=update_view.headline.upper(), foreground=colour)
         last_checked = str(update.get("last_checked_at") or "not yet recorded")
         last_success = str(update.get("last_success_at") or "not yet recorded")
         next_check = str(update.get("next_check_at") or "not scheduled")
@@ -2175,8 +2398,10 @@ class ZsecDesktop:
         sequence = update.get("feed_sequence")
         expires = str(update.get("feed_expires_at") or "not reported")
         sequence_text = str(sequence) if sequence is not None else "not reported"
-        evidence = update_view.detail + "  ·  " + (
-            f"Source: {source}  ·  Advisory sequence: {sequence_text}  ·  Expires: {expires}"
+        evidence = (
+            update_view.detail
+            + "  ·  "
+            + (f"Source: {source}  ·  Advisory sequence: {sequence_text}  ·  Expires: {expires}")
         )
         error = update.get("error")
         if error:
@@ -2299,9 +2524,7 @@ class ZsecDesktop:
                 f"INCOMPLETE {issue.get('path')}: {issue.get('code')}: {issue.get('message')}\n"
             )
         self._set_text(self.scan_output, summary)
-        self.scan_result_label.configure(
-            text=presentation.headline, foreground=presentation.accent
-        )
+        self.scan_result_label.configure(text=presentation.headline, foreground=presentation.accent)
         self.scan_activity.set_result(presentation)
         for prefix, tag in (
             ("MATCH ", "finding"),
@@ -2351,34 +2574,92 @@ class ZsecDesktop:
             self.watch_path.set(chosen)
 
     def _store_monitoring_roots(self) -> tuple[Path, ...]:
-        roots: list[Path] = []
-        for name in ("Downloads", "Documents", "Desktop"):
-            candidate = Path.home() / name
-            try:
-                if candidate.is_dir() and not candidate.is_symlink():
-                    roots.append(candidate)
-            except OSError:
-                continue
-        return tuple(roots)
+        return standard_monitoring_roots()
+
+    def _change_automatic_monitoring(self) -> None:
+        enabled = bool(self.automatic_monitoring.get())
+        try:
+            save_monitoring_enabled(self.bridge.state_dir, enabled)
+        except (OSError, ValueError) as exc:
+            self.automatic_monitoring.set(not enabled)
+            messagebox.showerror("Monitoring choice was not saved", str(exc), parent=self.root)
+            return
+        if self.monitoring_retry_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.root.after_cancel(self.monitoring_retry_job)
+            self.monitoring_retry_job = None
+        if enabled:
+            self.monitoring_retry_attempt = 0
+            self._start_store_monitoring()
+        elif self.watch_mode == "automatic" and self.watch_session is not None:
+            self.watch_session.stop()
+            self.watch_state_label.configure(text="Pausing automatic monitoring…", foreground=AMBER)
+        elif self.watch_session is None:
+            self.watch_state_label.configure(text="Automatic monitoring paused", foreground=AMBER)
+        self._animate_activity()
+
+    def _schedule_monitoring_retry(self) -> None:
+        if (
+            self.closing
+            or not self.store_managed
+            or not self.automatic_monitoring.get()
+            or self.monitoring_retry_job is not None
+            or self.watch_session is not None
+        ):
+            return
+        delay = min(300, 5 * (2 ** min(self.monitoring_retry_attempt, 6)))
+        self.monitoring_retry_attempt += 1
+        self.monitoring_retry_job = self.root.after(delay * 1000, self._retry_monitoring)
+        self.watch_state_label.configure(
+            text=f"Automatic monitoring unavailable — retrying in {delay}s", foreground=RED
+        )
+        self.tray_companion_status = f"ZSEC monitoring unavailable; retry in {delay}s"
+        self._update_tray_status()
+
+    def _retry_monitoring(self) -> None:
+        self.monitoring_retry_job = None
+        self._start_store_monitoring()
+
+    def _monitoring_notice(self, text: str, *, category: str = "health") -> None:
+        now = time.monotonic()
+        previous = self.monitoring_notice_times.get(category)
+        if previous is None or now - previous >= 75:
+            self.monitoring_notice_times[category] = now
+            self.tray.notify(text)
 
     def _start_store_monitoring(self) -> None:
-        if self.closing or not self.store_managed or self.watch_session is not None:
+        if (
+            self.closing
+            or not self.store_managed
+            or self.watch_session is not None
+            or not self.automatic_monitoring.get()
+        ):
             return
         roots = self._store_monitoring_roots()
         if not roots:
             self.companion_card.set_value("Package monitoring has no eligible folders", AMBER)
             self.tray_companion_status = "ZSEC monitoring needs folder access"
             self._update_tray_status()
+            self._schedule_monitoring_retry()
             return
         self.protected_roots = roots
         self.protected_roots_label.configure(
-            text="Monitored while ZSEC is running: " + ", ".join(path.name for path in roots),
+            text=f"Monitoring {len(roots)} of 3 standard folder locations while ZSEC runs: "
+            + ", ".join(path.name for path in roots),
             foreground=CYAN,
         )
-        self.watch_events.delete(0, tk.END)
+        self.watch_events.insert(
+            tk.END, "--- Automatic observer starting; previous events retained ---"
+        )
+        if self.watch_events.size() > 500:
+            self.watch_events.delete(0, self.watch_events.size() - 500)
         self.watch_session_id = None
         self.watch_last_sequence = 0
         self.watch_last_heartbeat_monotonic = None
+        self.watch_coverage_complete = False
+        self.watch_inventory_complete = False
+        self.watch_started_monotonic = time.monotonic()
+        self.watch_mode = "automatic"
         try:
             self.watch_session = self.bridge.start_watch(
                 roots,
@@ -2389,6 +2670,8 @@ class ZsecDesktop:
         except BridgeError as exc:
             self.companion_card.set_value("Package monitoring could not start", RED)
             self.companion_status_label.configure(text=str(exc), foreground=RED)
+            self.watch_mode = None
+            self._schedule_monitoring_retry()
             return
         self.watch_start_button.configure(state=tk.DISABLED)
         self.watch_stop_button.configure(state=tk.NORMAL)
@@ -2397,6 +2680,7 @@ class ZsecDesktop:
         self.tray_companion_status = "ZSEC monitoring starting"
         self._update_tray_status()
         self.watch_watchdog_job = self.root.after(5_000, self._watch_heartbeat_watchdog)
+        self._animate_activity()
 
     def _refresh_store_intelligence(self) -> None:
         if self.closing or not self.store_managed:
@@ -2416,6 +2700,8 @@ class ZsecDesktop:
         self.root.after(6 * 60 * 60 * 1000, self._refresh_store_intelligence)
 
     def _start_watch(self) -> None:
+        if self.watch_session is not None:
+            return
         path = Path(self.watch_path.get().strip())
         if not path.is_dir():
             messagebox.showerror("Invalid folder", "Choose an existing folder.", parent=self.root)
@@ -2434,6 +2720,10 @@ class ZsecDesktop:
         self.watch_session_id = None
         self.watch_last_sequence = 0
         self.watch_last_heartbeat_monotonic = None
+        self.watch_coverage_complete = False
+        self.watch_inventory_complete = False
+        self.watch_started_monotonic = time.monotonic()
+        self.watch_mode = "temporary"
         if self.watch_watchdog_job is not None:
             with contextlib.suppress(tk.TclError):
                 self.root.after_cancel(self.watch_watchdog_job)
@@ -2446,6 +2736,8 @@ class ZsecDesktop:
                 quarantine=quarantine,
             )
         except BridgeError as exc:
+            self.watch_mode = None
+            self._schedule_monitoring_retry()
             messagebox.showerror("Could not start monitoring", str(exc), parent=self.root)
             return
         self.watch_start_button.configure(state=tk.DISABLED)
@@ -2459,6 +2751,7 @@ class ZsecDesktop:
         if self.watch_session_id is None:
             self.watch_session_id = session_id
         if session_id != self.watch_session_id or sequence <= self.watch_last_sequence:
+            self.watch_coverage_complete = False
             self.watch_state_label.configure(
                 text="Monitoring evidence rejected — session or sequence integrity failed",
                 foreground=RED,
@@ -2468,15 +2761,37 @@ class ZsecDesktop:
             return
         self.watch_last_sequence = sequence
         detail = ""
-        if name == "scan_completed":
+        if name == "metadata_inventory_completed":
+            self.watch_inventory_complete = event.get("outcome") == "metadata_inventory_complete"
+            detail = f" outcome={event.get('outcome')}"
+            self.watch_state_label.configure(
+                text="Folder inventory complete — awaiting observer health heartbeat"
+                if self.watch_inventory_complete
+                else "Folder inventory incomplete — coverage limited",
+                foreground=CYAN if self.watch_inventory_complete else AMBER,
+            )
+        elif name in {"scan_completed", "reconciliation_completed"}:
             outcome = event.get("outcome")
             detail = f" outcome={outcome}"
-            if outcome == "no_configured_rule_matches":
+            if outcome in {"no_configured_rule_matches", "no_metadata_changes"}:
                 self.watch_state_label.configure(
                     text="Latest scan: no configured rule matches",
                     foreground=GREEN,
                 )
             elif outcome == "configured_rule_matches_detected":
+                self.watch_findings_pending = True
+                self._monitoring_notice(
+                    "ZSEC detected configured malware rule matches. "
+                    "Open Automatic monitoring to review them "
+                    "and Scan to inspect the affected folder.",
+                    category="findings",
+                )
+                for finding in event.get("scan", {}).get("findings", [])[:30]:
+                    # Display only bounded single-line local evidence. Filenames
+                    # cannot inject extra warning rows or control characters.
+                    affected = " ".join(str(finding.get("path", "unknown path")).split())[:600]
+                    severity = str(finding.get("severity", "unknown")).upper()[:20]
+                    self.watch_events.insert(tk.END, f"  MATCH [{severity}] {affected}")
                 self.watch_state_label.configure(
                     text="Configured rule matches detected — review required",
                     foreground=RED,
@@ -2487,11 +2802,18 @@ class ZsecDesktop:
                     foreground=AMBER,
                 )
             else:
+                self.watch_coverage_complete = False
                 self.watch_state_label.configure(
                     text="Scan incomplete — coverage is unknown",
                     foreground=RED,
                 )
         elif name == "health_issue":
+            self.watch_coverage_complete = False
+            self._monitoring_notice(
+                "ZSEC monitoring has a coverage problem. "
+                "Open Automatic monitoring to review the health event. "
+                "Windows antivirus remains separate."
+            )
             detail = f" {event.get('code')}: {event.get('message')}"
             self.watch_state_label.configure(
                 text="Monitoring degraded — review the health event",
@@ -2510,24 +2832,49 @@ class ZsecDesktop:
             )
         elif name == "health_heartbeat":
             self.watch_last_heartbeat_monotonic = time.monotonic()
-            if event["operational_incomplete"]:
+            self.watch_coverage_complete = (
+                self.watch_inventory_complete and not event["operational_incomplete"]
+            )
+            if not self.watch_inventory_complete and not event["operational_incomplete"]:
+                self.watch_state_label.configure(
+                    text="Observer responding — initial folder inventory is still running",
+                    foreground=CYAN,
+                )
+            elif event["operational_incomplete"]:
                 self.watch_state_label.configure(
                     text="Monitoring incomplete — heartbeat reports a coverage gap",
                     foreground=RED,
                 )
+                if self.store_managed:
+                    self.companion_card.set_value("Package monitoring coverage limited", AMBER)
+                    self.tray_companion_status = "ZSEC monitoring coverage limited"
+                    self._update_tray_status()
             else:
+                self.monitoring_retry_attempt = 0
                 self.watch_state_label.configure(
-                    text="Observer active — fresh complete heartbeat received",
-                    foreground=GREEN,
+                    text=(
+                        "Observer active — reported rule matches still require review"
+                        if self.watch_findings_pending
+                        else "Observer active — fresh complete heartbeat received"
+                    ),
+                    foreground=RED if self.watch_findings_pending else GREEN,
                 )
                 if self.store_managed:
-                    self.companion_card.set_value("Package-owned monitoring active", GREEN)
+                    self.companion_card.set_value(
+                        "Monitoring active — rule matches reported"
+                        if self.watch_findings_pending
+                        else "Package-owned monitoring active",
+                        RED if self.watch_findings_pending else GREEN,
+                    )
                     self.companion_status_label.configure(
-                        text="ZSEC post-change monitoring is active while this Store app is running.",
+                        text=(
+                            "ZSEC post-change monitoring is active while this Store app is running."
+                        ),
                         foreground=GREEN,
                     )
                     self.tray_companion_status = "ZSEC package monitoring active"
                     self._update_tray_status()
+            self._animate_activity()
         self.watch_events.insert(tk.END, f"{event['sequence']:>5}  {name}{detail}")
         if self.watch_events.size() > 500:
             self.watch_events.delete(0, self.watch_events.size() - 500)
@@ -2539,19 +2886,50 @@ class ZsecDesktop:
             return
         last = self.watch_last_heartbeat_monotonic
         if last is not None and time.monotonic() - last > 75:
+            self.watch_coverage_complete = False
             self.watch_state_label.configure(
                 text="Monitoring evidence stale — coverage is unknown",
                 foreground=RED,
             )
+            self.tray_companion_status = "ZSEC monitoring heartbeat stale"
+            self._update_tray_status()
+            if self.watch_mode == "automatic":
+                self._monitoring_notice(
+                    "ZSEC monitoring stopped responding and is restarting. "
+                    "Its coverage is currently unverified."
+                )
+                self.watch_session.stop()
+        elif (
+            last is None
+            and self.watch_started_monotonic is not None
+            and time.monotonic() - self.watch_started_monotonic > 300
+        ):
+            self.watch_coverage_complete = False
+            self.watch_state_label.configure(
+                text="Monitoring startup has no heartbeat evidence", foreground=RED
+            )
+            if self.watch_mode == "automatic":
+                self.watch_session.stop()
+        self._animate_activity()
         self.watch_watchdog_job = self.root.after(5_000, self._watch_heartbeat_watchdog)
 
     def _stop_watch(self) -> None:
+        if self.store_managed and self.watch_mode == "automatic":
+            self.automatic_monitoring.set(False)
+            self._change_automatic_monitoring()
+            return
         if self.watch_session is not None:
             self.watch_session.stop()
             self.watch_state_label.configure(text="Stopping…", foreground=AMBER)
 
     def _watch_complete(self, exit_code: int, error: str | None) -> None:
+        if self.closing:
+            return
+        was_automatic = self.watch_mode == "automatic"
+        self.watch_mode = None
         self.watch_session = None
+        self.watch_coverage_complete = False
+        self.watch_last_heartbeat_monotonic = None
         if self.watch_watchdog_job is not None:
             with contextlib.suppress(tk.TclError):
                 self.root.after_cancel(self.watch_watchdog_job)
@@ -2566,11 +2944,30 @@ class ZsecDesktop:
                 text="Completed — configured rule matches require review",
                 foreground=RED,
             )
-        else:
+        elif exit_code == 0:
             self.watch_state_label.configure(
-                text="Session ended — no configured rule matches in completed scans",
+                text=(
+                    "Observer session ended — review recorded scan outcomes; "
+                    "monitoring is not active"
+                ),
                 foreground=CYAN,
             )
+        else:
+            self.watch_state_label.configure(
+                text=f"Observer session ended incomplete (exit {exit_code}) — coverage unknown",
+                foreground=RED,
+            )
+        if self.store_managed:
+            self.companion_card.set_value("Package-owned monitoring not active", AMBER)
+            self.tray_companion_status = "ZSEC monitoring not active"
+            self._update_tray_status()
+            if was_automatic and self.automatic_monitoring.get():
+                self._monitoring_notice(
+                    "ZSEC automatic monitoring stopped. It will reconnect if enabled. "
+                    "Windows real-time antivirus remains separate."
+                )
+            self._schedule_monitoring_retry()
+            self._animate_activity()
 
     def refresh_companion(self) -> bool:
         if self.companion_refresh_inflight:
@@ -2628,9 +3025,7 @@ class ZsecDesktop:
             presentation.state,
             "ZSEC monitoring unavailable",
         )
-        colour = {"green": GREEN, "cyan": CYAN, "amber": AMBER, "red": RED}[
-            presentation.accent
-        ]
+        colour = {"green": GREEN, "cyan": CYAN, "amber": AMBER, "red": RED}[presentation.accent]
         self.companion_status_label.configure(
             text=f"{presentation.headline} — {presentation.detail}", foreground=colour
         )
@@ -2668,14 +3063,28 @@ class ZsecDesktop:
         roots = tuple(path for path in self.protected_roots if path.is_dir())
         fresh = (
             self.watch_session is not None
+            and self.watch_coverage_complete
             and self.watch_last_heartbeat_monotonic is not None
             and time.monotonic() - self.watch_last_heartbeat_monotonic <= 75
         )
         if fresh:
             headline, detail, colour = (
-                "Package-owned monitoring active",
-                "Fresh complete heartbeat verified; monitoring remains active while ZSEC runs.",
-                GREEN,
+                "Monitoring active — rule matches reported"
+                if self.watch_findings_pending
+                else "Package-owned monitoring active",
+                "Fresh complete heartbeat verified; review previously reported rule matches."
+                if self.watch_findings_pending
+                else (
+                    "Fresh complete heartbeat verified; monitoring remains active while ZSEC runs."
+                ),
+                RED if self.watch_findings_pending else GREEN,
+            )
+        elif self.watch_session is not None and self.watch_last_heartbeat_monotonic is not None:
+            headline, detail, colour = (
+                "Package-owned monitoring coverage unverified",
+                "Heartbeat is incomplete or stale; "
+                "automatic checks must not be treated as complete protection.",
+                AMBER,
             )
         elif self.watch_session is not None:
             headline, detail, colour = (
@@ -2686,17 +3095,21 @@ class ZsecDesktop:
         else:
             headline, detail, colour = (
                 "Package-owned monitoring not active",
-                "No process-owned observer is currently verified; Windows protection remains separate.",
+                "No process-owned observer is currently verified; "
+                "Windows protection remains separate.",
                 AMBER,
             )
         self.companion_card.set_value(headline, colour)
+        self.tray_companion_status = headline
+        self._update_tray_status()
         self.companion_status_label.configure(text=f"{headline} — {detail}", foreground=colour)
         self.protection_layer_labels["zsec"].configure(
             text=f"ZSEC process-owned monitor — {headline.upper()}\n{detail}",
             foreground=colour,
         )
         scope_detail = (
-            "Monitored while ZSEC runs: " + ", ".join(path.name or str(path) for path in roots)
+            f"Monitoring {len(roots)} of 3 standard folder locations while ZSEC runs: "
+            + ", ".join(path.name or str(path) for path in roots)
             if roots
             else "No eligible standard user folders are currently verified"
         )
@@ -2720,6 +3133,13 @@ class ZsecDesktop:
         defender = evidence["defender"]
         aggregate_good = bool(evidence["aggregate_good"])
         defender_active = bool(defender["confirmed_active"])
+        if self.windows_health_good is True and not aggregate_good:
+            self._monitoring_notice(
+                "Windows antivirus health is no longer confirmed GOOD. "
+                "Open Windows protection and Windows Security to check your real-time antivirus.",
+                category="windows",
+            )
+        self.windows_health_good = aggregate_good
         if aggregate_good and defender_active:
             headline = "Windows Security reports GOOD; Defender real-time controls are confirmed."
             colour = GREEN
@@ -2888,8 +3308,7 @@ class ZsecDesktop:
                 "Primary enforcement evidence is unavailable; keep existing antivirus active"
             ),
             "zsec": (
-                "ZSEC post-change companion — NOT VERIFIED\n"
-                "Monitoring evidence is unavailable"
+                "ZSEC post-change companion — NOT VERIFIED\nMonitoring evidence is unavailable"
             ),
             "scope": (
                 "ZSEC coverage boundary — UNVERIFIED\n"
@@ -3196,14 +3615,23 @@ class ZsecDesktop:
             try:
                 callback(*arguments)
             except Exception as exc:
-                self.root.report_callback_exception(
-                    type(exc), exc, exc.__traceback__
-                )
+                self.root.report_callback_exception(type(exc), exc, exc.__traceback__)
             if self.closing:
                 return
 
     def _exit_application(self) -> None:
         self.closing = True
+        if self.store_startup_poll_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.root.after_cancel(self.store_startup_poll_job)
+            self.store_startup_poll_job = None
+        if self.store_startup_operation is not None:
+            self.store_startup_operation.close()
+            self.store_startup_operation = None
+        if self.monitoring_retry_job is not None:
+            with contextlib.suppress(tk.TclError):
+                self.root.after_cancel(self.monitoring_retry_job)
+            self.monitoring_retry_job = None
         if self.ui_queue_job is not None:
             with contextlib.suppress(tk.TclError):
                 self.root.after_cancel(self.ui_queue_job)
