@@ -1,0 +1,64 @@
+{
+  "checks": [
+    {
+      "actual_client_download": "passed",
+      "bytes": 1158,
+      "canonical_url": "https://talktoai.org/zsec/updates/v1/stable.json",
+      "matches_verified_mirror": true,
+      "notice": {
+        "artifacts": [
+          {
+            "architecture": "x86_64",
+            "authenticode": "unsigned",
+            "filename": "zsec-antivirus-desktop-0.3.32-windows-x86_64.zip",
+            "operating_system": "windows",
+            "sha256": "7c21369d8b95a037432463218b9852f07182329b083ca0d0b5ff2f27125945f0",
+            "size": 33859917,
+            "url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.32-windows/zsec-antivirus-desktop-0.3.32-windows-x86_64.zip"
+          }
+        ],
+        "automatic_install": false,
+        "expires_at": "2026-10-07T16:40:49Z",
+        "manifest_sha256": "55f716c8bb57295096f6a6b2d2f0e9a294f23637cd8f6467f1c1c0cbc261a029",
+        "policy": "notification only; no content is downloaded or executed",
+        "release_notes_url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.32-windows",
+        "schema": "zsec.shield.application-update-notification.v1",
+        "sequence": 60,
+        "version": "0.3.32"
+      },
+      "sha256": "55f716c8bb57295096f6a6b2d2f0e9a294f23637cd8f6467f1c1c0cbc261a029"
+    },
+    {
+      "actual_client_download": "passed",
+      "bytes": 1048,
+      "canonical_url": "https://talktoai.org/zsec/rules/v1/feed.json",
+      "matches_verified_mirror": true,
+      "rule_sequence": 60,
+      "sha256": "0003ba327d354ffb00de4b48cf584a6407564e29af0e979102021fa8331f9bc1"
+    },
+    {
+      "actual_client_download": "failed",
+      "canonical_url": "https://talktoai.org/zsec/intelligence/v1/feed.json",
+      "error": "remote feed exceeds the size limit"
+    },
+    {
+      "actual_client_download": "passed",
+      "bytes": 157,
+      "canonical_url": "https://talktoai.org/zsec/updates/v1/public-key.json",
+      "matches_verified_mirror": true,
+      "sha256": "baecc709c2875909dc9e618da1fc5e3535c26a23259f957b170510047e78237f"
+    },
+    {
+      "actual_client_download": "passed",
+      "bytes": 596,
+      "canonical_url": "https://talktoai.org/zsec/updates/v1/audit/00000000000000000060.json",
+      "matches_verified_mirror": true,
+      "sha256": "a554f4bfeae25b558737e75227750932573358e8e7e2f08468d63312e71cf785"
+    }
+  ],
+  "intelligence_failure_known": true,
+  "schema": "zsec.canonical-feed-client-verification.v1",
+  "source_code_changed": false,
+  "verification_key_source": "existing bundled pinned keyring",
+  "verified_at": "2026-09-30T16:53:43.540019+00:00"
+}

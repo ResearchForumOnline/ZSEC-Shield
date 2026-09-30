@@ -1,0 +1,75 @@
+{
+  "artifact": {
+    "architecture": "x86_64",
+    "authenticode": "unsigned",
+    "filename": "zsec-antivirus-desktop-0.3.32-windows-x86_64.zip",
+    "operating_system": "windows",
+    "sha256": "7c21369d8b95a037432463218b9852f07182329b083ca0d0b5ff2f27125945f0",
+    "size": 33859917,
+    "url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/download/v0.3.32-windows/zsec-antivirus-desktop-0.3.32-windows-x86_64.zip"
+  },
+  "auto_install_allowed": false,
+  "canonical_domain_observation_before_deployment": "talktoai.org canonical feed returned static404; redirect deployment and canonical client verification remain separate",
+  "client_transport_validation": {
+    "application_notice": "passed actual existing client downloader and pinned signature verifier",
+    "intelligence": "failed existing downloader: remote feed exceeds the size limit; audit-only fetch bounded by existing intelligence verifier 8MiB cap passed pinned signature validation",
+    "intelligence_bytes": 2379423,
+    "intelligence_verifier_limit": 8388608,
+    "rules": "passed actual existing client downloader and pinned signature verifier",
+    "shared_client_download_limit": 2097152
+  },
+  "current_endpoints_and_signed_audit_verified": true,
+  "deployment_recommendation": "Three scoped HTTPS302 redirects to daily refreshed GitHub Pages paths; do not deploy this expiring snapshot as canonical endpoint",
+  "expires_at": "2026-10-07T16:40:49Z",
+  "file_count": 5,
+  "files": [
+    {
+      "bytes": 1158,
+      "canonical_url": "https://talktoai.org/zsec/updates/v1/stable.json",
+      "mirror_url": "https://researchforumonline.github.io/ZSEC-Shield/zsec/updates/v1/stable.json",
+      "path": "zsec/updates/v1/stable.json",
+      "sha256": "55f716c8bb57295096f6a6b2d2f0e9a294f23637cd8f6467f1c1c0cbc261a029"
+    },
+    {
+      "bytes": 2379423,
+      "canonical_url": "https://talktoai.org/zsec/intelligence/v1/feed.json",
+      "mirror_url": "https://researchforumonline.github.io/ZSEC-Shield/zsec/intelligence/v1/feed.json",
+      "path": "zsec/intelligence/v1/feed.json",
+      "sha256": "8f431483c6d5430d2a24bb2a64325707c5978923886e7c783b3fb8070f2710f5"
+    },
+    {
+      "bytes": 1048,
+      "canonical_url": "https://talktoai.org/zsec/rules/v1/feed.json",
+      "mirror_url": "https://researchforumonline.github.io/ZSEC-Shield/zsec/rules/v1/feed.json",
+      "path": "zsec/rules/v1/feed.json",
+      "sha256": "0003ba327d354ffb00de4b48cf584a6407564e29af0e979102021fa8331f9bc1"
+    },
+    {
+      "bytes": 157,
+      "canonical_url": "https://talktoai.org/zsec/updates/v1/public-key.json",
+      "mirror_url": "https://researchforumonline.github.io/ZSEC-Shield/zsec/updates/v1/public-key.json",
+      "path": "zsec/updates/v1/public-key.json",
+      "sha256": "baecc709c2875909dc9e618da1fc5e3535c26a23259f957b170510047e78237f"
+    },
+    {
+      "bytes": 596,
+      "canonical_url": "https://talktoai.org/zsec/updates/v1/audit/00000000000000000060.json",
+      "mirror_url": "https://researchforumonline.github.io/ZSEC-Shield/zsec/updates/v1/audit/00000000000000000060.json",
+      "path": "zsec/updates/v1/audit/00000000000000000060.json",
+      "sha256": "a554f4bfeae25b558737e75227750932573358e8e7e2f08468d63312e71cf785"
+    }
+  ],
+  "generated_at": "2026-09-30T16:40:49Z",
+  "key_id": "zsec:update-primary-2026",
+  "model_feed": "No model feed exists in this ZSEC publication contract",
+  "notification_only": true,
+  "public_source_revision": "548bbbc91eb35e0952108c9f9e5183a6e42a6a59",
+  "schema": "zsec.signed-public-feed-verification.v1",
+  "sequence": 60,
+  "signature_algorithm": "ed25519",
+  "signature_validation": "passed with pre-existing bundled trusted key; endpoint public-key file was not used to bootstrap trust",
+  "verified_at": "2026-09-30T16:49:09.893277+00:00",
+  "version": "0.3.32",
+  "workflow": "https://github.com/ResearchForumOnline/ZSEC-Shield/actions/runs/36745852394",
+  "workflow_conclusion": "success"
+}

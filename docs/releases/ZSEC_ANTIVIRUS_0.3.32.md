@@ -72,10 +72,33 @@ its exact hash, byte count, URL and actual build revision. It retains
 `notification_only: true`, `auto_install_allowed: false` and `authenticode:
 unsigned`.
 
-The existing protected GitHub workflow signs and publishes this metadata using
-its established key route. The GitHub release alone does not prove that signed
-feed publication completed. Feed status requires separate workflow, public
-signature and digest verification.
+The existing protected GitHub workflow completed
+[signed publication](https://github.com/ResearchForumOnline/ZSEC-Shield/actions/runs/36745852394)
+using its established key route. Generated public data commit
+`548bbbc91eb35e0952108c9f9e5183a6e42a6a59` publishes Antivirus `0.3.32`,
+sequence **60**, generated `2026-09-30T16:40:49Z`, expiring
+`2026-10-07T16:40:49Z`. Signatures for the application notice, intelligence,
+rules and publication audit were verified against the pre-existing bundled
+trusted key. The endpoint public-key document was not used to bootstrap trust.
+See the [mirror verification receipt](ZSEC_SIGNED_FEED_SEQUENCE_60.json).
+
+Free Cloudflare Pages now uses three narrowly scoped HTTPS 302 routes for
+`/zsec/updates/*`, `/zsec/intelligence/*` and `/zsec/rules/*` to the daily refreshed
+GitHub Pages mirror. This avoids freezing a seven-day signed snapshot in a manual
+site deployment. Product and privacy pages remain local. The unchanged ZSEC client
+successfully fetched and verified the canonical
+[application notice](https://talktoai.org/zsec/updates/v1/stable.json) and
+[rules feed](https://talktoai.org/zsec/rules/v1/feed.json), plus the diagnostic
+public key and signed audit. Their bytes match the verified mirror. See the
+[canonical client receipt](ZSEC_CANONICAL_FEED_20260930.json).
+
+**Known intelligence transport gap:** the complete signed intelligence JSON is
+2,379,423 bytes, already compact UTF-8. The shipped shared network downloader
+limits downloads to 2,097,152 bytes, although the intelligence verifier permits
+8,388,608 bytes. The intelligence signature and audit pass an independent bounded
+audit fetch, but the unchanged shipped client rejects that download. The redirects
+fix hosting, not this client mismatch. No records were discarded, client limits
+raised, keys changed or verification controls bypassed during this synchronization.
 
 ## Product and privacy boundaries
 
