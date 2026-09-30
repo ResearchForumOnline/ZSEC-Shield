@@ -1,0 +1,60 @@
+{
+  "authenticode": "unsigned",
+  "automatic_install_allowed": false,
+  "endpoints": [
+    {
+      "bytes": 1158,
+      "canonical_matches_mirror": true,
+      "canonical_url": "https://talktoai.org/zsec/updates/v1/stable.json",
+      "endpoint": "updates/v1/stable.json",
+      "mirror_url": "https://researchforumonline.github.io/ZSEC-Shield/zsec/updates/v1/stable.json",
+      "sha256": "687b9d9764f917e50286860f0b49d9f7a3c65456dfee0dda5cd54191ff96104a"
+    },
+    {
+      "bytes": 2379423,
+      "canonical_matches_mirror": true,
+      "canonical_url": "https://talktoai.org/zsec/intelligence/v1/feed.json",
+      "endpoint": "intelligence/v1/feed.json",
+      "mirror_url": "https://researchforumonline.github.io/ZSEC-Shield/zsec/intelligence/v1/feed.json",
+      "sha256": "74d261a0c56e8740dcf7d65d882cc4c0f769a2e8f65b71992892e57801783fe9"
+    },
+    {
+      "bytes": 1048,
+      "canonical_matches_mirror": true,
+      "canonical_url": "https://talktoai.org/zsec/rules/v1/feed.json",
+      "endpoint": "rules/v1/feed.json",
+      "mirror_url": "https://researchforumonline.github.io/ZSEC-Shield/zsec/rules/v1/feed.json",
+      "sha256": "fbf549bc76f96039adb65ea69221fd03eeb265b4bb5419764e4f16245ae4c363"
+    },
+    {
+      "bytes": 596,
+      "canonical_matches_mirror": true,
+      "endpoint": "updates/v1/audit/00000000000000000061.json",
+      "sha256": "2568019001eb36453e5c06ecd33dd5564539dfc9c9b6e6470c34e10aa6c2a045"
+    }
+  ],
+  "expires_at": "2026-10-07T17:33:24Z",
+  "generated_at": "2026-09-30T17:33:24Z",
+  "key_id": "zsec:update-primary-2026",
+  "notification_only": true,
+  "packaged_engine_canonical_install": {
+    "application_or_provider_actions_performed": false,
+    "complete_advisories": 1648,
+    "exit_code": 0,
+    "sequence": 61,
+    "state": "updated",
+    "state_scope": "disposable test state; cleaned"
+  },
+  "pin_source": "unchanged bundled trusted keyring; no remote key bootstrap",
+  "publisher_workflow": {
+    "advisory_refresh": "failed closed; complete last validated catalog retained; no source freshness claim",
+    "status": "success",
+    "url": "https://github.com/ResearchForumOnline/ZSEC-Shield/actions/runs/36752105431"
+  },
+  "schema": "zsec.antivirus.signed-publication-verification.v1",
+  "sequence": 61,
+  "signatures_and_signed_audit_digests": "passed",
+  "source_revision": "d467e04e99bbe7227afd88c5c2415fe780c4ef1d",
+  "verified_at": "2026-09-30T17:37:15.719378+00:00",
+  "version": "0.3.33"
+}
