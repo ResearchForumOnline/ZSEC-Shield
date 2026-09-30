@@ -145,12 +145,15 @@ class AutomaticUpdateTests(unittest.TestCase):
     def test_failed_check_retains_success_and_catalog(self) -> None:
         state = self.root / "state"
         raw = envelope(self.private_key, self.catalog, self.now, 2)
-        with patch("zsec_shield.automatic_updates.download_feed", return_value=raw):
+        with patch("zsec_shield.automatic_updates.download_intelligence_feed", return_value=raw):
             successful = run_automatic_update(
                 state, self.keyring, force=True, now=self.now
             )
         before = intelligence_document_path(state).read_bytes()
-        with patch("zsec_shield.automatic_updates.download_feed", side_effect=FeedError("offline")):
+        with patch(
+            "zsec_shield.automatic_updates.download_intelligence_feed",
+            side_effect=FeedError("offline"),
+        ):
             failed = run_automatic_update(
                 state, self.keyring, force=True, now=self.now + timedelta(days=1)
             )

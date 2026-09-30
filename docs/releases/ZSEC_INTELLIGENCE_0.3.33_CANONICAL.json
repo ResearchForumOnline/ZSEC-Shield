@@ -1,0 +1,26 @@
+{
+  "actual_client_update_status": {
+    "error": null,
+    "feed_expires_at": "2026-10-07T16:40:49Z",
+    "feed_sequence": 60,
+    "last_checked_at": "2026-09-30T17:10:20Z",
+    "last_success_at": "2026-09-30T17:10:20Z",
+    "next_check_at": "2026-10-01T15:13:25Z",
+    "schema": "zsec.shield.automatic-update-status.v1",
+    "source": "https://talktoai.org/zsec/intelligence/v1/feed.json",
+    "state": "updated"
+  },
+  "application_or_provider_actions_performed": false,
+  "candidate_version": "0.3.33",
+  "canonical_url": "https://talktoai.org/zsec/intelligence/v1/feed.json",
+  "complete_catalog_retained": true,
+  "installed_advisory_count": 1648,
+  "pin_source": "existing bundled trusted keyring; no key changes",
+  "privacy_contract_changed": false,
+  "schema": "zsec.intelligence.canonical-candidate-verification.v1",
+  "state_scope": "disposable test state only",
+  "transport_bytes": 2379423,
+  "transport_fixed_limit": 8388608,
+  "transport_sha256": "8f431483c6d5430d2a24bb2a64325707c5978923886e7c783b3fb8070f2710f5",
+  "verified_at": "2026-09-30T17:10:21.760618+00:00"
+}

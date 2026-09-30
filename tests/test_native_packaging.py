@@ -10,6 +10,8 @@ from tempfile import TemporaryDirectory
 from types import ModuleType
 from unittest.mock import patch
 
+from zsec_shield import __version__
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = PROJECT_ROOT / "packaging" / "native_release.py"
 
@@ -29,7 +31,7 @@ release = load_release_module()
 
 class NativePackagingTests(unittest.TestCase):
     def test_source_version_and_pyinstaller_pin_are_explicit(self) -> None:
-        self.assertEqual("0.3.32", release.project_version())
+        self.assertEqual(__version__, release.project_version())
         self.assertEqual("6.21.0", release.expected_pyinstaller_version())
 
     def test_windows_archive_retries_transient_endpoint_protection_locks(self) -> None:
@@ -39,11 +41,11 @@ class NativePackagingTests(unittest.TestCase):
         self.assertIn("time.sleep(0.1)", source)
 
     def test_release_tag_must_exactly_match_source_version(self) -> None:
-        self.assertEqual("0.3.32", release.verify_release_tag("v0.3.32"))
+        self.assertEqual(__version__, release.verify_release_tag(f"v{__version__}"))
         with self.assertRaises(release.ReleaseError):
             release.verify_release_tag("v0.1.0")
         with self.assertRaises(release.ReleaseError):
-            release.verify_release_tag("preview-0.3.32")
+            release.verify_release_tag(f"preview-{__version__}")
 
     def test_python_license_uses_checksum_pinned_vendored_fallback(self) -> None:
         with TemporaryDirectory() as temporary:

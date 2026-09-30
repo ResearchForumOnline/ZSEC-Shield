@@ -22,7 +22,12 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from zsec_shield.errors import FeedError
-from zsec_shield.feed import download_feed, load_keyring
+from zsec_shield.feed import (
+    MAX_INTELLIGENCE_BYTES,
+    download_feed,
+    download_intelligence_feed,
+    load_keyring,
+)
 from zsec_shield.intelligence import IntelligenceError, validate_catalog
 from zsec_shield.paths import (
     application_update_notice_path,
@@ -52,7 +57,6 @@ APPLICATION_UPDATE_STATE_SCHEMA = "zsec.shield.application-update-client-state.v
 CHECK_INTERVAL = timedelta(hours=24)
 MAX_JITTER = timedelta(hours=2)
 STATUS_LIMIT = 64 * 1024
-MAX_INTELLIGENCE_BYTES = 8 * 1024 * 1024
 INTELLIGENCE_ENVELOPE_SCHEMA = "zsec.signed-envelope.v1"
 INTELLIGENCE_PAYLOAD_SCHEMA = "zsec.intelligence.payload.v1"
 INTELLIGENCE_STATE_SCHEMA = "zsec.intelligence.client-state.v1"
@@ -396,7 +400,7 @@ def run_automatic_update(
     checked_at = format_utc(current)
     next_check_at = format_utc(_next_check(current))
     try:
-        raw = download_feed(source, timeout=timeout)
+        raw = download_intelligence_feed(source, timeout=timeout)
         outcome, payload = install_intelligence_envelope(
             raw, state_dir, keyring_path, now=current
         )

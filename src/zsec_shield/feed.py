@@ -42,6 +42,7 @@ PAYLOAD_SCHEMA = "zsec.shield.rules.v1"
 KEYRING_SCHEMA = "zsec.shield.keyring.v1"
 STATE_SCHEMA = "zsec.shield.feed-state.v1"
 MAX_FEED_BYTES = 2 * 1024 * 1024
+MAX_INTELLIGENCE_BYTES = 8 * 1024 * 1024
 MAX_RULES = 2048
 MAX_LITERAL_BYTES = 4096
 MAX_FEED_LIFETIME = timedelta(days=90)
@@ -419,6 +420,23 @@ class _HTTPSOnlyRedirectHandler(urllib.request.HTTPRedirectHandler):
 
 
 def download_feed(url: str, timeout: float = 15.0) -> bytes:
+    """Download rules/general metadata within the unchanged 2 MiB limit."""
+    return _download_https_feed(url, timeout, maximum_bytes=MAX_FEED_BYTES)
+
+
+def download_intelligence_feed(url: str, timeout: float = 15.0) -> bytes:
+    """Download intelligence within its existing verifier's 8 MiB limit."""
+    return _download_https_feed(url, timeout, maximum_bytes=MAX_INTELLIGENCE_BYTES)
+
+
+def _download_https_feed(url: str, timeout: float, *, maximum_bytes: int) -> bytes:
+    # Only the two typed transports may select their fixed schema limits. Public
+    # callers cannot request an arbitrary, configurable or unlimited download.
+    if type(maximum_bytes) is not int or maximum_bytes not in (
+        MAX_FEED_BYTES,
+        MAX_INTELLIGENCE_BYTES,
+    ):
+        raise FeedError("feed transport requires a supported fixed size limit")
     parsed = urllib.parse.urlsplit(url)
     if (
         parsed.scheme != "https"
@@ -446,11 +464,11 @@ def download_feed(url: str, timeout: float = 15.0) -> bytes:
             length_header = response.headers.get("Content-Length")
             if length_header:
                 try:
-                    if int(length_header) > MAX_FEED_BYTES:
+                    if int(length_header) > maximum_bytes:
                         raise FeedError("remote feed exceeds the size limit")
                 except ValueError as exc:
                     raise FeedError("remote feed has an invalid Content-Length") from exc
-            downloaded = response.read(MAX_FEED_BYTES + 1)
+            downloaded = response.read(maximum_bytes + 1)
             if not isinstance(downloaded, bytes):
                 raise FeedError("feed download returned non-byte content")
             raw = downloaded
@@ -458,7 +476,7 @@ def download_feed(url: str, timeout: float = 15.0) -> bytes:
         raise
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise FeedError(f"feed download failed: {exc}") from exc
-    if len(raw) > MAX_FEED_BYTES:
+    if len(raw) > maximum_bytes:
         raise FeedError("remote feed exceeds the size limit")
     return raw
 
