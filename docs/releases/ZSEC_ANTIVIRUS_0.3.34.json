@@ -18,7 +18,11 @@
   "native_startup_lookup": "native ABI bound; unpackaged lookup correctly returned task not found",
   "store_signed_startup_enable_disable_acceptance": "not yet verified",
   "installed_package_at_start": "0.3.33.0",
-  "store_submission": "prepared; certification status recorded separately",
+  "store_submission": "Update in certification; Submission 5; verified in Partner Center on 2026-09-30",
+  "store_submission_id": "1152921505702013948",
+  "store_package_validation": "Validated",
+  "store_publishing": "publish automatically after certification; not yet verified published",
+  "public_release": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.34-windows",
   "protection": {
     "primary_antivirus": false,
     "pre_access_enforcement": false,
