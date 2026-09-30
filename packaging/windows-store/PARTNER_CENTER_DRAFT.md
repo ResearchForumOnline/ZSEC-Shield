@@ -172,7 +172,7 @@ Desktop `PNG`, minimum `1366x768`, maximum `50 MB`; plan: `5` screenshots.
 
 ## ZSEC Browser
 
-Source version: `0.3.26`
+Source version: `0.3.28`
 Listing language: `en-US`
 Suggested category: `Productivity`
 
@@ -192,13 +192,15 @@ A user-operated local encrypted password vault supports explicit add, edit, impo
 
 ZSEC adds no account, advertising, analytics, browsing-history upload, vault sync, crash-upload, or remote-control endpoint. Browsing still sends normal requests to Microsoft WebView2 services and the third-party websites the user chooses, subject to those providers' privacy terms.
 
+Version 0.3.28 adds scoped login compatibility for Google, ChatGPT/OpenAI, Facebook and selected major services. Reviewed functional requests and user-clicked sign-in popups are supported without disabling all protection. YouTube stays outside these default exceptions. Its optional ad helper improves visible skip controls and back/forward page restoration; it cannot guarantee every ad is removed. Providers may independently restrict embedded browser sign-in.
+
 ### Product features
 
 - Microsoft Evergreen WebView2 runtime with an isolated local ZSEC profile
 - Managed tabs, bookmarks, bounded history, search, fullscreen, downloads, and tray controls
 - Reviewed Browser Shields request rules and native tracking-link cleanup
 - Microsoft Balanced tracking prevention and default-deny site permissions
-- Page-requested windows blocked by default with revocable exact-HTTPS permissions
+- User-clicked sign-in popups for reviewed HTTPS services; other popups require exact-site permission
 - Local encrypted password vault with timed reveal and explicit HTTPS-origin fill
 - Password save prompts and autofill are separate opt-in settings and begin off
 - Review-first bookmark, history-export, and password-export migration workflows
@@ -206,9 +208,9 @@ ZSEC adds no account, advertising, analytics, browsing-history upload, vault syn
 
 ### URLs and license
 
-- Website: https://talktoai.org/zero-browser/
+- Website: https://talktoai.org/zsec/
 - Support: https://github.com/ResearchForumOnline/ZSEC-Shield/issues
-- Privacy policy: https://talktoai.org/zero-browser/privacy/
+- Privacy policy: https://talktoai.org/zsec/privacy/
 - Vulnerability reporting: https://talktoai.org/.well-known/security.txt
 - License terms: Apache License 2.0 for the ZSEC application, with separately identified third-party notices and licenses included in the package. The project license is available at https://github.com/ResearchForumOnline/ZSEC-Shield/blob/main/LICENSE.
 - Copyright/trademark: Copyright 2026 ZSEC contributors. Microsoft, Windows, and WebView2 are trademarks of Microsoft Corporation; no endorsement is implied.
@@ -235,21 +237,11 @@ ZSEC Browser is an existing Win32 Windows Forms application using Microsoft WebV
 
 ### Additional Testing Information
 
-Prepared 28 August 2026. No account or credentials are required. Windows Desktop x64 only. Version 0.3.26 repairs the 0.3.25 Store-launch failure reported on Windows build 26200.8875. Browser Shields extension support is optional: if its WebView2 API is unavailable, the browser remains open, native request protection remains active, and the UI reports the extension unavailable. User-entered and user-clicked HTTPS navigation works normally. Unsolicited page-requested popups and sensitive site permissions are blocked by default. The product page at https://talktoai.org/zero-browser/ and privacy page at https://talktoai.org/zero-browser/privacy/ were rechecked on 28 August 2026 as public HTTPS HTML pages; this is dated evidence, not an uptime guarantee. Use only public unauthenticated HTTPS pages and synthetic data. Password save and fill start off.
-
-Test the exact Store-signed candidate on a clean Windows 10/11 x64 VM with WebView2:
-1. Launch from Start; verify the local new-tab page and a public HTTPS page open.
-2. Test typed and clicked HTTPS navigation, tabs, back, forward, reload, search, bookmarks and fullscreen.
-3. Open Shields. If extension support exists, verify its identity/status. If unavailable, verify native request protection remains active and the browser stays open.
-4. Verify permissions deny by default and settings persist.
-5. Export and re-import a synthetic HTTPS bookmark.
-6. Verify the password vault starts locked or empty; use synthetic credentials only.
-7. On a controlled page, verify an unsolicited popup is blocked and any exact-HTTPS permission is explicit and revocable.
-8. Restart and uninstall; verify no other browser profile, credential, default-app choice or security product changed.
+No credentials required for core review. Launch and test public HTTPS navigation, tabs, search, bookmarks, Shields and settings. Confirm Google/ChatGPT/Facebook public login entry pages can load; use only reviewer-owned accounts if completing login. Review user-clicked sign-in popups versus blocked unsolicited popups. YouTube ad protection remains enabled by default; test visible skip controls and back/forward restoration. This release does not claim universally ad-free YouTube or universal OAuth compatibility. Privacy: https://talktoai.org/zsec/privacy/ . Runtime and policy checks are recorded in the release acceptance report; Store-signed install, upgrade and uninstall require Microsoft signing and a clean test profile.
 
 ### Supporting internal certification detail
 
-No ZSEC account or test credentials are required. Version 0.3.26 repairs the Store-launch failure reported for 0.3.25 on Windows build 26200.8875. Startup no longer depends on the optional WebView2 browser-extension API: if that API is unavailable, ZSEC continues with its native request protection and reports the optional Shields extension as unavailable. User-entered and user-clicked HTTPS navigation remains enabled. Unsolicited page-requested popups and sensitive site permissions are blocked by default. This is a packaged Win32 WebView2 desktop browser shell and declares runFullTrust for the bounded functions stated in the restricted-capability justification. Microsoft maintains the Evergreen WebView2 runtime; ZSEC is not a separately maintained Chromium fork. Password save prompts and exact-origin fill begin off. The app does not import cookies, sessions, tokens, passkeys, or another browser profile. The Store manifest does not claim HTTP or HTTPS protocol ownership and does not silently change Windows defaults. On 28 August 2026 the product and privacy URLs were rechecked as public HTTPS pages returning functional HTML; this dated check is not a guarantee of future availability.
+ZSEC Browser 0.3.28 preserves the previously certified Store identity and default-app associations. No account or test credentials required. Adds reviewed HTTPS login compatibility and user-clicked auth popups while retaining unknown/background popup blocking, tab and burst limits. YouTube is not trusted or paused by default. No User-Agent spoofing, CAPTCHA bypass, imported sessions or provider restriction bypass. Only selected ad/tracker functional resources are excepted; high-risk restrictions remain stronger. Google may reject embedded browser authentication separately from ZSEC filtering.
 
 Test account required: **No**
 

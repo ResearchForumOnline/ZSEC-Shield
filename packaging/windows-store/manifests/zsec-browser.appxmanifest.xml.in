@@ -26,6 +26,30 @@
         BackgroundColor="transparent"
         Square44x44Logo="Assets\Square44x44Logo.png"
         Square150x150Logo="Assets\Square150x150Logo.png" />
+      <Extensions>
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="http">
+            <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
+            <uap:DisplayName>ZSEC Browser</uap:DisplayName>
+          </uap:Protocol>
+        </uap:Extension>
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="https">
+            <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
+            <uap:DisplayName>ZSEC Browser</uap:DisplayName>
+          </uap:Protocol>
+        </uap:Extension>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="zsec-browser-html">
+            <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
+            <uap:DisplayName>HTML document</uap:DisplayName>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.htm</uap:FileType>
+              <uap:FileType>.html</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
     </Application>
   </Applications>
   <Capabilities>

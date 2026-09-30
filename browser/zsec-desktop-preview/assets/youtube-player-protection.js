@@ -179,10 +179,12 @@
     ".ytp-ad-overlay-close-button"
   ];
   let scheduled = false;
+  let disposed = false;
   let lastSkipControl = null;
 
   function cleanPage() {
     scheduled = false;
+    if (disposed) return;
     for (const selector of HIDE_SELECTORS) {
       for (const element of document.querySelectorAll(selector)) {
         if (!(element instanceof HTMLElement) || element.dataset.zsecAdHidden === "true") continue;
@@ -193,34 +195,51 @@
       }
     }
     let visible = null;
-    for (const selector of SKIP_SELECTORS) {
-      const button = document.querySelector(selector);
-      if (!(button instanceof HTMLElement) || button.offsetParent === null) continue;
-      if (button.disabled === true || button.getAttribute("aria-disabled") === "true") continue;
-      visible = button;
-      if (button !== lastSkipControl) {
-        button.click();
-        status.skipControlsUsed += 1;
+    selectors: for (const selector of SKIP_SELECTORS) {
+      const candidates = document.querySelectorAll(selector);
+      for (let index = 0; index < Math.min(candidates.length, 32); index += 1) {
+        const button = candidates[index];
+        if (!(button instanceof HTMLElement) || button.offsetParent === null) continue;
+        if (button.disabled === true || button.getAttribute("aria-disabled") === "true") continue;
+        visible = button;
+        if (button !== lastSkipControl) {
+          button.click();
+          status.skipControlsUsed += 1;
+        }
+        break selectors;
       }
-      break;
     }
     lastSkipControl = visible;
   }
 
   function scheduleCleanup() {
-    if (scheduled) return;
+    if (scheduled || disposed) return;
     scheduled = true;
     requestAnimationFrame(cleanPage);
   }
 
   const observer = new MutationObserver(scheduleCleanup);
   function startCleanup() {
-    if (!document.documentElement) return;
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    if (disposed || !document.documentElement) return;
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "style", "hidden", "disabled", "aria-disabled"]
+    });
     scheduleCleanup();
   }
   if (document.documentElement) startCleanup();
   else document.addEventListener("DOMContentLoaded", startCleanup, { once: true });
   document.addEventListener("yt-navigate-finish", scheduleCleanup, { passive: true });
-  window.addEventListener("pagehide", () => observer.disconnect(), { once: true });
+  window.addEventListener("pagehide", () => {
+    disposed = true;
+    lastSkipControl = null;
+    observer.disconnect();
+  });
+  window.addEventListener("pageshow", (event) => {
+    if (!event.persisted) return;
+    disposed = false;
+    startCleanup();
+  });
 })();

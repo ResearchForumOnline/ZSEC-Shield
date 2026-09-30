@@ -75,6 +75,10 @@ function makeHarness({ hostname = "www.youtube.com", topFrame = true } = {}) {
     createElement: (tagName) => new FakeElement(tagName),
     getElementById: (id) => elementsById.get(id) ?? null,
     querySelector: (selector) => selectorResults.get(selector) ?? null,
+    querySelectorAll: (selector) => {
+      const result = selectorResults.get(selector);
+      return Array.isArray(result) ? result : result ? [result] : [];
+    },
     addEventListener(type, callback) {
       documentListeners.set(type, callback);
     }
@@ -183,7 +187,7 @@ test("clicks a visible enabled skip control once per appearance", () => {
   assert.equal(harness.observers[0].observeCalls[0].options.attributes, true);
   assert.deepEqual(
     Array.from(harness.observers[0].observeCalls[0].options.attributeFilter),
-    ["class", "style", "hidden", "aria-disabled"]
+    ["class", "style", "hidden", "disabled", "aria-disabled"]
   );
   harness.flushFrame();
   assert.equal(button.clickCount, 1);
@@ -283,6 +287,82 @@ test("an attribute-only transition schedules a bounded skip check", () => {
   harness.observers[0].callback([{ type: "attributes", attributeName: "class" }]);
   harness.flushFrame();
   assert.equal(button.clickCount, 1);
+});
+
+test("hidden duplicate controls do not mask a visible skip button", () => {
+  const harness = makeHarness();
+  const hidden = new harness.FakeElement("button");
+  hidden.offsetParent = null;
+  const visible = new harness.FakeElement("button");
+  harness.selectorResults.set(".ytp-ad-skip-button-modern", [hidden, visible]);
+  harness.resolveStorage(true);
+  harness.flushFrame();
+  assert.equal(hidden.clickCount, 0);
+  assert.equal(visible.clickCount, 1);
+});
+
+test("candidate inspection is bounded even when many matching controls exist", () => {
+  const harness = makeHarness();
+  const buttons = Array.from({ length: 33 }, () => new harness.FakeElement("button"));
+  for (const button of buttons.slice(0, 32)) button.offsetParent = null;
+  harness.selectorResults.set(".ytp-ad-skip-button-modern", buttons);
+  harness.resolveStorage(true);
+  harness.flushFrame();
+  assert.equal(buttons[32].clickCount, 0);
+});
+
+test("removing the native disabled attribute enables a bounded skip check", () => {
+  const harness = makeHarness();
+  const button = new harness.FakeElement("button");
+  button.disabled = true;
+  harness.selectorResults.set(".ytp-ad-skip-button-modern", button);
+  harness.resolveStorage(true);
+  harness.flushFrame();
+  assert.equal(button.clickCount, 0);
+  assert.ok(harness.observers[0].observeCalls[0].options.attributeFilter.includes("disabled"));
+  button.disabled = false;
+  harness.observers[0].callback([{ type: "attributes", attributeName: "disabled" }]);
+  harness.flushFrame();
+  assert.equal(button.clickCount, 1);
+});
+
+test("back-forward cache restoration rereads settings before restarting", () => {
+  const harness = makeHarness();
+  harness.resolveStorage(true);
+  harness.flushFrame();
+  harness.windowListeners.get("pagehide")();
+  assert.equal(harness.observers[0].connected, false);
+  harness.windowListeners.get("pageshow")({ persisted: true });
+  assert.equal(harness.storageCallbacks.length, 1);
+  assert.equal(harness.observers[0].connected, false);
+  harness.resolveStorage(true);
+  harness.flushFrame();
+  assert.equal(harness.observers[0].connected, true);
+  assert.equal(harness.elementsById.has("zeroq-youtube-style"), true);
+  // A second history traversal must also tear down and restore cleanly.
+  harness.windowListeners.get("pagehide")();
+  harness.windowListeners.get("pageshow")({ persisted: true });
+  harness.resolveStorage({ pausedSites: ["youtube.com"] });
+  assert.equal(harness.observers[0].connected, false);
+  assert.equal(harness.elementsById.has("zeroq-youtube-style"), false);
+});
+
+test("history restoration preserves a master-off setting and fails closed on storage error", () => {
+  for (const failStorage of [false, true]) {
+    const harness = makeHarness();
+    harness.resolveStorage(true);
+    harness.flushFrame();
+    harness.windowListeners.get("pagehide")();
+    harness.windowListeners.get("pageshow")({ persisted: false });
+    assert.equal(harness.storageCallbacks.length, 0);
+    harness.windowListeners.get("pageshow")({ persisted: true });
+    harness.resolveStorage(
+      { protectionEnabled: false },
+      failStorage ? { message: "storage unavailable" } : undefined
+    );
+    assert.equal(harness.observers[0].connected, false);
+    assert.equal(harness.elementsById.has("zeroq-youtube-style"), false);
+  }
 });
 
 test("fails closed if the local preference cannot be read", () => {

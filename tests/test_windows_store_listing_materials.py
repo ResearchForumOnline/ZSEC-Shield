@@ -37,7 +37,7 @@ def test_partner_center_materials_are_current_and_rendered() -> None:
     assert "ZSEC Antivirus" in field_sheet
     assert "0.3.32.0" in field_sheet
     assert "ZSEC Browser" in field_sheet
-    assert "0.3.26.0" in field_sheet
+    assert "0.3.28.0" in field_sheet
     assert "offline draft, not submitted" in field_sheet
 
 
@@ -111,3 +111,11 @@ def test_reviewed_privacy_and_support_urls_are_exact() -> None:
     changed["listing"]["privacy_policy_url"] = "https://example.com/privacy"
     with pytest.raises(materials.ListingMaterialError, match="reviewed canonical URL"):
         materials.validate_listing(changed, packaging)
+
+
+def test_feature_unicode_bullet_marker_is_rejected() -> None:
+    listings, packaging, _ = _validated()
+    browser = copy.deepcopy(listings[1])
+    browser["listing"]["features"][0] = "\u2022 bundled feature"
+    with pytest.raises(materials.ListingMaterialError, match="bullet marker"):
+        materials.validate_listing(browser, packaging)

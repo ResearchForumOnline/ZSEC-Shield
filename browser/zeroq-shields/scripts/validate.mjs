@@ -1,4 +1,5 @@
 import { readFile, readdir } from "node:fs/promises";
+import { buildLoginCompatibilityRules, LOGIN_COMPATIBILITY_PRIORITY } from "../src/login-compatibility.js";
 import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,8 +40,8 @@ if (manifest.manifest_version !== 3) throw new Error("Manifest V3 is required");
 if (manifest.name !== "ZSEC Browser Shields" || manifest.short_name !== "ZSEC Shields") {
   throw new Error("Public extension branding is stale");
 }
-if (manifest.version !== "0.5.2" || packageJson.version !== manifest.version) {
-  throw new Error("Manifest/package release version must match the reviewed 0.5.2 release");
+if (manifest.version !== "0.5.3" || packageJson.version !== manifest.version) {
+  throw new Error("Manifest/package release version must match the reviewed 0.5.3 release");
 }
 const resources = manifest.declarative_net_request?.rule_resources || [];
 if (resources.length !== 3) throw new Error("Expected EasyList, privacy and link-cleaning rulesets");
@@ -160,6 +161,11 @@ if (!youtubeCleanup.includes("button.getAttribute(\"aria-disabled\")")) {
 }
 
 const highRiskRules = buildHighRiskRules(true);
+const compatibilityRules = buildLoginCompatibilityRules();
+if (compatibilityRules.length >= 200 || compatibilityRules.some((rule) => rule.priority !== LOGIN_COMPATIBILITY_PRIORITY || rule.action.type !== "allow")) throw new Error("Login compatibility rule scope drifted");
+if (LOGIN_COMPATIBILITY_PRIORITY <= 50 || LOGIN_COMPATIBILITY_PRIORITY >= HIGH_RISK_RULE_PRIORITY) throw new Error("Login compatibility escaped its ad-only priority band");
+if (buildLoginCompatibilityRules(false).length) throw new Error("Master OFF leaves login compatibility active");
+if (!serviceWorker.includes("buildLoginCompatibilityRules(settings.protectionEnabled)")) throw new Error("Login compatibility is not installed with master gating");
 if (buildHighRiskRules(false).length !== 0) throw new Error("High-risk rules must default off");
 if (highRiskRules.length !== 2 || highRiskRuleIds().length !== 2) throw new Error("High-risk dynamic rule budget changed");
 if (highRiskRules.some((rule) => rule.action?.type !== "block")) throw new Error("High-risk rules must only block");

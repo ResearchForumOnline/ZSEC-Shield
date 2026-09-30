@@ -1,7 +1,9 @@
 # ZSEC Browser Shields
 
 ZSEC Browser Shields is the open-source Manifest V3 protection engine for ZSEC
-Browser. Version 0.5.2 adds structured runtime health, transactional settings
+Browser. Version 0.5.3 adds default scoped login compatibility for Google,
+ChatGPT/OpenAI, Facebook/Instagram/Messenger, Microsoft, GitHub and Apple.
+It retains structured runtime health, transactional settings
 rollback, and 49,464 pinned EasyList network rules compiled by
 eyeo's Adblock Plus release pipeline, while omitting the Acceptable Ads
 allowlist. It also blocks a focused local set of analytics, fingerprinting and
@@ -27,10 +29,29 @@ promise to block every ad, especially same-origin or server-inserted video ads,
 malicious site or browser exploit.
 
 The rule-priority hierarchy is explicit: EasyList at 10-21, tracking-link
-cleanup at 40, focused ZSEC privacy blocks at 50, user-selected site pause at
+cleanup at 40, focused ZSEC privacy blocks at 50, built-in login compatibility at
+60, user-selected site pause at
 100 and High-Risk Browsing security rules at 1000. EasyList exceptions cannot
 override ZSEC privacy or High-Risk Browsing rules; site pause remains the
 deliberate breakage-recovery control outside High-Risk mode.
+
+## Default login compatibility
+
+The bundled login policy permits HTTPS navigation to exact approved site/auth
+hosts and functional requests from each named service to its own reviewed auth,
+static asset and content hosts. It helps prevent broad ad-list false positives
+without pausing every third-party request. Facebook tracking pixels embedded on
+other sites, Google advertising domains, unrelated analytics, and YouTube
+background requests do not gain an exception. Variable OpenAI and Meta CDN
+subdomains are allowed only from their corresponding service families.
+
+YouTube and youtube-nocookie initiators are excluded. The existing YouTube
+network blockers and cleanup remain enabled. No user pause list or preference
+is rewritten on update. Master protection OFF removes these built-in rules too.
+High-Risk Browsing still deliberately blocks third-party active content even
+when a login compatibility rule matches; users can turn that optional mode off
+when using a service that requires such content. Native threat, phishing, TLS
+and unsafe-download checks are separate from this ad-filter compatibility.
 
 ## Runtime health and settings transactions
 

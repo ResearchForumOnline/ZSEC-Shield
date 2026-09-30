@@ -1,0 +1,198 @@
+{
+  "schema": "zsec.browser.release-evidence.v1",
+  "recorded_date": "2026-09-30",
+  "source_version": "0.3.28",
+  "extension_version": "0.5.3",
+  "store_version": "0.3.28.0",
+  "store_product_id": "9PHBSSG3N99V",
+  "store_submission_number": 4,
+  "store_state": "certified_and_available",
+  "store_state_evidence": "Partner Center overview and package entry read on 2026-09-30",
+  "artifact": "ZSEC-Browser-0.3.28.0-x64-release.msix",
+  "artifact_bytes": 4354689,
+  "artifact_sha256": "9266c9273171cfb456d70196c19bd5029ddc274d0c2f6cd0ec3bcabfb5bff0fb",
+  "reviewed_upload_signed": false,
+  "installed_user_app_updated": false,
+  "synchronization_public_base_revision": "ab8afef",
+  "fresh_build": "passed",
+  "store_app_payload_byte_matches": 32,
+  "payload": [
+    {
+      "path": "App/Microsoft.Web.WebView2.Core.dll",
+      "sha256": "958efdb7f13a6d1f3079756c96956cc96cf713ae46fa085c8b1e7f44316a4f7e",
+      "bytes": 698208
+    },
+    {
+      "path": "App/Microsoft.Web.WebView2.WinForms.dll",
+      "sha256": "a7b8be525030f19d9e88c6e684bca053dc7a3b080c31c3d9428f7438e7b6768f",
+      "bytes": 38752
+    },
+    {
+      "path": "App/WebView2Loader.dll",
+      "sha256": "a9a09232c25805323d4cfb3fc8f545a190a9c8a99c93262ea99d0b88df99ec90",
+      "bytes": 164704
+    },
+    {
+      "path": "App/ZSEC Browser.exe",
+      "sha256": "20cd8f3f8d01f954a396bb0a7163f44064a1fb83b8119e704396f343c9a68390",
+      "bytes": 472064
+    },
+    {
+      "path": "App/extension/assets/zeroq-icon.png",
+      "sha256": "609d99a042b83ee1244b63a79b7b97938f16f9867ff1cb0230ab67d90649cc34",
+      "bytes": 2350927
+    },
+    {
+      "path": "App/extension/easylist.lock.json",
+      "sha256": "3a020ecd30719537ae4cd0d57fa63a4984d930680721656496f625b0e61380fb",
+      "bytes": 2104
+    },
+    {
+      "path": "App/extension/manifest.json",
+      "sha256": "42ed541b5b473cd2b60cf6a18d2fee94a165406767a19926f534e8681ff56883",
+      "bytes": 1923
+    },
+    {
+      "path": "App/extension/popup/index.html",
+      "sha256": "b6a5538183c0a74e3c15aa4cdc0d5d2ec04102eea46359baa9a726bda4cc8895",
+      "bytes": 2502
+    },
+    {
+      "path": "App/extension/popup/popup.css",
+      "sha256": "6c84a47704e39d2c7a6aefda88f90a3a4a88a8ccb02c91d7bc9a95700b167604",
+      "bytes": 3005
+    },
+    {
+      "path": "App/extension/popup/popup.js",
+      "sha256": "00cea1822c52c1d4f094b012240b2df4b2ae81d461b31201f5533ab5b76d2a33",
+      "bytes": 4287
+    },
+    {
+      "path": "App/extension/rules/easylist.json",
+      "sha256": "81d9ba06866a37595397ce62cbc4ccd310c8d9bdc6ed92c9b8b9c89b194ea9d6",
+      "bytes": 5314013
+    },
+    {
+      "path": "App/extension/rules/link-cleaning.json",
+      "sha256": "f2a9b1a423cb2e34dbe81b6b0e8086602e8272fa142cb2ed1b9f30382850326b",
+      "bytes": 1750
+    },
+    {
+      "path": "App/extension/rules/privacy.json",
+      "sha256": "fefc77b43b593740e9930252b45bf1b46cfbe9c0bfd24cee947d0f9371e14aef",
+      "bytes": 9484
+    },
+    {
+      "path": "App/extension/src/high-risk-browsing.js",
+      "sha256": "acbfdc5c6b12cd3642a8a07733c2037bd0e986bbe2fe3fd86f4eb01bf89e4a1f",
+      "bytes": 1190
+    },
+    {
+      "path": "App/extension/src/login-compatibility.js",
+      "sha256": "a12f2c5feea45dde68527d6c61fe75d93e2510d89e113c0d3af4a8c90575cead",
+      "bytes": 4842
+    },
+    {
+      "path": "App/extension/src/policy.js",
+      "sha256": "d1b91634d938b49fcdd1b6f54aa0c0ce6e24959574b725cd470a7dbda613f47c",
+      "bytes": 1994
+    },
+    {
+      "path": "App/extension/src/popup-state.js",
+      "sha256": "7b717da978fa4054cf770f76933567f4c1bd6095952f751a9e94e085e84b0e94",
+      "bytes": 2221
+    },
+    {
+      "path": "App/extension/src/runtime-health.js",
+      "sha256": "751ffc8626acb864afba2f7f08d3762e57663bbac459fb83a7bad28f787cdb62",
+      "bytes": 9055
+    },
+    {
+      "path": "App/extension/src/service-worker.js",
+      "sha256": "a89b2eeb3f58c99a346a8266c189c0ba3df41a116f54f243021024d7f97a22d0",
+      "bytes": 7245
+    },
+    {
+      "path": "App/extension/src/settings-transaction.js",
+      "sha256": "855a121d68a1a87456e8f4c724326f1c0bbdaeb802d7d01fa44503729ee49ee9",
+      "bytes": 715
+    },
+    {
+      "path": "App/extension/src/youtube-cleanup.js",
+      "sha256": "7a2304197e87b52d9d89486862233aac2aaa68f89d21ca0689684fe487963576",
+      "bytes": 5194
+    },
+    {
+      "path": "App/extension/src/youtube-cosmetic-rules.js",
+      "sha256": "84d2b5acb2b3fe3542eb2c3010d6eea9aeff736b75ae918bb987438b2eb86a16",
+      "bytes": 1880
+    },
+    {
+      "path": "App/extension/third_party/EASYLIST-LICENSE.txt",
+      "sha256": "b4a8b38391573a14fe347d716d557c3303908565802a295438309b1496917985",
+      "bytes": 1159
+    },
+    {
+      "path": "App/extension/third_party/easylist-20260817.txt",
+      "sha256": "49a20729376cc23660d5d2dcdbdbf4fdce4e3e744562f65cace098ccd5450c4a",
+      "bytes": 2048997
+    },
+    {
+      "path": "App/extension/third_party/easylist-provenance.json",
+      "sha256": "f04ed827ae1a1776efc34ca40d5d72479b94d804e0ce8fb649f19c0d9ff8a8d7",
+      "bytes": 1578
+    },
+    {
+      "path": "App/new-tab/index.html",
+      "sha256": "468b45c556420c4821cb9bd8e00d5d6fb9ebad5c51c3d9c5a199d7b3d016d25c",
+      "bytes": 1595
+    },
+    {
+      "path": "App/new-tab/native-request-probe.html",
+      "sha256": "63955c40dd87ea2ad70aa6a74ee08538b887ea84c34199f96717ad61ce61e63e",
+      "bytes": 485
+    },
+    {
+      "path": "App/new-tab/popup-regression.html",
+      "sha256": "d9b5e84b8eaea0e9509b071ceedd07e9c03e5a5079ae6dbf80d821f195df431a",
+      "bytes": 2033
+    },
+    {
+      "path": "App/policy/policy-provenance.json",
+      "sha256": "b52c812312edef699341563b274d87589e52e157046c3d235c55bd2b0983b081",
+      "bytes": 1311
+    },
+    {
+      "path": "App/policy/tracker-domains.txt",
+      "sha256": "e32e76a1f4aa6f924d9ea7d082b25078312a6e3fc3d7b50c546e6520f5cd21cb",
+      "bytes": 1257
+    },
+    {
+      "path": "App/policy/tracking-parameters.txt",
+      "sha256": "6a1916dad62e0744cc57313621e79c363d47979c254de2895dff0e9e6cbbc1c5",
+      "bytes": 203
+    },
+    {
+      "path": "App/youtube-player-protection.js",
+      "sha256": "769273e7954671c37c8119d1905105226472a144d25d017eb70d9a4462d259a3",
+      "bytes": 7929
+    }
+  ],
+  "verification": {
+    "native_assertions_passed": 267,
+    "extension_tests_passed": 55,
+    "python_release_tests_passed": 55,
+    "mv3_validation": "passed",
+    "original_chromium_dnr_fixtures_passed": 8,
+    "chromium_dnr_fixtures_rerun_this_sync": false,
+    "adjacent_python_tests_passed": 19,
+    "combined_python_tests_passed": 74,
+    "standalone_extension_archive_dependency_closure": "login-compatibility.js included; exact bytes checked"
+  },
+  "limitations": {
+    "live_credential_login_tested": false,
+    "youtube_complete_ad_suppression_guaranteed": false,
+    "store_signed_install_tested_this_sync": false,
+    "unsigned_community_is_store_distribution": false
+  }
+}

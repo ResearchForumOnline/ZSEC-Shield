@@ -140,6 +140,23 @@ test("normalizes semantically unordered dynamic rule arrays before comparison", 
   assert.deepEqual(health.dynamicRuleIds, [100000]);
 });
 
+test("checks bundled login host regular expressions in Chromium and fails closed if unsupported", async () => {
+  const rule = {
+    id: 210000,
+    priority: 60,
+    action: { type: "allow" },
+    condition: { regexFilter: "^https:\\/\\/auth\\.openai\\.com\\/", resourceTypes: ["main_frame"] }
+  };
+  const api = makeApi({ dynamicRules: [rule] });
+  const health = await verifyDnrRuntime(api, true, [rule]);
+  assert.equal(health.dynamicRegexRulesVerified, 1);
+  assert.equal(api.regexChecks.length, 7);
+  api.declarativeNetRequest.isRegexSupported = async ({ regex }) => ({
+    isSupported: regex !== rule.condition.regexFilter
+  });
+  await assert.rejects(verifyDnrRuntime(api, true, [rule]), /dynamic_regex_rule_210000_unsupported/);
+});
+
 test("fails closed when a required representative EasyList match is absent", async () => {
   await assert.rejects(
     verifyDnrRuntime(

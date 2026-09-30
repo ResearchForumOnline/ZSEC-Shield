@@ -29,6 +29,7 @@ RESTRICTED_NS = (
     "http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
 )
 DESKTOP_NS = "http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+UAP_NS = "http://schemas.microsoft.com/appx/manifest/uap/windows10"
 UAP11_NS = "http://schemas.microsoft.com/appx/manifest/uap/windows10/11"
 PLACEHOLDER_TOKEN = "PARTNER_CENTER_"
 IDENTITY_NAME_PATTERN = re.compile(r"[A-Za-z0-9.-]{3,50}")
@@ -196,7 +197,12 @@ def validate_manifest(document: bytes, product: Product, version: str) -> None:
         root = ET.fromstring(document)
     except ET.ParseError as exc:
         raise StorePackageError("rendered AppxManifest.xml is not well-formed XML") from exc
-    namespace = {"f": FOUNDATION_NS, "r": RESTRICTED_NS, "d": DESKTOP_NS}
+    namespace = {
+        "f": FOUNDATION_NS,
+        "r": RESTRICTED_NS,
+        "d": DESKTOP_NS,
+        "uap": UAP_NS,
+    }
     identity = root.find("f:Identity", namespace)
     if identity is None:
         raise StorePackageError("manifest Identity element is missing")
@@ -239,6 +245,38 @@ def validate_manifest(document: bytes, product: Product, version: str) -> None:
             raise StorePackageError("antivirus startup task contract is invalid")
     elif startup_extensions:
         raise StorePackageError("browser manifest must not declare an antivirus startup task")
+    if product.key == "browser":
+        extensions = application.findall("f:Extensions/uap:Extension", namespace)
+        protocols = {
+            protocol.get("Name")
+            for extension in extensions
+            if extension.get("Category") == "windows.protocol"
+            for protocol in extension.findall("uap:Protocol", namespace)
+        }
+        if protocols != {"http", "https"}:
+            raise StorePackageError(
+                "browser manifest must declare exactly the HTTP and HTTPS protocols"
+            )
+        associations = [
+            association
+            for extension in extensions
+            if extension.get("Category") == "windows.fileTypeAssociation"
+            for association in extension.findall("uap:FileTypeAssociation", namespace)
+        ]
+        if len(associations) != 1:
+            raise StorePackageError(
+                "browser manifest must declare exactly one HTML file-type association"
+            )
+        file_types = {
+            item.text
+            for item in associations[0].findall(
+                "uap:SupportedFileTypes/uap:FileType", namespace
+            )
+        }
+        if file_types != {".htm", ".html"}:
+            raise StorePackageError(
+                "browser manifest must declare exactly the HTM and HTML file types"
+            )
     capabilities = root.findall("f:Capabilities/*", namespace)
     declared = {(item.tag, item.get("Name")) for item in capabilities}
     expected_capability = {(f"{{{RESTRICTED_NS}}}Capability", "runFullTrust")}

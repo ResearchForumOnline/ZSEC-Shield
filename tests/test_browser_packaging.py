@@ -29,6 +29,10 @@ def test_browser_archive_is_complete_deterministic_and_explicitly_unsigned(tmp_p
         assert "src/popup-state.js" in bundle.namelist()
         assert "src/runtime-health.js" in bundle.namelist()
         assert "src/settings-transaction.js" in bundle.namelist()
+        assert "src/login-compatibility.js" in bundle.namelist()
+        assert bundle.read("src/login-compatibility.js") == (
+            MODULE.EXTENSION / "src/login-compatibility.js"
+        ).read_bytes()
         assert "MERCENARY_SPYWARE_DEFENCE.md" in bundle.namelist()
         assert "easylist.lock.json" in bundle.namelist()
         assert "rules/easylist.json" in bundle.namelist()
@@ -38,7 +42,7 @@ def test_browser_archive_is_complete_deterministic_and_explicitly_unsigned(tmp_p
         assert "src/youtube-cosmetic-rules.js" in bundle.namelist()
         archived_manifest = json.loads(bundle.read("manifest.json"))
         assert archived_manifest["manifest_version"] == 3
-        assert archived_manifest["version"] == "0.5.2"
+        assert archived_manifest["version"] == "0.5.3"
         assert all(info.date_time == (2026, 1, 1, 0, 0, 0) for info in bundle.infolist())
 
         easylist_bytes = bundle.read("rules/easylist.json")
@@ -66,7 +70,7 @@ def test_browser_archive_is_complete_deterministic_and_explicitly_unsigned(tmp_p
     assert release["artifact"] == first.name
     assert first.name.startswith("zsec-browser-shields-")
     assert release["product"] == "ZSEC Browser Shields"
-    assert release["version"] == "0.5.2"
+    assert release["version"] == "0.5.3"
     assert release["sha256"] == digest
     assert release["signed_store_package"] is False
     assert release["installation_channel"] == "unpacked-community"

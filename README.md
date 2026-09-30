@@ -112,10 +112,19 @@ used the `ZME1` name.
 
 ## ZSEC Browser and ZSEC Browser Shields
 
+**Browser 0.3.28 / Store package 0.3.28.0** is the current reviewed browser
+release. Partner Center confirmed on 30 September 2026 that Submission 4 was
+certified and available in the [Microsoft Store](https://apps.microsoft.com/detail/9PHBSSG3N99V).
+This release adds scoped functional login compatibility for Google, ChatGPT,
+Facebook, Microsoft, GitHub and Apple, user-clicked HTTPS sign-in popup handling,
+and bounded YouTube skip/restoration improvements. YouTube receives no general
+login-compatibility exception. Provider restrictions and complete ad suppression
+remain outside the guarantees. [Exact package and verification record](docs/releases/ZSEC_BROWSER_0.3.28.md).
+
 The open-source extension lives in
 [`browser/zeroq-shields`](browser/zeroq-shields). It provides 39 packaged local
 network blockers, two tracking-link cleaners, a per-site pause switch, and
-best-effort YouTube skip/nuisance cleanup. Community 0.5.2 adds 49,464 pinned
+best-effort YouTube skip/nuisance cleanup. Community 0.5.3 retains 49,464 pinned
 EasyList network rules without Acceptable Ads and retains the optional
 High-Risk Browsing profile: two fixed local rules block top-level plaintext HTTP
 navigation and third-party scripts, subframes, objects, and WebSockets. It is off
@@ -138,7 +147,7 @@ for the exact enforced decision points and non-claims, and the
 for the implemented-now versus release-gated protection programme.
 
 The native Windows Community desktop source lives in
-[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.12
+[`browser/zsec-desktop-preview`](browser/zsec-desktop-preview). Version 0.3.28
 provides a modern rounded dark interface, managed tabs and popups, local
 bookmarks and bounded history, typed-address suggestions, seven selectable
 search providers, tray controls, a native settings surface and a separate
@@ -148,7 +157,7 @@ subresources and records a real local subresource probe instead of treating a
 configuration self-test as runtime proof. It retains default-deny site
 permissions, certificate-error cancellation, explicit downloads, HTTPS
 upgrading, Microsoft Balanced tracking prevention, and the automatically loaded
-exact-ID Browser Shields 0.5.2 MV3 engine with 49,464 pinned EasyList-derived
+exact-ID Browser Shields 0.5.3 MV3 engine with 49,464 pinned EasyList-derived
 network rules, 21 tracking-parameter cleaners and 19 selected packaged YouTube
 cosmetic selectors. Bounded YouTube protection adds reviewed endpoint blocking
 and exact-host, document-start player-data sanitisation without seeking,

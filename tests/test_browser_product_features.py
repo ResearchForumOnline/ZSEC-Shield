@@ -137,7 +137,7 @@ def test_settings_surface_is_complete_and_truthful() -> None:
         'Page("Default behavior"',
     ):
         assert category in dialogs
-    assert "Popup default: block every page-requested window" in dialogs
+    assert "Popup default: block unsolicited windows" in dialogs
     assert "Exact HTTPS sites allowed to request popup tabs" in dialogs
     assert "Background requests and popup bursts remain blocked" in dialogs
     assert "working.PopupAllowedOrigins" in dialogs

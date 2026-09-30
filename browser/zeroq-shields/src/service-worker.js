@@ -7,6 +7,7 @@ import {
   pauseRuleIds
 } from "./policy.js";
 import { buildHighRiskRulesForSettings, highRiskRuleIds } from "./high-risk-browsing.js";
+import { buildLoginCompatibilityRules, loginCompatibilityRuleIds } from "./login-compatibility.js";
 import {
   EXPECTED_RULESET_IDS,
   RUNTIME_HEALTH_SCHEMA,
@@ -70,6 +71,7 @@ async function recordRuntimeHealth(health) {
 function dynamicRulesFor(settings) {
   return [
     ...buildPauseRules(settings.protectionEnabled ? settings.pausedSites : []),
+    ...buildLoginCompatibilityRules(settings.protectionEnabled),
     ...buildHighRiskRulesForSettings(settings)
   ];
 }
@@ -80,7 +82,7 @@ async function applyNetworkSettings(normalized) {
     disableRulesetIds: normalized.protectionEnabled ? [] : [...RULESET_IDS]
   });
   await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: [...pauseRuleIds(), ...highRiskRuleIds()],
+    removeRuleIds: [...pauseRuleIds(), ...highRiskRuleIds(), ...loginCompatibilityRuleIds()],
     addRules: dynamicRulesFor(normalized)
   });
 }

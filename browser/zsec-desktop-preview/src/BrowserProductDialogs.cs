@@ -933,10 +933,10 @@ namespace TalkToAI.ZsecBrowserPreview
                 "Community permission policy: deny by default. Camera, microphone, location, notifications and other WebView2 permission requests are denied and are not silently remembered."
             ));
             Label defaultPolicy = BrowserDialogTheme.Description(
-                "Popup default: block every page-requested window. This default is fixed. A site appears below only after you explicitly allow its exact HTTPS origin from the main menu."
+                "Popup default: block unsolicited windows. User-clicked login popups for reviewed HTTPS services are allowed in normal mode. Other sites need an exact HTTPS permission from the main menu."
             );
             defaultPolicy.Height = 52;
-            defaultPolicy.AccessibleName = "Immutable popup blocking policy";
+            defaultPolicy.AccessibleName = "Default popup and login compatibility policy";
             panel.Controls.Add(defaultPolicy);
 
             Label allowedHeading = BrowserDialogTheme.Description(
@@ -1025,7 +1025,7 @@ namespace TalkToAI.ZsecBrowserPreview
             {
                 if (allowedOrigins.Items.Count == 0) return;
                 DialogResult answer = MessageBox.Show(
-                    "Remove every saved popup permission? Popup requests from those sites will return to the fixed default-block policy after you save Settings.",
+                    "Remove every saved popup permission? Those sites will use the default popup policy after you save Settings. Reviewed login compatibility remains available in normal mode.",
                     "Clear popup permissions",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question,

@@ -62,6 +62,67 @@ namespace TalkToAI.ZsecBrowserPreview
         }
     }
 
+    // Kept in parity with zeroq-shields/src/login-compatibility.js. Only
+    // functional resources receive tracker-list exceptions; strict guard remains.
+    internal static class BrowserLoginCompatibility
+    {
+        private sealed class Group
+        {
+            internal string[] Sites, Hosts, CdnDomains;
+            internal Group(string[] sites, string[] hosts, string[] cdn)
+            { Sites = sites; Hosts = hosts; CdnDomains = cdn; }
+        }
+        private static readonly Group[] Groups =
+        {
+            new Group(new[] { "google.com" }, new[] { "google.com", "www.google.com", "accounts.google.com", "mail.google.com", "drive.google.com", "docs.google.com", "gemini.google.com", "myaccount.google.com", "apis.google.com", "www.googleapis.com", "oauth2.googleapis.com", "accounts.gstatic.com", "www.gstatic.com", "ssl.gstatic.com", "fonts.gstatic.com", "fonts.googleapis.com", "lh3.googleusercontent.com" }, new string[0]),
+            new Group(new[] { "chatgpt.com", "openai.com", "chat.openai.com" }, new[] { "chatgpt.com", "www.chatgpt.com", "chat.openai.com", "openai.com", "www.openai.com", "auth.openai.com", "auth0.openai.com", "platform.openai.com", "cdn.oaistatic.com", "challenges.cloudflare.com", "accounts.google.com", "appleid.apple.com", "login.live.com", "login.microsoftonline.com" }, new[] { "oaistatic.com", "oaiusercontent.com" }),
+            new Group(new[] { "facebook.com", "instagram.com", "messenger.com" }, new[] { "facebook.com", "www.facebook.com", "m.facebook.com", "web.facebook.com", "www.messenger.com", "messenger.com", "instagram.com", "www.instagram.com", "graph.facebook.com", "connect.facebook.net" }, new[] { "fbcdn.net", "cdninstagram.com" }),
+            new Group(new[] { "microsoft.com", "live.com", "office.com", "outlook.com", "microsoftonline.com" }, new[] { "www.microsoft.com", "account.microsoft.com", "login.microsoftonline.com", "login.live.com", "account.live.com", "outlook.live.com", "outlook.office.com", "www.office.com", "office.com", "aadcdn.msauth.net", "aadcdn.msftauth.net", "logincdn.msauth.net" }, new string[0]),
+            new Group(new[] { "github.com" }, new[] { "github.com", "www.github.com", "api.github.com", "github.githubassets.com", "avatars.githubusercontent.com", "challenges.cloudflare.com" }, new string[0]),
+            new Group(new[] { "apple.com", "icloud.com" }, new[] { "appleid.apple.com", "account.apple.com", "www.apple.com", "www.icloud.com", "icloud.com", "idmsa.apple.com", "appleid.cdn-apple.com" }, new string[0])
+        };
+        private static readonly string[] AuthHosts =
+        {
+            "accounts.google.com", "auth.openai.com", "auth0.openai.com",
+            "appleid.apple.com", "idmsa.apple.com", "login.live.com",
+            "login.microsoftonline.com", "github.com", "www.facebook.com"
+        };
+        private static bool TrySecureUri(string candidate, out Uri value)
+        {
+            value = null;
+            string origin;
+            Uri parsed;
+            if (!BrowserPopupPolicy.TryNormalizeOrigin(candidate, out origin) ||
+                !Uri.TryCreate(candidate, UriKind.Absolute, out parsed) ||
+                parsed.Port != 443) return false;
+            value = parsed;
+            return true;
+        }
+        internal static bool IsFunctionalResource(string topLevelUrl, string requestUrl)
+        {
+            Uri top, request;
+            if (!TrySecureUri(topLevelUrl, out top) || !TrySecureUri(requestUrl, out request) ||
+                BrowserRequestPolicy.IsYoutubeSite(top.Host)) return false;
+            return Groups.Any(group => group.Sites.Any(site =>
+                BrowserRequestPolicy.HostMatchesDomain(top.Host, site)) &&
+                (group.Hosts.Contains(request.Host, StringComparer.OrdinalIgnoreCase) ||
+                group.CdnDomains.Any(cdn => BrowserRequestPolicy.HostMatchesDomain(request.Host, cdn))));
+        }
+        internal static bool IsLoginPopup(string openerUrl, string requestedUrl)
+        {
+            Uri opener, target;
+            if (!TrySecureUri(openerUrl, out opener) || !TrySecureUri(requestedUrl, out target) ||
+                BrowserRequestPolicy.IsYoutubeSite(opener.Host)) return false;
+            Group source = Groups.FirstOrDefault(group => group.Hosts.Contains(
+                opener.Host, StringComparer.OrdinalIgnoreCase) && group.Sites.Any(site =>
+                BrowserRequestPolicy.HostMatchesDomain(opener.Host, site)));
+            if (source == null) return false;
+            return AuthHosts.Contains(target.Host, StringComparer.OrdinalIgnoreCase) ||
+                source.Hosts.Contains(target.Host, StringComparer.OrdinalIgnoreCase) &&
+                source.Sites.Any(site => BrowserRequestPolicy.HostMatchesDomain(target.Host, site));
+        }
+    }
+
     internal static class BrowserRequestPolicy
     {
         private static readonly string[] YoutubeAdHosts =
@@ -112,7 +173,8 @@ namespace TalkToAI.ZsecBrowserPreview
         internal static bool IsReviewedThirdPartyTracker(
             string topLevelUrl,
             string requestUrl,
-            IEnumerable<string> reviewedDomains
+            IEnumerable<string> reviewedDomains,
+            bool loginCompatibility = true
         )
         {
             Uri topLevel;
@@ -122,6 +184,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 return false;
             }
             if (IsSameSite(topLevel.Host, request.Host)) return false;
+            if (loginCompatibility && BrowserLoginCompatibility.IsFunctionalResource(topLevelUrl, requestUrl)) return false;
             return reviewedDomains != null && reviewedDomains.Any(domain =>
                 HostMatchesDomain(request.Host, domain)
             );

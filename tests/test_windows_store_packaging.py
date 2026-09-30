@@ -133,6 +133,42 @@ def test_antivirus_manifest_declares_package_owned_startup_activation() -> None:
     }
 
 
+def test_browser_manifest_declares_package_owned_web_associations() -> None:
+    product = store.PRODUCTS["browser"]
+    identity = {
+        "identity_name": "ResearchForumOnline.ZSECBrowser",
+        "publisher": "CN=11111111-1111-1111-1111-111111111111",
+        "publisher_display_name": "Research Forum Online",
+    }
+    root = ET.fromstring(
+        store.render_manifest(product, identity, store.source_version(product))
+    )
+    namespaces = {"f": store.FOUNDATION_NS, "uap": store.UAP_NS}
+    extensions = root.findall(
+        "f:Applications/f:Application/f:Extensions/uap:Extension", namespaces
+    )
+    protocols = {
+        protocol.get("Name")
+        for extension in extensions
+        if extension.get("Category") == "windows.protocol"
+        for protocol in extension.findall("uap:Protocol", namespaces)
+    }
+    assert protocols == {"http", "https"}
+    association = root.find(
+        "f:Applications/f:Application/f:Extensions/uap:Extension/"
+        "uap:FileTypeAssociation",
+        namespaces,
+    )
+    assert association is not None
+    file_types = {
+        item.text
+        for item in association.findall(
+            "uap:SupportedFileTypes/uap:FileType", namespaces
+        )
+    }
+    assert file_types == {".htm", ".html"}
+
+
 def test_partner_center_placeholders_are_rejected() -> None:
     example = json.loads(
         (ROOT / "packaging" / "windows-store" / "store-identity.example.json").read_text(

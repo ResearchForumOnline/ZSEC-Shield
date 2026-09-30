@@ -1,4 +1,12 @@
-# ZSEC Browser Community desktop client
+# ZSEC Browser 0.3.28 desktop client
+
+The reviewed Microsoft Store package is `0.3.28.0`. On 30 September 2026,
+Partner Center confirmed that Submission 4 was certified and available in the
+Store. See the [dated release evidence](https://github.com/ResearchForumOnline/ZSEC-Shield/blob/main/docs/releases/ZSEC_BROWSER_0.3.28.md)
+for its exact package hash, source/build checks, and remaining test limits.
+The direct Community package remains unsigned; use the
+[Microsoft Store](https://apps.microsoft.com/detail/9PHBSSG3N99V) for the
+Store-signed distribution.
 
 ZSEC Browser is a branded Windows browser shell with
 its own executable, modern rounded interface, managed tabs, address and search
@@ -29,7 +37,7 @@ Store installer.
 
 - Separate profile under `%LOCALAPPDATA%\TalkToAI\ZSEC Browser\User Data`.
 - HTTPS upgrades for plaintext addresses; High-Risk mode blocks plaintext HTTP.
-- Automatically loaded, exact-ID ZSEC Browser Shields 0.5.2 MV3 engine with
+- Automatically loaded, exact-ID ZSEC Browser Shields 0.5.3 MV3 engine with
   49,464 pinned EasyList network rules, 39 focused privacy blockers, two
   link-cleaning rules and a bounded YouTube UI assist. Acceptable Ads is not
   bundled. The native shell independently removes 21 selected tracking parameters.
@@ -106,7 +114,7 @@ Store installer.
 - Command-line launches accept up to 32 URL or search arguments and open each
   in a bounded tab. Switches are never interpreted as navigation input;
   unsupported/non-web schemes become a search query under the selected provider.
-- The UI labels the product as `Community 0.3.26` and exposes the exact runtime
+- The UI labels the product as `Community 0.3.28` and exposes the exact runtime
   and policy boundary in its About dialog.
 
 The Sign-in Setup Assistant builds a searchable review list from a bounded

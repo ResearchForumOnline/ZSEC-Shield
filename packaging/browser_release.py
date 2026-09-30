@@ -37,6 +37,7 @@ INCLUDE = (
     "src/runtime-health.js",
     "src/settings-transaction.js",
     "src/high-risk-browsing.js",
+    "src/login-compatibility.js",
     "src/service-worker.js",
     "src/youtube-cosmetic-rules.js",
     "src/youtube-cleanup.js",

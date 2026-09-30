@@ -122,7 +122,8 @@ namespace TalkToAI.ZsecBrowserPreview
             bool webViewUserInitiated,
             IEnumerable<string> allowedOrigins,
             bool tabCapacityAvailable,
-            bool popupBurstAvailable
+            bool popupBurstAvailable,
+            bool highRiskMode = false
         )
         {
             string openerOrigin;
@@ -145,6 +146,16 @@ namespace TalkToAI.ZsecBrowserPreview
                 {
                     Allowed = true,
                     Reason = "explicit_site_permission",
+                    OpenerOrigin = openerOrigin
+                };
+            }
+            if (!highRiskMode && BrowserLoginCompatibility.IsLoginPopup(openerUri, requestedUri))
+            {
+                if (!webViewUserInitiated) return Denied("background_request", openerOrigin);
+                if (!popupBurstAvailable) return Denied("rate_limited", openerOrigin);
+                return new BrowserPopupDecision
+                {
+                    Allowed = true, Reason = "builtin_login_compatibility",
                     OpenerOrigin = openerOrigin
                 };
             }

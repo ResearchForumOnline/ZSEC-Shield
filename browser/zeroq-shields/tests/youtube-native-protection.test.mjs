@@ -14,6 +14,9 @@ const source = await readFile(
 function makeHarness(hostname = "www.youtube.com") {
   const selectorResults = new Map();
   const frames = [];
+  const observers = [];
+  const windowListeners = new Map();
+  const documentListeners = new Map();
 
   class FakeElement {
     constructor() {
@@ -30,9 +33,17 @@ function makeHarness(hostname = "www.youtube.com") {
   }
 
   class FakeMutationObserver {
-    constructor(callback) { this.callback = callback; }
-    observe() {}
-    disconnect() {}
+    constructor(callback) {
+      this.callback = callback;
+      this.connected = false;
+      this.observeCalls = [];
+      observers.push(this);
+    }
+    observe(target, options) {
+      this.connected = true;
+      this.observeCalls.push({ target, options });
+    }
+    disconnect() { this.connected = false; }
   }
 
   class FakeResponse {
@@ -44,7 +55,7 @@ function makeHarness(hostname = "www.youtube.com") {
   const documentElement = new FakeElement();
   const document = {
     documentElement,
-    addEventListener() {},
+    addEventListener(name, callback) { documentListeners.set(name, callback); },
     querySelector(selector) { return selectorResults.get(selector)?.[0] ?? null; },
     querySelectorAll(selector) { return selectorResults.get(selector) ?? []; }
   };
@@ -62,13 +73,13 @@ function makeHarness(hostname = "www.youtube.com") {
       adPlacements: [{ id: "ad" }],
       streamingData: { formats: [{ itag: 18 }] }
     })),
-    addEventListener() {}
+    addEventListener(name, callback) { windowListeners.set(name, callback); }
   };
   sandbox.window = sandbox;
   sandbox.top = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(source, sandbox, { filename: "youtube-player-protection.js" });
-  return { sandbox, selectorResults, frames, FakeElement };
+  return { sandbox, selectorResults, frames, FakeElement, observers, windowListeners, documentListeners };
 }
 
 test("native main-world hook is exact-site bounded", () => {
@@ -123,6 +134,60 @@ test("hides bounded ad containers and uses a visible skip control once", () => {
   assert.equal(skip.clickCount, 1);
   assert.equal(harness.sandbox.__zsecYoutubeProtection.hiddenContainers, 1);
   assert.equal(harness.sandbox.__zsecYoutubeProtection.skipControlsUsed, 1);
+});
+
+test("native skip ignores hidden duplicates and observes availability changes", () => {
+  const harness = makeHarness();
+  const hidden = new harness.FakeElement();
+  hidden.offsetParent = null;
+  const skip = new harness.FakeElement();
+  skip.disabled = true;
+  harness.selectorResults.set(".ytp-ad-skip-button-modern", [hidden, skip]);
+  harness.frames.shift()();
+  assert.equal(skip.clickCount, 0);
+  const options = harness.observers[0].observeCalls[0].options;
+  assert.equal(options.attributes, true);
+  assert.ok(options.attributeFilter.includes("disabled"));
+  skip.disabled = false;
+  harness.observers[0].callback([{ type: "attributes", attributeName: "disabled" }]);
+  harness.frames.shift()();
+  assert.equal(skip.clickCount, 1);
+  assert.equal(hidden.clickCount, 0);
+  harness.observers[0].callback([]);
+  harness.frames.shift()();
+  assert.equal(skip.clickCount, 1);
+});
+
+test("native skip candidate work is capped", () => {
+  const harness = makeHarness();
+  const controls = Array.from({ length: 33 }, () => new harness.FakeElement());
+  for (const control of controls.slice(0, 32)) control.offsetParent = null;
+  harness.selectorResults.set(".ytp-ad-skip-button-modern", controls);
+  harness.frames.shift()();
+  assert.equal(controls[32].clickCount, 0);
+});
+
+test("native cleanup stops hidden page callbacks and resumes repeated BFCache restores", () => {
+  const harness = makeHarness();
+  const skip = new harness.FakeElement();
+  harness.selectorResults.set(".ytp-ad-skip-button-modern", [skip]);
+  // The initial queued frame must not click after pagehide.
+  harness.windowListeners.get("pagehide")();
+  harness.frames.shift()();
+  assert.equal(skip.clickCount, 0);
+  assert.equal(harness.observers[0].connected, false);
+  harness.documentListeners.get("yt-navigate-finish")();
+  assert.equal(harness.frames.length, 0);
+  harness.windowListeners.get("pageshow")({ persisted: false });
+  assert.equal(harness.observers[0].connected, false);
+  for (let cycle = 0; cycle < 2; cycle += 1) {
+    harness.windowListeners.get("pageshow")({ persisted: true });
+    assert.equal(harness.observers[0].connected, true);
+    harness.frames.shift()();
+    assert.equal(skip.clickCount, cycle + 1);
+    harness.windowListeners.get("pagehide")();
+    assert.equal(harness.observers[0].connected, false);
+  }
 });
 
 test("contains no remote code, telemetry, playback seeking, or unbounded polling", () => {

@@ -12,6 +12,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildLoginCompatibilityRules } from "../browser/zeroq-shields/src/login-compatibility.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const extension = resolve(root, "browser", "zeroq-shields");
@@ -215,8 +216,44 @@ async function main() {
       controller,
       `new Promise((resolve) => chrome.runtime.sendMessage({type: "setHighRiskMode", enabled: ${enabled}}, resolve))`
     );
+    const compatibilityRules = buildLoginCompatibilityRules();
+    const compatibilityIds = compatibilityRules.map((rule) => rule.id).sort((a, b) => a - b);
+    const compatibilityIdSet = new Set(compatibilityIds);
+    const actualVersion = await evaluate(controller, "chrome.runtime.getManifest().version");
+    assert.equal(actualVersion, "0.5.3");
     const statusOff = await setHighRisk(false);
     assert.equal(statusOff.ok, true);
+    assert.deepEqual(
+      (await evaluate(controller, "chrome.declarativeNetRequest.getDynamicRules()")).map((rule) => rule.id).sort((a, b) => a - b),
+      compatibilityIds
+    );
+
+    // Hypothetical request matching uses Chromium's actual installed DNR policy;
+    // none of these fixture URLs is contacted or used for a real account login.
+    const hasMatchApi = await evaluate(controller, "typeof chrome.declarativeNetRequest.testMatchOutcome === 'function'");
+    const matchEvidence = [];
+    const probe = async (name, request, check) => {
+      if (!hasMatchApi) return;
+      const result = await evaluate(controller, `chrome.declarativeNetRequest.testMatchOutcome(${JSON.stringify(request)})`);
+      const matched = result?.matchedRules || [];
+      check(matched);
+      matchEvidence.push({ name, verified: true, rules: matched.map(({ ruleId, rulesetId }) => ({ ruleId, rulesetId })) });
+    };
+    const someCompatibility = (matched) => matched.some((rule) => compatibilityIdSet.has(rule.ruleId));
+    const noCompatibility = (matched) => assert.equal(someCompatibility(matched), false);
+    await probe("chatgpt_openai_auth", { url: "https://auth.openai.com/login", initiator: "https://chatgpt.com/", type: "xmlhttprequest" }, (matched) => assert.ok(someCompatibility(matched)));
+    await probe("google_signin_assets", { url: "https://www.gstatic.com/signin/script.js", initiator: "https://accounts.google.com/", type: "script" }, (matched) => assert.ok(someCompatibility(matched)));
+    await probe("facebook_login_assets", { url: "https://connect.facebook.net/en_US/sdk.js", initiator: "https://www.facebook.com/", type: "script" }, (matched) => assert.ok(someCompatibility(matched)));
+    await probe("auth_suffix_spoof", { url: "https://auth.openai.com.evil.example/login", initiator: "https://chatgpt.com/", type: "xmlhttprequest" }, noCompatibility);
+    await probe("unrelated_facebook_pixel", { url: "https://connect.facebook.net/en_US/fbevents.js", initiator: "https://unrelated.example/", type: "script" }, (matched) => {
+      noCompatibility(matched);
+      assert.ok(matched.some((rule) => rule.rulesetId === "privacy_rules" && rule.ruleId === 11));
+    });
+    await probe("youtube_google_resources_not_whitelisted", { url: "https://www.gstatic.com/ad/script.js", initiator: "https://www.youtube.com/watch?v=fixture", type: "script" }, noCompatibility);
+    await probe("youtube_pagead_still_blocked", { url: "https://www.youtube.com/pagead/fixture", initiator: "https://www.youtube.com/watch?v=fixture", type: "xmlhttprequest" }, (matched) => {
+      noCompatibility(matched);
+      assert.ok(matched.some((rule) => rule.rulesetId === "easylist_ads" && rule.ruleId === 744733));
+    });
 
     const pageUrl = `http://127.0.0.1:${testPort}/page`;
     const navigationOff = await page.send("Page.navigate", { url: pageUrl });
@@ -239,7 +276,10 @@ async function main() {
     const statusOn = await setHighRisk(true);
     assert.equal(statusOn.ok, true);
     const rules = await evaluate(controller, "chrome.declarativeNetRequest.getDynamicRules()");
-    assert.deepEqual(rules.map((rule) => rule.id).sort((a, b) => a - b), [200000, 200001]);
+    assert.deepEqual(rules.map((rule) => rule.id).sort((a, b) => a - b), [...compatibilityIds, 200000, 200001].sort((a, b) => a - b));
+    await probe("highrisk_overrides_google_asset_compatibility", { url: "https://www.gstatic.com/signin/script.js", initiator: "https://accounts.google.com/", type: "script" }, (matched) => {
+      assert.ok(matched.some((rule) => rule.ruleId === 200001));
+    });
 
     const blocked = await loadScript("blocked");
     assert.deepEqual(blocked, { event: "error", loaded: false });
@@ -254,7 +294,7 @@ async function main() {
     const statusRestored = await setHighRisk(false);
     assert.equal(statusRestored.ok, true);
     const restoredRules = await evaluate(controller, "chrome.declarativeNetRequest.getDynamicRules()");
-    assert.deepEqual(restoredRules, []);
+    assert.deepEqual(restoredRules.map((rule) => rule.id).sort((a, b) => a - b), compatibilityIds);
     const navigationRestored = await page.send("Page.navigate", {
       url: `http://127.0.0.1:${testPort}/restored-navigation`
     });
@@ -263,7 +303,9 @@ async function main() {
 
     console.log(JSON.stringify({
       browser,
-      extensionVersion: "0.5.2",
+      extensionVersion: actualVersion,
+      compatibilityRulesInstalled: compatibilityRules.length,
+      hypotheticalRequestChecks: hasMatchApi ? matchEvidence : "test_api_unavailable",
       highRiskRulesInstalled: [200000, 200001],
       thirdPartyScript: "blocked-before-server",
       plaintextMainFrame: "blocked-before-server",

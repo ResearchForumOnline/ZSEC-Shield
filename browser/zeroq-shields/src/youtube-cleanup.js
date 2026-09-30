@@ -67,13 +67,17 @@
     if (!installStyle()) return;
 
     let visibleButton = null;
-    for (const selector of SKIP_SELECTORS) {
-      const button = document.querySelector(selector);
-      if (!(button instanceof HTMLElement) || button.offsetParent === null) continue;
-      if (button.disabled === true || button.getAttribute("aria-disabled") === "true") continue;
-      visibleButton = button;
-      if (button !== lastClicked) button.click();
-      break;
+    selectors: for (const selector of SKIP_SELECTORS) {
+      // A hidden desktop/mobile duplicate must not mask an available control.
+      const candidates = document.querySelectorAll(selector);
+      for (let index = 0; index < Math.min(candidates.length, 32); index += 1) {
+        const button = candidates[index];
+        if (!(button instanceof HTMLElement) || button.offsetParent === null) continue;
+        if (button.disabled === true || button.getAttribute("aria-disabled") === "true") continue;
+        visibleButton = button;
+        if (button !== lastClicked) button.click();
+        break selectors;
+      }
     }
     lastClicked = visibleButton;
   }
@@ -91,7 +95,7 @@
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ["class", "style", "hidden", "aria-disabled"]
+        attributeFilter: ["class", "style", "hidden", "disabled", "aria-disabled"]
       });
       observing = true;
     }
@@ -125,14 +129,17 @@
     else stop();
   }
 
-  chrome.storage.local.get(settings, (stored) => {
-    if (chrome.runtime.lastError) {
-      enabled = false;
-      stop();
-      return;
-    }
-    applySettings(stored);
-  });
+  function readSettings() {
+    chrome.storage.local.get(settings, (stored) => {
+      if (chrome.runtime.lastError) {
+        enabled = false;
+        stop();
+        return;
+      }
+      applySettings(stored);
+    });
+  }
+  readSettings();
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "local") return;
@@ -147,6 +154,13 @@
   document.addEventListener("yt-navigate-finish", schedule, { passive: true });
   window.addEventListener("pagehide", () => {
     disposed = true;
+    enabled = false;
     stop();
-  }, { once: true });
+  });
+  window.addEventListener("pageshow", (event) => {
+    if (!event.persisted) return;
+    disposed = false;
+    // A restored document must use current preferences, not cached settings.
+    readSettings();
+  });
 })();

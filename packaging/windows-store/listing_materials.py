@@ -25,9 +25,9 @@ EXPECTED_URLS = {
         "vulnerability_reporting_url": "https://talktoai.org/.well-known/security.txt",
     },
     "browser": {
-        "website_url": "https://talktoai.org/zero-browser/",
+        "website_url": "https://talktoai.org/zsec/",
         "support_url": "https://github.com/ResearchForumOnline/ZSEC-Shield/issues",
-        "privacy_policy_url": "https://talktoai.org/zero-browser/privacy/",
+        "privacy_policy_url": "https://talktoai.org/zsec/privacy/",
         "vulnerability_reporting_url": "https://talktoai.org/.well-known/security.txt",
     },
 }

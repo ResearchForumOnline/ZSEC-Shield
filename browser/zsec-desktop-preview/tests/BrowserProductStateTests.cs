@@ -214,6 +214,34 @@ internal static class BrowserProductStateTests
             "https://popup.example/", "https://news.example/",
             true, new[] { "https://news.example" }, true, false
         ).Allowed, "Burst popup bypassed the native rate limit.");
+        string[] knownSites = { "https://chatgpt.com/", "https://www.facebook.com/", "https://www.google.com/", "https://github.com/", "https://www.microsoft.com/", "https://www.icloud.com/" };
+        foreach (string site in knownSites)
+        {
+            Assert(BrowserPopupPolicy.Evaluate("https://accounts.google.com/o/oauth2/auth", site,
+                true, new string[0], true, true).Allowed, "Builtin login popup denied: " + site);
+            Assert(!BrowserPopupPolicy.Evaluate("https://accounts.google.com/", site,
+                false, new string[0], true, true).Allowed, "Background builtin login popup allowed.");
+            Assert(!BrowserPopupPolicy.Evaluate("https://accounts.google.com/", site,
+                true, new string[0], true, false).Allowed, "Builtin login burst allowed.");
+            Assert(!BrowserPopupPolicy.Evaluate("https://accounts.google.com/", site,
+                true, new string[0], false, true).Allowed, "Builtin login bypassed tab limit.");
+            Assert(!BrowserPopupPolicy.Evaluate("https://accounts.google.com/", site,
+                true, new string[0], true, true, true).Allowed, "Strict mode silently allowed builtin login popup.");
+        }
+        foreach (string spoof in new[] { "https://chatgpt.com.evil.test/", "https://evilchatgpt.com/", "http://chatgpt.com/", "https://chatgpt.com:444/", "https://www.youtube.com/", "https://youtube-nocookie.com/", "https://unknown.example/" })
+            Assert(!BrowserPopupPolicy.Evaluate("https://accounts.google.com/", spoof,
+                true, new string[0], true, true).Allowed, "Builtin login accepted unsafe or excluded source: " + spoof);
+        foreach (string spoof in new[] { "https://accounts.google.com.evil.test/", "https://googleads.g.doubleclick.net/", "https://accounts.google.com:444/", "http://accounts.google.com/", "https://user@accounts.google.com/", "javascript:alert(1)" })
+            Assert(!BrowserPopupPolicy.Evaluate(spoof, "https://chatgpt.com/",
+                true, new string[0], true, true).Allowed, "Builtin login accepted unsafe destination: " + spoof);
+        Assert(!BrowserRequestPolicy.IsReviewedThirdPartyTracker("https://chatgpt.com/", "https://challenges.cloudflare.com/turnstile/v0/api.js", new[] { "cloudflare.com" }), "Login challenge blocked as reviewed tracker.");
+        Assert(!BrowserRequestPolicy.IsReviewedThirdPartyTracker("https://www.facebook.com/", "https://connect.facebook.net/en_US/sdk.js", new[] { "facebook.net" }), "Facebook functional login resource blocked.");
+        Assert(!BrowserRequestPolicy.IsReviewedThirdPartyTracker("https://chatgpt.com/", "https://cdn.oaistatic.com/app.js", new[] { "oaistatic.com" }), "ChatGPT CDN blocked.");
+        Assert(BrowserRequestPolicy.IsReviewedThirdPartyTracker("https://chatgpt.com/", "https://challenges.cloudflare.com/turnstile/v0/api.js", new[] { "cloudflare.com" }, false), "Strict guard reviewed tracker exception widened.");
+        Assert(BrowserRequestPolicy.IsReviewedThirdPartyTracker("https://youtube.com/", "https://accounts.google.com/script.js", new[] { "google.com" }), "YouTube silently inherited compatibility.");
+        Assert(BrowserRequestPolicy.IsReviewedThirdPartyTracker("https://news.example/", "https://connect.facebook.net/sdk.js", new[] { "facebook.net" }), "Unknown site received login compatibility.");
+        Assert(!BrowserLoginCompatibility.IsFunctionalResource("https://chatgpt.com/", "https://cdn.oaistatic.com.evil.test/app.js"), "CDN suffix spoof accepted.");
+        Assert(!BrowserLoginCompatibility.IsFunctionalResource("https://chatgpt.com/", "https://cdn.oaistatic.com:444/app.js"), "Nonstandard CDN port accepted.");
         List<string> normalized = BrowserPopupPolicy.NormalizeAllowedOrigins(new[]
         {
             "https://NEWS.example/path", "https://news.example", "http://news.example",

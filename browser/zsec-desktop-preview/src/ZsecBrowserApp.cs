@@ -23,16 +23,16 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.26.0")]
-[assembly: AssemblyFileVersion("0.3.26.0")]
-[assembly: AssemblyInformationalVersion("0.3.26-community")]
+[assembly: AssemblyVersion("0.3.28.0")]
+[assembly: AssemblyFileVersion("0.3.28.0")]
+[assembly: AssemblyInformationalVersion("0.3.28-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.26";
+        internal const string ProductVersion = "0.3.28";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
         internal const string NewTabUri = "https://newtab.zsec.local/index.html";
 
@@ -63,7 +63,8 @@ namespace TalkToAI.ZsecBrowserPreview
                     destination,
                     explicitDestination,
                     runtimeNewTabTest,
-                    destinations.Skip(1)
+                    destinations.Skip(1),
+                    ValidateRuntimeTestRoot(args, runtimeNewTabTest)
                 );
                 BrowserLocalAutomationServer automation = null;
                 if (automationEnabled)
@@ -90,6 +91,32 @@ namespace TalkToAI.ZsecBrowserPreview
                     MessageBoxIcon.Error
                 );
             }
+        }
+
+        private static string ValidateRuntimeTestRoot(string[] args, bool runtimeTest)
+        {
+            const string prefix = "--zsec-test-root=";
+            string option = args.FirstOrDefault(value => value.StartsWith(prefix, StringComparison.Ordinal));
+            if (option == null) return null;
+            if (!runtimeTest) throw new InvalidOperationException("Isolated profile requires the explicit runtime test mode.");
+            string candidate = option.Substring(prefix.Length);
+            string desktop = Path.GetFullPath(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            if (!Path.IsPathRooted(candidate)) throw new InvalidOperationException("Runtime test root must be absolute.");
+            string full = Path.GetFullPath(candidate).TrimEnd(Path.DirectorySeparatorChar);
+            if (!full.StartsWith(desktop, StringComparison.OrdinalIgnoreCase) ||
+                !Path.GetFileName(full).StartsWith("zsec-browser-runtime-test-", StringComparison.Ordinal))
+                throw new InvalidOperationException("Runtime test root must be a dedicated test directory beneath this user's Desktop.");
+            DirectoryInfo ancestor = new DirectoryInfo(full);
+            while (ancestor != null)
+            {
+                if (ancestor.Exists && (ancestor.Attributes & FileAttributes.ReparsePoint) != 0)
+                    throw new InvalidOperationException("Runtime test root cannot traverse a reparse point.");
+                ancestor = ancestor.Parent;
+            }
+            if (File.Exists(full) || Directory.Exists(full) && Directory.EnumerateFileSystemEntries(full).Any())
+                throw new InvalidOperationException("Runtime test root must be new or empty.");
+            Directory.CreateDirectory(full);
+            return full;
         }
 
         internal static string ResolveDestination(string[] args)
@@ -541,6 +568,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly string profileRoot;
         private readonly string policyRoot;
         private readonly string extensionRoot;
+        private readonly string installedExtensionRoot;
         private readonly string newTabRoot;
         private readonly string youtubeProtectionPath;
         private readonly string extensionManifestSha256;
@@ -636,13 +664,14 @@ namespace TalkToAI.ZsecBrowserPreview
             string destination,
             bool explicitDestination,
             bool testNewTab = false,
-            IEnumerable<string> extraDestinations = null
+            IEnumerable<string> extraDestinations = null,
+            string isolatedRuntimeRoot = null
         )
         {
             runtimeNewTabTest = testNewTab;
             additionalDestinations = (extraDestinations ?? Enumerable.Empty<string>()).Take(MaximumTabs - 1).ToList();
             applicationRoot = AppDomain.CurrentDomain.BaseDirectory;
-            productRoot = Path.Combine(
+            productRoot = isolatedRuntimeRoot ?? Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "TalkToAI",
                 "ZSEC Browser"
@@ -682,6 +711,7 @@ namespace TalkToAI.ZsecBrowserPreview
             profileRoot = Path.Combine(productRoot, "User Data");
             policyRoot = Path.Combine(applicationRoot, "policy");
             extensionRoot = Path.Combine(applicationRoot, "extension");
+            installedExtensionRoot = Path.Combine(productRoot, "Browser Shields");
             newTabRoot = Path.Combine(applicationRoot, "new-tab");
             youtubeProtectionPath = Path.Combine(applicationRoot, "youtube-player-protection.js");
             extensionManifestSha256 = ComputeSha256RegularFile(
@@ -744,7 +774,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.26";
+            channel.Text = "COMMUNITY 0.3.28";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
@@ -1887,6 +1917,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 RejectReparseDirectory(extensionRoot);
                 RejectReparseDirectory(newTabRoot);
                 AssertRequiredRegularFile(Path.Combine(extensionRoot, "manifest.json"));
+                StageBundledExtensionForInstall();
                 AssertRequiredRegularFile(Path.Combine(newTabRoot, "index.html"));
                 AssertRequiredRegularFile(youtubeProtectionPath);
 
@@ -2415,9 +2446,8 @@ namespace TalkToAI.ZsecBrowserPreview
             };
             core.NewWindowRequested += delegate(object sender, CoreWebView2NewWindowRequestedEventArgs args)
             {
-                // Cancel the WebView popup synchronously. Even IsUserInitiated can
-                // represent ad code attached to an ordinary page click, so it is
-                // never an implicit allow signal.
+                // Block first; only reviewed login pairs or exact user permissions
+                // may create a window. User gesture alone is never sufficient.
                 args.Handled = true;
                 string requestedUri = args.Uri;
                 popupRequestCount++;
@@ -2427,7 +2457,8 @@ namespace TalkToAI.ZsecBrowserPreview
                     args.IsUserInitiated,
                     productData.Settings.PopupAllowedOrigins,
                     tabs.TabPages.Count < MaximumTabs,
-                    DateTime.UtcNow - lastAllowedPopupUtc >= TimeSpan.FromSeconds(2)
+                    DateTime.UtcNow - lastAllowedPopupUtc >= TimeSpan.FromSeconds(2),
+                    highRiskMode
                 );
                 if (!popupDecision.Allowed)
                 {
@@ -2462,17 +2493,29 @@ namespace TalkToAI.ZsecBrowserPreview
                     return;
                 }
                 lastAllowedPopupUtc = DateTime.UtcNow;
+                CoreWebView2Deferral popupDeferral = args.GetDeferral();
                 try
                 {
                     BeginInvoke(new Action(async delegate
                     {
                         try
                         {
-                            // Open as a normal independent tab without retaining
-                            // the requesting page as its opener.
-                            await CreateTab(requestedUri, true);
+                            // Let WebView2 navigate its requested window, retaining
+                            // window.opener/postMessage required by OAuth flows.
+                            WebView2 popupView = await CreateTab(requestedUri, true, navigate: false);
+                            args.NewWindow = popupView.CoreWebView2;
+                            popupView.CoreWebView2.WindowCloseRequested += delegate
+                            {
+                                if (isClosing || IsDisposed) return;
+                                BeginInvoke(new Action(delegate
+                                {
+                                    if (popupView.IsDisposed) return;
+                                    TabPage popupPage = popupView.Parent as TabPage;
+                                    if (popupPage != null) CloseTabAt(tabs.TabPages.IndexOf(popupPage));
+                                }));
+                            };
                             popupAllowedCount++;
-                            lastTabAction = "popup_opened_explicit_site_permission";
+                            lastTabAction = "popup_opened_" + popupDecision.Reason;
                         }
                         catch (Exception exception)
                         {
@@ -2483,12 +2526,14 @@ namespace TalkToAI.ZsecBrowserPreview
                         }
                         finally
                         {
+                            popupDeferral.Complete();
                             WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
                         }
                     }));
                 }
                 catch (Exception exception)
                 {
+                    popupDeferral.Complete();
                     popupBlockedCount++;
                     lastTabAction = "popup_schedule_failed";
                     runtimeStatus.Text = "Popup remained blocked: " + Truncate(exception.Message, 90);
@@ -2725,7 +2770,7 @@ namespace TalkToAI.ZsecBrowserPreview
             try
             {
                 CoreWebView2BrowserExtension shields =
-                    await profile.AddBrowserExtensionAsync(extensionRoot);
+                    await profile.AddBrowserExtensionAsync(installedExtensionRoot);
                 if (!String.Equals(shields.Id, ExpectedShieldsExtensionId, StringComparison.Ordinal) ||
                     !String.Equals(shields.Name, "ZSEC Browser Shields", StringComparison.Ordinal))
                 {
@@ -2752,8 +2797,84 @@ namespace TalkToAI.ZsecBrowserPreview
                 // optional extension layer must not make the whole browser unusable.
                 shieldsExtensionEnabled = false;
                 installedShieldsExtensionId = "unavailable";
-                shieldsExtensionStatus = "unavailable:" + exception.GetType().Name;
+                shieldsExtensionStatus = FormatShieldsExtensionFailure(exception);
             }
+        }
+
+        private void StageBundledExtensionForInstall()
+        {
+            const int MaximumExtensionFiles = 256;
+            const long MaximumExtensionBytes = 32L * 1024L * 1024L;
+            string staging = installedExtensionRoot + ".staging-" + Guid.NewGuid().ToString("N");
+            string previous = installedExtensionRoot + ".previous-" + Guid.NewGuid().ToString("N");
+            int fileCount = 0;
+            long totalBytes = 0;
+            Directory.CreateDirectory(staging);
+            try
+            {
+                foreach (string source in Directory.EnumerateFiles(extensionRoot, "*", SearchOption.AllDirectories))
+                {
+                    AssertRequiredRegularFile(source);
+                    string relative = source.Substring(extensionRoot.Length).TrimStart(Path.DirectorySeparatorChar);
+                    string destination = Path.GetFullPath(Path.Combine(staging, relative));
+                    string stagingBoundary = Path.GetFullPath(staging) + Path.DirectorySeparatorChar;
+                    if (!destination.StartsWith(stagingBoundary, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new InvalidOperationException("Browser Shields contains an unsafe path.");
+                    }
+                    FileInfo input = new FileInfo(source);
+                    fileCount++;
+                    totalBytes += input.Length;
+                    if (fileCount > MaximumExtensionFiles || totalBytes > MaximumExtensionBytes)
+                    {
+                        throw new InvalidDataException("Browser Shields exceeds its install bounds.");
+                    }
+                    Directory.CreateDirectory(Path.GetDirectoryName(destination));
+                    File.Copy(source, destination, false);
+                }
+                string stagedManifest = Path.Combine(staging, "manifest.json");
+                if (!String.Equals(
+                    ComputeSha256RegularFile(stagedManifest),
+                    extensionManifestSha256,
+                    StringComparison.Ordinal
+                ))
+                {
+                    throw new InvalidDataException("Browser Shields manifest verification failed.");
+                }
+                if (Directory.Exists(installedExtensionRoot))
+                {
+                    RejectReparseDirectory(installedExtensionRoot);
+                    Directory.Move(installedExtensionRoot, previous);
+                }
+                try
+                {
+                    Directory.Move(staging, installedExtensionRoot);
+                }
+                catch
+                {
+                    if (Directory.Exists(previous) && !Directory.Exists(installedExtensionRoot))
+                    {
+                        Directory.Move(previous, installedExtensionRoot);
+                    }
+                    throw;
+                }
+                if (Directory.Exists(previous)) Directory.Delete(previous, true);
+            }
+            finally
+            {
+                if (Directory.Exists(staging)) Directory.Delete(staging, true);
+            }
+        }
+
+        private static string FormatShieldsExtensionFailure(Exception exception)
+        {
+            string message = (exception.Message ?? String.Empty)
+                .Replace('\r', ' ')
+                .Replace('\n', ' ')
+                .Replace('=', '-');
+            return "unavailable:" + exception.GetType().Name +
+                ":hresult=0x" + exception.HResult.ToString("X8") +
+                ":message=" + Truncate(message, 160);
         }
 
         private sealed class InvalidShieldsExtensionIdentityException : Exception
@@ -2862,7 +2983,8 @@ namespace TalkToAI.ZsecBrowserPreview
                 BrowserRequestPolicy.IsReviewedThirdPartyTracker(
                     topLevelUrl,
                     requestUri.AbsoluteUri,
-                    trackerDomains
+                    trackerDomains,
+                    !highRiskMode
                 ))
             {
                 nativeTrackerBlockCount++;
@@ -2913,12 +3035,14 @@ namespace TalkToAI.ZsecBrowserPreview
                 BrowserRequestPolicy.IsReviewedThirdPartyTracker(
                     "https://newtab.zsec.local/native-request-probe.html",
                     "https://doubleclick.net/zsec-native-probe.js",
-                    trackerDomains
+                    trackerDomains,
+                    !highRiskMode
                 ) &&
                 !BrowserRequestPolicy.IsReviewedThirdPartyTracker(
                     "https://www.youtube.com/watch?v=zsec-policy-probe",
                     "https://i.ytimg.com/vi/zsec-policy-probe/default.jpg",
-                    trackerDomains
+                    trackerDomains,
+                    !highRiskMode
                 );
         }
 
@@ -3604,6 +3728,7 @@ namespace TalkToAI.ZsecBrowserPreview
                 "host_filter_source_kinds=all",
                 "request_count_coverage=all_web_resource_source_kinds",
                 "profile_separate=true",
+                "isolated_runtime_test=" + runtimeNewTabTest.ToString().ToLowerInvariant(),
                 "sandbox_attestation_complete=false",
                 "tab_count=" + tabs.TabPages.Count.ToString(),
                 "ready_tab_count=" + browserViews.Count(view => view.CoreWebView2 != null).ToString(),

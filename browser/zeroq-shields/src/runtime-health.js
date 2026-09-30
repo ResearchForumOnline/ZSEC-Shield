@@ -8,7 +8,7 @@ export const EXPECTED_RULESET_IDS = Object.freeze([
 
 export const PACKAGED_STATIC_RULE_COUNT = 49505;
 export const RUNTIME_POLICY_REVISION =
-  "0.5.2:81d9ba06866a37595397ce62cbc4ccd310c8d9bdc6ed92c9b8b9c89b194ea9d6";
+  "0.5.3:login-compatibility-v1:81d9ba06866a37595397ce62cbc4ccd310c8d9bdc6ed92c9b8b9c89b194ea9d6";
 
 export const REQUIRED_REGEX_RULES = Object.freeze([
   Object.freeze({ id: 744738, regex: "^https?:\\/\\/[0-9a-z]{5,}\\.com\\/.*", isCaseSensitive: false }),
@@ -201,6 +201,19 @@ export async function verifyDnrRuntime(api, protectionEnabled, expectedDynamicRu
     regexResults.push({ id: rule.id, isSupported: true });
   }
 
+  // Check the new exact-host patterns in Chromium as well as the static list.
+  // Complete dynamic rule equality above also prevents an ID-only false pass.
+  const dynamicRegexResults = [];
+  for (const rule of expectedDynamic) {
+    if (!rule.condition?.regexFilter) continue;
+    const result = await dnr.isRegexSupported({
+      regex: rule.condition.regexFilter,
+      isCaseSensitive: rule.condition.isUrlFilterCaseSensitive === true
+    });
+    if (result?.isSupported !== true) throw new Error(`dynamic_regex_rule_${rule.id}_unsupported`);
+    dynamicRegexResults.push({ id: rule.id, isSupported: true });
+  }
+
   const representative = await representativeMatches(dnr, protectionEnabled);
   return {
     schema: RUNTIME_HEALTH_SCHEMA,
@@ -219,6 +232,7 @@ export async function verifyDnrRuntime(api, protectionEnabled, expectedDynamicRu
       : 30000,
     regexRulesVerified: regexResults.length,
     regexResults,
+    dynamicRegexRulesVerified: dynamicRegexResults.length,
     representativeMatchStatus: representative.status,
     representativeMatches: representative.results
   };

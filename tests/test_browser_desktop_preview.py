@@ -39,9 +39,9 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
     assert "unsigned" in readme.lower() and "Community" in readme
-    assert 'internal const string ProductVersion = "0.3.26"' in app
-    assert '$ProductVersion = "0.3.26"' in build
-    assert '$ProductVersion = "0.3.26"' in installer
+    assert 'internal const string ProductVersion = "0.3.28"' in app
+    assert '$ProductVersion = "0.3.28"' in build
+    assert '$ProductVersion = "0.3.28"' in installer
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:
@@ -92,14 +92,26 @@ def test_bookmark_import_and_profile_discovery_have_bounded_parser_paths() -> No
     assert migration.count("if (IsReparse(root)) continue;") >= 2
 
 
-def test_page_requested_windows_fail_closed_and_sever_the_opener() -> None:
+def test_page_requested_windows_fail_closed_before_approved_oauth_window_assignment() -> None:
     app = APP.read_text(encoding="utf-8")
     handler_start = app.index("core.NewWindowRequested += delegate")
     handler_end = app.index("core.PermissionRequested += delegate", handler_start)
     handler = app[handler_start:handler_end]
     assert handler.index("args.Handled = true;") < handler.index("BrowserPopupPolicy.Evaluate")
-    assert "args.NewWindow" not in handler
-    assert "await CreateTab(requestedUri, true);" in handler
+    denied_start = handler.index("if (!popupDecision.Allowed)")
+    denied_end = handler.index("CoreWebView2Deferral popupDeferral", denied_start)
+    assert "return;" in handler[denied_start:denied_end]
+    assert "args.NewWindow" not in handler[denied_start:denied_end]
+    assert "args.GetDeferral()" in handler
+    assert handler.index("args.GetDeferral()") < handler.index("BeginInvoke", denied_end)
+    assert "await CreateTab(requestedUri, true, navigate: false)" in handler
+    assert "args.NewWindow = popupView.CoreWebView2;" in handler
+    assert handler.count("popupDeferral.Complete();") == 2
+    assert "finally" in handler
+    assert "WindowCloseRequested" in handler
+    assert "popupView.Parent as TabPage" in handler
+    assert "CloseTabAt(tabs.TabPages.IndexOf(popupPage))" in handler
+    assert "highRiskMode" in handler
     assert "args.IsUserInitiated" in handler
     assert "productData.Settings.PopupAllowedOrigins" in handler
     assert "TimeSpan.FromSeconds(2)" in handler
@@ -368,7 +380,7 @@ def test_compiled_policy_is_deterministic_and_has_source_provenance(tmp_path: Pa
 
     assert provenance["schema"] == "zsec.browser.desktop-policy.v1"
     assert provenance["source_extension"]["name"] == "ZSEC Browser Shields"
-    assert provenance["source_extension"]["version"] == "0.5.2"
+    assert provenance["source_extension"]["version"] == "0.5.3"
     assert provenance["inputs"]["compiled_rule_files"] == [
         "link-cleaning.json",
         "privacy.json",
@@ -409,8 +421,9 @@ def test_desktop_tabs_popups_and_modern_controls_are_wired() -> None:
     assert "PositionNewTabButton()" in app
     assert "RoundedActionButton" in app
     assert "args.Handled = true;" in app
-    assert "await CreateTab(requestedUri, true);" in app
-    assert "args.NewWindow" not in app
+    assert "await CreateTab(requestedUri, true, navigate: false)" in app
+    assert "args.NewWindow = popupView.CoreWebView2;" in app
+    assert "popupDeferral.Complete();" in app
     assert "args.IsUserInitiated" in app
     assert "BrowserPopupPolicy.Evaluate" in app
     assert "MaximumTabs = 32" in app
@@ -442,7 +455,16 @@ def test_desktop_tabs_popups_and_modern_controls_are_wired() -> None:
     assert "installed.Any(extension => !IsExpectedBrowserExtension(extension))" not in app
     assert "catch (InvalidShieldsExtensionIdentityException)" in app
     assert '"The Browser Shields extension identity is invalid."' in app
-    assert 'shieldsExtensionStatus = "unavailable:" + exception.GetType().Name' in app
+    assert "StageBundledExtensionForInstall();" in app
+    assert "await profile.AddBrowserExtensionAsync(installedExtensionRoot)" in app
+    assert 'Path.Combine(productRoot, "Browser Shields")' in app
+    assert "MaximumExtensionFiles = 256" in app
+    assert "MaximumExtensionBytes = 32L * 1024L * 1024L" in app
+    assert "ComputeSha256RegularFile(stagedManifest)" in app
+    assert "Directory.Move(staging, installedExtensionRoot)" in app
+    assert "FormatShieldsExtensionFailure(exception)" in app
+    assert '":hresult=0x" + exception.HResult.ToString("X8")' in app
+    assert ".Replace('=', '-')" in app
     assert '"browser_shields_extension_status=" + shieldsExtensionStatus' in app
     assert '"  NATIVE PROTECTION ACTIVE  "' in app
     assert '"Native protection active · Browser Shields extension unavailable"' in app
@@ -492,6 +514,7 @@ def test_runtime_acceptance_retries_transient_evidence_file_locks() -> None:
 
 
 def test_bundled_extension_has_stable_identity_and_bounded_youtube_assist() -> None:
+    assert '"src/login-compatibility.js"' in BUILD.read_text(encoding="utf-8")
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     build = BUILD.read_text(encoding="utf-8")
     public_key = base64.b64decode(manifest["key"], validate=True)
@@ -504,7 +527,7 @@ def test_bundled_extension_has_stable_identity_and_bounded_youtube_assist() -> N
         encoding="utf-8"
     )
 
-    assert manifest["version"] == "0.5.2"
+    assert manifest["version"] == "0.5.3"
     assert extension_id == "ddjbjhnlhapggenanpmcidieimaomiif"
     for required_desktop_asset in (
         '"easylist.lock.json"',
@@ -565,7 +588,7 @@ def test_community_release_is_deterministic_and_publishes_provenance(
         "webview2_nuget_sha512_base64": "catalog-hash",
         "tracker_domain_count": 81,
         "tracking_parameter_count": 21,
-        "source_extension_version": "0.5.2",
+        "source_extension_version": "0.5.3",
         "source_extension_id": "ddjbjhnlhapggenanpmcidieimaomiif",
         "files": [
             {
@@ -660,7 +683,7 @@ def test_community_release_rejects_machine_specific_manifest_paths(
         "webview2_nuget_sha512_base64": "catalog-hash",
         "tracker_domain_count": 81,
         "tracking_parameter_count": 21,
-        "source_extension_version": "0.5.2",
+        "source_extension_version": "0.5.3",
         "source_extension_id": "ddjbjhnlhapggenanpmcidieimaomiif",
         "files": [
             {
@@ -711,3 +734,21 @@ def test_community_package_uses_release_grade_script_names() -> None:
     assert installer.index("$PayloadRoot = $siblingPackageRoot") < installer.index(
         "$PayloadRoot = $repoPayload"
     )
+
+
+def test_isolated_runtime_test_root_cannot_override_normal_user_profile() -> None:
+    app = APP.read_text(encoding="utf-8")
+    start = app.index("private static string ValidateRuntimeTestRoot")
+    end = app.index("internal static string ResolveDestination", start)
+    validator = app[start:end]
+    assert 'const string prefix = "--zsec-test-root=";' in validator
+    assert "if (option == null) return null;" in validator
+    assert "if (!runtimeTest) throw" in validator
+    assert "Path.IsPathRooted(candidate)" in validator
+    assert "Environment.SpecialFolder.DesktopDirectory" in validator
+    assert "full.StartsWith(desktop, StringComparison.OrdinalIgnoreCase)" in validator
+    assert 'StartsWith("zsec-browser-runtime-test-", StringComparison.Ordinal)' in validator
+    assert "FileAttributes.ReparsePoint" in validator
+    assert "Directory.EnumerateFileSystemEntries(full).Any()" in validator
+    assert "productRoot = isolatedRuntimeRoot ?? Path.Combine(" in app
+    assert "ValidateRuntimeTestRoot(args, runtimeNewTabTest)" in app
