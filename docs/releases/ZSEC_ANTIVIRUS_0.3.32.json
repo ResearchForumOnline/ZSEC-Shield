@@ -1,0 +1,70 @@
+{
+  "archive": "zsec-antivirus-desktop-0.3.32-windows-x86_64.zip",
+  "archive_bytes": 33859917,
+  "archive_crc_check": "passed",
+  "archive_sha256": "7c21369d8b95a037432463218b9852f07182329b083ca0d0b5ff2f27125945f0",
+  "authenticode_status": {
+    "desktop": "NotSigned",
+    "engine": "NotSigned"
+  },
+  "automatic_binary_install_allowed": false,
+  "build_environment": {
+    "Pillow": "12.2.0",
+    "cryptography": "46.0.5",
+    "pyinstaller": "6.21.0",
+    "pystray": "0.19.5",
+    "python": "3.12.10",
+    "target": "Windows x86_64",
+    "watchdog": "6.0.0"
+  },
+  "clean_store_install_validation": "not performed for this direct archive",
+  "entrypoints": [
+    {
+      "path": "App/ZSEC Antivirus.exe",
+      "sha256": "cbf57c75b4281eb08d0bb681dc6bbe71bf6c76f3917e6b122c56c8edc9a8a3e5",
+      "size": 3299183,
+      "type": "file"
+    },
+    {
+      "path": "Engine/zsec-shield.exe",
+      "sha256": "88b8027d44a54223785ffab51a9d2de6e44dc65f1695b754bf733ddba21ee295",
+      "size": 2662141,
+      "type": "file"
+    }
+  ],
+  "existing_provider_must_remain_active": true,
+  "file_sizes_and_sha256": "passed",
+  "packaging_tests": {
+    "passed": 43
+  },
+  "pipeline_validation": [
+    "GUI and CLI PE identity and 0.3.32.0 version passed",
+    "Per-monitor DPI and long-path GUI manifest passed",
+    "Packaged CLI synthetic scan and quarantine smoke passed",
+    "Packaged GUI --help passed"
+  ],
+  "primary_antivirus": false,
+  "product": "ZSEC Antivirus",
+  "publisher_code_signing": "not-performed-by-this-build",
+  "schema": "zsec.antivirus.public-source-release-verification.v1",
+  "source": {
+    "revision": "ab8afef28e3ff99b51b84b6d6013283cb93b66a1",
+    "tree_state": "clean"
+  },
+  "source_tests": {
+    "note": "Complete unchanged suite passed using a short dedicated test temporary directory.",
+    "passed": 301,
+    "runtime": "Python 3.12.10 on Windows",
+    "subtests_passed": 14
+  },
+  "store_public_source_comparison": {
+    "companion_powershell_scripts_byte_identical": 6,
+    "comparison_excluded": "Compiler build filenames only; no code executed. Third-party libraries and packaging are not asserted identical.",
+    "known_source_gap": "Current public engine contains validated Ubuntu LSN/livepatch handling from 0c210f199a609718f58cb24eb9e0007a947bd5b7; preserved Store build predates that Aug30 2026 source change.",
+    "project_owned_compiled_units_compared": 39,
+    "project_owned_compiled_units_matching": 38,
+    "store_local_package_sha256": "2cb7592011489d41648755bdb1e92effe0f7a8f2a2fe73127d63e7ff3d0d17d6"
+  },
+  "validated_manifest_files": 1107,
+  "version": "0.3.32"
+}

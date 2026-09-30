@@ -1,0 +1,477 @@
+{
+  "companion_script_comparison": [
+    {
+      "byte_identical": true,
+      "direct_sha256": "65d2653b9585fc68467757c4cbc2222809a6f2781f832e94c72f0d3fce06fad1",
+      "path": "Tools/Get-ZsecAntivirusCompanionStatus.ps1",
+      "store_sha256": "65d2653b9585fc68467757c4cbc2222809a6f2781f832e94c72f0d3fce06fad1"
+    },
+    {
+      "byte_identical": true,
+      "direct_sha256": "a716682875516e573312c77acc26d49c5ddce5667337d98ec2ad61f51f33bf21",
+      "path": "Tools/Install-ZsecAntivirusCompanion.ps1",
+      "store_sha256": "a716682875516e573312c77acc26d49c5ddce5667337d98ec2ad61f51f33bf21"
+    },
+    {
+      "byte_identical": true,
+      "direct_sha256": "5698fe2765e9d4abedc804142d7864c3b49f744ed91cf121dde14d8fab8ff0d6",
+      "path": "Tools/Invoke-ZsecWindowsProtectionAction.ps1",
+      "store_sha256": "5698fe2765e9d4abedc804142d7864c3b49f744ed91cf121dde14d8fab8ff0d6"
+    },
+    {
+      "byte_identical": true,
+      "direct_sha256": "5e172944a252dac40a5bf7d0a7c7c1b63d59724fbc52c57f8d0d5771afc5ae8a",
+      "path": "Tools/Start-ZsecAntivirusCompanion.ps1",
+      "store_sha256": "5e172944a252dac40a5bf7d0a7c7c1b63d59724fbc52c57f8d0d5771afc5ae8a"
+    },
+    {
+      "byte_identical": true,
+      "direct_sha256": "5091e0531ed9719fe39c34cfa3d079cd47a08448f943245c5e92fd9e3b1113d1",
+      "path": "Tools/Sync-ZsecAntivirusCompanion.ps1",
+      "store_sha256": "5091e0531ed9719fe39c34cfa3d079cd47a08448f943245c5e92fd9e3b1113d1"
+    },
+    {
+      "byte_identical": true,
+      "direct_sha256": "ce4725683353abe01262e203e828feb65c538891b67edda67f04b706cc7718fd",
+      "path": "Tools/Uninstall-ZsecAntivirusCompanion.ps1",
+      "store_sha256": "ce4725683353abe01262e203e828feb65c538891b67edda67f04b706cc7718fd"
+    }
+  ],
+  "comparison_method": "Recursively compare code bytecode, constants, variable/name metadata, control flags, exception tables and line tables; exclude compiler build filenames. No code executed. Includes project-owned GUI/CLI modules and entrypoints only; dependency binaries and packaging differ.",
+  "compiled_units_compared": 39,
+  "known_source_difference": {
+    "module": "zsec_shield.intelligence",
+    "public_commit": "0c210f1",
+    "store_and_direct_are_identical_runtime": false,
+    "store_gui_and_remaining_engine_units_match": true,
+    "summary": "Public source adds validated handling of Ubuntu livepatch LSN notices; the preserved Store build predates that source change."
+  },
+  "public_source_revision": "ab8afef28e3ff99b51b84b6d6013283cb93b66a1",
+  "results": [
+    {
+      "direct_compiled_sha256": "e33c4d54b2cad8276a44f71710980c46b6bad031f88dd7388b871e9d8a0d2324",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_desktop",
+      "product": "GUI",
+      "public_source_compiled_sha256": "e33c4d54b2cad8276a44f71710980c46b6bad031f88dd7388b871e9d8a0d2324",
+      "source_path": "apps/windows-ui/zsec_desktop/__init__.py",
+      "store_compiled_sha256": "e33c4d54b2cad8276a44f71710980c46b6bad031f88dd7388b871e9d8a0d2324",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "12122c05957959d7cacb3e6c7c53bdec4b4a3971ad933cc0cd1bebcd8380c205",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_desktop.app",
+      "product": "GUI",
+      "public_source_compiled_sha256": "12122c05957959d7cacb3e6c7c53bdec4b4a3971ad933cc0cd1bebcd8380c205",
+      "source_path": "apps/windows-ui/zsec_desktop/app.py",
+      "store_compiled_sha256": "12122c05957959d7cacb3e6c7c53bdec4b4a3971ad933cc0cd1bebcd8380c205",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "4de3f072fe0a408e90ebb01f0bdbc92368118280cd0b74c162a7df970c838487",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_desktop.brand",
+      "product": "GUI",
+      "public_source_compiled_sha256": "4de3f072fe0a408e90ebb01f0bdbc92368118280cd0b74c162a7df970c838487",
+      "source_path": "apps/windows-ui/zsec_desktop/brand.py",
+      "store_compiled_sha256": "4de3f072fe0a408e90ebb01f0bdbc92368118280cd0b74c162a7df970c838487",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "51a3e95d9a8fe04cf873332cfe10b8c7311c60b8f20fbda53d2fd768b0b443c0",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_desktop.bridge",
+      "product": "GUI",
+      "public_source_compiled_sha256": "51a3e95d9a8fe04cf873332cfe10b8c7311c60b8f20fbda53d2fd768b0b443c0",
+      "source_path": "apps/windows-ui/zsec_desktop/bridge.py",
+      "store_compiled_sha256": "51a3e95d9a8fe04cf873332cfe10b8c7311c60b8f20fbda53d2fd768b0b443c0",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "5194bfdfa9c70fd645a143df9e10cf3ab6443d2bbe82624a710727aeed143134",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_desktop.contracts",
+      "product": "GUI",
+      "public_source_compiled_sha256": "5194bfdfa9c70fd645a143df9e10cf3ab6443d2bbe82624a710727aeed143134",
+      "source_path": "apps/windows-ui/zsec_desktop/contracts.py",
+      "store_compiled_sha256": "5194bfdfa9c70fd645a143df9e10cf3ab6443d2bbe82624a710727aeed143134",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "49be682acd60ffe878549545b948224a0620138a9fe966f53a210262545f35c9",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_desktop.distribution",
+      "product": "GUI",
+      "public_source_compiled_sha256": "49be682acd60ffe878549545b948224a0620138a9fe966f53a210262545f35c9",
+      "source_path": "apps/windows-ui/zsec_desktop/distribution.py",
+      "store_compiled_sha256": "49be682acd60ffe878549545b948224a0620138a9fe966f53a210262545f35c9",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "997507db3beca53fd582644d4caacc767bff91c27602bee0e55f351b944fca82",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_desktop.settings",
+      "product": "GUI",
+      "public_source_compiled_sha256": "997507db3beca53fd582644d4caacc767bff91c27602bee0e55f351b944fca82",
+      "source_path": "apps/windows-ui/zsec_desktop/settings.py",
+      "store_compiled_sha256": "997507db3beca53fd582644d4caacc767bff91c27602bee0e55f351b944fca82",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "6edfa5d267bee9dbccb992184ec262d6704136bd4129a1cf674afa429e8b4002",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_desktop.support",
+      "product": "GUI",
+      "public_source_compiled_sha256": "6edfa5d267bee9dbccb992184ec262d6704136bd4129a1cf674afa429e8b4002",
+      "source_path": "apps/windows-ui/zsec_desktop/support.py",
+      "store_compiled_sha256": "6edfa5d267bee9dbccb992184ec262d6704136bd4129a1cf674afa429e8b4002",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "3378f73119767675063be86ead5abed14ee57d62867bdffa0584781c20df1d87",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_desktop.tray",
+      "product": "GUI",
+      "public_source_compiled_sha256": "3378f73119767675063be86ead5abed14ee57d62867bdffa0584781c20df1d87",
+      "source_path": "apps/windows-ui/zsec_desktop/tray.py",
+      "store_compiled_sha256": "3378f73119767675063be86ead5abed14ee57d62867bdffa0584781c20df1d87",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "f455fd2d23dbf090e34301c348a60ddb6e01fd014cf23cc8ae7b114ad16bdcaa",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield",
+      "product": "GUI",
+      "public_source_compiled_sha256": "f455fd2d23dbf090e34301c348a60ddb6e01fd014cf23cc8ae7b114ad16bdcaa",
+      "source_path": "src/zsec_shield/__init__.py",
+      "store_compiled_sha256": "f455fd2d23dbf090e34301c348a60ddb6e01fd014cf23cc8ae7b114ad16bdcaa",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "bdc03200e5c0b43cb010f251d6186a6d28a6b76ce7f8c39fa416162bf0c75f81",
+      "module": "entrypoint",
+      "product": "GUI",
+      "store_compiled_sha256": "bdc03200e5c0b43cb010f251d6186a6d28a6b76ce7f8c39fa416162bf0c75f81",
+      "store_matches_direct_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "f455fd2d23dbf090e34301c348a60ddb6e01fd014cf23cc8ae7b114ad16bdcaa",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield",
+      "product": "CLI",
+      "public_source_compiled_sha256": "f455fd2d23dbf090e34301c348a60ddb6e01fd014cf23cc8ae7b114ad16bdcaa",
+      "source_path": "src/zsec_shield/__init__.py",
+      "store_compiled_sha256": "f455fd2d23dbf090e34301c348a60ddb6e01fd014cf23cc8ae7b114ad16bdcaa",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "697031f8ae53df5ccaa075ff35660801c6406893a8421b4eb55a2e9ee5babb8d",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.automatic_updates",
+      "product": "CLI",
+      "public_source_compiled_sha256": "697031f8ae53df5ccaa075ff35660801c6406893a8421b4eb55a2e9ee5babb8d",
+      "source_path": "src/zsec_shield/automatic_updates.py",
+      "store_compiled_sha256": "697031f8ae53df5ccaa075ff35660801c6406893a8421b4eb55a2e9ee5babb8d",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "3d7384f6d8b829a2503576b650a26b0440e55ca2f4dba0764106cba254d4a354",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.cli",
+      "product": "CLI",
+      "public_source_compiled_sha256": "3d7384f6d8b829a2503576b650a26b0440e55ca2f4dba0764106cba254d4a354",
+      "source_path": "src/zsec_shield/cli.py",
+      "store_compiled_sha256": "3d7384f6d8b829a2503576b650a26b0440e55ca2f4dba0764106cba254d4a354",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "d694c0126a2d933d4df97ee93d58507a92844db448918e2998bba7a166eda561",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.content_inspection",
+      "product": "CLI",
+      "public_source_compiled_sha256": "d694c0126a2d933d4df97ee93d58507a92844db448918e2998bba7a166eda561",
+      "source_path": "src/zsec_shield/content_inspection.py",
+      "store_compiled_sha256": "d694c0126a2d933d4df97ee93d58507a92844db448918e2998bba7a166eda561",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "8c6bd457ce5ee94c3c7e01e7edde8207c43589598db276377058d27c30d901bb",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.crypto_vault",
+      "product": "CLI",
+      "public_source_compiled_sha256": "8c6bd457ce5ee94c3c7e01e7edde8207c43589598db276377058d27c30d901bb",
+      "source_path": "src/zsec_shield/crypto_vault.py",
+      "store_compiled_sha256": "8c6bd457ce5ee94c3c7e01e7edde8207c43589598db276377058d27c30d901bb",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "0fc9fa174181fb300fe3c3cf47f57bc29b9c70db3308a9194d1c4bb8adace14c",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.errors",
+      "product": "CLI",
+      "public_source_compiled_sha256": "0fc9fa174181fb300fe3c3cf47f57bc29b9c70db3308a9194d1c4bb8adace14c",
+      "source_path": "src/zsec_shield/errors.py",
+      "store_compiled_sha256": "0fc9fa174181fb300fe3c3cf47f57bc29b9c70db3308a9194d1c4bb8adace14c",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "e3bf0ffbe5f81a63729b5b2d82d7ca4663f66293a197ae235a0ed833eb00dc8b",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.feed",
+      "product": "CLI",
+      "public_source_compiled_sha256": "e3bf0ffbe5f81a63729b5b2d82d7ca4663f66293a197ae235a0ed833eb00dc8b",
+      "source_path": "src/zsec_shield/feed.py",
+      "store_compiled_sha256": "e3bf0ffbe5f81a63729b5b2d82d7ca4663f66293a197ae235a0ed833eb00dc8b",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "6bb4cca0ffbe9426e8f8c5a71a2e96dcc8163b899ad0effa82aafca163d222f8",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.intelligence",
+      "product": "CLI",
+      "public_source_compiled_sha256": "6bb4cca0ffbe9426e8f8c5a71a2e96dcc8163b899ad0effa82aafca163d222f8",
+      "source_path": "src/zsec_shield/intelligence.py",
+      "store_compiled_sha256": "d098e840063037953e391618e34f8cbb3d5b86032de8471db2861d0512dff92a",
+      "store_matches_direct_ignoring_build_filenames": false,
+      "store_matches_public_source_ignoring_build_filenames": false
+    },
+    {
+      "direct_compiled_sha256": "e10602bef08ccc1372d6d336f7e7e9de52a69e35386a585601f2ee0535921707",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.inventory",
+      "product": "CLI",
+      "public_source_compiled_sha256": "e10602bef08ccc1372d6d336f7e7e9de52a69e35386a585601f2ee0535921707",
+      "source_path": "src/zsec_shield/inventory/__init__.py",
+      "store_compiled_sha256": "e10602bef08ccc1372d6d336f7e7e9de52a69e35386a585601f2ee0535921707",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "889e5746aeded1139d04b9083f19d90937a0dabbf58e823e33e7de722a2ca7bc",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.inventory.base",
+      "product": "CLI",
+      "public_source_compiled_sha256": "889e5746aeded1139d04b9083f19d90937a0dabbf58e823e33e7de722a2ca7bc",
+      "source_path": "src/zsec_shield/inventory/base.py",
+      "store_compiled_sha256": "889e5746aeded1139d04b9083f19d90937a0dabbf58e823e33e7de722a2ca7bc",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "3c0190b42f3b858cbd67f56efb581a0eca929593791da1ff37cda21163274e0e",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.inventory.linux",
+      "product": "CLI",
+      "public_source_compiled_sha256": "3c0190b42f3b858cbd67f56efb581a0eca929593791da1ff37cda21163274e0e",
+      "source_path": "src/zsec_shield/inventory/linux.py",
+      "store_compiled_sha256": "3c0190b42f3b858cbd67f56efb581a0eca929593791da1ff37cda21163274e0e",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "cc459fed1ecd899b0d467d9aa5d28be64759b12f8f90f13a52d50292ff4dfec5",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.inventory.macos",
+      "product": "CLI",
+      "public_source_compiled_sha256": "cc459fed1ecd899b0d467d9aa5d28be64759b12f8f90f13a52d50292ff4dfec5",
+      "source_path": "src/zsec_shield/inventory/macos.py",
+      "store_compiled_sha256": "cc459fed1ecd899b0d467d9aa5d28be64759b12f8f90f13a52d50292ff4dfec5",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "6e1acb55cad2abc4d9f0bce9c1548a61343921f6fbd5d110799e00978f8876d1",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.inventory.windows",
+      "product": "CLI",
+      "public_source_compiled_sha256": "6e1acb55cad2abc4d9f0bce9c1548a61343921f6fbd5d110799e00978f8876d1",
+      "source_path": "src/zsec_shield/inventory/windows.py",
+      "store_compiled_sha256": "6e1acb55cad2abc4d9f0bce9c1548a61343921f6fbd5d110799e00978f8876d1",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "4c7306d600a6663d318b3cddf3b49e0876b50040307b2fb97e4a5705f6b5c75d",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.models",
+      "product": "CLI",
+      "public_source_compiled_sha256": "4c7306d600a6663d318b3cddf3b49e0876b50040307b2fb97e4a5705f6b5c75d",
+      "source_path": "src/zsec_shield/models.py",
+      "store_compiled_sha256": "4c7306d600a6663d318b3cddf3b49e0876b50040307b2fb97e4a5705f6b5c75d",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "0c75dcfa8f354a63af2e17514c022a2f4af62dbc7bdf5b6afb7b07a74f209471",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.paths",
+      "product": "CLI",
+      "public_source_compiled_sha256": "0c75dcfa8f354a63af2e17514c022a2f4af62dbc7bdf5b6afb7b07a74f209471",
+      "source_path": "src/zsec_shield/paths.py",
+      "store_compiled_sha256": "0c75dcfa8f354a63af2e17514c022a2f4af62dbc7bdf5b6afb7b07a74f209471",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "4497d12d11ed533d7b845b604866b145bf047d780f0a8d71eddd7a14421abe73",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.quarantine",
+      "product": "CLI",
+      "public_source_compiled_sha256": "4497d12d11ed533d7b845b604866b145bf047d780f0a8d71eddd7a14421abe73",
+      "source_path": "src/zsec_shield/quarantine.py",
+      "store_compiled_sha256": "4497d12d11ed533d7b845b604866b145bf047d780f0a8d71eddd7a14421abe73",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "55ceeefc9526d1a4a68deaa06ccdc71314b436bc3e48fa5c33a0dc59785f3179",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.readiness",
+      "product": "CLI",
+      "public_source_compiled_sha256": "55ceeefc9526d1a4a68deaa06ccdc71314b436bc3e48fa5c33a0dc59785f3179",
+      "source_path": "src/zsec_shield/readiness.py",
+      "store_compiled_sha256": "55ceeefc9526d1a4a68deaa06ccdc71314b436bc3e48fa5c33a0dc59785f3179",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "ebe79d2fb11e97f298b76066a1b3584f5b1a0891820b967518359b99958207e8",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.recovery_drill",
+      "product": "CLI",
+      "public_source_compiled_sha256": "ebe79d2fb11e97f298b76066a1b3584f5b1a0891820b967518359b99958207e8",
+      "source_path": "src/zsec_shield/recovery_drill.py",
+      "store_compiled_sha256": "ebe79d2fb11e97f298b76066a1b3584f5b1a0891820b967518359b99958207e8",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "ed8a690e027f69eed4ca818466b8cd4c2cf1147321416f54d0740550dbccedc1",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.rules",
+      "product": "CLI",
+      "public_source_compiled_sha256": "ed8a690e027f69eed4ca818466b8cd4c2cf1147321416f54d0740550dbccedc1",
+      "source_path": "src/zsec_shield/rules.py",
+      "store_compiled_sha256": "ed8a690e027f69eed4ca818466b8cd4c2cf1147321416f54d0740550dbccedc1",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "e0022d0182f5e6351fa5718c8bee5db6d0eeb0e4d42c33b1161c9de5dff5a3c6",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.scan_worker",
+      "product": "CLI",
+      "public_source_compiled_sha256": "e0022d0182f5e6351fa5718c8bee5db6d0eeb0e4d42c33b1161c9de5dff5a3c6",
+      "source_path": "src/zsec_shield/scan_worker.py",
+      "store_compiled_sha256": "e0022d0182f5e6351fa5718c8bee5db6d0eeb0e4d42c33b1161c9de5dff5a3c6",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "76058ff59a7319ee84f8bd41b1b6ff8be58d27f05e20001f02a4b7960d23fb9c",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.scanner",
+      "product": "CLI",
+      "public_source_compiled_sha256": "76058ff59a7319ee84f8bd41b1b6ff8be58d27f05e20001f02a4b7960d23fb9c",
+      "source_path": "src/zsec_shield/scanner.py",
+      "store_compiled_sha256": "76058ff59a7319ee84f8bd41b1b6ff8be58d27f05e20001f02a4b7960d23fb9c",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "9ea7417914af018f3a7ae2a4ee02c0c38c2c629172759ba33c7f9c68c76aa4a0",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.status_store",
+      "product": "CLI",
+      "public_source_compiled_sha256": "9ea7417914af018f3a7ae2a4ee02c0c38c2c629172759ba33c7f9c68c76aa4a0",
+      "source_path": "src/zsec_shield/status_store.py",
+      "store_compiled_sha256": "9ea7417914af018f3a7ae2a4ee02c0c38c2c629172759ba33c7f9c68c76aa4a0",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "1f4650cefcadec47d219ba54fd7a4b72f543f706b21fcee1e24fa965683d7521",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.util",
+      "product": "CLI",
+      "public_source_compiled_sha256": "1f4650cefcadec47d219ba54fd7a4b72f543f706b21fcee1e24fa965683d7521",
+      "source_path": "src/zsec_shield/util.py",
+      "store_compiled_sha256": "1f4650cefcadec47d219ba54fd7a4b72f543f706b21fcee1e24fa965683d7521",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "237ed25e4375017f90c1bab54834917ec2a2e220ce4bef5d547c0202955959a8",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.watch_evidence",
+      "product": "CLI",
+      "public_source_compiled_sha256": "237ed25e4375017f90c1bab54834917ec2a2e220ce4bef5d547c0202955959a8",
+      "source_path": "src/zsec_shield/watch_evidence.py",
+      "store_compiled_sha256": "237ed25e4375017f90c1bab54834917ec2a2e220ce4bef5d547c0202955959a8",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "1801d4351778a7547798ce643399847f91b573a8caabd33de8edf761c6aca70f",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.watcher",
+      "product": "CLI",
+      "public_source_compiled_sha256": "1801d4351778a7547798ce643399847f91b573a8caabd33de8edf761c6aca70f",
+      "source_path": "src/zsec_shield/watcher.py",
+      "store_compiled_sha256": "1801d4351778a7547798ce643399847f91b573a8caabd33de8edf761c6aca70f",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "d121a7285b66905458a20b7bba565b44d8872269d804d3a9d65c768a9fd25ded",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.windows_authenticode",
+      "product": "CLI",
+      "public_source_compiled_sha256": "d121a7285b66905458a20b7bba565b44d8872269d804d3a9d65c768a9fd25ded",
+      "source_path": "src/zsec_shield/windows_authenticode.py",
+      "store_compiled_sha256": "d121a7285b66905458a20b7bba565b44d8872269d804d3a9d65c768a9fd25ded",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "a8eaaa8225f0abf48ad9ee169f57e3d4a6b5a83c25280c21d1c0148f49cc4f69",
+      "direct_matches_public_source_ignoring_build_filenames": true,
+      "module": "zsec_shield.zba",
+      "product": "CLI",
+      "public_source_compiled_sha256": "a8eaaa8225f0abf48ad9ee169f57e3d4a6b5a83c25280c21d1c0148f49cc4f69",
+      "source_path": "src/zsec_shield/zba.py",
+      "store_compiled_sha256": "a8eaaa8225f0abf48ad9ee169f57e3d4a6b5a83c25280c21d1c0148f49cc4f69",
+      "store_matches_direct_ignoring_build_filenames": true,
+      "store_matches_public_source_ignoring_build_filenames": true
+    },
+    {
+      "direct_compiled_sha256": "ae0ec744e92b8fa6aaf8e1f94956d2f03fc645a278fa40e05f6ca03cba722f18",
+      "module": "entrypoint",
+      "product": "CLI",
+      "store_compiled_sha256": "ae0ec744e92b8fa6aaf8e1f94956d2f03fc645a278fa40e05f6ca03cba722f18",
+      "store_matches_direct_ignoring_build_filenames": true
+    }
+  ],
+  "schema": "zsec.antivirus.store-public-source-comparison.v1",
+  "store_artifact_sha256": "2cb7592011489d41648755bdb1e92effe0f7a8f2a2fe73127d63e7ff3d0d17d6",
+  "store_direct_compiled_matches": 38,
+  "store_public_source_module_matches": 36
+}

@@ -196,6 +196,15 @@ build and install guidance lives at
 [ZSEC Antivirus downloads](https://talktoai.org/zero-security/download/) and
 [ZSEC Browser Shields installation](https://talktoai.org/zero-browser/download/).
 
+**Antivirus 0.3.32** is also available as a
+[verified Windows desktop archive](https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.32-windows).
+The direct archive was rebuilt from clean public source and downloaded again to
+verify its published bytes. Microsoft Store package `0.3.32.0` is a separate
+distribution; the current public engine includes a later Ubuntu livepatch parsing
+fix. See the [Antivirus release record](docs/releases/ZSEC_ANTIVIRUS_0.3.32.md)
+for exact hashes, tests and the Store/source comparison. Unsigned direct downloads
+remain explicit user installations; signed update metadata is notification-only.
+
 ## Platform scope
 
 The same public scanner, feed, evidence, and encrypted-container core runs on all
