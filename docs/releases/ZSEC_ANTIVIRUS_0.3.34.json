@@ -1,0 +1,30 @@
+{
+  "schema": "zsec.antivirus.helper-release.v1",
+  "version": "0.3.34",
+  "date": "2026-09-30",
+  "source_revision": "56b6015ea19203a2d319612d0338a15ffd845611",
+  "source_tree_state_at_build": "clean",
+  "regression_tests_passed": 330,
+  "subtests_passed": 14,
+  "changed_module_ruff": "passed",
+  "manual_review": "native StartupTask ABI and monitor lifecycle reviewed against Microsoft bindings; two status/detection issues corrected",
+  "direct_archive": "zsec-antivirus-desktop-0.3.34-windows-x86_64.zip",
+  "direct_archive_sha256": "4f178a5e153144923e1498856d5f88eeefc6ab55926d94396fcb32775f4cada8",
+  "msix": "ZSEC-Antivirus-0.3.34.0-x64.msix",
+  "msix_bytes": 36434959,
+  "msix_sha256": "9ad9b03fcd0a97179e23a189e45e8e6c2f7275062a9a449eb3a14e77c6a0b8bf",
+  "msix_signed": false,
+  "build_checks": "GUI/engine PE identity, DPI manifest, packaged synthetic scan/quarantine and GUI help passed",
+  "native_startup_lookup": "native ABI bound; unpackaged lookup correctly returned task not found",
+  "store_signed_startup_enable_disable_acceptance": "not yet verified",
+  "installed_package_at_start": "0.3.33.0",
+  "store_submission": "prepared; certification status recorded separately",
+  "protection": {
+    "primary_antivirus": false,
+    "pre_access_enforcement": false,
+    "provider_settings_changed": false,
+    "monitoring": "event-driven post-change folder inspection with bounded recovery",
+    "quarantine": "explicit per-session choice",
+    "telemetry": false
+  }
+}
