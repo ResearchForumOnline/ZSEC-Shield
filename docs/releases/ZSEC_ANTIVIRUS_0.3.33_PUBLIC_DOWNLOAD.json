@@ -1,0 +1,27 @@
+{
+  "assets": [
+    {
+      "bytes": 33860318,
+      "filename": "zsec-antivirus-desktop-0.3.33-windows-x86_64.zip",
+      "public_bytes_match_reviewed_artifact": true,
+      "sha256": "2613a665949187747ecfa38d202361a80a44b736e87fa1d9e2ae30e2d6ada1de"
+    },
+    {
+      "bytes": 115,
+      "filename": "zsec-antivirus-desktop-0.3.33-windows-x86_64.zip.sha256",
+      "public_bytes_match_reviewed_artifact": true,
+      "sha256": "b8a9c3cfcfe4049f48814cbb7e28882ff36fd64a3f4ad66306c8c863e1dfc6c2"
+    },
+    {
+      "bytes": 3023,
+      "filename": "zsec-antivirus-desktop-0.3.33-windows-x86_64.zip.json",
+      "public_bytes_match_reviewed_artifact": true,
+      "sha256": "6a7da798a9e9edd96067e2abff800367942ec339c6a255a8dd27b2626acb0a94"
+    }
+  ],
+  "public_zip_crc_passed": true,
+  "release_url": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.33-windows",
+  "schema": "zsec.antivirus.public-download-verification.v1",
+  "source_revision": "d467e04e99bbe7227afd88c5c2415fe780c4ef1d",
+  "version": "0.3.33"
+}

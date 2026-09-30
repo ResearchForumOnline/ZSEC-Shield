@@ -1,0 +1,77 @@
+{
+  "archive": "zsec-antivirus-desktop-0.3.33-windows-x86_64.zip",
+  "archive_bytes": 33860318,
+  "archive_crc_passed": true,
+  "archive_entries_match_manifest": true,
+  "archive_sha256": "2613a665949187747ecfa38d202361a80a44b736e87fa1d9e2ae30e2d6ada1de",
+  "authenticode_status": {
+    "desktop": "NotSigned",
+    "engine": "NotSigned"
+  },
+  "ci": {
+    "source_commit": "d467e04e99bbe7227afd88c5c2415fe780c4ef1d",
+    "status": "success",
+    "url": "https://github.com/ResearchForumOnline/ZSEC-Shield/actions/runs/36750602044"
+  },
+  "clean_store_install_validation": "not performed; Store-upload MSIX is a separate unsigned submission payload",
+  "entrypoint_sha256": {
+    "App/ZSEC Antivirus.exe": "3ef28cdf7d9d5a42208bd390c27eef7a0de45d5643c6055161170abbf5bbaab2",
+    "Engine/zsec-shield.exe": "d24ee6bf7d996683e0d7e11e49f55d26bf56475269c3947b3765f14580be3d53"
+  },
+  "full_tests_passed": 327,
+  "mypy_source_modules_passed": 28,
+  "packaged_engine_canonical_update": {
+    "application_or_provider_actions_performed": false,
+    "complete_advisory_count": 1648,
+    "exit_code": 0,
+    "signature_validation": "passed with unchanged bundled trusted keys",
+    "state_scope": "disposable state; cleaned",
+    "status": {
+      "error": null,
+      "feed_expires_at": "2026-10-07T16:40:49Z",
+      "feed_sequence": 60,
+      "last_checked_at": "2026-09-30T17:26:45Z",
+      "last_success_at": "2026-09-30T17:26:45Z",
+      "next_check_at": "2026-10-01T17:31:28Z",
+      "schema": "zsec.shield.automatic-update-status.v1",
+      "source": "https://talktoai.org/zsec/intelligence/v1/feed.json",
+      "state": "updated"
+    }
+  },
+  "packaging_smoke": {
+    "gui_help": "passed",
+    "packaged_scanner_synthetic_hit_and_quarantine": "passed",
+    "pe_version_and_gui_dpi_manifest": "passed"
+  },
+  "product": "ZSEC Antivirus",
+  "ruff": "passed",
+  "runtime_policy": {
+    "automatic_companion_lifecycle": true,
+    "automatic_monitoring": "per-user post-change companion",
+    "automatic_provider_removal": false,
+    "existing_provider_must_remain_active": true,
+    "pre_access_enforcement": false,
+    "primary_antivirus": false,
+    "scanner": "on-demand",
+    "telemetry": false,
+    "windows_security_provider": false
+  },
+  "schema": "zsec.antivirus.public-source-build-verification.v1",
+  "source_revision": "d467e04e99bbe7227afd88c5c2415fe780c4ef1d",
+  "source_tree_state": "clean",
+  "store_msix": {
+    "architecture": "x64",
+    "archive_crc_passed": true,
+    "bytes": 36417247,
+    "filename": "ZSEC-Antivirus-0.3.33.0-x64.msix",
+    "identity_matches_existing_store_identity": true,
+    "runtime_files_exactly_matching_direct_payload": 1086,
+    "sha256": "fef4c46c0d95887fa153e292d9e359b5694ee0c0cf590485c2415adb1cf98f5f",
+    "signed": false,
+    "submission_status_at_build_verification": "not-submitted",
+    "version": "0.3.33.0"
+  },
+  "subtests_passed": 14,
+  "verified_manifest_files": 1107,
+  "version": "0.3.33"
+}
