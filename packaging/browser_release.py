@@ -20,6 +20,7 @@ EASYLIST_FILES = (
     "third_party/easylist-provenance.json",
 )
 INCLUDE = (
+    "LICENSE",
     "MERCENARY_SPYWARE_DEFENCE.md",
     *EASYLIST_FILES,
     "manifest.json",
@@ -46,6 +47,8 @@ ZIP_TIMESTAMP = (2026, 1, 1, 0, 0, 0)
 
 
 def release_input(name: str) -> Path:
+    if name == "LICENSE":
+        return ROOT / name
     if name == "MERCENARY_SPYWARE_DEFENCE.md":
         return ROOT / "docs" / name
     return EXTENSION / name

@@ -25,6 +25,7 @@ def test_browser_archive_is_complete_deterministic_and_explicitly_unsigned(tmp_p
 
     with zipfile.ZipFile(first) as bundle:
         assert bundle.namelist() == sorted(INCLUDE)
+        assert bundle.read("LICENSE") == (MODULE.ROOT / "LICENSE").read_bytes()
         assert "src/high-risk-browsing.js" in bundle.namelist()
         assert "src/popup-state.js" in bundle.namelist()
         assert "src/runtime-health.js" in bundle.namelist()
