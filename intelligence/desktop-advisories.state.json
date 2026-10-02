@@ -1,27 +1,27 @@
 {
-  "current_catalog_sha256": "c84815e91f30662a88d90f0d5312530bf778b7b31b469133c517333c6c152f84",
-  "installed_at": "2026-09-16T22:58:55Z",
+  "current_catalog_sha256": "61cee8afc95159bbe26e1c80f36621d7b976041825d90244e2eb93cafb26fbe1",
+  "installed_at": "2026-10-02T23:50:02Z",
   "schema": "zsec.desktop-intelligence-state.v1",
   "sources": [
     {
-      "semantic_sha256": "21b37ad3d32585b07f4147020c5846ff3b67bdeb780820e4bed7fe592c210f26",
+      "semantic_sha256": "af16916eca625d7b951aafc0175f1f25a92c77a45f0e4fb6525ab2171a0d52bb",
       "source_id": "apple-security",
-      "version": "2026-09-14T21:20:00Z"
+      "version": "2026-09-28T17:46:22Z"
     },
     {
-      "semantic_sha256": "a347484dfd0a89119111c7f1199c0315ed95fbbb4e5358cc2ed3db0eb69ff103",
+      "semantic_sha256": "6fd7db0b400980eae0eadd594a22de4f1b36b9924cb809c58ac6a5ece5eec184",
       "source_id": "cisa-kev",
-      "version": "2026-09-16T18:47:50Z"
+      "version": "2026-10-02T15:19:38Z"
     },
     {
-      "semantic_sha256": "c9e2c3ec458fb3bf4262e455e8e47d86634ad9056095490f0a12191099e7dab8",
+      "semantic_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "source_id": "microsoft-msrc",
-      "version": "2026-09-16T07:00:00Z"
+      "version": "2026-10-02T07:00:00Z"
     },
     {
-      "semantic_sha256": "7c947488245f33422bdb9b4328743821ded19dc4b6d28602ac588769e75fb2ef",
+      "semantic_sha256": "287aa281d444066a01dbae2372105717f3b555168f803097635ce7607caf331e",
       "source_id": "ubuntu-usn",
-      "version": "2026-09-16T20:12:52Z"
+      "version": "2026-10-02T07:04:46Z"
     }
   ]
 }
