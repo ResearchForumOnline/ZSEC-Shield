@@ -1,0 +1,21 @@
+{
+  "version": "0.3.35",
+  "source_revision": "d518c7cbfe4eeffa6f4d36448d5e3c4ad774031c",
+  "main_revision": "5347c42d917231b9ec5bced88250eb08dba0c40b",
+  "tests_passed": 351,
+  "subtests_passed": 14,
+  "ruff": "passed",
+  "packaged_native_monitor": "inventory completion, four fresh heartbeats, normal session completion; every event validated; exit0",
+  "direct_archive_sha256": "bef241950214b0ad15d654c450d83b27652c9c83bd0abb74d2432f4c0af44b0e",
+  "public_archive_download_hash": "matches",
+  "msix_sha256": "a74f01a145375022091756fd25637302c1f0f46388624b4ab882871dd9a4411e",
+  "msix_bytes": 36436290,
+  "store_submission_id": "1152921505702030605",
+  "store_package_validation": "Validated",
+  "store_submission": "Submission 6 accepted; update in certification; preprocessing in progress",
+  "store_publish_option": "automatically after certification",
+  "installed_store_update": "not yet verified",
+  "build_tree_note": "untracked test log present during build; tracked source exactly committed revision; final tree clean",
+  "store_verified_date": "2026-10-02",
+  "github_ci": "37042490002: all ten jobs passed (Windows/macOS/Linux Python 3.11/3.13, quality/build, browser extension, downstream policy, site validation)"
+}
