@@ -960,7 +960,7 @@ class ForegroundProtectionWatcher:
                     self._stats.issues += 1
                     self._operational_incomplete = True
 
-        if coverage_gap:
+        if coverage_gap or result.issues:
             outcome = "incomplete"
         elif no_hash_outcome is not None and result.stats.files_hashed == 0:
             outcome = no_hash_outcome

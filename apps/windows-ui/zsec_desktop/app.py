@@ -644,6 +644,7 @@ class ZsecDesktop:
         self.watch_last_heartbeat_monotonic: float | None = None
         self.watch_coverage_complete = False
         self.watch_inventory_complete = False
+        self.watch_operational_incomplete = False
         self.watch_findings_pending = False
         self.watch_started_monotonic: float | None = None
         self.watch_mode: str | None = None
@@ -2609,6 +2610,12 @@ class ZsecDesktop:
             return
         delay = min(300, 5 * (2 ** min(self.monitoring_retry_attempt, 6)))
         self.monitoring_retry_attempt += 1
+        if self.monitoring_retry_attempt >= 4:
+            self._monitoring_notice(
+                "ZSEC automatic monitoring could not recover after repeated attempts. "
+                "It will keep retrying. Open Automatic monitoring to review the problem. "
+                "Windows real-time antivirus remains separate."
+            )
         self.monitoring_retry_job = self.root.after(delay * 1000, self._retry_monitoring)
         self.watch_state_label.configure(
             text=f"Automatic monitoring unavailable — retrying in {delay}s", foreground=RED
@@ -2623,7 +2630,8 @@ class ZsecDesktop:
     def _monitoring_notice(self, text: str, *, category: str = "health") -> None:
         now = time.monotonic()
         previous = self.monitoring_notice_times.get(category)
-        if previous is None or now - previous >= 75:
+        interval = 75 if category == "findings" else 1800
+        if previous is None or now - previous >= interval:
             self.monitoring_notice_times[category] = now
             self.tray.notify(text)
 
@@ -2658,6 +2666,7 @@ class ZsecDesktop:
         self.watch_last_heartbeat_monotonic = None
         self.watch_coverage_complete = False
         self.watch_inventory_complete = False
+        self.watch_operational_incomplete = False
         self.watch_started_monotonic = time.monotonic()
         self.watch_mode = "automatic"
         try:
@@ -2722,6 +2731,7 @@ class ZsecDesktop:
         self.watch_last_heartbeat_monotonic = None
         self.watch_coverage_complete = False
         self.watch_inventory_complete = False
+        self.watch_operational_incomplete = False
         self.watch_started_monotonic = time.monotonic()
         self.watch_mode = "temporary"
         if self.watch_watchdog_job is not None:
@@ -2809,6 +2819,7 @@ class ZsecDesktop:
                 )
         elif name == "health_issue":
             self.watch_coverage_complete = False
+            self.watch_operational_incomplete = True
             self._monitoring_notice(
                 "ZSEC monitoring has a coverage problem. "
                 "Open Automatic monitoring to review the health event. "
@@ -2832,6 +2843,7 @@ class ZsecDesktop:
             )
         elif name == "health_heartbeat":
             self.watch_last_heartbeat_monotonic = time.monotonic()
+            self.watch_operational_incomplete = event["operational_incomplete"]
             self.watch_coverage_complete = (
                 self.watch_inventory_complete and not event["operational_incomplete"]
             )
@@ -2894,10 +2906,8 @@ class ZsecDesktop:
             self.tray_companion_status = "ZSEC monitoring heartbeat stale"
             self._update_tray_status()
             if self.watch_mode == "automatic":
-                self._monitoring_notice(
-                    "ZSEC monitoring stopped responding and is restarting. "
-                    "Its coverage is currently unverified."
-                )
+                # Recovery is visible in the window; notify only if repeated
+                # attempts fail rather than announcing each transient restart.
                 self.watch_session.stop()
         elif (
             last is None
@@ -2925,7 +2935,6 @@ class ZsecDesktop:
     def _watch_complete(self, exit_code: int, error: str | None) -> None:
         if self.closing:
             return
-        was_automatic = self.watch_mode == "automatic"
         self.watch_mode = None
         self.watch_session = None
         self.watch_coverage_complete = False
@@ -2961,11 +2970,6 @@ class ZsecDesktop:
             self.companion_card.set_value("Package-owned monitoring not active", AMBER)
             self.tray_companion_status = "ZSEC monitoring not active"
             self._update_tray_status()
-            if was_automatic and self.automatic_monitoring.get():
-                self._monitoring_notice(
-                    "ZSEC automatic monitoring stopped. It will reconnect if enabled. "
-                    "Windows real-time antivirus remains separate."
-                )
             self._schedule_monitoring_retry()
             self._animate_activity()
 
@@ -3078,6 +3082,19 @@ class ZsecDesktop:
                     "Fresh complete heartbeat verified; monitoring remains active while ZSEC runs."
                 ),
                 RED if self.watch_findings_pending else GREEN,
+            )
+        elif (
+            self.watch_session is not None
+            and not self.watch_inventory_complete
+            and not self.watch_operational_incomplete
+            and self.watch_last_heartbeat_monotonic is not None
+            and time.monotonic() - self.watch_last_heartbeat_monotonic <= 75
+        ):
+            headline, detail, colour = (
+                "Monitoring setup in progress",
+                "Observer responding; initial folder inventory is still running. "
+                "Complete coverage is pending.",
+                CYAN,
             )
         elif self.watch_session is not None and self.watch_last_heartbeat_monotonic is not None:
             headline, detail, colour = (

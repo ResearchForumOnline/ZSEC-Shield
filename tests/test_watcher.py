@@ -1183,6 +1183,31 @@ class WatchEngineTests(unittest.TestCase):
         self.assertEqual(1, summary.stats.reconciliations)
         self.assertEqual(0, summary.stats.full_reconciliations)
 
+    def test_metadata_inventory_with_permission_error_remains_incomplete(self) -> None:
+        blocked = self.scan_root / "blocked.bin"
+        blocked.write_bytes(b"permission-test")
+        result = ScanResult(
+            started_at="2026-10-02T14:00:00Z",
+            completed_at="2026-10-02T14:00:01Z",
+            roots=[str(self.scan_root)],
+            issues=[ScanIssue(str(blocked), "entry_unreadable", "Permission denied")],
+            stats=ScanStats(errors=1),
+        )
+        records: list[dict[str, Any]] = []
+        scanner = Scanner(())
+        watcher = ForegroundProtectionWatcher(
+            scanner, self._config(), on_record=records.append,
+            polling_observer_factory=FakeObserver,
+        )
+        with patch.object(scanner, "scan", return_value=result):
+            watcher._reconcile("initial_metadata_inventory", full=False, metadata_only=True)
+        inventory = next(
+            record for record in records if record["event"] == "metadata_inventory_completed"
+        )
+        self.assertEqual("incomplete", inventory["outcome"])
+        self.assertTrue(watcher._operational_incomplete)
+        self.assertEqual(1, inventory["scan"]["stats"]["errors"])
+
     def test_reconciliation_consumes_prior_snapshot_payloads_while_streaming(self) -> None:
         for index in range(4):
             (self.scan_root / f"stable-{index}.bin").write_bytes(b"stable")

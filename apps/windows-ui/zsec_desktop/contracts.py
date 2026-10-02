@@ -1208,6 +1208,9 @@ def validate_watch_event(payload: Any) -> dict[str, Any]:
         "backend_fallback",
         "scan_completed",
         "reconciliation_completed",
+        "metadata_inventory_completed",
+        "event_superseded",
+        "events_superseded",
         "health_issue",
         "health_heartbeat",
         "session_completed",
@@ -1218,6 +1221,46 @@ def validate_watch_event(payload: Any) -> dict[str, Any]:
     generated_at = _string(root.get("generated_at"), "generated_at", maximum=80)
     if not generated_at.endswith("Z") or "T" not in generated_at:
         raise ContractError("watch event generated_at must be a UTC timestamp")
+    if root.get("event") == "metadata_inventory_completed":
+        if root.get("outcome") not in {"metadata_inventory_complete", "incomplete"}:
+            raise ContractError("watch metadata inventory outcome is unsupported")
+        scan = _object(root.get("scan"), "scan")
+        for field in ("findings", "observations", "issues"):
+            _list(scan.get(field), f"scan.{field}")
+        stats = _object(scan.get("stats"), "scan.stats")
+        _integer(stats.get("files_hashed"), "scan.stats.files_hashed")
+        _integer(stats.get("errors"), "scan.stats.errors")
+        if stats["files_hashed"] != 0 or scan["findings"] or scan["observations"]:
+            raise ContractError("metadata inventory unexpectedly claims content inspection")
+        if root["outcome"] == "metadata_inventory_complete" and (
+            stats["errors"] or scan["issues"]
+        ):
+            raise ContractError("metadata inventory completion has inconsistent issues")
+        _list(root.get("quarantine"), "quarantine")
+        if root["quarantine"]:
+            raise ContractError("metadata inventory cannot authorize quarantine")
+    if root.get("event") in {"event_superseded", "events_superseded"}:
+        triggers = _list(root.get("triggers"), "triggers")
+        if len(triggers) > 32:
+            raise ContractError("superseded event trigger count exceeds its bound")
+        for trigger in triggers:
+            _string(trigger, "trigger", maximum=80)
+        if root["event"] == "event_superseded":
+            _string(root.get("path"), "path", maximum=32768)
+            if root.get("reason") not in {
+                "path_vanished_before_scan", "path_vanished_during_scan"
+            }:
+                raise ContractError("superseded event reason is unsupported")
+        else:
+            count = _integer(root.get("count"), "count", minimum=2)
+            omitted = _integer(root.get("sample_paths_omitted"), "sample_paths_omitted")
+            paths = _list(root.get("sample_paths"), "sample_paths")
+            if not 1 <= len(paths) <= 8 or count != len(paths) + omitted:
+                raise ContractError("superseded event sample counters are inconsistent")
+            for path in paths:
+                _string(path, "sample path", maximum=32768)
+            if root.get("reason") != "paths_vanished_during_scan":
+                raise ContractError("superseded events reason is unsupported")
     if root.get("event") == "health_heartbeat":
         if root.get("backend_active") not in {"native", "polling"}:
             raise ContractError("watch heartbeat backend is unsupported")
