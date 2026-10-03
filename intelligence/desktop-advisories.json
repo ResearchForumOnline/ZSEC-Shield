@@ -18,7 +18,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "2d8c3e7b80c86ca3fed862163672d113d472c66ddce9351b7d900d82a7398258",
+        "source_body_sha256": "fc7c3298e39ea517a2169676a2e8cdfe93fa524c7fa1434655a3b4539053f5f5",
         "source_record_id": "USN-8864-1"
       },
       "published_at": "2026-10-02T07:04:46Z",
@@ -30,7 +30,7 @@
       "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - Network file system (NFS) server daemon; - IPv6 networking; - Netfilter; (CVE-2025-38724, CVE-2026-53131, CVE-2026-53221)",
       "title": "USN-8864-1: Linux kernel vulnerabilities",
       "zba": {
-        "commitment": "e9c84fa7ef38b946e1d9e2e5630be835063c14e0e0b0ac9c8a1ae74f71f9a03b",
+        "commitment": "ac09fa05610198dd1adbf221d45f0b17668b865d5aef90821d47bafaf261cddf",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -152,7 +152,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "2d8c3e7b80c86ca3fed862163672d113d472c66ddce9351b7d900d82a7398258",
+        "source_body_sha256": "fc7c3298e39ea517a2169676a2e8cdfe93fa524c7fa1434655a3b4539053f5f5",
         "source_record_id": "USN-8816-4"
       },
       "published_at": "2026-10-02T06:30:38Z",
@@ -164,7 +164,7 @@
       "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - ARM64 architecture; - S390 architecture; - x86 architecture; - DRBD Distributed Replicated Block Device drivers; - InfiniBand drivers; - IOMMU subsystem; - Multiple devices driver; - Network drivers; - Microsoft Azure Network Adapter (MANA) driver; - NVME drivers; - TCM subsystem; - Virtio Host (VHOST) subsystem; - Xen hypervisor drivers; - AFS file system; - File systems infrastructure; - Network file systems library; - Network file system (NFS) client; - NTFS3 file system; - OCFS2 file system; - OrangeFS file…",
       "title": "USN-8816-4: Linux kernel (GKE) vulnerabilities",
       "zba": {
-        "commitment": "a1831e8fe26713babd9a99b612d29c60e507e39ae9291c5c43bf5f61319082a2",
+        "commitment": "3fd343b0e37f94e1af284bfd822e64aba1dac1f6cb968426e0250b31cc8382c1",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -205,7 +205,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "2d8c3e7b80c86ca3fed862163672d113d472c66ddce9351b7d900d82a7398258",
+        "source_body_sha256": "fc7c3298e39ea517a2169676a2e8cdfe93fa524c7fa1434655a3b4539053f5f5",
         "source_record_id": "USN-8818-6"
       },
       "published_at": "2026-10-02T06:30:36Z",
@@ -217,7 +217,7 @@
       "summary": "It was discovered that some Arm processors could complete a broadcast translation lookaside buffer (TLB) invalidation before memory writes made through the invalidated translation were globally observed. A local attacker could possibly use this to write to memory after permission to do so had been revoked, bypassing memory protections or escalating privileges. (CVE-2025-10263) Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - ARM64 architecture; - InfiniBand drivers; - Network drivers; - TCM subsystem; - exFAT file system; - Network file system (NFS) client; -…",
       "title": "USN-8818-6: Linux kernel (FIPS) vulnerabilities",
       "zba": {
-        "commitment": "e67f260ed479cf5be3298402ccd42dd6dd86e4956f52416bc43ebed9df67617b",
+        "commitment": "e7790f0a302ac154e0828c37256d041296292199b69f0e708fe524f3efca673d",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -241,7 +241,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "2d8c3e7b80c86ca3fed862163672d113d472c66ddce9351b7d900d82a7398258",
+        "source_body_sha256": "fc7c3298e39ea517a2169676a2e8cdfe93fa524c7fa1434655a3b4539053f5f5",
         "source_record_id": "USN-8851-2"
       },
       "published_at": "2026-10-02T06:30:35Z",
@@ -253,7 +253,7 @@
       "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - Network file system (NFS) server daemon; - IPv6 networking; - Netfilter; (CVE-2025-38724, CVE-2026-53131, CVE-2026-53221)",
       "title": "USN-8851-2: Linux kernel (Raspberry Pi) vulnerabilities",
       "zba": {
-        "commitment": "6b488378dbc7c395220ddc081031d3ba1cc962315d0008299160a2cc1ed1bad6",
+        "commitment": "de19b08966df569bf4914495a8c5fee92cd368f67395e2253d9c9fb6e1de7ba7",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -19913,7 +19913,7 @@
     {
       "advisory_count": 0,
       "authority": "Microsoft Security Response Center",
-      "body_sha256": "5ad0e80442ad96114183140e77a320aa130ab1c3f739728bdcac2478db069002",
+      "body_sha256": "e373d610e5f3bae8784dd2cc30c311f6167d36e00559f3a14b062a888b4d946b",
       "contribution_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "parser": "microsoft-cvrf-v3-desktop-v1",
       "semantic_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -19924,8 +19924,8 @@
     {
       "advisory_count": 4,
       "authority": "Canonical Ubuntu Security Team",
-      "body_sha256": "2d8c3e7b80c86ca3fed862163672d113d472c66ddce9351b7d900d82a7398258",
-      "contribution_sha256": "16a8407373ef60ae64f0d9096e8e7b222cb60b61f38969a94da5b9ccc7cc4106",
+      "body_sha256": "fc7c3298e39ea517a2169676a2e8cdfe93fa524c7fa1434655a3b4539053f5f5",
+      "contribution_sha256": "686cd46ae5966da0673cfe4900cc91f97aaf0ce93f1b70d3a7493f51bae0ce63",
       "parser": "ubuntu-usn-rss-v1",
       "semantic_sha256": "287aa281d444066a01dbae2372105717f3b555168f803097635ce7607caf331e",
       "source_id": "ubuntu-usn",
