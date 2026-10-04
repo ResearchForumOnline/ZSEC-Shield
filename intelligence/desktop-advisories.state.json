@@ -1,6 +1,6 @@
 {
-  "current_catalog_sha256": "4d529d9f7789bb9b6261c4bb4c03cd3ccfa64aa5a00ff2025626c68926937e74",
-  "installed_at": "2026-10-03T23:07:16Z",
+  "current_catalog_sha256": "b39654175eb5801facd367e8248afa9e9ddc53bf2d3902cbe21ea706a7594f50",
+  "installed_at": "2026-10-04T23:13:36Z",
   "schema": "zsec.desktop-intelligence-state.v1",
   "sources": [
     {
@@ -11,7 +11,7 @@
     {
       "semantic_sha256": "6fd7db0b400980eae0eadd594a22de4f1b36b9924cb809c58ac6a5ece5eec184",
       "source_id": "cisa-kev",
-      "version": "2026-10-02T15:19:38Z"
+      "version": "2026-10-04T18:52:56Z"
     },
     {
       "semantic_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
