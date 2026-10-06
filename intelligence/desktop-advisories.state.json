@@ -1,6 +1,6 @@
 {
-  "current_catalog_sha256": "b39654175eb5801facd367e8248afa9e9ddc53bf2d3902cbe21ea706a7594f50",
-  "installed_at": "2026-10-04T23:13:36Z",
+  "current_catalog_sha256": "ad0a9a58f37854042b944e83c4e4d3af7ce50fc84ffccacd0d9c55b669dcb105",
+  "installed_at": "2026-10-06T01:20:13Z",
   "schema": "zsec.desktop-intelligence-state.v1",
   "sources": [
     {
@@ -19,9 +19,9 @@
       "version": "2026-10-02T07:00:00Z"
     },
     {
-      "semantic_sha256": "287aa281d444066a01dbae2372105717f3b555168f803097635ce7607caf331e",
+      "semantic_sha256": "7560e1cafff69dbcf1673fcbf7dc2731c6ffe374873044bd281c8760e1fb132d",
       "source_id": "ubuntu-usn",
-      "version": "2026-10-02T07:04:46Z"
+      "version": "2026-10-05T15:04:31Z"
     }
   ]
 }
