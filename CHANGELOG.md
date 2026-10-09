@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.36 Windows desktop - 2026-10-09
+
+- Quiet automatic operation: no routine scan-completion or close-to-tray popups;
+  transient folder monitoring recovers quietly and persistent alerts are deduplicated.
+- Simple everyday navigation with optional advanced tools and evidence-backed
+  automatic Microsoft Defender protection wording.
+- Background stale-signature refresh for confirmed active Defender, hourly bounded
+  retries and a fresh active-provider check before requesting the update.
+- Failed signed data checks retry sooner while retaining previous verified data.
+
 ## 0.3.34 Windows desktop - 2026-09-30
 
 - Replaced the permanently disabled Store startup preference with the package's
@@ -433,13 +443,3 @@ Initial cross-platform MVP:
 - draft-only release automation with no publisher signing.
 
 This release does not provide complete antivirus or kernel real-time protection.
-# 0.3.36
-
-- Quiet automatic operation: no routine scan-completion or close-to-tray popups;
-  transient folder monitoring recovers quietly and persistent alerts are deduplicated.
-- Simple everyday navigation with optional advanced tools and evidence-backed
-  automatic Microsoft Defender protection wording.
-- Background stale-signature refresh for confirmed active Defender, hourly bounded
-  retries and a fresh active-provider check before requesting the update.
-- Failed signed data checks retry sooner while retaining previous verified data.
-
