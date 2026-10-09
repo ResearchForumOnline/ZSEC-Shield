@@ -192,6 +192,13 @@ def _next_check(now: datetime) -> datetime:
     return now + CHECK_INTERVAL + _jitter()
 
 
+def _next_failed_check(now: datetime) -> datetime:
+    # Failure retries must always be in the future. Daily jitter is signed and
+    # would put a one-hour retry in the past at its negative extreme.
+    span = int(MAX_JITTER.total_seconds())
+    return now + FAILED_CHECK_INTERVAL + timedelta(seconds=secrets.randbelow(span + 1))
+
+
 def _decode_signature(value: Any) -> bytes:
     if not isinstance(value, str) or len(value) > 256:
         raise FeedError("intelligence signature is invalid")
@@ -422,7 +429,7 @@ def run_automatic_update(
             "error",
             checked_at,
             previous.last_success_at,
-            format_utc(current + FAILED_CHECK_INTERVAL + _jitter()),
+            format_utc(_next_failed_check(current)),
             previous.feed_sequence,
             previous.feed_expires_at,
             source,
@@ -724,7 +731,7 @@ def run_automatic_application_update_check(
         status = ApplicationUpdateStatus(
             "error", installed_version, previous.available_version, previous.sequence,
             checked_at, previous.last_success_at,
-            format_utc(current + FAILED_CHECK_INTERVAL + _jitter()), source, False,
+            format_utc(_next_failed_check(current)), source, False,
             f"{type(exc).__name__}: {exc}".replace("\r", " ").replace("\n", " ")[:500],
         )
     atomic_write_json(application_update_status_path(state_dir), status.to_dict(), mode=0o600)

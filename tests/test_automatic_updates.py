@@ -179,6 +179,39 @@ class AutomaticUpdateTests(unittest.TestCase):
         self.assertEqual("error", status.state)
         self.assertTrue(automatic_update_due(status, self.now))
 
+    def test_failed_retries_are_future_at_both_random_extremes(self) -> None:
+        for maximum in (False, True):
+            with self.subTest(maximum=maximum):
+                state = self.root / ("maximum-retry" if maximum else "minimum-retry")
+                with (
+                    patch(
+                        "zsec_shield.automatic_updates.secrets.randbelow",
+                        side_effect=lambda bound, maximum=maximum: bound - 1 if maximum else 0,
+                    ),
+                    patch(
+                        "zsec_shield.automatic_updates.download_intelligence_feed",
+                        side_effect=FeedError("offline"),
+                    ),
+                    patch(
+                        "zsec_shield.automatic_updates.download_feed",
+                        side_effect=FeedError("offline"),
+                    ),
+                ):
+                    intelligence = run_automatic_update(state, self.keyring, now=self.now)
+                    application = run_automatic_application_update_check(
+                        state, self.keyring, "0.3.36", now=self.now
+                    )
+                expected = self.now + timedelta(hours=3 if maximum else 1)
+                for result in (intelligence, application):
+                    self.assertEqual("error", result.state)
+                    self.assertEqual(expected, datetime.fromisoformat(result.next_check_at))
+                    self.assertGreater(expected, self.now)
+                    self.assertFalse(automatic_update_due(result, self.now))
+                    self.assertFalse(
+                        automatic_update_due(result, expected - timedelta(seconds=1))
+                    )
+                    self.assertTrue(automatic_update_due(result, expected))
+
     def test_application_manifest_is_verified_notification_only(self) -> None:
         release = json.loads((ROOT / "updates" / "application-release.json").read_text())
         raw = application_envelope(self.private_key, release, self.now)
