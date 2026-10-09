@@ -63,7 +63,6 @@ AMBER = "#f5b942"
 RED = "#f97066"
 STARTUP_EVIDENCE_NOTICE_MS = 10_000
 COMPANION_REFRESH_INTERVAL_MS = 90_000
-MONITOR_HEALTH_NOTICE_DELAY_SECONDS = 300
 
 
 def scan_completion_notification(report: dict[str, Any]) -> str:
@@ -1325,23 +1324,31 @@ class ZsecDesktop:
                 + "Microsoft Defender or another primary antivirus separately provides "
                 "real-time, pre-access protection."
             ),
-            style="Warning.TLabel",
+            style="Muted.TLabel",
             wraplength=920,
         ).pack(anchor=tk.W, pady=(5, 10))
         status_row = ttk.Frame(panel, style="Surface.TFrame")
         status_row.pack(fill=tk.X)
         self.companion_status_label = ttk.Label(
-            status_row, text="Companion status not checked", style="Status.TLabel"
+            status_row,
+            text=(
+                "Automatic folder checks starting…"
+                if self.store_managed else "Checking monitoring…"
+            ),
+            style="Status.TLabel",
         )
         self.companion_status_label.pack(side=tk.LEFT)
         companion_check_button = ttk.Button(
-            status_row, text="Check installed companion", command=self.refresh_companion
+            status_row,
+            text="Refresh status" if self.store_managed else "Check installed companion",
+            command=self.refresh_companion,
         )
         companion_check_button.pack(side=tk.RIGHT)
         self.companion_refresh_buttons.append(companion_check_button)
         self.protected_roots_label = ttk.Label(
             panel,
-            text="Protected folders: checking installed coverage…",
+            text="Selecting standard folders automatically…" if self.store_managed
+            else "Protected folders: checking installed coverage…",
             style="Muted.TLabel",
             wraplength=920,
         )
@@ -2239,11 +2246,6 @@ class ZsecDesktop:
             self.busy_operations, reduce_motion=reduced
         )
         if self.busy_operations == 0 and self.store_managed:
-            health_since = self.monitoring_health_issue_since
-            persistent_health_issue = (
-                health_since is not None
-                and time.monotonic() - health_since >= MONITOR_HEALTH_NOTICE_DELAY_SECONDS
-            )
             fresh = (
                 self.watch_last_heartbeat_monotonic is not None
                 and time.monotonic() - self.watch_last_heartbeat_monotonic <= 75
@@ -2259,8 +2261,8 @@ class ZsecDesktop:
                     ("ZSEC MATCHES REQUIRE REVIEW", RED)
                     if self.watch_findings_pending
                     else (
-                        "ZSEC FOLDER CHECKS · SEE DETAILS",
-                        AMBER if persistent_health_issue else CYAN,
+                        "ZSEC AUTOMATIC FOLDER CHECKS",
+                        CYAN,
                     )
                 )
             elif self.watch_session is not None:
@@ -2270,7 +2272,7 @@ class ZsecDesktop:
             else:
                 status, colour = (
                     "ZSEC RECONNECTING AUTOMATICALLY",
-                    AMBER if persistent_health_issue else CYAN,
+                    CYAN,
                 )
             if self.watch_findings_pending:
                 status, colour = "ZSEC MATCHES REQUIRE REVIEW", RED
@@ -2693,14 +2695,11 @@ class ZsecDesktop:
         self._start_store_monitoring()
 
     def _monitoring_notice(self, text: str, *, category: str = "health") -> None:
-        now = time.monotonic()
+        # Folder access, exclusions, and observer recovery are local diagnostics.
+        # They never warrant a desktop interruption, even after prolonged retries.
         if category == "health":
-            since = self.monitoring_health_issue_since
-            if since is None:
-                self.monitoring_health_issue_since = now
-                return
-            if now - since < MONITOR_HEALTH_NOTICE_DELAY_SECONDS:
-                return
+            return
+        now = time.monotonic()
         previous = self.monitoring_notice_times.get(category)
         interval = 1800
         if previous is None or now - previous >= interval:
@@ -2972,6 +2971,13 @@ class ZsecDesktop:
             )
         elif name == "health_heartbeat":
             self.watch_last_heartbeat_monotonic = time.monotonic()
+            if (
+                event.get("inventory_complete") is True
+                and event["operational_incomplete"] is False
+            ):
+                # Only the engine's authoritative whole-root recovery heartbeat
+                # can repair an initially incomplete folder inventory.
+                self.watch_inventory_complete = True
             self.watch_operational_incomplete = event["operational_incomplete"]
             self.watch_coverage_complete = (
                 self.watch_inventory_complete and not event["operational_incomplete"]
@@ -2983,18 +2989,9 @@ class ZsecDesktop:
                 )
             elif event["operational_incomplete"]:
                 self.watch_state_label.configure(
-                    text="Monitoring incomplete — heartbeat reports a coverage gap",
-                    foreground=RED,
-                )
-                if self.store_managed:
-                    self.companion_card.set_value(
-                        "Folder checks need attention · see details", AMBER
-                    )
-                    self.tray_companion_status = "ZSEC folder checks: see details"
-                    self._update_tray_status()
-                self._monitoring_notice(
-                    "ZSEC folder checks remain incomplete. Open Advanced options for details. "
-                    "Your Windows antivirus status is shown separately."
+                    text="Folder checks running; some files could not be inspected. "
+                    "Details are recorded below and checks will retry automatically.",
+                    foreground=CYAN,
                 )
             else:
                 self.monitoring_retry_attempt = 0
@@ -3007,21 +3004,8 @@ class ZsecDesktop:
                     ),
                     foreground=RED if self.watch_findings_pending else GREEN,
                 )
-                if self.store_managed:
-                    self.companion_card.set_value(
-                        "Monitoring active — rule matches reported"
-                        if self.watch_findings_pending
-                        else "Package-owned monitoring active",
-                        RED if self.watch_findings_pending else GREEN,
-                    )
-                    self.companion_status_label.configure(
-                        text=(
-                            "ZSEC post-change monitoring is active while this Store app is running."
-                        ),
-                        foreground=GREEN,
-                    )
-                    self.tray_companion_status = "ZSEC package monitoring active"
-                    self._update_tray_status()
+            if self.store_managed:
+                self._render_store_process_monitor()
             self._animate_activity()
         self.watch_events.insert(tk.END, f"{event['sequence']:>5}  {name}{detail}")
         if self.watch_events.size() > 500:
@@ -3197,10 +3181,11 @@ class ZsecDesktop:
             self.scan_protected_button.configure(state=tk.DISABLED)
         self._render_windows_protection(payload)
 
-    def _render_store_process_monitor(self, payload: dict[str, Any]) -> None:
+    def _render_store_process_monitor(self, payload: dict[str, Any] | None = None) -> None:
         """Keep external-companion absence separate from this package-owned observer."""
 
-        self._render_windows_protection(payload)
+        if payload is not None:
+            self._render_windows_protection(payload)
         roots = tuple(path for path in self.protected_roots if path.is_dir())
         fresh = (
             self.watch_session is not None
@@ -3222,23 +3207,21 @@ class ZsecDesktop:
             )
         elif (
             self.watch_session is not None
-            and not self.watch_inventory_complete
-            and not self.watch_operational_incomplete
             and self.watch_last_heartbeat_monotonic is not None
             and time.monotonic() - self.watch_last_heartbeat_monotonic <= 75
         ):
             headline, detail, colour = (
-                "Monitoring setup in progress",
-                "Observer responding; initial folder inventory is still running. "
-                "Complete coverage is pending.",
+                "Automatic folder checks running",
+                "The observer is responding. Some files may be unavailable or excluded; "
+                "the event history records these limits. Complete coverage is not verified.",
                 CYAN,
             )
         elif self.watch_session is not None and self.watch_last_heartbeat_monotonic is not None:
             headline, detail, colour = (
-                "Package-owned monitoring coverage unverified",
-                "Heartbeat is incomplete or stale; "
-                "automatic checks must not be treated as complete protection.",
-                AMBER,
+                "Reconnecting automatically",
+                "Observer heartbeat is stale. Folder checks are not currently verified; "
+                "ZSEC will recover automatically.",
+                CYAN,
             )
         elif self.watch_session is not None:
             headline, detail, colour = (
@@ -3248,11 +3231,16 @@ class ZsecDesktop:
             )
         else:
             headline, detail, colour = (
-                "Package-owned monitoring not active",
+                "Automatic folder checks paused" if not self.automatic_monitoring.get()
+                else "Reconnecting automatically",
                 "No process-owned observer is currently verified; "
                 "Windows protection remains separate.",
-                AMBER,
+                CYAN,
             )
+        if self.watch_findings_pending:
+            headline = "Malware rule matches require review"
+            detail = "Previously detected rule matches remain in the event history for review."
+            colour = RED
         self.companion_card.set_value(headline, colour)
         self.tray_companion_status = headline
         self._update_tray_status()
@@ -3486,6 +3474,10 @@ class ZsecDesktop:
         self.tray_protection_status = "Protection evidence unavailable"
         self.tray_companion_status = "ZSEC monitoring evidence unavailable"
         self._update_tray_status()
+        if self.store_managed:
+            # A failed Windows/provider query cannot invalidate a separate fresh
+            # process-owned observer heartbeat. Keep these evidence streams separate.
+            self._render_store_process_monitor()
 
     def refresh_quarantine(self) -> None:
         self._run_async(

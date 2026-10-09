@@ -644,6 +644,9 @@ class ForegroundProtectionWatcher:
         self._health_issue_keys: set[tuple[str, str]] = set()
         self._scan_issue_keys: set[tuple[str, str, str]] = set()
         self._operational_incomplete = False
+        self._historical_operational_incomplete = False
+        self._persistent_operational_incomplete = False
+        self._incomplete_generation = 0
         self._reconciliation_snapshot: dict[bytes, bytes] = {}
         self._session_id = str(uuid.uuid4())
         self._record_sequence = 0
@@ -776,6 +779,13 @@ class ForegroundProtectionWatcher:
             observer.join(timeout=10)
 
     def _health_issue(self, code: str, message: str) -> None:
+        # Current scan/access gaps can recover after a whole-root reconciliation.
+        # Keep the historical session evidence and fatal pipeline failures apart.
+        self._operational_incomplete = True
+        self._historical_operational_incomplete = True
+        self._incomplete_generation += 1
+        if code not in {"watch_path_unreadable", "scan_scope_incomplete"}:
+            self._persistent_operational_incomplete = True
         sanitized = message.replace("\r", " ").replace("\n", " ")[:500]
         key = (code, sanitized)
         if key in self._health_issue_keys:
@@ -813,6 +823,7 @@ class ForegroundProtectionWatcher:
             )
             return
         except OSError as exc:
+            self._reconciliation_snapshot.pop(_snapshot_path_key(pending.path), None)
             self._health_issue("watch_path_unreadable", f"cannot inspect {pending.path}: {exc}")
             return
         if (
@@ -847,10 +858,18 @@ class ForegroundProtectionWatcher:
         no_hash_outcome: str | None = None,
         allow_vanished_root: bool = False,
     ) -> ScanResult:
+        def record_inspection(path: Path, metadata: os.stat_result, was_hashed: bool) -> None:
+            # A size limit or a read failure can leave no ScanIssue. Evict the
+            # exact unsuccessfully inspected file, retaining unrelated caches.
+            if not was_hashed:
+                self._reconciliation_snapshot.pop(_snapshot_path_key(path), None)
+            if file_observer is not None:
+                file_observer(path, metadata, was_hashed)
+
         result = self.scanner.scan(
             paths,
             file_filter=file_filter,
-            file_observer=file_observer,
+            file_observer=record_inspection,
             # normalize_watch_roots has removed equal/nested roots and rejects
             # reparse-point roots. Avoid a second full-path set whose memory
             # would otherwise scale with every file in a protected tree.
@@ -862,7 +881,10 @@ class ForegroundProtectionWatcher:
         for issue in result.issues:
             vanished_error = (
                 issue.code
-                in {"directory_unreadable", "entry_unreadable", "file_open_failed"}
+                in {
+                    "directory_unreadable", "entry_unreadable", "file_open_failed",
+                    "file_read_failed",
+                }
                 or (allow_vanished_root and issue.code == "root_unreadable")
             ) and _issue_reports_missing_path(issue) and _path_is_confirmed_absent(
                 Path(issue.path)
@@ -908,6 +930,12 @@ class ForegroundProtectionWatcher:
         self._stats.issues += new_scan_issues
         if result.issues:
             self._operational_incomplete = True
+            self._historical_operational_incomplete = True
+            self._incomplete_generation += 1
+            # A previously cached file that failed inspection must be retried,
+            # even when its size and timestamps have not changed.
+            for issue in result.issues:
+                self._reconciliation_snapshot.pop(_snapshot_path_key(Path(issue.path)), None)
         # Symlinks and Windows reparse points are outside the watcher's stated
         # non-following scope. Their presence remains visible in scan stats but
         # is not a coverage failure. Special files and oversized regular files
@@ -947,6 +975,8 @@ class ForegroundProtectionWatcher:
                     self._stats.quarantine_partial += 1
                     self._stats.issues += 1
                     self._operational_incomplete = True
+                    self._historical_operational_incomplete = True
+                    self._persistent_operational_incomplete = True
                 except ZsecShieldError as exc:
                     quarantine_records.append(
                         {
@@ -959,6 +989,8 @@ class ForegroundProtectionWatcher:
                     self._stats.quarantine_failed += 1
                     self._stats.issues += 1
                     self._operational_incomplete = True
+                    self._historical_operational_incomplete = True
+                    self._persistent_operational_incomplete = True
 
         if coverage_gap or result.issues:
             outcome = "incomplete"
@@ -990,6 +1022,7 @@ class ForegroundProtectionWatcher:
         bytes_hashed = 0
         unresolved_in_progress = 0
         reconciliation_started = self._clock()
+        incomplete_generation = self._incomplete_generation
         next_progress_heartbeat = self._clock() + self.config.heartbeat_seconds
         next_priority_drain = self._clock()
 
@@ -1090,7 +1123,7 @@ class ForegroundProtectionWatcher:
             emit_progress_heartbeat()
             drain_priority_events(key)
 
-        self._scan_paths(
+        result = self._scan_paths(
             [root.path for root in self.roots],
             [trigger],
             file_filter=changed_since_last_reconciliation,
@@ -1110,6 +1143,28 @@ class ForegroundProtectionWatcher:
         self._stats.metadata_files_observed += observed
         self._stats.metadata_files_unchanged += unchanged
         self._stats.unresolved_files = len(unresolved)
+        if (
+            not metadata_only
+            and not result.issues
+            and not result.stats.skipped_special
+            and not result.stats.skipped_too_large
+            and not unresolved
+            and not self._events.overflowed.is_set()
+            and self._event_ingest_failure is None
+            and not self._persistent_operational_incomplete
+            and self._incomplete_generation == incomplete_generation
+            and self._operational_incomplete
+        ):
+            self._operational_incomplete = False
+            self._emit(
+                "health_heartbeat",
+                backend_active=self._active_backend,
+                roots=[str(root.path) for root in self.roots],
+                operational_incomplete=False,
+                inventory_complete=True,
+                stats=self._stats_snapshot(),
+                policy=watch_policy(self.config.quarantine),
+            )
 
     def _backend_is_healthy(self) -> bool:
         observer = self._observer
@@ -1291,7 +1346,9 @@ class ForegroundProtectionWatcher:
             fallback_reason=self._fallback_reason,
             roots=tuple(str(root.path) for root in self.roots),
             interrupted=interrupted,
-            operational_incomplete=self._operational_incomplete,
+            operational_incomplete=(
+                self._operational_incomplete or self._historical_operational_incomplete
+            ),
             stats=self._stats,
             health_issues=tuple(self._health_issues),
             quarantine_requested=self.config.quarantine,

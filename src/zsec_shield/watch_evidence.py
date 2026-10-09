@@ -284,7 +284,10 @@ class WatchEvidenceSink:
             if isinstance(scan, dict) and isinstance(scan.get("stats"), dict):
                 self.counters = _integer_values(scan["stats"])
             if self.last_outcome == "metadata_inventory_complete":
-                self.operational_state = "healthy"
+                # Metadata completion cannot erase a concurrent event-path or
+                # pipeline failure recorded while the initial traversal ran.
+                if self.operational_state != "degraded":
+                    self.operational_state = "healthy"
             else:
                 # Startup monitoring is not claimed healthy until the metadata
                 # inventory completes without a coverage or inspection error.
@@ -296,6 +299,14 @@ class WatchEvidenceSink:
                 self.counters = _integer_values(stats)
             if payload.get("operational_incomplete") is True:
                 self.operational_state = "degraded"
+            elif (
+                payload.get("operational_incomplete") is False
+                and payload.get("inventory_complete") is True
+            ):
+                # Only the watcher's authoritative whole-root reconciliation
+                # can restore coverage. An unrelated clean file scan or an
+                # ordinary progress heartbeat cannot erase unresolved failures.
+                self.operational_state = "healthy"
         elif event == "session_completed":
             self.operational_state = "stopped"
             summary = payload.get("summary")

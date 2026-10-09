@@ -1265,6 +1265,10 @@ def validate_watch_event(payload: Any) -> dict[str, Any]:
         if root.get("backend_active") not in {"native", "polling"}:
             raise ContractError("watch heartbeat backend is unsupported")
         _bool(root.get("operational_incomplete"), "operational_incomplete")
+        if "inventory_complete" in root:
+            inventory_complete = _bool(root["inventory_complete"], "inventory_complete")
+            if inventory_complete and root["operational_incomplete"]:
+                raise ContractError("inventory recovery heartbeat reports incomplete operation")
     policy = root.get("policy")
     if policy is not None:
         policy_object = _object(policy, "policy")

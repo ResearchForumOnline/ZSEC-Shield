@@ -140,6 +140,74 @@ class WatchEvidenceTests(unittest.TestCase):
         self.assertFalse(health["policy"]["real_time_protection"])
         self.assertFalse(health["policy"]["pre_access_enforcement"])
 
+    def test_degraded_health_recovers_only_on_authoritative_inventory_heartbeat(self) -> None:
+        with TemporaryDirectory() as temporary:
+            state = Path(temporary) / "state"
+            health_path = state / "companion" / "health.json"
+            event_path = state / "companion" / "events.ndjson"
+            sink = WatchEvidenceSink(
+                state_dir=state,
+                health_file=health_path,
+                event_log=event_path,
+                event_log_max_bytes=64 * 1024,
+                event_log_backups=1,
+                heartbeat_seconds=30,
+            )
+            sink.record({"event": "session_started"})
+            sink.record({"event": "health_issue", "code": "watch_path_unreadable"})
+            non_recovery_events = [
+                {
+                    "event": "metadata_inventory_completed",
+                    "outcome": "metadata_inventory_complete",
+                },
+                {
+                    "event": "scan_completed",
+                    "outcome": "no_configured_rule_matches",
+                },
+                {
+                    "event": "reconciliation_completed",
+                    "outcome": "no_metadata_changes",
+                },
+                {"event": "health_heartbeat", "operational_incomplete": False},
+                {
+                    "event": "health_heartbeat",
+                    "operational_incomplete": False,
+                    "inventory_complete": False,
+                },
+                {
+                    "event": "health_heartbeat",
+                    "operational_incomplete": True,
+                    "inventory_complete": True,
+                },
+            ]
+            for event in non_recovery_events:
+                with self.subTest(event=event):
+                    sink.record(event)
+                    health = json.loads(health_path.read_text(encoding="utf-8"))
+                    self.assertEqual("degraded", health["operational_state"])
+            sink.record(
+                {
+                    "event": "health_heartbeat",
+                    "operational_incomplete": False,
+                    "inventory_complete": True,
+                    "stats": {"scan_batches": 3},
+                }
+            )
+            recovered = json.loads(health_path.read_text(encoding="utf-8"))
+            self.assertEqual("healthy", recovered["operational_state"])
+            self.assertEqual(3, recovered["counters"]["scan_batches"])
+            history = [
+                json.loads(line)
+                for line in event_path.read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual("health_issue", history[1]["event"])
+            self.assertEqual("watch_path_unreadable", history[1]["code"])
+            sink.record({"event": "health_heartbeat", "operational_incomplete": True})
+            self.assertEqual(
+                "degraded",
+                json.loads(health_path.read_text(encoding="utf-8"))["operational_state"],
+            )
+
     def test_superseded_aggregate_is_logged_without_rewriting_health(self) -> None:
         with TemporaryDirectory() as temporary:
             state = Path(temporary) / "state"

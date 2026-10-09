@@ -31,7 +31,7 @@ def test_store_runtime_owns_bounded_monitoring_and_due_feed_checks() -> None:
     assert "quarantine=False" in app
     assert "watch_coverage_complete" in app
     assert "def _schedule_monitoring_retry" in app
-    assert "while this Store app is running" in app
+    assert "while this store app is running" in app.lower()
     assert "def update_intelligence_if_due" in bridge
     assert 'self._argv("update-intelligence", "--json")' in bridge
     assert "--force" not in bridge.split("def update_intelligence_if_due", 1)[1].split("def ", 1)[0]

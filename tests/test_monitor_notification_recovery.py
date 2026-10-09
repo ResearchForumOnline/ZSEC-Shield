@@ -8,10 +8,10 @@ GUI_ROOT = Path(__file__).resolve().parents[1] / "apps" / "windows-ui"
 if str(GUI_ROOT) not in sys.path:
     sys.path.insert(0, str(GUI_ROOT))
 
-from zsec_desktop.app import AMBER, CYAN, GREEN, ZsecDesktop  # noqa: E402
+from zsec_desktop.app import CYAN, GREEN, ZsecDesktop  # noqa: E402
 
 
-def test_monitoring_notices_are_rate_limited_for_thirty_minutes():
+def test_monitoring_folder_failures_never_create_desktop_notifications():
     app = object.__new__(ZsecDesktop)
     app.monitoring_notice_times = {}
     app.monitoring_health_issue_since = None
@@ -22,15 +22,15 @@ def test_monitoring_notices_are_rate_limited_for_thirty_minutes():
         app.tray.notify.assert_not_called()
         for _ in range(3):
             app._monitoring_notice("Persistent monitor failure")
-    assert app.tray.notify.call_count == 2
+    app.tray.notify.assert_not_called()
 
 
 @pytest.mark.parametrize(
     "incomplete, inventory_done, age, expected",
     [
         (False, False, 10, CYAN),
-        (True, False, 10, AMBER),
-        (False, False, 76, AMBER),
+        (True, False, 10, CYAN),
+        (False, False, 76, CYAN),
         (False, True, 10, GREEN),
     ],
 )
@@ -50,6 +50,7 @@ def test_setup_presentation_respects_actual_health_and_freshness(
     app.watch_operational_incomplete = incomplete
     app.watch_last_heartbeat_monotonic = 100
     app.watch_findings_pending = False
+    app.automatic_monitoring = MagicMock()
     app.companion_card = MagicMock()
     app.companion_status_label = MagicMock()
     app.protection_layer_labels = {"zsec": MagicMock(), "scope": MagicMock()}
@@ -58,6 +59,10 @@ def test_setup_presentation_respects_actual_health_and_freshness(
     with patch("zsec_desktop.app.time.monotonic", return_value=100 + age):
         app._render_store_process_monitor({})
     assert app.companion_card.set_value.call_args.args[1] == expected
+    if incomplete:
+        assert "Complete coverage is not verified" in (
+            app.companion_status_label.configure.call_args.kwargs["text"]
+        )
 
 
 @pytest.mark.parametrize(
@@ -99,7 +104,7 @@ def test_windows_health_notices_have_independent_category():
     app.tray.notify.assert_called_once_with("Windows health changed")
     with patch("zsec_desktop.app.time.monotonic", return_value=310):
         app._monitoring_notice("Monitor failure")
-    assert app.tray.notify.call_count == 2
+    app.tray.notify.assert_called_once_with("Windows health changed")
 
 
 def test_repeated_identical_findings_notify_immediately_then_remind_after_thirty_minutes():

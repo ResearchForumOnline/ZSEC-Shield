@@ -5,7 +5,6 @@ from __future__ import annotations
 import ctypes
 import os
 
-
 APPMODEL_ERROR_NO_PACKAGE = 15700
 ERROR_INSUFFICIENT_BUFFER = 122
 

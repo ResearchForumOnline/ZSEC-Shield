@@ -1207,6 +1207,120 @@ class WatchEngineTests(unittest.TestCase):
         self.assertEqual("incomplete", inventory["outcome"])
         self.assertTrue(watcher._operational_incomplete)
         self.assertEqual(1, inventory["scan"]["stats"]["errors"])
+        # A later authoritative traversal restores current inventory coverage,
+        # while retaining the historical failure in the session evidence.
+        watcher._reconcile("periodic_reconciliation", full=False)
+        self.assertFalse(watcher._operational_incomplete)
+        self.assertTrue(watcher._historical_operational_incomplete)
+        self.assertEqual("health_heartbeat", records[-1]["event"])
+        self.assertTrue(records[-1]["inventory_complete"])
+
+    def test_transient_read_error_recovers_only_after_scope_reconciliation(self) -> None:
+        target = self.scan_root / "temporarily-locked.bin"
+        target.write_bytes(b"benign stable content")
+        scanner = Scanner(())
+        records: list[dict[str, Any]] = []
+        watcher = ForegroundProtectionWatcher(
+            scanner, self._config(), on_record=records.append,
+            polling_observer_factory=FakeObserver,
+        )
+        watcher._reconcile("initial_metadata_inventory", full=False, metadata_only=True)
+        self.assertIn(_snapshot_path_key(target), watcher._reconciliation_snapshot)
+        failed = ScanResult(
+            started_at="2026-10-09T14:00:00Z", completed_at="2026-10-09T14:00:01Z",
+            roots=[str(target)],
+            issues=[ScanIssue(str(target), "file_open_failed", "Permission denied")],
+            stats=ScanStats(errors=1),
+        )
+        with patch.object(scanner, "scan", return_value=failed):
+            watcher._scan_paths([target], ["modified"])
+        self.assertTrue(watcher._operational_incomplete)
+        self.assertNotIn(_snapshot_path_key(target), watcher._reconciliation_snapshot)
+        watcher._scan_paths([target], ["modified"])
+        self.assertTrue(watcher._operational_incomplete)
+        watcher._reconcile("periodic_reconciliation", full=False)
+        self.assertFalse(watcher._operational_incomplete)
+        self.assertTrue(watcher._historical_operational_incomplete)
+        self.assertEqual(1, watcher._stats.issues)
+        self.assertEqual("health_heartbeat", records[-1]["event"])
+        self.assertFalse(records[-1]["operational_incomplete"])
+        # The unchanged failed file must actually have been re-inspected.
+        recovered = records[-2]
+        self.assertEqual(1, recovered["scan"]["stats"]["files_hashed"])
+        summary = watcher.run(duration_seconds=0.1)
+        self.assertTrue(summary.operational_incomplete)
+        self.assertEqual("incomplete", summary.outcome)
+
+    def test_persistent_access_error_does_not_recover_on_scope_reconciliation(self) -> None:
+        target = self.scan_root / "still-locked.bin"
+        target.write_bytes(b"benign")
+        scanner = Scanner(())
+        watcher = ForegroundProtectionWatcher(scanner, self._config())
+        failed = ScanResult(
+            started_at="2026-10-09T14:00:00Z", completed_at="2026-10-09T14:00:01Z",
+            roots=[str(self.scan_root)],
+            issues=[ScanIssue(str(target), "file_open_failed", "Permission denied")],
+            stats=ScanStats(errors=1),
+        )
+        with patch.object(scanner, "scan", return_value=failed):
+            watcher._reconcile("periodic_reconciliation", full=False)
+            watcher._reconcile("periodic_reconciliation", full=False)
+        self.assertTrue(watcher._operational_incomplete)
+
+    def test_cached_oversized_event_cannot_falsely_recover_as_unchanged(self) -> None:
+        target = self.scan_root / "over-limit.bin"
+        target.write_bytes(b"large benign data")
+        unaffected = self.scan_root / "unchanged.bin"
+        unaffected.write_bytes(b"ok")
+        scanner = Scanner((), ScannerConfig(max_file_bytes=4))
+        watcher = ForegroundProtectionWatcher(scanner, self._config())
+        watcher._reconcile("initial_metadata_inventory", full=False, metadata_only=True)
+        self.assertIn(_snapshot_path_key(target), watcher._reconciliation_snapshot)
+        watcher._scan_paths([target], ["modified"])
+        self.assertTrue(watcher._operational_incomplete)
+        self.assertNotIn(_snapshot_path_key(target), watcher._reconciliation_snapshot)
+        self.assertIn(_snapshot_path_key(unaffected), watcher._reconciliation_snapshot)
+        watcher._reconcile("periodic_reconciliation", full=False)
+        self.assertTrue(watcher._operational_incomplete)
+        self.assertGreater(watcher._stats.unresolved_files, 0)
+        watcher._reconcile("periodic_reconciliation", full=False)
+        self.assertTrue(watcher._operational_incomplete)
+        self.assertGreater(watcher._stats.unresolved_files, 0)
+        target.write_bytes(b"ok")
+        watcher._reconcile("periodic_reconciliation", full=False)
+        self.assertFalse(watcher._operational_incomplete)
+
+    def test_fatal_pipeline_failure_cannot_be_cleared_by_successful_reconciliation(self) -> None:
+        watcher = ForegroundProtectionWatcher(Scanner(()), self._config())
+        watcher._health_issue("watch_event_queue_overflow", "lost queued events")
+        watcher._reconcile("periodic_full_rescan", full=True)
+        self.assertTrue(watcher._operational_incomplete)
+        self.assertTrue(watcher._persistent_operational_incomplete)
+
+    @unittest.skipUnless(os.name == "nt", "Windows native filesystem observer")
+    def test_native_observer_detects_real_file_write_without_periodic_rescan(self) -> None:
+        target = self.scan_root / "native-event-marker.bin"
+        records: list[dict[str, Any]] = []
+
+        def receive(record: dict[str, Any]) -> None:
+            records.append(record)
+            if record["event"] == "metadata_inventory_completed":
+                target.write_bytes(b"zsec-watch-test-marker")
+
+        watcher = ForegroundProtectionWatcher(
+            Scanner((make_test_rule(),)),
+            self._config(backend="native", reconcile_seconds=300, full_rescan_seconds=300),
+            on_record=receive,
+        )
+        summary = watcher.run(duration_seconds=1.0)
+        matched = [
+            record for record in records
+            if record["event"] == "scan_completed" and record["scan"]["findings"]
+        ]
+        self.assertGreaterEqual(len(matched), 1)
+        self.assertTrue(any("created" in record["triggers"] for record in matched))
+        self.assertFalse(summary.operational_incomplete)
+        self.assertEqual(0, summary.stats.full_reconciliations)
 
     def test_reconciliation_consumes_prior_snapshot_payloads_while_streaming(self) -> None:
         for index in range(4):

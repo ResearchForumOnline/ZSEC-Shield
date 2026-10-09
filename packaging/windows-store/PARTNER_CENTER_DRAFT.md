@@ -21,7 +21,7 @@ Microsoft field limits used by the validator:
 
 ## ZSEC Antivirus
 
-Source version: `0.3.36`
+Source version: `0.3.37`
 Listing language: `en-US`
 Suggested category: `Security`
 
@@ -33,7 +33,7 @@ Quiet automatic Windows security companion: Defender protection evidence, automa
 
 ### Full description
 
-ZSEC Antivirus is designed to run quietly after you open it once. Microsoft Defender provides automatic primary antivirus protection and security intelligence updates when Windows confirms it is active. ZSEC adds automatic signed advisory updates, background inspection of changed files in standard user folders, local security evidence, and encrypted quarantine and recovery tools. Routine successful scans, closing to the tray, and temporary monitoring recovery do not produce pop-up notifications. Actionable detections and persistent protection problems remain visible. Windows sign-in startup follows the Windows startup setting, including user and administrator choices. Advanced options provide manual scans, protection details and recovery tools. When active Defender reports stale signatures, ZSEC also requests a quiet background signature refresh.
+ZSEC Antivirus is designed to run quietly after you open it once. Microsoft Defender provides automatic primary antivirus protection and security intelligence updates when Windows confirms it is active. ZSEC adds automatic signed advisory updates, background inspection of changed files in standard user folders, local security evidence, and encrypted quarantine and recovery tools. Routine successful scans, closing to the tray, folder access limitations and monitoring recovery do not produce pop-up notifications. Real detections, integrity failures and primary Windows protection problems retain security alerts. Folder diagnostics remain available in Advanced options. Windows sign-in startup follows the Windows startup setting, including user and administrator choices. Advanced options provide manual scans, protection details and recovery tools. When active Defender reports stale signatures, ZSEC also requests a quiet background signature refresh.
 
 Microsoft Defender or another supported primary antivirus must remain active. ZSEC is an additional security companion, not a primary antivirus, registered Windows Security provider, protected service, or kernel pre-access filter. ZSEC performs post-change file checks and reports verified evidence; it does not claim independent malware-efficacy certification or that a limited scan proves the computer is clean. Windows controls Defender, Store binary updates and startup permissions.
 
@@ -53,7 +53,7 @@ The app is free and open core. Its source, threat model, privacy contract, deter
 - No ZSEC account, advertising, telemetry endpoint, or file-sample upload
 - Reduced-motion interface and native notification-area controls
 - Verified Windows startup controls and remembered automatic monitoring
-- Quiet automatic recovery with actionable local security notifications
+- Silent routine folder diagnostics with automatic monitoring recovery and security alerts
 
 ### URLs and license
 
@@ -86,31 +86,31 @@ ZSEC Antivirus is an existing Win32 Windows security companion. runFullTrust lau
 
 ### Additional Testing Information
 
-Version 0.3.36, Windows Desktop x64. No account/credentials. Keep primary antivirus enabled.
+Version 0.3.37, Windows Desktop x64. No account/credentials. Keep primary antivirus enabled.
 1. Launch once: standard-folder monitoring and signed advisory maintenance start automatically. Close: tray stays running without a routine toast. Relaunch and restart: per-user settings persist.
 2. Windows startup uses the owned StartupTask and read-back; DisabledByUser/policy is respected. No Run-key workaround or forced provider registration.
-3. Routine successful scan stays silent. Transient observer interruption recovers quietly. Persistent failures and real detections remain accurately visible and alerts are rate limited.
+3. Routine successful scan stays silent. Transient observer interruption recovers quietly. Routine folder limitations never toast, even after prolonged operation; diagnostics remain in Advanced options. Detections, integrity failures and primary Windows protection faults retain bounded alerts. A responding observer may be running during incomplete initial inventory; complete coverage remains unverified. After a transient access failure, authoritative whole-root reconciliation can restore current health while retaining historical errors.
 4. Defender status must be verified before automatic-protection wording. Passive/unavailable Defender must never appear active. Signature maintenance uses only the fixed supported update operation; no settings/exclusion/firewall changes.
 5. Advanced options expose manual scans and recovery. Quarantine off by default; synthetic recovery only; no-overwrite restore. Cancelled scans remain incomplete.
 6. Invalid signed feed, expiry or rollback retains previous valid data. App updates come from Store.
 
 ### Supporting internal certification detail
 
-Version 0.3.36: quiet automatic-first operation. No account or test credentials. Packaged Win32 x64 user-mode security companion; mutable state stays outside the read-only package. Defender or another supported primary antivirus must remain enabled. ZSEC is not a primary AV or WSC provider and changes no Defender preferences, exclusions or firewall rules. Automatic signed feed updates are data-only, authenticated, expiry and rollback protected. Store manages binary updates. Routine successful scan and tray-close notifications are silent; temporary monitor recovery is quiet; detections and persistent failures retain bounded alerts and accurate evidence. Windows StartupTask respects DisabledByUser and administrator policy; no Run-key workaround in Store. Monitoring pause persists. Quarantine remains an explicit choice; restore refuses overwrite. Test exact Store-signed package on supported Windows using benign disposable files only.
+Version 0.3.37: quiet automatic-first operation. No account or test credentials. Packaged Win32 x64 user-mode security companion; mutable state stays outside the read-only package. Defender or another supported primary antivirus must remain enabled. ZSEC is not a primary AV or WSC provider and changes no Defender preferences, exclusions or firewall rules. Automatic signed feed updates are data-only, authenticated, expiry and rollback protected. Store manages binary updates. Routine successful scan and tray-close notifications are silent; folder limitations and monitor recovery never toast; detections, integrity failures and primary Windows protection faults retain bounded alerts and accurate evidence. Current recoverable watch health can restore only after authoritative whole-root reconciliation; history remains visible. Windows StartupTask respects DisabledByUser and administrator policy; no Run-key workaround in Store. Monitoring pause persists. Quarantine remains an explicit choice; restore refuses overwrite. Test exact Store-signed package on supported Windows using benign disposable files only.
 
 Test account required: **No**
 
 ### Certification tester steps
 
-1. Install the exact Store-signed 0.3.36 candidate on a clean supported Windows 10 or Windows 11 x64 VM with Microsoft Defender enabled, then launch ZSEC Antivirus from Start without a source checkout or elevation.
+1. Install the exact Store-signed 0.3.37 candidate on a clean supported Windows 10 or Windows 11 x64 VM with Microsoft Defender enabled, then launch ZSEC Antivirus from Start without a source checkout or elevation.
 2. Confirm that the installed package starts its own GUI and packaged companion tools, keeps mutable per-user state outside the read-only package directory, and recovers cleanly after app relaunch and Windows restart.
 3. On Overview, select Refresh. Confirm that the app reports evidence-backed Defender and companion state and does not call ZSEC the primary antivirus.
 4. Open Windows protection. Run Refresh intelligence and Quick scan. Full scan must require a separate confirmation. Confirm that no Defender preference, exclusion, provider, or firewall setting is changed.
 5. Open Scan, choose a disposable folder containing benign text files, leave quarantine off, and start a scan. Confirm that scope and elapsed time are shown without a fabricated percentage and that the result states its evidence boundary.
 6. Start another benign scan and select Cancel. Confirm that the result remains incomplete rather than becoming a clean result.
-7. Open Monitor, choose a disposable folder, start per-user monitoring, create or modify a benign text file, and refresh. Confirm a fresh heartbeat and bounded post-change evidence, then stop monitoring.
+7. Open Advanced options, then Automatic monitoring. Standard folders must already be selected and monitored without manual setup. Use a benign disposable folder for optional temporary monitoring; create a text file and confirm fresh post-change evidence. Routine folder diagnostics must never toast. Stop the optional session and confirm remembered monitoring choices.
 8. Open Protection assurance and run the isolated synthetic recovery self-test. It must test encrypted copy, restore, no-overwrite, tamper rejection, and device-key recovery without using a real user document.
-9. Install the previous Store release, create only benign settings and evidence, accept the Microsoft Store update to 0.3.36, and verify that package binaries advance while supported per-user state and companion recovery remain valid.
+9. Install the previous Store release, create only benign settings and evidence, accept the Microsoft Store update to 0.3.37, and verify that package binaries advance while supported per-user state and companion recovery remain valid.
 10. Verify that Microsoft Store delivery is the executable update path. Exercise the separately signed advisory feed only as authenticated data: reject an invalid signature and rollback, and confirm it cannot replace or execute application binaries.
 11. Uninstall from Windows Settings. Confirm that packaged binaries and package-owned startup are removed, Microsoft Defender remains enabled and unchanged, no security product is removed, and retained per-user security data follows the disclosed uninstall policy.
 

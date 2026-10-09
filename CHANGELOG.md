@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.37 Windows desktop - 2026-10-09
+
+- Routine folder access, exclusion and recovery diagnostics never produce desktop
+  notifications. Real detections, integrity failures and primary Windows protection
+  problems retain bounded security alerts.
+- A responding observer uses calm automatic-check status while initial inventory
+  or limited file access remains accurately detailed in Advanced options.
+- Recover current folder inspection health only after authoritative whole-root
+  reconciliation; preserve historical failures and fatal pipeline boundaries.
+- Repair incomplete initial inventory and persisted current-health recovery without
+  treating an unrelated successful file scan as proof of complete folder coverage.
+
 ## 0.3.36 Windows desktop - 2026-10-09
 
 - Quiet automatic operation: no routine scan-completion or close-to-tray popups;
