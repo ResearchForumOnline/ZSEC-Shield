@@ -1,0 +1,63 @@
+{
+  "version": "0.3.37",
+  "verified_date": "2026-10-09",
+  "application_source_revision": "3bf01935ce44a5728599ccb4cbdcd7d441014ca1",
+  "source_tree_at_build": "clean",
+  "tests_passed": 387,
+  "watcher_tests_passed": 64,
+  "watcher_subtests_passed": 6,
+  "ruff": "passed src tests and desktop UI",
+  "mypy": "28 source files passed",
+  "github_ci": {
+    "run_id": 37946094117,
+    "conclusion": "success",
+    "jobs_passed": 10
+  },
+  "codeql": {
+    "run_id": 37946092802,
+    "conclusion": "success"
+  },
+  "dependency_graph": {
+    "run_id": 37946103294,
+    "conclusion": "success"
+  },
+  "native_engine_sha256": "36a14dc39aa094c319ae43cb338d1acf477aa3f840620d52f7c2b00ac19d7ad3",
+  "native_scenarios": [
+    "actual exclusive file lock and authoritative recovery",
+    "actual vanished native event superseded",
+    "actual oversized file and shrink recovery"
+  ],
+  "native_scenarios_passed": 3,
+  "native_integration_receipt_sha256": "0872554dd083a5964984880c4569e1d631234f9945101448e5e6cd843816c75b",
+  "direct_archive_sha256": "8f3857e78d164e7b944c679125d68376b2bdf5c996a90135f317127af13d6cbb",
+  "public_download_sha256_matches": true,
+  "github_release": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.37-windows",
+  "store_package_sha256": "4d3fade19de825ddb71347e6fe29d7647dbf21d3b6f339cb322f009aa16e4deb",
+  "store_package_bytes": 36440317,
+  "wack": {
+    "overall": "PASS",
+    "version": "0.3.37.0",
+    "partial_run": "FALSE",
+    "tests": 24,
+    "optional_failures": [
+      {
+        "name": "Blocked executables",
+        "optional": "TRUE"
+      }
+    ],
+    "report_sha256": "7398b74045114249006878d459d98004816986326d2f123ba9ad925073a0f245"
+  },
+  "wack_optional_warning_review": "Optional blocked-executable check flags process-launch APIs and string references in bundled Python/Tcl/OpenSSL; overall PASS. The bridge uses fixed argv and shell=False; signed advisory data cannot install or execute binaries.",
+  "store_submission_id": "1152921505702086541",
+  "store_submission_number": 8,
+  "store_package_validation": "Validated",
+  "store_submission_status": "Accepted: Update in certification; Submission complete; Pre-processing in progress; Certification and Publishing not started.",
+  "store_publish_option": "automatically after certification",
+  "installed_store_version_observed": "0.3.36.0",
+  "installed_0_3_37_acceptance": "not verified",
+  "clean_vm_store_startup_acceptance": "not claimed",
+  "routine_folder_desktop_notifications": "disabled entirely; diagnostics retained locally",
+  "security_notifications": "detections, integrity faults, primary Windows protection and manual scan errors retained",
+  "security_boundary": "Defender or another active Windows provider is primary real-time enforcement; ZSEC is an additional post-change companion with signed advisory updates, local health evidence and optional encrypted recovery.",
+  "private_reproduction_logs_published": false
+}
