@@ -27,7 +27,16 @@ Its built-in exact rules are wiring tests, not evidence of broad malware efficac
 ZSEC does not register as a primary antivirus or claim independent efficacy
 certification. Protection wording requires verified Windows evidence.
 
-Local validation: 369 tests and 14 subtests passed, source type checking and
+Local validation: 371 tests and 16 subtests passed, source type checking and
 changed-file lint passed, and Python source/wheel distributions built. Native
 packaging, public GitHub delivery, Store validation, certification and installed
 acceptance are recorded separately in the matching delivery receipt.
+
+Final source ac733d1 passed all ten GitHub CI jobs. Its failure-retry jitter is
+strictly bounded to one through three hours and covered at both random extremes.
+The direct GitHub download hash matches the clean native build. The exact MSIX
+received WACK overall PASS with one optional blocked-executable warning for
+bundled runtime references, retained in the receipt. Partner Center accepted
+Submission 7 and shows Update in certification with pre-processing in progress.
+Automatic publication follows certification. Store-signed installed 0.3.36 and
+clean-VM startup acceptance have not yet been verified.

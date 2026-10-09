@@ -1,0 +1,62 @@
+{
+  "version": "0.3.36",
+  "verified_date": "2026-10-09",
+  "application_source_revision": "ac733d1574e32271f5b13770f3b93be2729a6393",
+  "source_tree_at_build": "clean",
+  "tests_passed": 371,
+  "subtests_passed": 16,
+  "focused_layout_and_automation_tests": 63,
+  "ruff": "passed",
+  "mypy": "28 source files passed",
+  "github_ci": {
+    "run_id": 37937649886,
+    "conclusion": "success",
+    "jobs_passed": 10
+  },
+  "earlier_ci": {
+    "run_id": 37936602638,
+    "revision": "01a7fd5",
+    "cause": "Failure retries reused signed daily jitter; one hour plus minus two hours could schedule in the past.",
+    "resolution": "Dedicated strictly nonnegative retry jitter yields one to three hours; deterministic bounds tests cover both signed update paths."
+  },
+  "native_observer": {
+    "source_revision": "ac733d1574e32271f5b13770f3b93be2729a6393",
+    "exit_code": 0,
+    "event_count": 10,
+    "events": [
+      "health_heartbeat",
+      "metadata_inventory_completed",
+      "session_completed",
+      "session_started"
+    ],
+    "complete_heartbeats": 7
+  },
+  "direct_archive_sha256": "78888f47360c39421d0ecc775ec1aba29fb652f1f647bdee4a72ab2b37d08d00",
+  "public_download_sha256_matches": true,
+  "github_release": "https://github.com/ResearchForumOnline/ZSEC-Shield/releases/tag/v0.3.36-windows",
+  "store_package_sha256": "f80ceb5e07a8e5e07d450284b6b8b51a2c97d1fbf65d56b1abbc3c87e87b6bf3",
+  "store_package_bytes": 36439621,
+  "wack": {
+    "overall": "PASS",
+    "version": "0.3.36.0",
+    "partial_run": "FALSE",
+    "tests": 24,
+    "optional_failures": [
+      [
+        "Blocked executables",
+        "TRUE"
+      ]
+    ]
+  },
+  "wack_optional_warning_review": "Blocked executables optional check flags process-launch APIs and string references in bundled Python/Tcl/OpenSSL libraries; overall PASS. App bridge uses fixed argv, shell=False; no arbitrary command or remote-code update surface.",
+  "store_submission_id": "1152921505702085903",
+  "store_submission_number": 7,
+  "store_package_validation": "Validated",
+  "store_submission_status": "Accepted: Update in certification; Submission complete; Pre-processing in progress; Certification and Publishing not started.",
+  "store_publish_option": "automatically after certification",
+  "installed_store_version_observed": "0.3.35.0",
+  "installed_0_3_36_acceptance": "not verified",
+  "clean_vm_store_startup_acceptance": "not claimed",
+  "security_boundary": "Microsoft Defender or another active Windows provider is primary malware enforcement; ZSEC is a post-change companion with local health evidence, signed advisories and explicit encrypted recovery.",
+  "store_verified_date": "2026-10-09"
+}
