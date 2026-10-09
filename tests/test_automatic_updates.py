@@ -161,6 +161,11 @@ class AutomaticUpdateTests(unittest.TestCase):
         self.assertEqual(successful.last_success_at, failed.last_success_at)
         self.assertEqual(before, intelligence_document_path(state).read_bytes())
         self.assertFalse(automatic_update_due(failed, self.now + timedelta(days=1)))
+        # A transient offline check must recover automatically the same day,
+        # without discarding verified data or asking the owner to update it.
+        self.assertTrue(
+            automatic_update_due(failed, self.now + timedelta(days=1, hours=3))
+        )
 
     def test_missing_or_corrupt_schedule_checks_immediately(self) -> None:
         state = self.root / "state"

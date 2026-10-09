@@ -109,6 +109,14 @@ try {
     # create exclusions, alter Security Center registration, or remove software.
     switch ($Action) {
         "UpdateSignatures" {
+            # Re-check immediately before maintenance: another antivirus or a
+            # Windows policy may have changed the provider since the UI read.
+            $before = Get-DefenderEvidence
+            if (-not ($before.antivirus_enabled -and
+                      $before.real_time_protection_enabled -and
+                      $before.service_enabled)) {
+                throw "Defender is not the active Windows antivirus; its configuration was left unchanged."
+            }
             Update-MpSignature -ErrorAction Stop | Out-Null
         }
         "QuickScan" {

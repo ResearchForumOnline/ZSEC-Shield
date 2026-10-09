@@ -55,6 +55,7 @@ UPDATE_STATUS_SCHEMA = "zsec.shield.automatic-update-status.v1"
 APPLICATION_UPDATE_STATUS_SCHEMA = "zsec.shield.application-update-status.v1"
 APPLICATION_UPDATE_STATE_SCHEMA = "zsec.shield.application-update-client-state.v1"
 CHECK_INTERVAL = timedelta(hours=24)
+FAILED_CHECK_INTERVAL = timedelta(hours=1)
 MAX_JITTER = timedelta(hours=2)
 STATUS_LIMIT = 64 * 1024
 INTELLIGENCE_ENVELOPE_SCHEMA = "zsec.signed-envelope.v1"
@@ -421,7 +422,7 @@ def run_automatic_update(
             "error",
             checked_at,
             previous.last_success_at,
-            next_check_at,
+            format_utc(current + FAILED_CHECK_INTERVAL + _jitter()),
             previous.feed_sequence,
             previous.feed_expires_at,
             source,
@@ -722,7 +723,8 @@ def run_automatic_application_update_check(
     except (FeedError, OSError) as exc:
         status = ApplicationUpdateStatus(
             "error", installed_version, previous.available_version, previous.sequence,
-            checked_at, previous.last_success_at, next_check_at, source, False,
+            checked_at, previous.last_success_at,
+            format_utc(current + FAILED_CHECK_INTERVAL + _jitter()), source, False,
             f"{type(exc).__name__}: {exc}".replace("\r", " ").replace("\n", " ")[:500],
         )
     atomic_write_json(application_update_status_path(state_dir), status.to_dict(), mode=0o600)

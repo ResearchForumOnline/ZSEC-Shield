@@ -499,6 +499,29 @@ class ZsecBridge:
             validator=validate_companion_status,
         )
 
+    def maintain_windows_protection_if_needed(
+        self, evidence: dict[str, Any]
+    ) -> CommandResult | None:
+        """Refresh stale Defender signatures without changing its configuration.
+
+        Use the validated Windows evidence, never a product label or an unknown
+        provider state. The action script re-reads Defender and returns verified
+        evidence; Windows remains responsible for actual enforcement and scans.
+        Call from a background worker with a caller-owned hourly rate limit.
+        """
+        try:
+            validated = validate_companion_status(evidence)
+        except ContractError as exc:
+            raise BridgeError(f"unsafe Windows maintenance evidence: {exc}") from exc
+        defender = validated["existing_primary_protection"]["defender"]
+        if (
+            defender["available"] is not True
+            or defender["confirmed_active"] is not True
+            or defender["update_recommended"] is not True
+        ):
+            return None
+        return self.windows_protection_action("UpdateSignatures")
+
     def windows_protection_action(self, action: str) -> CommandResult:
         if action not in {"UpdateSignatures", "QuickScan", "FullScan"}:
             raise BridgeError("unsupported Windows protection action")

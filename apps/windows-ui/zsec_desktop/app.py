@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import ctypes
+import hashlib
 import json
 import math
 import os
@@ -62,6 +63,7 @@ AMBER = "#f5b942"
 RED = "#f97066"
 STARTUP_EVIDENCE_NOTICE_MS = 10_000
 COMPANION_REFRESH_INTERVAL_MS = 90_000
+MONITOR_HEALTH_NOTICE_DELAY_SECONDS = 300
 
 
 def scan_completion_notification(report: dict[str, Any]) -> str:
@@ -85,6 +87,25 @@ def scan_completion_notification(report: dict[str, Any]) -> str:
     if outcome == "incomplete":
         return "Scan incomplete — some files could not be checked. Open ZSEC for details."
     return "Scan completed. Open ZSEC Antivirus for the verified result."
+
+
+def scan_requires_notification(report: dict[str, Any]) -> bool:
+    """Routine success and review-only observations stay in the activity history."""
+
+    return report.get("outcome") in {"configured_rule_matches_detected", "incomplete"}
+
+
+def threat_notice_category(scan: dict[str, Any]) -> str:
+    """Deduplicate repeated evidence without suppressing a newly affected file."""
+
+    findings = scan.get("findings", [])
+    identities = sorted(
+        (str(item.get("path", "")), str(item.get("rule_id", "")), str(item.get("sha256", "")))
+        for item in findings[:128]
+        if isinstance(item, dict)
+    )
+    digest = hashlib.sha256(json.dumps([len(findings), identities]).encode("utf-8")).hexdigest()
+    return f"findings:{digest}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -651,6 +672,7 @@ class ZsecDesktop:
         self.monitoring_retry_job: str | None = None
         self.monitoring_retry_attempt = 0
         self.monitoring_notice_times: dict[str, float] = {}
+        self.monitoring_health_issue_since: float | None = None
         self.windows_health_good: bool | None = None
         enabled, self.monitoring_preference_error = load_monitoring_enabled(bridge.state_dir)
         self.automatic_monitoring = tk.BooleanVar(value=enabled)
@@ -978,6 +1000,7 @@ class ZsecDesktop:
         self._build_readiness()
         self._build_settings()
         self.navigation_buttons: list[tuple[ttk.Frame, ttk.Button]] = []
+        self.advanced_navigation = ttk.Frame(navigation, style="Surface.TFrame")
         for frame, title in (
             (self.overview_tab, "Overview"),
             (self.scan_tab, "Scan"),
@@ -991,14 +1014,21 @@ class ZsecDesktop:
             (self.readiness_tab, "Protection assurance"),
             (self.settings_tab, "Settings"),
         ):
+            basic = frame in (self.overview_tab, self.quarantine_tab, self.windows_protection_tab)
             button = ttk.Button(
-                navigation,
+                navigation if basic else self.advanced_navigation,
                 text=title,
                 style="Nav.TButton",
                 command=partial(self._select_tab, frame),
             )
             button.pack(fill=tk.X, pady=2)
             self.navigation_buttons.append((frame, button))
+        self.advanced_options_button = ttk.Button(
+            navigation, text="Advanced options…", style="Nav.TButton",
+            command=self._toggle_advanced_options,
+        )
+        self.advanced_options_button.pack(fill=tk.X, pady=(10, 2))
+        self.advanced_options_visible = False
         ttk.Separator(navigation).pack(fill=tk.X, pady=(14, 10))
         ttk.Label(
             navigation,
@@ -1010,6 +1040,16 @@ class ZsecDesktop:
         ).pack(anchor=tk.W, padx=10)
         self.tabs.bind("<<NotebookTabChanged>>", self._sync_navigation)
         self._sync_navigation()
+
+    def _toggle_advanced_options(self) -> None:
+        self.advanced_options_visible = not self.advanced_options_visible
+        if self.advanced_options_visible:
+            self.advanced_navigation.pack(fill=tk.X, after=self.advanced_options_button)
+        else:
+            self.advanced_navigation.pack_forget()
+        self.advanced_options_button.configure(
+            text="Hide advanced options" if self.advanced_options_visible else "Advanced options…"
+        )
 
     def _select_tab(self, frame: ttk.Frame) -> None:
         self.tabs.select(frame)  # type: ignore[no-untyped-call]
@@ -1034,15 +1074,16 @@ class ZsecDesktop:
     def _build_overview(self) -> None:
         banner = self._panel(self.overview_tab)
         banner.pack(fill=tk.X, pady=(0, 12))
-        ttk.Label(banner, text="Layered Windows protection", style="Status.TLabel").pack(
+        ttk.Label(banner, text="Automatic protection, with Windows", style="Status.TLabel").pack(
             anchor=tk.W
         )
         ttk.Label(
             banner,
             text=(
-                "Microsoft Defender or another existing antivirus remains the primary "
-                "real-time, pre-access protection engine. ZSEC separately monitors "
-                "protected folders after changes and adds local evidence and recovery."
+                "Leave ZSEC running. Folder checks and signed advisory updates run automatically. "
+                "Windows manages Microsoft Defender's real-time protection and security updates "
+                "when Defender is active. The Windows protection card shows the verified status. "
+                "Open Advanced options only when you want more control."
             ),
             style="Muted.TLabel",
             wraplength=900,
@@ -1071,7 +1112,7 @@ class ZsecDesktop:
         self.overview_cards_frame.bind("<Configure>", self._layout_overview_cards)
         self.overview_tab.bind("<Map>", self._layout_overview_cards)
         self.root.after_idle(self._layout_overview_cards)
-        roles = self._panel(self.overview_tab)
+        roles = self._panel(self.monitor_tab)
         roles.pack(fill=tk.X, pady=(6, 0))
         ttk.Label(roles, text="Protection roles", style="Section.TLabel").pack(anchor=tk.W)
         ttk.Label(
@@ -1100,9 +1141,9 @@ class ZsecDesktop:
             )
             label.pack(anchor=tk.W, fill=tk.X, pady=3)
             self.protection_layer_labels[key] = label
-        actions = self._panel(self.overview_tab)
+        actions = self._panel(self.monitor_tab)
         actions.pack(fill=tk.X, pady=(12, 0))
-        ttk.Label(actions, text="Quick actions", style="Section.TLabel").pack(anchor=tk.W)
+        ttk.Label(actions, text="Optional checks", style="Section.TLabel").pack(anchor=tk.W)
         row = ttk.Frame(actions, style="Surface.TFrame")
         row.pack(fill=tk.X, pady=(12, 0))
         self.overview_action_buttons: list[ttk.Button] = []
@@ -2152,9 +2193,6 @@ class ZsecDesktop:
     def _window_close(self) -> None:
         if bool(self.close_to_tray.get()) and self.tray.active:
             self.root.withdraw()
-            self.tray.notify(
-                "ZSEC Antivirus is still running. Use the tray menu to scan, open, or exit."
-            )
             return
         self._exit_application()
 
@@ -2199,6 +2237,11 @@ class ZsecDesktop:
             self.busy_operations, reduce_motion=reduced
         )
         if self.busy_operations == 0 and self.store_managed:
+            health_since = self.monitoring_health_issue_since
+            persistent_health_issue = (
+                health_since is not None
+                and time.monotonic() - health_since >= MONITOR_HEALTH_NOTICE_DELAY_SECONDS
+            )
             fresh = (
                 self.watch_last_heartbeat_monotonic is not None
                 and time.monotonic() - self.watch_last_heartbeat_monotonic <= 75
@@ -2210,13 +2253,25 @@ class ZsecDesktop:
                     else ("ZSEC MONITOR ACTIVE", GREEN)
                 )
             elif self.watch_session is not None and fresh:
-                status, colour = "ZSEC MONITOR COVERAGE LIMITED", AMBER
+                status, colour = (
+                    ("ZSEC MATCHES REQUIRE REVIEW", RED)
+                    if self.watch_findings_pending
+                    else (
+                        "ZSEC FOLDER CHECKS · SEE DETAILS",
+                        AMBER if persistent_health_issue else CYAN,
+                    )
+                )
             elif self.watch_session is not None:
-                status, colour = "ZSEC MONITOR CHECKING", AMBER
+                status, colour = "ZSEC CHECKING FOLDERS", CYAN
             elif not self.automatic_monitoring.get():
                 status, colour = "ZSEC MONITOR PAUSED", AMBER
             else:
-                status, colour = "ZSEC MONITOR RECONNECTING", RED
+                status, colour = (
+                    "ZSEC RECONNECTING AUTOMATICALLY",
+                    AMBER if persistent_health_issue else CYAN,
+                )
+            if self.watch_findings_pending:
+                status, colour = "ZSEC MATCHES REQUIRE REVIEW", RED
         self.activity_status_label.configure(text=status, foreground=colour)
         self.activity_canvas.delete("activity")
         if reduced:
@@ -2544,7 +2599,13 @@ class ZsecDesktop:
         self.refresh_status()
         self.refresh_quarantine()
         self.refresh_reports()
-        self.tray.notify(scan_completion_notification(report))
+        if scan_requires_notification(report):
+            category = (
+                threat_notice_category(report.get("scan", {}))
+                if report.get("outcome") == "configured_rule_matches_detected"
+                else "scan"
+            )
+            self._monitoring_notice(scan_completion_notification(report), category=category)
 
     def _scan_failed(self, exc: BaseException) -> None:
         self.scan_start_button.configure(state=tk.NORMAL)
@@ -2559,7 +2620,9 @@ class ZsecDesktop:
         )
         self.tray_scan_status = "Scan incomplete"
         self._update_tray_status()
-        self.tray.notify("Scan did not complete; open ZSEC Antivirus for details.")
+        self._monitoring_notice(
+            "Scan did not complete; open ZSEC Antivirus for details.", category="scan"
+        )
 
     def _cancel_scan(self) -> None:
         if self.scan_cancel is not None:
@@ -2629,8 +2692,15 @@ class ZsecDesktop:
 
     def _monitoring_notice(self, text: str, *, category: str = "health") -> None:
         now = time.monotonic()
+        if category == "health":
+            since = self.monitoring_health_issue_since
+            if since is None:
+                self.monitoring_health_issue_since = now
+                return
+            if now - since < MONITOR_HEALTH_NOTICE_DELAY_SECONDS:
+                return
         previous = self.monitoring_notice_times.get(category)
-        interval = 75 if category == "findings" else 1800
+        interval = 1800
         if previous is None or now - previous >= interval:
             self.monitoring_notice_times[category] = now
             self.tray.notify(text)
@@ -2700,13 +2770,63 @@ class ZsecDesktop:
             failure=lambda _exc: self._finish_store_intelligence_refresh(),
         )
 
+    def _maintain_windows_protection_if_due(self, payload: dict[str, Any]) -> None:
+        """Quietly request stale-signature maintenance, at most once an hour.
+
+        The worker validates provider evidence and never changes Windows security
+        preferences. Failures stay in Advanced; they do not interrupt monitoring
+        or create a notification requiring the owner to manage routine updates.
+        """
+        if self.closing or not self.store_managed:
+            return
+        defender = payload.get("existing_primary_protection", {}).get("defender", {})
+        if not (
+            defender.get("confirmed_active") is True
+            and defender.get("update_recommended") is True
+        ):
+            return
+        now = time.monotonic()
+        if getattr(self, "windows_maintenance_inflight", False):
+            return
+        previous = getattr(self, "windows_maintenance_attempt", None)
+        if previous is not None and now - previous < 3600:
+            return
+        self.windows_maintenance_attempt = now
+        self.windows_maintenance_inflight = True
+
+        def finished(
+            result: CommandResult | None = None, error: BaseException | None = None
+        ) -> None:
+            self.windows_maintenance_inflight = False
+            if error is not None or (
+                result is not None and result.payload["outcome"] != "completed"
+            ):
+                self.windows_action_status.configure(
+                    text=(
+                        "Automatic signature refresh will retry later. "
+                        "Windows continues to manage protection."
+                    ),
+                    foreground=MUTED,
+                )
+            elif result is not None:
+                self.windows_action_status.configure(
+                    text="Automatic Defender signature refresh completed.", foreground=GREEN
+                )
+                self.refresh_companion()
+
+        self._run_async(
+            lambda: self.bridge.maintain_windows_protection_if_needed(payload),
+            finished,
+            failure=lambda exc: finished(error=exc),
+        )
+
     def _finish_store_intelligence_refresh(self) -> None:
         if self.closing:
             return
         self.refresh_status()
         # The CLI owns the randomized daily due time. This bounded wake-up only
         # gives it another opportunity while the Store process remains alive.
-        self.root.after(6 * 60 * 60 * 1000, self._refresh_store_intelligence)
+        self.root.after(60 * 60 * 1000, self._refresh_store_intelligence)
 
     def _start_watch(self) -> None:
         if self.watch_session is not None:
@@ -2766,6 +2886,10 @@ class ZsecDesktop:
                 text="Monitoring evidence rejected — session or sequence integrity failed",
                 foreground=RED,
             )
+            self._monitoring_notice(
+                "ZSEC monitoring evidence failed its integrity check. Open ZSEC for details.",
+                category="integrity",
+            )
             if self.watch_session is not None:
                 self.watch_session.stop()
             return
@@ -2794,7 +2918,7 @@ class ZsecDesktop:
                     "ZSEC detected configured malware rule matches. "
                     "Open Automatic monitoring to review them "
                     "and Scan to inspect the affected folder.",
-                    category="findings",
+                    category=threat_notice_category(event.get("scan", {})),
                 )
                 for finding in event.get("scan", {}).get("findings", [])[:30]:
                     # Display only bounded single-line local evidence. Filenames
@@ -2823,7 +2947,10 @@ class ZsecDesktop:
             self._monitoring_notice(
                 "ZSEC monitoring has a coverage problem. "
                 "Open Automatic monitoring to review the health event. "
-                "Windows antivirus remains separate."
+                "Windows antivirus remains separate.",
+                category=(
+                    "integrity" if event.get("code") == "watch_trust_state_changed" else "health"
+                ),
             )
             detail = f" {event.get('code')}: {event.get('message')}"
             self.watch_state_label.configure(
@@ -2858,11 +2985,18 @@ class ZsecDesktop:
                     foreground=RED,
                 )
                 if self.store_managed:
-                    self.companion_card.set_value("Package monitoring coverage limited", AMBER)
-                    self.tray_companion_status = "ZSEC monitoring coverage limited"
+                    self.companion_card.set_value(
+                        "Folder checks need attention · see details", AMBER
+                    )
+                    self.tray_companion_status = "ZSEC folder checks: see details"
                     self._update_tray_status()
+                self._monitoring_notice(
+                    "ZSEC folder checks remain incomplete. Open Advanced options for details. "
+                    "Your Windows antivirus status is shown separately."
+                )
             else:
                 self.monitoring_retry_attempt = 0
+                self.monitoring_health_issue_since = None
                 self.watch_state_label.configure(
                     text=(
                         "Observer active — reported rule matches still require review"
@@ -3013,6 +3147,7 @@ class ZsecDesktop:
         self.latest_companion_payload = payload
         self._update_support_export_state()
         if self.store_managed:
+            self._maintain_windows_protection_if_due(payload)
             self._render_store_process_monitor(payload)
             return
         presentation = companion_presentation(payload)
@@ -3150,7 +3285,7 @@ class ZsecDesktop:
         defender = evidence["defender"]
         aggregate_good = bool(evidence["aggregate_good"])
         defender_active = bool(defender["confirmed_active"])
-        if self.windows_health_good is True and not aggregate_good:
+        if self.windows_health_good is not False and not aggregate_good:
             self._monitoring_notice(
                 "Windows antivirus health is no longer confirmed GOOD. "
                 "Open Windows protection and Windows Security to check your real-time antivirus.",
@@ -3158,16 +3293,19 @@ class ZsecDesktop:
             )
         self.windows_health_good = aggregate_good
         if aggregate_good and defender_active:
-            headline = "Windows Security reports GOOD; Defender real-time controls are confirmed."
+            headline = (
+                "Microsoft Defender is active. Windows manages real-time protection "
+                "and its security updates automatically."
+            )
             colour = GREEN
-            self.windows_card.set_value("Defender enforcement verified", GREEN)
+            self.windows_card.set_value("Microsoft Defender active · automatic", GREEN)
             self.tray_protection_status = "Microsoft Defender active"
         elif aggregate_good:
             headline = (
                 "Windows Security reports GOOD; Defender is not the confirmed active "
                 "real-time provider."
             )
-            colour = AMBER
+            colour = CYAN
             self.windows_card.set_value("Windows antivirus health is GOOD", GREEN)
             self.tray_protection_status = "Windows antivirus active"
         else:

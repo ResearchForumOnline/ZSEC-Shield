@@ -14,9 +14,13 @@ from zsec_desktop.app import AMBER, CYAN, GREEN, ZsecDesktop  # noqa: E402
 def test_monitoring_notices_are_rate_limited_for_thirty_minutes():
     app = object.__new__(ZsecDesktop)
     app.monitoring_notice_times = {}
+    app.monitoring_health_issue_since = None
     app.tray = MagicMock()
-    with patch("zsec_desktop.app.time.monotonic", side_effect=[0, 80, 1799, 1800]):
-        for _ in range(4):
+    with patch("zsec_desktop.app.time.monotonic", side_effect=[0, 299, 300, 2099, 2100]):
+        app._monitoring_notice("Persistent monitor failure")
+        app._monitoring_notice("Persistent monitor failure")
+        app.tray.notify.assert_not_called()
+        for _ in range(3):
             app._monitoring_notice("Persistent monitor failure")
     assert app.tray.notify.call_count == 2
 
@@ -86,18 +90,25 @@ def test_retry_escalates_only_persistent_enabled_failure(attempt, enabled, expec
 def test_windows_health_notices_have_independent_category():
     app = object.__new__(ZsecDesktop)
     app.monitoring_notice_times = {}
+    app.monitoring_health_issue_since = None
     app.tray = MagicMock()
     with patch("zsec_desktop.app.time.monotonic", return_value=10):
         app._monitoring_notice("Monitor failure")
         app._monitoring_notice("Windows health changed", category="windows")
+    # Windows security faults bypass the transient-monitor grace period.
+    app.tray.notify.assert_called_once_with("Windows health changed")
+    with patch("zsec_desktop.app.time.monotonic", return_value=310):
+        app._monitoring_notice("Monitor failure")
     assert app.tray.notify.call_count == 2
 
 
-def test_findings_keep_shorter_notification_interval():
+def test_repeated_identical_findings_notify_immediately_then_remind_after_thirty_minutes():
     app = object.__new__(ZsecDesktop)
     app.monitoring_notice_times = {}
     app.tray = MagicMock()
-    with patch("zsec_desktop.app.time.monotonic", side_effect=[0, 74, 75]):
+    with patch("zsec_desktop.app.time.monotonic", side_effect=[0, 75, 1799, 1800]):
+        app._monitoring_notice("Detected rule matches", category="findings")
+        app.tray.notify.assert_called_once()
         for _ in range(3):
             app._monitoring_notice("Detected rule matches", category="findings")
     assert app.tray.notify.call_count == 2
