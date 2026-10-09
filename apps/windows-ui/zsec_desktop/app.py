@@ -978,6 +978,7 @@ class ZsecDesktop:
         self.tabs = ttk.Notebook(workspace, style="Content.TNotebook")
         self.tabs.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(12, 0))
         self.overview_tab = self._tab("Overview")
+        self.details_tab = self._tab("Protection details")
         self.scan_tab = self._tab("Scan")
         self.monitor_tab = self._tab("Automatic monitoring")
         self.quarantine_tab = self._tab("Quarantine")
@@ -1003,6 +1004,7 @@ class ZsecDesktop:
         self.advanced_navigation = ttk.Frame(navigation, style="Surface.TFrame")
         for frame, title in (
             (self.overview_tab, "Overview"),
+            (self.details_tab, "Protection details"),
             (self.scan_tab, "Scan"),
             (self.monitor_tab, "Automatic monitoring"),
             (self.quarantine_tab, "Quarantine"),
@@ -1112,7 +1114,7 @@ class ZsecDesktop:
         self.overview_cards_frame.bind("<Configure>", self._layout_overview_cards)
         self.overview_tab.bind("<Map>", self._layout_overview_cards)
         self.root.after_idle(self._layout_overview_cards)
-        roles = self._panel(self.monitor_tab)
+        roles = self._panel(self.details_tab)
         roles.pack(fill=tk.X, pady=(6, 0))
         ttk.Label(roles, text="Protection roles", style="Section.TLabel").pack(anchor=tk.W)
         ttk.Label(
@@ -1141,7 +1143,7 @@ class ZsecDesktop:
             )
             label.pack(anchor=tk.W, fill=tk.X, pady=3)
             self.protection_layer_labels[key] = label
-        actions = self._panel(self.monitor_tab)
+        actions = self._panel(self.details_tab)
         actions.pack(fill=tk.X, pady=(12, 0))
         ttk.Label(actions, text="Optional checks", style="Section.TLabel").pack(anchor=tk.W)
         row = ttk.Frame(actions, style="Surface.TFrame")
