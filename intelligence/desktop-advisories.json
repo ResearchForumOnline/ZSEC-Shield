@@ -44,7 +44,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "790f1a887efaa5a94259a7ebd2ec1abf06eb7ffdb47561dac17aebef7e383f27",
+        "source_body_sha256": "cfc0bbe04af3da2e787569101404458b8a1e5b7f57d8c63da0d63155e21f4cfd",
         "source_record_id": "USN-8911-1"
       },
       "published_at": "2026-10-09T11:58:11Z",
@@ -56,7 +56,7 @@
       "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - Hardware crypto device drivers; - NVIDIA Tegra memory controller driver; - Network drivers; - USB core drivers; - GFS2 file system; - OCFS2 file system; - SMB network file system; - SoundWire (SDCA) ASoC drivers; - B.A.T.M.A.N. meshing protocol; - Ceph Core library; - IPv4 networking; - IPv6 networking; - Netfilter; - Open vSwitch; - RxRPC session sockets; - SCTP protocol; - TIPC protocol; (CVE-2026-43095, CVE-2026-52914, CVE-2026-52931, CVE-2026-52955, CVE-2026-52958, CVE-2026-52982, CVE-2026-52986, CVE-2026-52…",
       "title": "USN-8911-1: Linux kernel (OEM) vulnerabilities",
       "zba": {
-        "commitment": "b95cb444d5114e425f9420a2ead0602a003f78db24bc4f77800d6af18732ff1f",
+        "commitment": "043ac8c83c4e03156debd3ceabdcab969236ea5e71aef0065515cf7a73ea1aed",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -333,7 +333,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "790f1a887efaa5a94259a7ebd2ec1abf06eb7ffdb47561dac17aebef7e383f27",
+        "source_body_sha256": "cfc0bbe04af3da2e787569101404458b8a1e5b7f57d8c63da0d63155e21f4cfd",
         "source_record_id": "USN-8887-3"
       },
       "published_at": "2026-10-09T08:38:46Z",
@@ -345,7 +345,7 @@
       "summary": "It was discovered that some AMD processors did not properly perform Reverse Map Table (RMP) checks when the IOMMU accessed certain host buffers. A local attacker with hypervisor access could possibly use this to trigger an out-of-bounds condition and compromise the integrity of SEV-SNP guest memory. (CVE-2023-20585) Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - ARM64 architecture; - NVDIMM (Non-Volatile Memory Device) drivers; - Handshake API; - ARM32 architecture; - MIPS architecture; - OpenRISC architecture; - PowerPC architecture; - RISC-V architecture;…",
       "title": "USN-8887-3: Linux kernel vulnerabilities",
       "zba": {
-        "commitment": "628bb9e0c8e6df7b422c499e59b6a40e95a9265fe851a1be6815181bb7042397",
+        "commitment": "2298e8ef5a748fa96c8ddacd0d10296831efdad678a1739508e8c8085d40d269",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -622,7 +622,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "790f1a887efaa5a94259a7ebd2ec1abf06eb7ffdb47561dac17aebef7e383f27",
+        "source_body_sha256": "cfc0bbe04af3da2e787569101404458b8a1e5b7f57d8c63da0d63155e21f4cfd",
         "source_record_id": "USN-8875-2"
       },
       "published_at": "2026-10-09T08:38:43Z",
@@ -634,7 +634,7 @@
       "summary": "It was discovered that the i.MX clock driver in the Linux kernel did not properly handle certain memory allocation failure conditions, leading to a null pointer dereference vulnerability. A local attacker could possibly use this to cause a denial of service (system crash). (CVE-2022-3114) Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - User-space API (UAPI); - ARM32 architecture; - ARM64 architecture; - MIPS architecture; - PowerPC architecture; - RISC-V architecture; - User-Mode Linux (UML); - x86 architecture; - Block layer subsystem; - Cryptographic API; -…",
       "title": "USN-8875-2: Linux kernel (NVIDIA) vulnerabilities",
       "zba": {
-        "commitment": "44050522b0241280990e70297b02b8d283fbca8fead40dcb12f13ec5ac2120cb",
+        "commitment": "454b7918e251decbf2fbcd04a428f571e02f31fea24fad63f1a30570411277c3",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -887,7 +887,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "790f1a887efaa5a94259a7ebd2ec1abf06eb7ffdb47561dac17aebef7e383f27",
+        "source_body_sha256": "cfc0bbe04af3da2e787569101404458b8a1e5b7f57d8c63da0d63155e21f4cfd",
         "source_record_id": "USN-8903-2"
       },
       "published_at": "2026-10-09T08:38:34Z",
@@ -899,7 +899,7 @@
       "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - ARM32 architecture; - ARM64 architecture; - MIPS architecture; - x86 architecture; - Intel NPU Driver; - Auxiliary display drivers; - Compressed RAM block device driver; - GPIO subsystem; - GPU drivers; - HID subsystem; - I2C subsystem; - IIO subsystem; - InfiniBand drivers; - Input Device core drivers; - Input Device (Mouse) drivers; - Multiple devices driver; - Media drivers; - Fastrpc Driver; - Ethernet bonding driver; - Network drivers; - Mellanox network drivers; - Microsoft Azure Network Adapter (MANA) dri…",
       "title": "USN-8903-2: Linux kernel vulnerabilities",
       "zba": {
-        "commitment": "54f7abf8d69437a6b8392f49f886d31f3ef3448555a018ff1fc05e5326ac5b1c",
+        "commitment": "f68d4e493e82d64f32020df225bcf8658efdce00ad60d44ddd94f955e1d92c5f",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -1153,7 +1153,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "790f1a887efaa5a94259a7ebd2ec1abf06eb7ffdb47561dac17aebef7e383f27",
+        "source_body_sha256": "cfc0bbe04af3da2e787569101404458b8a1e5b7f57d8c63da0d63155e21f4cfd",
         "source_record_id": "USN-8905-2"
       },
       "published_at": "2026-10-09T08:38:26Z",
@@ -1165,7 +1165,7 @@
       "summary": "Several security issues were discovered in the Linux kernel. An attacker could possibly use these to compromise the system. This update corrects flaws in the following subsystems: - ARM32 architecture; - ARM64 architecture; - MIPS architecture; - x86 architecture; - Intel NPU Driver; - Auxiliary display drivers; - Compressed RAM block device driver; - GPIO subsystem; - GPU drivers; - HID subsystem; - I2C subsystem; - IIO subsystem; - InfiniBand drivers; - Input Device core drivers; - Input Device (Mouse) drivers; - Multiple devices driver; - Media drivers; - Fastrpc Driver; - Ethernet bonding driver; - Network drivers; - Mellanox network drivers; - Microsoft Azure Network Adapter (MANA) dri…",
       "title": "USN-8905-2: Linux kernel (GCP) vulnerabilities",
       "zba": {
-        "commitment": "b7c2a231bd58383c72d91d2780be5f007a4db93fa78bb7bd7fd62f40234876bb",
+        "commitment": "622bbf71d7fc3d317fd968cf48a6818312d5a9e6d091966c242fb8bb82039669",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -1191,7 +1191,7 @@
       ],
       "provenance": {
         "parser": "ubuntu-usn-rss-v1",
-        "source_body_sha256": "790f1a887efaa5a94259a7ebd2ec1abf06eb7ffdb47561dac17aebef7e383f27",
+        "source_body_sha256": "cfc0bbe04af3da2e787569101404458b8a1e5b7f57d8c63da0d63155e21f4cfd",
         "source_record_id": "USN-8908-1"
       },
       "published_at": "2026-10-08T21:50:08Z",
@@ -1203,7 +1203,7 @@
       "summary": "Michael Bommarito discovered that BlueZ incorrectly handled codec capability storage in the A2DP profile. An attacker could possibly use this issue to cause a stack buffer overflow, resulting in a denial of service or arbitrary code execution. This issue only affected Ubuntu 20.04 LTS, Ubuntu 22.04 LTS, Ubuntu 24.04 LTS and Ubuntu 26.04 LTS. (CVE-2026-19774) It was discovered that BlueZ incorrectly handled packet length validation. An attacker could possibly use this issue to read out of bounds memory, causing a crash or exposing sensitive information. (CVE-2026-75032) It was discovered that BlueZ incorrectly handled crafted XML input. An attacker could possibly use this issue to crash Blue…",
       "title": "USN-8908-1: BlueZ vulnerabilities",
       "zba": {
-        "commitment": "58f8ee10fb184c5820a89a6ed05d02ae3ba7fd0359d59abf1b8bd65da48455c8",
+        "commitment": "e09af44c54874f6780a0ae3582fdfe6c49edee4820a7cd95791f0e21bca6105d",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -20863,7 +20863,7 @@
     {
       "advisory_count": 0,
       "authority": "Microsoft Security Response Center",
-      "body_sha256": "67f79f5b0ee452719f521a70b7c2954b8e3ea066f82f1cd0792f0053d37e677c",
+      "body_sha256": "6686589416902181b9346cc91ecae72db5037592cc81f0443c8c41e61b2732d8",
       "contribution_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "parser": "microsoft-cvrf-v3-desktop-v1",
       "semantic_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
@@ -20874,8 +20874,8 @@
     {
       "advisory_count": 6,
       "authority": "Canonical Ubuntu Security Team",
-      "body_sha256": "790f1a887efaa5a94259a7ebd2ec1abf06eb7ffdb47561dac17aebef7e383f27",
-      "contribution_sha256": "ee6f5790afa44bfd789b8687c802fdc591e1afb3785fa6903b99f653773ea832",
+      "body_sha256": "cfc0bbe04af3da2e787569101404458b8a1e5b7f57d8c63da0d63155e21f4cfd",
+      "contribution_sha256": "7ba81beb1f0c2d796d9312eda93aff80673df53f9fe0c02397ec863866004221",
       "parser": "ubuntu-usn-rss-v1",
       "semantic_sha256": "408192514f5ed11844bcf8c45b057127bf825ed101e03b7707f10282317776dc",
       "source_id": "ubuntu-usn",
