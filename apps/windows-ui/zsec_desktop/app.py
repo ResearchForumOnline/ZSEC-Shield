@@ -21,6 +21,7 @@ import tkinter as tk
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -2392,6 +2393,7 @@ class ZsecDesktop:
             self.feed_update_refresh_button.configure(state=tk.NORMAL)
         status = result.payload
         self.latest_status_payload = status
+        self.latest_status_observed_at = datetime.now(UTC)
         self._update_support_export_state()
         presentation = status_presentation(status)
         self.tray_scan_status = presentation.headline
@@ -3131,6 +3133,7 @@ class ZsecDesktop:
         self._resolve_startup_evidence("companion")
         payload = result.payload
         self.latest_companion_payload = payload
+        self.latest_companion_observed_at = datetime.now(UTC)
         self._update_support_export_state()
         if self.store_managed:
             self._maintain_windows_protection_if_due(payload)
@@ -3577,7 +3580,7 @@ class ZsecDesktop:
         self.export_support_button.configure(state=tk.NORMAL if ready else tk.DISABLED)
         if ready:
             self.export_support_status.configure(
-                text="Validated evidence is ready for a local, user-chosen JSON export.",
+                text="Saved evidence is ready for local export; observation ages are included.",
                 foreground=GREEN,
             )
         else:
@@ -3609,6 +3612,8 @@ class ZsecDesktop:
                 status,
                 companion,
                 desktop_version=ZSEC_VERSION,
+                status_observed_at=getattr(self, "latest_status_observed_at", None),
+                companion_observed_at=getattr(self, "latest_companion_observed_at", None),
             )
             target = Path(destination)
             save_support_snapshot(target, snapshot)

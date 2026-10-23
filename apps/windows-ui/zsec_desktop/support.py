@@ -12,12 +12,28 @@ from typing import Any
 from .contracts import validate_companion_status, validate_status
 
 
+def _observation_age(observed_at: datetime | None, created: datetime) -> dict[str, Any]:
+    if observed_at is None:
+        return {"observed_at": None, "age_seconds": None, "freshness": "unknown"}
+    if observed_at.utcoffset() is None:
+        raise ValueError("evidence observation time must include a timezone")
+    observed = observed_at.astimezone(UTC)
+    age = (created - observed).total_seconds()
+    return {
+        "observed_at": observed.isoformat().replace("+00:00", "Z"),
+        "age_seconds": max(0, int(age)),
+        "freshness": "clock_ahead" if age < 0 else "recent" if age <= 300 else "stale",
+    }
+
+
 def build_support_snapshot(
     status_payload: Any,
     companion_payload: Any,
     *,
     desktop_version: str,
     generated_at: datetime | None = None,
+    status_observed_at: datetime | None = None,
+    companion_observed_at: datetime | None = None,
 ) -> dict[str, Any]:
     """Build a path-free support summary; reject evidence before summarising it."""
 
@@ -25,9 +41,10 @@ def build_support_snapshot(
         raise ValueError("desktop version must be a bounded string")
     status = validate_status(status_payload)
     companion = validate_companion_status(companion_payload)
-    created = (generated_at or datetime.now(UTC)).astimezone(UTC)
-    if created.utcoffset() is None:
+    supplied_time = generated_at or datetime.now(UTC)
+    if supplied_time.utcoffset() is None:
         raise ValueError("support snapshot time must include a timezone")
+    created = supplied_time.astimezone(UTC)
 
     update = status.get("update_status")
     defender = companion["existing_primary_protection"]["defender"]
@@ -40,6 +57,13 @@ def build_support_snapshot(
         "schema": "zsec.antivirus.support-snapshot.v1",
         "generated_at": created.isoformat().replace("+00:00", "Z"),
         "desktop_version": desktop_version,
+        "evidence": {
+            "status": _observation_age(status_observed_at, created),
+            "windows_protection": _observation_age(companion_observed_at, created),
+            "recent_threshold_seconds": 300,
+            "rechecked_during_export": False,
+            "interpretation": "Saved observations, not a live protection guarantee.",
+        },
         "privacy": {
             "file_paths_included": False,
             "quarantine_contents_included": False,

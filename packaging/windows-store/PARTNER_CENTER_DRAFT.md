@@ -21,7 +21,7 @@ Microsoft field limits used by the validator:
 
 ## ZSEC Antivirus
 
-Source version: `0.3.37`
+Source version: `0.3.38`
 Listing language: `en-US`
 Suggested category: `Security`
 
@@ -54,6 +54,7 @@ The app is free and open core. Its source, threat model, privacy contract, deter
 - Reduced-motion interface and native notification-area controls
 - Verified Windows startup controls and remembered automatic monitoring
 - Silent routine folder diagnostics with automatic monitoring recovery and security alerts
+- Privacy-bounded support exports with explicit evidence observation ages and freshness
 
 ### URLs and license
 
@@ -86,7 +87,7 @@ ZSEC Antivirus is an existing Win32 Windows security companion. runFullTrust lau
 
 ### Additional Testing Information
 
-Version 0.3.37, Windows Desktop x64. No account/credentials. Keep primary antivirus enabled.
+Version 0.3.38, Windows Desktop x64. No account/credentials. Keep primary antivirus enabled.
 1. Launch once: standard-folder monitoring and signed advisory maintenance start automatically. Close: tray stays running without a routine toast. Relaunch and restart: per-user settings persist.
 2. Windows startup uses the owned StartupTask and read-back; DisabledByUser/policy is respected. No Run-key workaround or forced provider registration.
 3. Routine successful scan stays silent. Transient observer interruption recovers quietly. Routine folder limitations never toast, even after prolonged operation; diagnostics remain in Advanced options. Detections, integrity failures and primary Windows protection faults retain bounded alerts. A responding observer may be running during incomplete initial inventory; complete coverage remains unverified. After a transient access failure, authoritative whole-root reconciliation can restore current health while retaining historical errors.
@@ -96,13 +97,13 @@ Version 0.3.37, Windows Desktop x64. No account/credentials. Keep primary antivi
 
 ### Supporting internal certification detail
 
-Version 0.3.37: quiet automatic-first operation. No account or test credentials. Packaged Win32 x64 user-mode security companion; mutable state stays outside the read-only package. Defender or another supported primary antivirus must remain enabled. ZSEC is not a primary AV or WSC provider and changes no Defender preferences, exclusions or firewall rules. Automatic signed feed updates are data-only, authenticated, expiry and rollback protected. Store manages binary updates. Routine successful scan and tray-close notifications are silent; folder limitations and monitor recovery never toast; detections, integrity failures and primary Windows protection faults retain bounded alerts and accurate evidence. Current recoverable watch health can restore only after authoritative whole-root reconciliation; history remains visible. Windows StartupTask respects DisabledByUser and administrator policy; no Run-key workaround in Store. Monitoring pause persists. Quarantine remains an explicit choice; restore refuses overwrite. Test exact Store-signed package on supported Windows using benign disposable files only.
+Version 0.3.38 adds local support evidence observation timestamps, separate engine/Windows ages, recent/stale/unknown/clock-ahead labels and a timezone-validation fix. Export never claims to recheck live protection. Version 0.3.38: quiet automatic-first operation. No account or test credentials. Packaged Win32 x64 user-mode security companion; mutable state stays outside the read-only package. Defender or another supported primary antivirus must remain enabled. ZSEC is not a primary AV or WSC provider and changes no Defender preferences, exclusions or firewall rules. Automatic signed feed updates are data-only, authenticated, expiry and rollback protected. Store manages binary updates. Routine successful scan and tray-close notifications are silent; folder limitations and monitor recovery never toast; detections, integrity failures and primary Windows protection faults retain bounded alerts and accurate evidence. Current recoverable watch health can restore only after authoritative whole-root reconciliation; history remains visible. Windows StartupTask respects DisabledByUser and administrator policy; no Run-key workaround in Store. Monitoring pause persists. Quarantine remains an explicit choice; restore refuses overwrite. Test exact Store-signed package on supported Windows using benign disposable files only.
 
 Test account required: **No**
 
 ### Certification tester steps
 
-1. Install the exact Store-signed 0.3.37 candidate on a clean supported Windows 10 or Windows 11 x64 VM with Microsoft Defender enabled, then launch ZSEC Antivirus from Start without a source checkout or elevation.
+1. Install the exact Store-signed 0.3.38 candidate on a clean supported Windows 10 or Windows 11 x64 VM with Microsoft Defender enabled, then launch ZSEC Antivirus from Start without a source checkout or elevation.
 2. Confirm that the installed package starts its own GUI and packaged companion tools, keeps mutable per-user state outside the read-only package directory, and recovers cleanly after app relaunch and Windows restart.
 3. On Overview, select Refresh. Confirm that the app reports evidence-backed Defender and companion state and does not call ZSEC the primary antivirus.
 4. Open Windows protection. Run Refresh intelligence and Quick scan. Full scan must require a separate confirmation. Confirm that no Defender preference, exclusion, provider, or firewall setting is changed.
@@ -110,7 +111,7 @@ Test account required: **No**
 6. Start another benign scan and select Cancel. Confirm that the result remains incomplete rather than becoming a clean result.
 7. Open Advanced options, then Automatic monitoring. Standard folders must already be selected and monitored without manual setup. Use a benign disposable folder for optional temporary monitoring; create a text file and confirm fresh post-change evidence. Routine folder diagnostics must never toast. Stop the optional session and confirm remembered monitoring choices.
 8. Open Protection assurance and run the isolated synthetic recovery self-test. It must test encrypted copy, restore, no-overwrite, tamper rejection, and device-key recovery without using a real user document.
-9. Install the previous Store release, create only benign settings and evidence, accept the Microsoft Store update to 0.3.37, and verify that package binaries advance while supported per-user state and companion recovery remain valid.
+9. Install the previous Store release, create only benign settings and evidence, accept the Microsoft Store update to 0.3.38, and verify that package binaries advance while supported per-user state and companion recovery remain valid.
 10. Verify that Microsoft Store delivery is the executable update path. Exercise the separately signed advisory feed only as authenticated data: reject an invalid signature and rollback, and confirm it cannot replace or execute application binaries.
 11. Uninstall from Windows Settings. Confirm that packaged binaries and package-owned startup are removed, Microsoft Defender remains enabled and unchanged, no security product is removed, and retained per-user security data follows the disclosed uninstall policy.
 
