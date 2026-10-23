@@ -1,4 +1,4 @@
-# ZSEC Browser 0.3.29 release preparation
+# ZSEC Browser 0.3.29 submission evidence
 
 Prepared 23 October 2026. Browser source **0.3.29**, Browser Shields **0.5.3**, Microsoft Store candidate **0.3.29.0**.
 
@@ -21,3 +21,9 @@ This records a reviewed unsigned submission candidate. Live interactive runtime 
 ## Scope and privacy
 
 This update changes the browser and its submission materials. It does not change Antivirus code, feed data, server configuration, the embedded Microsoft-maintained Chromium engine, or a user's installed profile. Private Store identity configuration, API credentials, browser profiles, vaults and raw runtime logs are excluded from the source publication. Existing project and third-party license notices remain included.
+
+## Submitted for certification on 23 October 2026
+
+Partner Center accepted and validated the exact package above, saved the replacement of the same-target 0.3.28 package, and accepted **Submission 5** for certification. The observed final overview showed **Update in certification**, with pre-processing in progress and certification/publishing not yet started. The pre-existing choice to publish automatically after passing certification was preserved. The preceding 0.3.28 release remained the recorded Store presence; no 0.3.29 certification, public availability or installed upgrade is asserted. Customer release notes and reviewer testing information were updated for the actual new feature and evidence.
+
+A full Windows App Certification Kit run for the exact 0.3.29.0 candidate completed with **overall PASS**, **23 tests passed**, and one optional **Blocked executables FAIL** for the native browser's static `System.Diagnostics.Process.Start` reference. All mandatory checks, including DPI awareness, passed. The optional finding remains disclosed for reviewer assessment. The [sanitized WACK summary](ZSEC_BROWSER_0.3.29_WACK.json) records each test result; raw host logs and account screenshots remain private.

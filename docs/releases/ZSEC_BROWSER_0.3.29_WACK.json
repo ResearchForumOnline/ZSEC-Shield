@@ -1,0 +1,157 @@
+{
+  "overall": "PASS",
+  "package_version": "0.3.29.0",
+  "partial_run": "FALSE",
+  "counts": {
+    "PASS": 23,
+    "FAIL": 1
+  },
+  "tests": [
+    {
+      "name": "Install signed driver and executable files",
+      "optional": "TRUE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "User account control run level",
+      "optional": "TRUE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "Application count",
+      "optional": "TRUE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "App manifest",
+      "optional": "FALSE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "File association verbs",
+      "optional": "TRUE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "Registry checks",
+      "optional": "TRUE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "Enterprise Features",
+      "optional": "FALSE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "Resource Packages",
+      "optional": "FALSE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "Banned file analyzer",
+      "optional": "FALSE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "Private code signing",
+      "optional": "FALSE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "App resources",
+      "optional": "TRUE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "Branding",
+      "optional": "FALSE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "Debug configuration",
+      "optional": "TRUE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "Special use capabilities",
+      "optional": "FALSE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "ExclusiveTo attribute",
+      "optional": "FALSE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "Type location",
+      "optional": "FALSE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "Type name case-sensitivity",
+      "optional": "FALSE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "Type name correctness",
+      "optional": "FALSE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "General metadata correctness",
+      "optional": "TRUE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "Properties",
+      "optional": "FALSE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "Archive files usage",
+      "optional": "TRUE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "Blocked executables",
+      "optional": "TRUE",
+      "result": "FAIL",
+      "messages": [
+        "File App\\ZSEC Browser.exe contains a reference to a \"Launch Process\" related API System.Diagnostics.Process.Start"
+      ]
+    },
+    {
+      "name": "Platform appropriate files",
+      "optional": "TRUE",
+      "result": "PASS",
+      "messages": []
+    },
+    {
+      "name": "DPIAwarenessValidation",
+      "optional": "FALSE",
+      "result": "PASS",
+      "messages": []
+    }
+  ]
+}
