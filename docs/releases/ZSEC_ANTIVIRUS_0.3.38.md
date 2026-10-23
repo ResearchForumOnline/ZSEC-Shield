@@ -1,6 +1,6 @@
 # ZSEC Antivirus 0.3.38 Store candidate
 
-Prepared and verified 23 October 2026 from clean application source commit `d8f19e5c777fa1494fcbeb9c073342ba1348319f`. Source is public on GitHub. This receipt establishes package preparation, not Microsoft Store submission, certification, public delivery or installed acceptance.
+Prepared and verified 23 October 2026 from clean application source commit `d8f19e5c777fa1494fcbeb9c073342ba1348319f`. Source is public on GitHub. Microsoft Partner Center accepted the exact validated 0.3.38.0 package in Submission 9, ID `1152921505702214959`; the final overview shows **Update in certification**, with pre-processing in progress. Automatic publication after approval is preserved. Prior Submission 8 remains live. Certification, new-version public delivery and installed acceptance are not established. [Store receipt](ZSEC_ANTIVIRUS_0.3.38_STORE.json).
 
 ## Change
 
@@ -32,3 +32,5 @@ WACK report SHA-256: `3124e6c1ec2d31b6e502e68ea269bc6a8ace44863a230f68e97d23a3ef
 The matching direct archive is `zsec-antivirus-desktop-0.3.38-windows-x86_64.zip`, SHA-256 `b0fc7dead5e1c3b856bdefbdee0f7ca9066d029148ff98ae67dea87abe3373b6`. This local archive is not a receipt for a public GitHub binary release.
 
 [Reviewer notes](ZSEC_ANTIVIRUS_0.3.38_REVIEWER.txt) describe account-free review and the preserved static-test caveat.
+
+Partner Center package validation completed before its same-target 0.3.37 package was removed from the new submission. Reviewer instructions including the optional WACK caveat were saved and verified after reload. The English What's New field was updated for 0.3.38 and saved. Other submission settings and the existing automatic publishing choice were retained.
