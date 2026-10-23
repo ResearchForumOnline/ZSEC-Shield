@@ -1,4 +1,6 @@
-# ZSEC Browser 0.3.28 desktop client
+# ZSEC Browser 0.3.29 desktop client
+
+Current source prepares package **0.3.29.0** with session-only **Reopen closed tab** (Ctrl+Shift+T). It remembers at most ten web URLs in memory, clears them when history is cleared or disabled or High-Risk mode is enabled, and restores through current protections. It does not restore form contents or tabs across restarts. The previous published package remains the last verified Store release below.
 
 The reviewed Microsoft Store package is `0.3.28.0`. On 30 September 2026,
 Partner Center confirmed that Submission 4 was certified and available in the

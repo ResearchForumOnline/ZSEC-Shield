@@ -4,6 +4,33 @@ using System.Linq;
 
 namespace TalkToAI.ZsecBrowserPreview
 {
+    // Session-only URL recovery. This cache is never serialized with history.
+    internal sealed class BrowserClosedTabs
+    {
+        internal const int MaximumEntries = 10;
+        private readonly List<string> urls = new List<string>();
+        internal int Count { get { return urls.Count; } }
+        internal void Clear() { urls.Clear(); }
+        internal void Remember(string candidate, bool permitted)
+        {
+            if (!permitted) { Clear(); return; }
+            Uri uri;
+            if (!BrowserDataStore.TryNormalizeWebUrl(candidate, out uri) ||
+                !String.IsNullOrEmpty(uri.UserInfo) ||
+                BrowserRequestPolicy.HostMatchesDomain(uri.Host, "zsec.local")) return;
+            urls.Add(uri.AbsoluteUri);
+            if (urls.Count > MaximumEntries) urls.RemoveAt(0);
+        }
+        internal bool TryTake(bool permitted, out string url)
+        {
+            url = null;
+            if (!permitted) { Clear(); return false; }
+            if (urls.Count == 0) return false;
+            int index = urls.Count - 1;
+            url = urls[index]; urls.RemoveAt(index); return true;
+        }
+    }
+
     internal sealed class BrowserSearchProvider
     {
         public string Key { get; private set; }

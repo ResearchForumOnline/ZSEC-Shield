@@ -9,7 +9,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $ProductName = "ZSEC Browser"
-$ProductVersion = "0.3.28"
+$ProductVersion = "0.3.29"
 
 function Get-NormalizedPath {
     param([Parameter(Mandatory = $true)][string]$Path)

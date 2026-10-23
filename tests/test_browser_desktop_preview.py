@@ -39,9 +39,9 @@ def test_desktop_preview_is_a_truthful_webview2_shell() -> None:
     assert "signed_zsec_binary = $false" in installer
     assert "not" in readme.lower() and "chromium fork" in readme.lower()
     assert "unsigned" in readme.lower() and "Community" in readme
-    assert 'internal const string ProductVersion = "0.3.28"' in app
-    assert '$ProductVersion = "0.3.28"' in build
-    assert '$ProductVersion = "0.3.28"' in installer
+    assert 'internal const string ProductVersion = "0.3.29"' in app
+    assert '$ProductVersion = "0.3.29"' in build
+    assert '$ProductVersion = "0.3.29"' in installer
 
 
 def test_desktop_preview_preserves_browser_security_controls() -> None:
@@ -110,7 +110,7 @@ def test_page_requested_windows_fail_closed_before_approved_oauth_window_assignm
     assert "finally" in handler
     assert "WindowCloseRequested" in handler
     assert "popupView.Parent as TabPage" in handler
-    assert "CloseTabAt(tabs.TabPages.IndexOf(popupPage))" in handler
+    assert "CloseTabAt(tabs.TabPages.IndexOf(popupPage), false)" in handler
     assert "highRiskMode" in handler
     assert "args.IsUserInitiated" in handler
     assert "productData.Settings.PopupAllowedOrigins" in handler

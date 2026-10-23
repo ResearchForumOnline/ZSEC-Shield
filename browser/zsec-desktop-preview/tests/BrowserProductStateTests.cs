@@ -40,6 +40,7 @@ internal static class BrowserProductStateTests
             TestResponsiveToolbarLayout();
             TestLocalAutomationPolicy();
             TestPopupPolicy();
+            TestClosedTabRecovery();
             Console.WriteLine("Browser product state tests passed: " + assertions.ToString());
             return 0;
         }
@@ -52,6 +53,26 @@ internal static class BrowserProductStateTests
         {
             if (Directory.Exists(parent)) Directory.Delete(parent, true);
         }
+    }
+
+    private static void TestClosedTabRecovery()
+    {
+        BrowserClosedTabs closed = new BrowserClosedTabs();
+        string url;
+        Assert(!closed.TryTake(true, out url), "An empty recovery cache returned a URL.");
+        foreach (string rejected in new[] { "file:///private.txt", "javascript:alert(1)", "https://user:pass@example.org/", "https://newtab.zsec.local/index.html", "https://shields.zsec.local/settings" })
+            closed.Remember(rejected, true);
+        Assert(closed.Count == 0, "A non-web, credential-bearing or internal URL entered recovery.");
+        for (int index = 0; index < BrowserClosedTabs.MaximumEntries + 3; index++)
+            closed.Remember("https://example.org/page/" + index.ToString(), true);
+        Assert(closed.Count == BrowserClosedTabs.MaximumEntries, "Closed-tab recovery exceeded its session bound.");
+        Assert(closed.TryTake(true, out url) && url == "https://example.org/page/12", "Recovery did not return the most recently closed tab first.");
+        closed.Remember("https://example.org/", false);
+        Assert(closed.Count == 0, "Disabled history/High-Risk recovery retained old URLs.");
+        closed.Remember("https://example.org/new", true);
+        Assert(!closed.TryTake(false, out url) && closed.Count == 0, "A privacy change did not erase recovery state.");
+        closed.Remember("https://example.org/clear", true);closed.Clear();
+        Assert(!closed.TryTake(true, out url), "Explicit history clearing retained recovery state.");
     }
 
     private static void TestSignInMigrationPolicy()

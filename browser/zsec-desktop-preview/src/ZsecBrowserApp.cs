@@ -23,16 +23,16 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyCompany("TalkToAI")]
 [assembly: AssemblyProduct("ZSEC Browser")]
 [assembly: AssemblyCopyright("Copyright 2026 TalkToAI")]
-[assembly: AssemblyVersion("0.3.28.0")]
-[assembly: AssemblyFileVersion("0.3.28.0")]
-[assembly: AssemblyInformationalVersion("0.3.28-community")]
+[assembly: AssemblyVersion("0.3.29.0")]
+[assembly: AssemblyFileVersion("0.3.29.0")]
+[assembly: AssemblyInformationalVersion("0.3.29-community")]
 
 namespace TalkToAI.ZsecBrowserPreview
 {
     internal static class Program
     {
         internal const string ProductName = "ZSEC Browser";
-        internal const string ProductVersion = "0.3.28";
+        internal const string ProductVersion = "0.3.29";
         internal const string DefaultStartPage = "https://talktoai.org/zero-browser/";
         internal const string NewTabUri = "https://newtab.zsec.local/index.html";
 
@@ -598,6 +598,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private readonly FlowLayoutPanel bookmarksBar;
         private readonly BrowserDataStore productStore;
         private readonly BrowserProductData productData;
+        private readonly BrowserClosedTabs closedTabs = new BrowserClosedTabs();
         private readonly IVaultService vaultService;
         private readonly BrowserLoginAssistant loginAssistant;
         private readonly Dictionary<WebView2, string> loginRequestIds;
@@ -774,7 +775,7 @@ namespace TalkToAI.ZsecBrowserPreview
             brandBar.Controls.Add(product);
 
             Label channel = new Label();
-            channel.Text = "COMMUNITY 0.3.28";
+            channel.Text = "COMMUNITY 0.3.29";
             channel.Font = new Font("Segoe UI", 8F, FontStyle.Bold);
             channel.ForeColor = Muted;
             channel.AutoSize = true;
@@ -1164,6 +1165,7 @@ namespace TalkToAI.ZsecBrowserPreview
             menu.Items.Add(status);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(MenuItem("New tab", "Ctrl+T", async delegate { await CreateNewTabCommandAsync("main_menu"); }));
+            menu.Items.Add(MenuItem("Reopen closed tab", "Ctrl+Shift+T", async delegate { await ReopenClosedTabAsync(); }));
             menu.Items.Add(MenuItem("Bookmark this page", "Ctrl+D", AddActiveBookmark));
 
             ToolStripMenuItem bookmarks = new ToolStripMenuItem("Bookmarks");
@@ -1571,6 +1573,7 @@ namespace TalkToAI.ZsecBrowserPreview
             ))
             {
                 dialog.ShowDialog(this);
+                if (productData.History.Count == 0) closedTabs.Clear();
             }
         }
 
@@ -1588,6 +1591,7 @@ namespace TalkToAI.ZsecBrowserPreview
             try
             {
                 productStore.ClearHistory(productData);
+                closedTabs.Clear();
                 RefreshAddressSuggestions();
                 runtimeStatus.Text = "Local browsing history cleared.";
             }
@@ -1637,6 +1641,7 @@ namespace TalkToAI.ZsecBrowserPreview
                     if (dialog.ClearHistoryRequested)
                     {
                         productStore.ClearHistory(productData);
+                        closedTabs.Clear();
                         RefreshAddressSuggestions();
                     }
                 }
@@ -1697,6 +1702,7 @@ namespace TalkToAI.ZsecBrowserPreview
         private void ApplyProductSettings()
         {
             highRiskMode = productData.Settings.NativeStrictMode;
+            if (!CanRememberClosedTabs) closedTabs.Clear();
             LayoutNavigationToolbar();
             highRiskButton.Checked = highRiskMode;
             highRiskButton.BackColor = highRiskMode ? Color.FromArgb(210, 74, 54) : PanelBackground;
@@ -2511,7 +2517,7 @@ namespace TalkToAI.ZsecBrowserPreview
                                 {
                                     if (popupView.IsDisposed) return;
                                     TabPage popupPage = popupView.Parent as TabPage;
-                                    if (popupPage != null) CloseTabAt(tabs.TabPages.IndexOf(popupPage));
+                                    if (popupPage != null) CloseTabAt(tabs.TabPages.IndexOf(popupPage), false);
                                 }));
                             };
                             popupAllowedCount++;
@@ -3227,6 +3233,12 @@ namespace TalkToAI.ZsecBrowserPreview
                 args.Handled = true;
                 BeginInvoke(new Action(delegate { address.Focus(); address.SelectAll(); }));
             }
+            else if (args.Control && args.Shift && args.KeyCode == Keys.T)
+            {
+                args.SuppressKeyPress = true;
+                args.Handled = true;
+                BeginInvoke(new Action(async delegate { await ReopenClosedTabAsync(); }));
+            }
             else if (args.Control && args.KeyCode == Keys.T)
             {
                 args.SuppressKeyPress = true;
@@ -3280,6 +3292,11 @@ namespace TalkToAI.ZsecBrowserPreview
             if (keyData == (Keys.Control | Keys.T))
             {
                 CreateTabFromKeyboardAsync();
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.Shift | Keys.T))
+            {
+                BeginInvoke(new Action(async delegate { await ReopenClosedTabAsync(); }));
                 return true;
             }
             if (keyData == (Keys.Control | Keys.W))
@@ -3436,6 +3453,7 @@ namespace TalkToAI.ZsecBrowserPreview
             {
                 productStore.Save(productData);
                 highRiskMode = requested;
+                if (highRiskMode) closedTabs.Clear();
             }
             catch (Exception exception)
             {
@@ -3483,19 +3501,66 @@ namespace TalkToAI.ZsecBrowserPreview
             );
         }
 
+        private bool CanRememberClosedTabs
+        {
+            get { return productData.Settings.RecordHistory && !highRiskMode && !isClosing; }
+        }
+
+        private async Task ReopenClosedTabAsync()
+        {
+            WebView2 createdView = null;
+            TabPage previousTab = null;
+            string destination = null;
+            await tabMutationGate.WaitAsync();
+            try
+            {
+                if (isClosing) return;
+                if (!CanRememberClosedTabs)
+                {
+                    closedTabs.Clear();
+                    runtimeStatus.Text = "Closed-tab recovery is off while history is disabled or High-Risk mode is on.";
+                    return;
+                }
+                if (tabs.TabPages.Count >= MaximumTabs)
+                {
+                    runtimeStatus.Text = "Close a tab before reopening another one.";
+                    return;
+                }
+                await environmentReady.Task;
+                if (!closedTabs.TryTake(CanRememberClosedTabs, out destination))
+                {
+                    runtimeStatus.Text = "No closed web tab is available in this session.";
+                    return;
+                }
+                previousTab = tabs.SelectedTab;
+                createdView = await CreateTab(destination, true);
+                lastTabAction = "closed_tab_reopened";
+                runtimeStatus.Text = "Closed tab reopened with current protection settings.";
+                WriteRuntimeEvidence(CoreWebView2Environment.GetAvailableBrowserVersionString());
+            }
+            catch
+            {
+                RollBackFailedTab(createdView, previousTab);
+                if (destination != null) closedTabs.Remember(destination, CanRememberClosedTabs);
+                runtimeStatus.Text = "The closed tab could not be reopened. Try again when the browser is ready.";
+            }
+            finally { tabMutationGate.Release(); }
+        }
+
         private void CloseActiveTab()
         {
             if (tabs.SelectedIndex < 0) return;
             CloseTabAt(tabs.SelectedIndex);
         }
 
-        private void CloseTabAt(int index)
+        private void CloseTabAt(int index, bool remember = true)
         {
             if (index < 0 || index >= tabs.TabPages.Count) return;
             TabPage page = tabs.TabPages[index];
             WebView2 view = page.Controls.Count > 0 ? page.Controls[0] as WebView2 : null;
             if (view != null)
             {
+                if (remember) closedTabs.Remember(view.Source == null ? null : view.Source.AbsoluteUri, CanRememberClosedTabs);
                 ReleaseLoginRequest(view);
                 browserViews.Remove(view);
                 youtubeScriptRegistrations.Remove(view);

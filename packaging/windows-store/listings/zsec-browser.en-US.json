@@ -3,7 +3,7 @@
   "product_key": "browser",
   "language": "en-US",
   "product_name": "ZSEC Browser",
-  "source_version": "0.3.28",
+  "source_version": "0.3.29",
   "category": {
     "primary": "Productivity",
     "selection_note": "Select the closest currently available browser or productivity category in Partner Center; do not present the app as a maintained Chromium distribution."
@@ -15,11 +15,12 @@
       "The app provides managed tabs, address and search controls, bookmarks, bounded local history, popup protections, default-deny site permissions, HTTPS-focused navigation controls, Microsoft Balanced tracking prevention, and an exact-identity Browser Shields package with reviewed network and tracking-link rules. Controls can reduce selected advertising and tracking requests but do not guarantee that a site is safe or stop every browser, operating-system, extension, or spyware exploit.",
       "A user-operated local encrypted password vault supports explicit add, edit, import, generated passwords, timed reveal, and exact-origin HTTPS fill. Save prompts and fill are separate opt-in settings and begin off. ZSEC never silently submits a login or copies another browser's cookies, sessions, tokens, passkeys, or profile.",
       "ZSEC adds no account, advertising, analytics, browsing-history upload, vault sync, crash-upload, or remote-control endpoint. Browsing still sends normal requests to Microsoft WebView2 services and the third-party websites the user chooses, subject to those providers' privacy terms.",
-      "Version 0.3.28 adds scoped login compatibility for Google, ChatGPT/OpenAI, Facebook and selected major services. Reviewed functional requests and user-clicked sign-in popups are supported without disabling all protection. YouTube stays outside these default exceptions. Its optional ad helper improves visible skip controls and back/forward page restoration; it cannot guarantee every ad is removed. Providers may independently restrict embedded browser sign-in."
+      "Version 0.3.29 adds Reopen closed tab from the main menu or Ctrl+Shift+T. Up to ten recently closed web URLs are kept only in memory for this session. Disabling history, clearing history or enabling High-Risk mode erases the recovery list. Reopened pages use current protections; forms and past tab sessions are not restored. Scoped login compatibility and the optional bounded YouTube helper remain available, without a guarantee of universal sign-in compatibility or complete ad removal."
     ],
     "features": [
       "Microsoft Evergreen WebView2 runtime with an isolated local ZSEC profile",
       "Managed tabs, bookmarks, bounded history, search, fullscreen, downloads, and tray controls",
+      "Reopen up to ten recently closed web tabs within this session; privacy controls erase the recovery list",
       "Reviewed Browser Shields request rules and native tracking-link cleanup",
       "Microsoft Balanced tracking prevention and default-deny site permissions",
       "User-clicked sign-in popups for reviewed HTTPS services; other popups require exact-site permission",
@@ -53,13 +54,14 @@
     }
   },
   "certification": {
-    "notes": "ZSEC Browser 0.3.28 preserves the previously certified Store identity and default-app associations. No account or test credentials required. Adds reviewed HTTPS login compatibility and user-clicked auth popups while retaining unknown/background popup blocking, tab and burst limits. YouTube is not trusted or paused by default. No User-Agent spoofing, CAPTCHA bypass, imported sessions or provider restriction bypass. Only selected ad/tracker functional resources are excepted; high-risk restrictions remain stronger. Google may reject embedded browser authentication separately from ZSEC filtering.",
+    "notes": "ZSEC Browser 0.3.29 preserves the certified Store identity and default-app associations. Adds session-only closed-tab recovery with a ten-URL bound and current-protection navigation. History off, explicit history clearing and High-Risk enable erase recovery URLs. Internal pages and credential-bearing URLs are excluded. No account/test credentials required. Existing default-deny permissions, scoped sign-in compatibility and opt-in vault behavior remain. Microsoft WebView2 services the engine; this is a browser shell.",
     "additional_testing_information": "No credentials required for core review. Launch and test public HTTPS navigation, tabs, search, bookmarks, Shields and settings. Confirm Google/ChatGPT/Facebook public login entry pages can load; use only reviewer-owned accounts if completing login. Review user-clicked sign-in popups versus blocked unsolicited popups. YouTube ad protection remains enabled by default; test visible skip controls and back/forward restoration. This release does not claim universally ad-free YouTube or universal OAuth compatibility. Privacy: https://talktoai.org/zsec/privacy/ . Runtime and policy checks are recorded in the release acceptance report; Store-signed install, upgrade and uninstall require Microsoft signing and a clean test profile.",
     "test_account_required": false,
     "tester_steps": [
       "Install the Store-signed candidate on a clean supported Windows 10 or Windows 11 x64 VM with the Microsoft Evergreen WebView2 runtime available, then launch ZSEC Browser from Start.",
       "Confirm the local new-tab page loads, the protection status becomes evidence-led, and a normal public HTTPS address can be opened without any ZSEC sign-in.",
       "Open two additional tabs, switch among them, close one, and verify back, forward, reload, address search, and fullscreen controls.",
+      "Close a normal HTTPS tab, then choose Reopen closed tab or Ctrl+Shift+T. Verify the URL reopens through current protections. Clear history, disable history or enable High-Risk mode and confirm closed-tab recovery is unavailable. Restart and confirm this session-only list is empty.",
       "Open ZSEC Shields from the toolbar. If the optional extension API is available, confirm the exact extension is loaded. If it is unavailable, confirm native request protection remains active and the optional extension is reported unavailable without closing the browser.",
       "Open Settings. Verify site permissions are deny by default, history and appearance controls persist after restart, and password save prompts and autofill begin off.",
       "Use a synthetic HTTPS bookmark, open the bookmark manager, export it to a tester-selected file, remove it, and import it again. Do not use a real browser profile or account.",

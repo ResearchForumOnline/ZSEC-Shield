@@ -174,7 +174,7 @@ Desktop `PNG`, minimum `1366x768`, maximum `50 MB`; plan: `5` screenshots.
 
 ## ZSEC Browser
 
-Source version: `0.3.28`
+Source version: `0.3.29`
 Listing language: `en-US`
 Suggested category: `Productivity`
 
@@ -194,12 +194,13 @@ A user-operated local encrypted password vault supports explicit add, edit, impo
 
 ZSEC adds no account, advertising, analytics, browsing-history upload, vault sync, crash-upload, or remote-control endpoint. Browsing still sends normal requests to Microsoft WebView2 services and the third-party websites the user chooses, subject to those providers' privacy terms.
 
-Version 0.3.28 adds scoped login compatibility for Google, ChatGPT/OpenAI, Facebook and selected major services. Reviewed functional requests and user-clicked sign-in popups are supported without disabling all protection. YouTube stays outside these default exceptions. Its optional ad helper improves visible skip controls and back/forward page restoration; it cannot guarantee every ad is removed. Providers may independently restrict embedded browser sign-in.
+Version 0.3.29 adds Reopen closed tab from the main menu or Ctrl+Shift+T. Up to ten recently closed web URLs are kept only in memory for this session. Disabling history, clearing history or enabling High-Risk mode erases the recovery list. Reopened pages use current protections; forms and past tab sessions are not restored. Scoped login compatibility and the optional bounded YouTube helper remain available, without a guarantee of universal sign-in compatibility or complete ad removal.
 
 ### Product features
 
 - Microsoft Evergreen WebView2 runtime with an isolated local ZSEC profile
 - Managed tabs, bookmarks, bounded history, search, fullscreen, downloads, and tray controls
+- Reopen up to ten recently closed web tabs within this session; privacy controls erase the recovery list
 - Reviewed Browser Shields request rules and native tracking-link cleanup
 - Microsoft Balanced tracking prevention and default-deny site permissions
 - User-clicked sign-in popups for reviewed HTTPS services; other popups require exact-site permission
@@ -243,7 +244,7 @@ No credentials required for core review. Launch and test public HTTPS navigation
 
 ### Supporting internal certification detail
 
-ZSEC Browser 0.3.28 preserves the previously certified Store identity and default-app associations. No account or test credentials required. Adds reviewed HTTPS login compatibility and user-clicked auth popups while retaining unknown/background popup blocking, tab and burst limits. YouTube is not trusted or paused by default. No User-Agent spoofing, CAPTCHA bypass, imported sessions or provider restriction bypass. Only selected ad/tracker functional resources are excepted; high-risk restrictions remain stronger. Google may reject embedded browser authentication separately from ZSEC filtering.
+ZSEC Browser 0.3.29 preserves the certified Store identity and default-app associations. Adds session-only closed-tab recovery with a ten-URL bound and current-protection navigation. History off, explicit history clearing and High-Risk enable erase recovery URLs. Internal pages and credential-bearing URLs are excluded. No account/test credentials required. Existing default-deny permissions, scoped sign-in compatibility and opt-in vault behavior remain. Microsoft WebView2 services the engine; this is a browser shell.
 
 Test account required: **No**
 
@@ -252,12 +253,13 @@ Test account required: **No**
 1. Install the Store-signed candidate on a clean supported Windows 10 or Windows 11 x64 VM with the Microsoft Evergreen WebView2 runtime available, then launch ZSEC Browser from Start.
 2. Confirm the local new-tab page loads, the protection status becomes evidence-led, and a normal public HTTPS address can be opened without any ZSEC sign-in.
 3. Open two additional tabs, switch among them, close one, and verify back, forward, reload, address search, and fullscreen controls.
-4. Open ZSEC Shields from the toolbar. If the optional extension API is available, confirm the exact extension is loaded. If it is unavailable, confirm native request protection remains active and the optional extension is reported unavailable without closing the browser.
-5. Open Settings. Verify site permissions are deny by default, history and appearance controls persist after restart, and password save prompts and autofill begin off.
-6. Use a synthetic HTTPS bookmark, open the bookmark manager, export it to a tester-selected file, remove it, and import it again. Do not use a real browser profile or account.
-7. Open Passwords and verify the vault begins locked or empty. If vault UI testing is required, use only synthetic example credentials, verify timed reveal and lock, then remove them before capture.
-8. On a controlled benign page that requests an unsolicited popup, confirm the request is blocked by default while ordinary user-entered and user-clicked HTTPS navigation remains available. Any site permission must require an explicit exact-HTTPS choice and be revocable in Settings.
-9. Close and relaunch the app to verify local settings, then uninstall it. Confirm no other browser profile, credentials, default-app choice, or security product was changed.
+4. Close a normal HTTPS tab, then choose Reopen closed tab or Ctrl+Shift+T. Verify the URL reopens through current protections. Clear history, disable history or enable High-Risk mode and confirm closed-tab recovery is unavailable. Restart and confirm this session-only list is empty.
+5. Open ZSEC Shields from the toolbar. If the optional extension API is available, confirm the exact extension is loaded. If it is unavailable, confirm native request protection remains active and the optional extension is reported unavailable without closing the browser.
+6. Open Settings. Verify site permissions are deny by default, history and appearance controls persist after restart, and password save prompts and autofill begin off.
+7. Use a synthetic HTTPS bookmark, open the bookmark manager, export it to a tester-selected file, remove it, and import it again. Do not use a real browser profile or account.
+8. Open Passwords and verify the vault begins locked or empty. If vault UI testing is required, use only synthetic example credentials, verify timed reveal and lock, then remove them before capture.
+9. On a controlled benign page that requests an unsolicited popup, confirm the request is blocked by default while ordinary user-entered and user-clicked HTTPS navigation remains available. Any site permission must require an explicit exact-HTTPS choice and be revocable in Settings.
+10. Close and relaunch the app to verify local settings, then uninstall it. Confirm no other browser profile, credentials, default-app choice, or security product was changed.
 
 ### Age and content notes
 
