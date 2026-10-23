@@ -1,0 +1,31 @@
+{
+  "version": "0.3.38",
+  "sourceCommit": "d8f19e5c777fa1494fcbeb9c073342ba1348319f",
+  "sourceTreeState": "clean",
+  "package": "ZSEC-Antivirus-0.3.38.0-x64.msix",
+  "bytes": 36441245,
+  "sha256": "7424fdf3117c0797d10d5d4b48ada173a028f24ec147425d8de44617a5b51fff",
+  "identity": {
+    "Name": "talktoai.ZSECAntivirus",
+    "Publisher": "CN=9B704446-6F62-4D52-954E-775436315422",
+    "Version": "0.3.38.0",
+    "ProcessorArchitecture": "x64"
+  },
+  "capabilities": [
+    {
+      "Name": "runFullTrust"
+    }
+  ],
+  "startup": [
+    {
+      "TaskId": "ZSECAntivirusStartup",
+      "Enabled": "true",
+      "DisplayName": "ZSEC Antivirus"
+    }
+  ],
+  "zipIntegrity": "PASS",
+  "zipEntries": 1093,
+  "manifestFilesVerified": 1090,
+  "signed": false,
+  "storeSubmitted": false
+}
