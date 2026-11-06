@@ -17,7 +17,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-76031"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -29,7 +29,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-76031: Chromium CVE-2026-76031: Use after free",
       "zba": {
-        "commitment": "344b4bb329e0075abff0e0fc4f22e245678d30f77841791c6ee9b417c3c63c33",
+        "commitment": "d3c7e629cc1b3b4045e2d8f105268fa13b094373bc01f0fefc86038c822a9128",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -52,7 +52,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-76030"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -64,7 +64,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-76030: Chromium CVE-2026-76030: Memory corruption",
       "zba": {
-        "commitment": "7083f5d00dfd588b5108b457999f8acd97f8363379d6383041987fc4ace7ad7b",
+        "commitment": "6be8c4f059951a9895cea3e0d8978706af468961e3a4262d12f2ed5a90dfddc0",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -87,7 +87,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-76029"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -99,7 +99,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-76029: Chromium CVE-2026-76029: Memory corruption",
       "zba": {
-        "commitment": "0adbc27cbadd8772b4f3d3cb36fe94b099e2ea2bb0fdfcde4cee77b0d477d8fc",
+        "commitment": "927e249442c0f0cfffff54a736d01beb480834d57d90a3bf367165b49d81a409",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -122,7 +122,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-76028"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -134,7 +134,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-76028: Chromium CVE-2026-76028: Use after free",
       "zba": {
-        "commitment": "6a44a5d1de3842c8386e7ecd39304d290fee5e406be52fd60271bcd9eb4a427d",
+        "commitment": "d4ca81af9db71fe680bdd5d8b6000ba3c3b6b346793a042a013b6ac8378eab93",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -157,7 +157,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-76027"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -169,7 +169,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-76027: Chromium CVE-2026-76027: Memory corruption",
       "zba": {
-        "commitment": "5ac5fe55c9c9506ba10e64e4c83c6ab2e999581b5793822aea61502211864119",
+        "commitment": "caeefd39f6716e96ddb537fc4d3a9c15c116a872dab7ec44ff18b1ac05ce7197",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -192,7 +192,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-76026"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -204,7 +204,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-76026: Chromium CVE-2026-76026: Memory corruption",
       "zba": {
-        "commitment": "b68101ff0141cab03d90a0916eaeae018d6dc69b9a97af9a441a31a7a79ddfb4",
+        "commitment": "1cb361c34f872b676c6f04cf38e5bbd01c05646e21d25cb46f193c52555cd09e",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -227,7 +227,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-76025"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -239,7 +239,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-76025: Chromium CVE-2026-76025: Use after free",
       "zba": {
-        "commitment": "64b41f4755c50d846aa84971da1f6aebc57c59ecb9dc2693d42a8a72d488f79b",
+        "commitment": "2f20e99ffe5050a33b729f700c5f15c0c84e2177605091c531fef6c278c7c10c",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -262,7 +262,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-76024"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -274,7 +274,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-76024: Chromium CVE-2026-76024: Memory corruption",
       "zba": {
-        "commitment": "85d163f3bd94089fe167d701b4a19356649b556f2aaddab548d3dde940c3d92d",
+        "commitment": "36ca9677252df57044b446b05cd7916bb1798d66d75238fcf412b322e43e151a",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -297,7 +297,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-122518"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -309,7 +309,7 @@
       "summary": "Out-of-bounds read in Microsoft Edge (Chromium-based) allows an unauthorized attacker to disclose information over a network.",
       "title": "CVE-2026-122518: Microsoft Edge (Chromium-based) Information Disclosure Vulnerability",
       "zba": {
-        "commitment": "abdb474717c31fa04e0f5d2fa0082e6ba2cdc4e7d0e7ae391d66ae850aea4c37",
+        "commitment": "fda457e29db4053f5568a6b3b3f6f07b3fbf37cb58507d96ebc48144a73e786d",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -332,7 +332,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-119272"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -344,7 +344,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-119272: Chromium CVE-2026-119272: Out of bounds read",
       "zba": {
-        "commitment": "7c904445d1a0a1f683c974ab55e867b06263c437bf17bc18a970faa0a2129900",
+        "commitment": "f3a200677db97689ff1222cc60b8fb4549e87462d35478ff61bf5ad28172b3bb",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -367,7 +367,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-119271"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -379,7 +379,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-119271: Chromium CVE-2026-119271: Use after free",
       "zba": {
-        "commitment": "567b2b3cf109d49f60cf1a9104988450c4a008e8781b344c75608f2379214506",
+        "commitment": "d439005d81903c038cd0aa564e2e35006233673f56b89d58c1be094c88dc6a04",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -402,7 +402,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-119270"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -414,7 +414,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-119270: Chromium CVE-2026-119270: Improper input validation",
       "zba": {
-        "commitment": "5cc0b76e0ca675d5c2064381955685c0228c8f349ae550df93e08d02d992337d",
+        "commitment": "f0d296b85ba0fdddbe541c655119ca9427b7688994ab556a258f8adfbccbdd5d",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -437,7 +437,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-119269"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -449,7 +449,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-119269: Chromium CVE-2026-119269: Use after free",
       "zba": {
-        "commitment": "5d708ae63e4554cbc67910dd8870546237060ff80057f60224d450e83038b109",
+        "commitment": "19d81516aae2222d8b80186797ada13448b82cf83b402f700dd9a1592bc7ed9f",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -472,7 +472,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-119268"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -484,7 +484,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-119268: Chromium CVE-2026-119268: Integer overflow",
       "zba": {
-        "commitment": "025c63b9e7f5036fda0b097051be7c96698a79d7554f0ea763660a33fe3f400c",
+        "commitment": "adb8cb8362ec9cb82e90c5373e1a09de04f80517fab4137da32f983b973f5b34",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -507,7 +507,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-119267"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -519,7 +519,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-119267: Chromium CVE-2026-119267: Memory corruption",
       "zba": {
-        "commitment": "e7dae1e1c0e4aed3edb39f1265357bd502bd4b15108dffd309307eedbb1da0c0",
+        "commitment": "8930986bc6f1e915cd1d696f97591bd6b32268a713d88fad86ecf31d771c84ac",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -542,7 +542,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-119266"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -554,7 +554,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-119266: Chromium CVE-2026-119266: Use after free",
       "zba": {
-        "commitment": "1daddad2960dac39b2c88374bdd16c6feba7631b135ec726962fda518f4a7686",
+        "commitment": "bf2f74c52468c126c7c51266794d43aa110ae05f0fd4b2fde112a9386d8a52b1",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -577,7 +577,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-119265"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -589,7 +589,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-119265: Chromium CVE-2026-119265: Memory corruption",
       "zba": {
-        "commitment": "b1eca6f9c4bdc02b9d167ad010508aaddbef38f1c484c3b1477806a2a932d428",
+        "commitment": "6b3ff7961071357377fa329293f27a17f3e2679110ed56e37a82b648700805b3",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -612,7 +612,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-119264"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -624,7 +624,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-119264: Chromium CVE-2026-119264: Memory corruption",
       "zba": {
-        "commitment": "30aa284da8bcc937140c9abb2f6c0fa2f16cc3d0c1b9cc95b52e0beba9fba8c0",
+        "commitment": "52dad645d0be3aef1ca9a89b988d1fbf673fdad093db3da3f55645e744f20961",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -647,7 +647,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-119263"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -659,7 +659,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-119263: Chromium CVE-2026-119263: Memory corruption",
       "zba": {
-        "commitment": "b2f1dcf9894e62850519a7f8e632e9b01a658b4ffc3bd9d6bbf1e43ffbef853a",
+        "commitment": "6a46bb3de6a3cf6884d09eb7eddbd6c782857a87f106655a028e7b8317649d51",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -682,7 +682,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-119262"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -694,7 +694,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-119262: Chromium CVE-2026-119262: Improper input validation",
       "zba": {
-        "commitment": "b80df84ef7aad39f7fdf6ca02497d45a6c78f4e3d08d50ad575dda7a8c0a61b9",
+        "commitment": "e4298f9afd12327ec8acd4922755b27b801bfc137b0a90aa9640f6c1875b3d5a",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -717,7 +717,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-119261"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -729,7 +729,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-119261: Chromium CVE-2026-119261: Improper input validation",
       "zba": {
-        "commitment": "fd7c4d99f84d148e4d34be3603685cf6d8510b707c402763d4a14dcc8d2796bd",
+        "commitment": "d4c3a93eb8460fe56355b767fea1a2c2c98507baa1c14543f47e56b1b7c13f6f",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -752,7 +752,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-119260"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -764,7 +764,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-119260: Chromium CVE-2026-119260: Use after free",
       "zba": {
-        "commitment": "8a3002d8fc4367258eba029fb5a8bee2ac1bd2d524bc912efe31c3afdf5ee9cf",
+        "commitment": "fe2799d494d66e66c52bfcc72f0af4cc76d51625f242c291637fe17b503a3e73",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -787,7 +787,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-118321"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -799,7 +799,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-118321: Chromium CVE-2026-118321: Use after free",
       "zba": {
-        "commitment": "090667b639469f2d1e7934c9d968d5efeda698f9d572ecb4f504c0e58cc7eabc",
+        "commitment": "281f21d1573fd3a189d5b73530a156d6a9d346653998f25e492c73263d50f653",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -822,7 +822,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-118314"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -834,7 +834,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-118314: Chromium CVE-2026-118314: Incorrect reference resolution",
       "zba": {
-        "commitment": "c2a6a3832fbc34cbc20518f2b516b7e24dc0c86e66f3138bbce63116d2e30b55",
+        "commitment": "c6157a9dbeec4913fde65efd606c970b1b0a9bf910ba97e40af30f67eae4b50a",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -857,7 +857,7 @@
       ],
       "provenance": {
         "parser": "microsoft-cvrf-v3-desktop-v1",
-        "source_body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
+        "source_body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
         "source_record_id": "CVE-2026-118309"
       },
       "published_at": "2026-11-04T08:00:00Z",
@@ -869,7 +869,7 @@
       "summary": "This CVE was assigned by Chrome. Microsoft Edge (Chromium-based) ingests Chromium, which addresses this vulnerability. Please see Google Chrome Releases for more information.",
       "title": "CVE-2026-118309: Chromium CVE-2026-118309: Incorrect reference resolution",
       "zba": {
-        "commitment": "82b95f273075b7fdc54ce9aea61366f4fa3f55a526a02b5de18ce84f941484cb",
+        "commitment": "bba2e089233bdadde955e178a9576177463b107f6f7f544697d5b10acf7d394b",
         "evidence": "authoritative-advisory",
         "phase": "observed",
         "spec": "zsec.zba.intelligence.v1"
@@ -20758,7 +20758,7 @@
       }
     }
   ],
-  "generated_at": "2026-11-04T20:00:05Z",
+  "generated_at": "2026-11-05T14:46:13Z",
   "policy": {
     "auto_remediation_allowed": false,
     "data_only": true,
@@ -20793,24 +20793,24 @@
     {
       "advisory_count": 25,
       "authority": "Microsoft Security Response Center",
-      "body_sha256": "7caa0d5534baa32bb8c92fab21b40306a910cad78d71e8d061b8be7e8f84aca3",
-      "contribution_sha256": "fac24e24e79d07cdc3682ebea06e140afe3d2c6a1277d7055b9e923f7ec8730c",
+      "body_sha256": "12cf54bae0a0943425c5769e8369228e425e95ca4aa5b6738b6530d8f79a0468",
+      "contribution_sha256": "95c7e92b1eea0c1804ddf4ab6f06c43a0357c8a313536fe4db3ff8772cd33b0b",
       "parser": "microsoft-cvrf-v3-desktop-v1",
       "semantic_sha256": "c13e154034dfc0445d69f0d46a62decf792740a1c95ed60f9e7c6834b538ccf1",
       "source_id": "microsoft-msrc",
       "url": "https://api.msrc.microsoft.com/cvrf/v3.0/updates",
-      "version": "2026-11-04T08:00:00Z"
+      "version": "2026-11-05T01:04:20Z"
     },
     {
       "advisory_count": 0,
       "authority": "Canonical Ubuntu Security Team",
-      "body_sha256": "fc1d5d63f67ba8a51e9cc2fceb87092e476b7ff51063b403228d6c13e269c755",
+      "body_sha256": "1c161af7eaeccaa284c9074768aac19ef6681caf8bea6281027610e5ba71eb86",
       "contribution_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "parser": "ubuntu-usn-rss-v1",
       "semantic_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "source_id": "ubuntu-usn",
       "url": "https://ubuntu.com/security/notices/rss.xml",
-      "version": "2026-11-04T16:24:47Z"
+      "version": "2026-11-05T14:46:13Z"
     }
   ]
 }
